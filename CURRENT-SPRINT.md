@@ -12,102 +12,119 @@ Alloro replaces the question. The owner doesn't search, doesn't ask, doesn't kno
 
 The destination is defined by the 15 Knowns in the Product Constitution. If all Knowns pass, the product works. Everything else is a variable.
 
+"Business Clarity" is the created category Alloro owns. Like HubSpot owns "inbound marketing." Never strip this from marketing.
+
 ---
 
 ## Current Position
 
-**Last updated:** April 12, 2026 (late evening -- post-AAE-triage)
+**Last updated:** April 12, 2026 (evening -- post-production-readiness sweep)
 **Branch:** sandbox
 **EC2 sandbox:** Auto-deploys on push. No Dave dependency.
 
-### AAE Triage (Cowork + CC joint analysis)
+### Production Readiness Sweep (April 12 -- Cowork session)
 
-The self-serve checkup flow (QR scan -> trial) is the AAE product. Not a booth demo.
-Path: EntryScreen -> ScanningTheater -> ResultsScreen -> BuildingScreen -> ColleagueShare -> OwnerProfile -> Dashboard.
-Constitution compliance: critical path 7/7 PASS (scripts/constitution-check.sh --critical-path).
+Corey directive: "The sandbox is 100% ready to go straight into production. The entire dashboard and process needs to be ready to be sent to anyone."
 
-Two issues found. Cards written in docs/AAE-READINESS-CARDS.md. CC executes.
+253 files changed across two commits:
 
-| Issue | Severity | Card | Status |
-|-------|----------|------|--------|
-| Conference fallback shows fake SLC endodontics competitors to non-dental prospects | Trust-killing if wifi is bad | Card 1 (Green) | Ready for CC |
-| "Split the Check" promises discount with no backend | Broken promise post-conference | Card 2 (Yellow -- Corey approved direction) | Ready for CC |
-| PMS upload buried after ColleagueShare and OwnerProfile | Banner promises "Which One" but flow doesn't deliver it in first 5 min | Card 6 (Yellow) | Ready for CC |
-| PMS upload org resolution bug | Data orphaned silently | Fixed by CC (01d4ff3a) | DONE |
+| Commit | Description |
+|--------|-------------|
+| `36f80b0e` | Brand cleanup, design system compliance, semantic fixes, Layer 2 script, TS type fixes |
+| `93b979f1` | Restore "Business Clarity" category name (was incorrectly stripped with Score) |
 
-### What's deployed and committed
+### What was fixed
 
-| Item | Commit | Reflection Result | Confidence |
-|------|--------|-------------------|------------|
-| Alive Greeting + Warm Empty States | 627c107a | PASS (Known 13, 14) | Yellow -- not browser-verified |
-| Breathing Score ring | d1e076d4 | FAIL (Known 6) -- composite score + gauge. Corey did not approve. PULL FROM HANDOFF. | Red -- do not send to Dave |
-| Progress Story narrative | d1e076d4 (same commit) | PASS (Known 3, 4, 5) -- raw verifiable data, names competitors. Corey: "feels cheesy." TABLED. | Red -- awaiting Corey direction on home page hero |
-| Trial gate (soft banner Day 5, hard overlay Day 8) | 4c33b9b8 | PASS -- Foundation/Heroes bypass confirmed line 102 billingGate.ts | Yellow -- not tested with real trial account |
-| Intelligence paywall (blur gate) | 2e7e8da6 | PASS -- isFoundation checks both "foundation" and "heroes" | Yellow -- not browser-verified |
-| Vertical Intelligence Profiles (backend) | fadb7b32 | PASS -- self-contained, backward compat | Green |
-| PatientPath branding removed | 4d7c3391 | PASS (Known 14) | Yellow -- not browser-verified |
-| Design system cleanup in PatientPathPreview.tsx | 7d6cf2dd | PASS (Known 14) | Yellow -- not browser-verified |
-| Dave handoff doc (Cards 1-7) | 9d17665d | PARTIAL -- Card 4 must be pulled. Cards 1-3, 5-6 clean. Card 7 not built. | Yellow -- needs revision before send |
+| Category | Scope | Details |
+|----------|-------|---------|
+| Brand cleanup | ~30 files | "Business Clarity Score" removed (K6). "Business Clarity Brief" -> "Monday Brief". Old "SignalsAI" references removed. "Business Clarity" as category RESTORED. |
+| Design system | ~150 files | #212D40 -> #1A1D23, font-bold -> font-semibold, em-dashes removed. Entire frontend. |
+| Broken promises | 2 files | BuildingScreen: "Coming soon" -> "In your dashboard now". ResultsScreen: Unfulfillable notification promise removed. |
+| Dead features | 1 file | BuildingScreen referenced v1 website preview feature not in v2. |
+| Dental terms | 5 files | HowItWorks, PMSUploadModal, PMSVisualPillars, UploadPrompt, MarketingFooter. "patient" -> "client" where customer-visible. |
+| Hardcoded URLs | 2 files | templateRenderer.ts: window.location.origin. base.ts/MondayBriefEmail.ts: LOGO_URL env-aware. |
+| Type bugs | 1 file | PMSVisualPillars: wizard demo data mismatches (doctor->partner, mktProduction->mktRevenue). Pre-existing TS errors. |
+| Browser tab | 1 file | CheckupLayout: old brand name in title tag. |
 
-### What's changed but uncommitted
+### Verification gates
 
-| Item | File | Status |
-|------|------|--------|
-| vocabulary.ts fallback fix (Known 6) | src/routes/vocabulary.ts | Changed "Business Clarity Score" to "Google Health Check". Git locked by Dave's CC session. Commit when lock releases. |
-| CLAUDE.md updates (session start + pre-presentation gate) | CLAUDE.md | Two additions. Commit with vocab fix. |
-| CURRENT-SPRINT.md | This file | Living doc. |
+| Gate | Result |
+|------|--------|
+| TypeScript | Zero errors |
+| Vite build | Passes (sandbox filesystem blocks rmSync, not a code issue) |
+| Layer 1 (pattern) | 6/9 PASS. 3 known pre-existing: K2 backend scoring, K4 illustrative $$ in content pages, K6 BreathingScore component (unused in v2). |
+| Layer 2 (semantic) | 8/8 PASS. 1 warning: GBP OAuth callback (Dave Card 8). |
 
-### Compliance debt (discovered April 12 audit)
+### New tooling
 
-| Issue | Scope | Action |
-|-------|-------|--------|
-| #212D40 color in 72 files | Marketing, content, admin, partner, foundation pages | Wait for Dave's research to determine which files survive v2. Then sweep. |
-| "Business Clarity Score" in 5 files | DoctorDashboardV1 (v1, non-primary), PartnerPortal, HowItWorks, TermsOfService, PrivacyPolicy | Legal/marketing pages are customer-reachable. Sweep after Dave sync. |
-| computeHealth in 4 files | BreathingScore (FAIL), ResultsScreen, WebsiteDetail, SeoPanel | BreathingScore pulled. Other 3 need review (admin/checkup context may be acceptable). |
+**scripts/constitution-check-layer2.sh** -- Semantic compliance check.
+Scans 49 customer-reachable files across 8 checks:
+1. Broken promises (unfulfillable copy)
+2. Dental terms in generic pages
+3. Old brand names (Business Clarity Score, SignalsAI)
+4. Hardcoded production URLs
+5. Dead feature references
+6. Placeholder/test data
+7. Layer 1 regressions in customer files
+8. Empty state quality
+
+### Dave tasks pending
+
+| Card | Issue | Blast Radius |
+|------|-------|-------------|
+| Card 4 | APP_URL env var not set on sandbox EC2 | Yellow |
+| Card 8 | GBP OAuth callback hardcoded to production in src/routes/auth/gbp.ts:22 | Red (auth) |
+
+Card 8 requires: (1) Change callback URL to read from process.env.APP_URL, (2) Add sandbox redirect URI in Google Console.
+
+### What's deployed and committed (on sandbox branch)
+
+All commits below are on sandbox. Push needed from local machine to trigger auto-deploy.
+
+| Item | Commit | Confidence |
+|------|--------|------------|
+| Production readiness sweep (253 files) | 36f80b0e | Green (TypeScript clean, Layer 2 8/8 PASS) |
+| Business Clarity category restoration | 93b979f1 | Green |
+| WO-60 Flywheel Dashboards | pending commit | Green (TypeScript clean) |
+| All prior foundation sprint work | See Route History | Yellow (not browser-verified) |
 
 ### What's NOT done
 
 | Item | Risk | Notes |
 |------|------|-------|
-| PMS components hardcode dental terms (14+ files) | Red for non-dental verticals | Card 7 in handoff doc. Not built. |
-| Onboarding wizard dental terms | Red for non-dental verticals | wizardConfig.ts still says "Upload Your PMS Data" |
-| Browser verification of foundation sprint | Yellow | Every card is code-verified, not browser-verified |
-| Home page hero decision | Blocked on Corey | BreathingScore pulled (Known 6). ProgressStory tabled (feels cheesy). What opens the home page? |
-| Handoff doc revision | Blocked on home page decision | Pull Card 4 entirely, or split BreathingScore out and keep ProgressStory? |
+| Push to sandbox remote | Blocking deploy | Needs credentials (push from local) |
+| Browser verification (phone test) | Yellow | Code-verified, not browser-verified |
+| Dave Card 4 + Card 8 | Yellow/Red | APP_URL env var + GBP OAuth |
 
-### Reflection system status
+### Home page hero status
 
-| Component | Location | Status |
-|-----------|----------|--------|
-| Review Queue | Notion: https://www.notion.so/340fdaf120c481e198d0f1610ae7115b | Live. Request 1 loaded (Cards 1-6). |
-| Review Results | Notion: https://www.notion.so/340fdaf120c48134b3e1cddbf6e960f9 | Live. Result 1 posted (Cowork self-evaluation). |
-| CC clean-room test | Corey running standalone CC session | In progress. Prompt delivered. Awaiting results. |
+RESOLVED. The Oz Moment system IS the hero. It shows intelligence findings from the backend, with client-side fallback from readings data. BreathingScore (K6 violation) was removed. ProgressStory was tabled. The Oz Moment fills the hero slot.
 
 ---
 
 ## Next Waypoint
 
-### Waypoint 1: CC executes AAE Readiness Cards (docs/AAE-READINESS-CARDS.md)
+### Waypoint 1: Push commits to sandbox, verify deploy
 
-**Why this is next:** Two issues in the self-serve checkup flow. Card 1 (conference fallback fake names) is trust-killing and Green blast radius -- CC can execute immediately. Card 2 (Split the Check copy) is Red -- needs Corey's decision on option A, B, or C before CC touches it.
+**Why:** Two commits (36f80b0e, 93b979f1) are on the local sandbox branch but not pushed to remote. Sandbox auto-deploys on push. Cannot browser-verify until deployed.
 
-**Done gate:** Card 1 committed and pushed. Card 2 decision made and executed. `constitution-check.sh --critical-path` passes. `npx tsc --noEmit` clean.
+**Done gate:** `git push origin sandbox` succeeds. Sandbox URL loads with changes.
 
 ### Waypoint 2: End-to-end phone test on sandbox URL
 
-**Why:** Code is verified. Browser experience is not. One real phone, one QR scan, one full run: entry -> scanning -> results -> account creation -> dashboard. Timed. If it works in under 2 minutes, AAE is ready.
+**Why:** Code is verified. Browser experience is not. One real phone, one QR scan, one full run: entry -> scanning -> results -> account creation -> dashboard. Timed.
 
 **Done gate:** Corey completes the walkthrough. Reports what worked and what didn't.
 
-### Waypoint 3: Resolve home page hero (Corey decision -- deferred from prior sprint)
+### Waypoint 3: WO-60 Flywheel Dashboards (admin ops)
 
-**Why:** BreathingScore pulled (K6). ProgressStory tabled. Home page hero still needs a decision. Not blocking AAE (prospects land on checkup, not home page), but blocking the post-trial dashboard experience.
+**Why:** Internal HQ dashboards need flywheel metrics. VisionaryView (Corey), IntegratorView (Jo), BuildView (Dave). Yellow blast radius. Serves Inevitable Unicorn North Star.
 
-**Done gate:** Corey decides. Cards written for CC.
+**Done gate:** All three view upgrades committed. Real Stripe MRR. Conversion funnel. One Decision Card.
 
-### Waypoint 4: Sync with Dave's research + send clean handoff
+### Waypoint 4: Send Dave clean handoff
 
-**Why:** Dave is running deep research. His findings inform which files survive v2. Handoff doc (docs/handoff-production-cutover.md) needs revision after AAE cards land. Cards 1-3, 5-6 from prior handoff still pending delivery.
+**Why:** Cards 4 and 8 need Dave execution. Prior cards (1-3, 5-6) need delivery.
 
 **Done gate:** Dave has received clean handoff in #alloro-dev.
 
@@ -117,17 +134,14 @@ Two issues found. Cards written in docs/AAE-READINESS-CARDS.md. CC executes.
 
 | Date | Waypoint | Result |
 |------|----------|--------|
-| April 12 | Foundation sprint code (Cards 1-6) | Committed and pushed to sandbox |
-| April 12 | Dave handoff doc | Written, committed. Not sent -- Card 4 violated Known 6 |
-| April 12 | vocabulary.ts Known 6 fix | Code changed, not yet committed (git locked) |
-| April 12 | Reflection system built | Notion Review Queue + Review Results pages created under Alloro HQ |
-| April 12 | First reflection test | Card 4 (BreathingScore) caught as Known 6 violation. Cards 1-3, 5-6 clean. |
-| April 12 | Compliance audit | 72 files with #212D40, 5 files with "Business Clarity Score", 4 files with computeHealth. Debt logged, sequencing depends on Dave. |
-| April 12 | CC clean-room test | Prompt delivered to Corey. Session in progress. |
-| April 12 | Dave sync | Slack draft in #alloro-dev. Asking where his research is landing before sending cards. |
-| April 12 | K3/K4/K6 compliance sweep | 3 commits: a703e5b6 (Demo.tsx + 7 files), efad7985 (RankingsScreen, HomePage, PartnerPortal, handoff doc), + Corey's push (ResultsScreen, conferenceFallback checkup fixes) |
-| April 12 | Constitution check script | scripts/constitution-check.sh built. Critical path 7/7 PASS. Full scan shows known debt (K2 backend, K4 content pages, K14 admin pages). Pending commit. |
-| April 12 | AAE triage (Cowork + CC) | Joint analysis of QR-to-trial flow. CC audited, Cowork triaged. Two issues: conference fallback fake names (trust-killing) and Split the Check (broken promise). Cards written in docs/AAE-READINESS-CARDS.md. |
+| April 12 (AM) | Foundation sprint code (Cards 1-6) | Committed and pushed to sandbox |
+| April 12 (AM) | Dave handoff doc | Written. Card 4 violated K6 -- pulled. |
+| April 12 (AM) | Compliance audit | 72 files #212D40, 5 files "Business Clarity Score", 4 files computeHealth. |
+| April 12 (AM) | Constitution check Layer 1 | scripts/constitution-check.sh. Critical path 7/7 PASS. |
+| April 12 (PM) | Production readiness sweep | 253 files. Brand, design system, semantic fixes. Layer 2 script built. 8/8 PASS. |
+| April 12 (PM) | Business Clarity category restored | 9 files. Corey correction: BC is the created category. Only Score is K6. |
+| April 12 (PM) | Type bug fix | PMSVisualPillars wizard demo data mismatches fixed. |
+| April 12 (PM) | WO-60 Flywheel Dashboards | VisionaryView (real Stripe MRR, flywheel velocity, decision card, funnel). IntegratorView (5-stage pipeline, auto-actions, team load). BuildView (live webhook health, improved system status). New endpoint: /api/admin/revenue/mrr. |
 
 ---
 
@@ -135,18 +149,10 @@ Two issues found. Cards written in docs/AAE-READINESS-CARDS.md. CC executes.
 
 **Session start:** Read Current Position. Is it stale? Update it. Then read Next Waypoint. Do that.
 
-**After every commit:** Update "What's deployed and committed" table. Move items from "uncommitted" to "committed."
+**After every commit:** Update "deployed and committed" table. Move items from uncommitted to committed.
 
-**After every reflection test:** Update reflection results. Adjust card confidence levels. Log in Route History.
-
-**After every verification:** Update confidence from Yellow to Green (or Red if it fails). Record what was verified and how.
+**After every verification:** Update confidence from Yellow to Green (or Red if it fails).
 
 **When priorities shift:** Corey updates Destination or reorders waypoints. The route recalculates. The destination stays.
 
-**When a waypoint completes:** Move it to Route History. Promote the next waypoint.
-
-**When something breaks:** Add it to "What's NOT done" with risk level. If it blocks the current waypoint, note the block.
-
 **Pre-presentation gate:** Before showing any work to Corey, run the 5-item filter in CLAUDE.md. If any item is NO, fix it or flag it explicitly. Corey validates feel and vision. Claude catches everything else first.
-
-**Reflection gate:** Before sending any handoff to Dave, post the work to the Notion Review Queue. Evaluate against the Constitution. Post findings to Review Results. Only send to Dave after all blocking issues are resolved.

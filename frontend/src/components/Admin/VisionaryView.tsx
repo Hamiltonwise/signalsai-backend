@@ -1,26 +1,33 @@
 /**
  * VisionaryView -- Corey's HQ.
  *
- * Musk Step 3 (simplify): ONE number at the top (MRR).
- * Bezos principle: show only the decisions waiting for the CEO.
+ * WO-60: Flywheel Dashboard.
  *
- * Five zones:
- * 1. The Numbers (MRR, clients, pipeline, runway)
- * 2. Flywheel Metrics (checkups, invites, conversions -- is the product spreading itself?)
- * 3. Needs Your Decision (RED clients + pending approvals)
- * 4. Foundation Pulse (Champions, Heroes seats funded, Foundation status)
- * 5. This Week's Signal (the one sentence that matters most)
+ * Bezos principle: show only the decisions waiting for the CEO.
+ * Musk principle: reduce human dependency at every step.
+ * 90-second rule: open, see everything, make one decision, close.
+ *
+ * Six zones:
+ * 1. The Numbers (real Stripe MRR, clients, pipeline, profitability)
+ * 2. Flywheel Velocity (checkups -> trials -> TTFV -> paid -> referrals)
+ * 3. This Week's Signal (one sentence from the intelligence system)
+ * 4. One Decision Card (the single most important thing to decide)
+ * 5. Conversion Funnel (checkup-to-paid pipeline with rates)
+ * 6. Foundation Pulse (Champions, Heroes, RISE)
  */
 
 import { useQuery } from "@tanstack/react-query";
 import {
   DollarSign,
   TrendingUp,
+
   Users,
   AlertTriangle,
   Heart,
   Zap,
   Target,
+  ArrowRight,
+  ChevronRight,
 } from "lucide-react";
 import { adminListOrganizations, type AdminOrganization } from "@/api/admin-organizations";
 import { apiGet } from "@/api/index";
@@ -32,10 +39,63 @@ interface ClientHealth {
   risk?: string;
 }
 
+interface MrrData {
+  success: boolean;
+  mrr: number;
+  arr: number;
+  activeSubscriptions: number;
+  trialingSubscriptions: number;
+  source: string;
+}
+
+interface FunnelData {
+  success: boolean;
+  funnel: {
+    scans_started: number;
+    scans_completed: number;
+    gates_viewed: number;
+    emails_captured: number;
+    accounts_created: number;
+    first_logins: number;
+    ttfv_yes: number;
+    subscriptions: number;
+  };
+  conversion_rates: {
+    scan_to_gate: string;
+    gate_to_capture: string;
+    capture_to_ttfv: string;
+    ttfv_to_subscribe: string;
+    end_to_end: string;
+  };
+  viral: {
+    shares: number;
+    competitor_invites: number;
+    referral_signups: number;
+  };
+}
+
 export default function VisionaryView() {
   const { data } = useQuery({
     queryKey: ["admin-organizations"],
     queryFn: adminListOrganizations,
+  });
+
+  const { data: mrrData } = useQuery<MrrData>({
+    queryKey: ["admin-mrr"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/revenue/mrr" });
+      return res?.success ? res as MrrData : { success: false, mrr: 0, arr: 0, activeSubscriptions: 0, trialingSubscriptions: 0, source: "error" };
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: funnelData } = useQuery<FunnelData | null>({
+    queryKey: ["admin-checkup-funnel", 7],
+    queryFn: async (): Promise<FunnelData | null> => {
+      const res = await apiGet({ path: "/admin/checkup-funnel?days=7" });
+      return res?.success ? res as FunnelData : null;
+    },
+    staleTime: 5 * 60_000,
   });
 
   const { data: healthData } = useQuery({
@@ -47,7 +107,6 @@ export default function VisionaryView() {
     staleTime: 60_000,
   });
 
-  // Corey's personal task queue -- Chief of Staff view
   const { data: tasksData } = useQuery({
     queryKey: ["corey-tasks"],
     queryFn: async () => {
@@ -71,8 +130,11 @@ export default function VisionaryView() {
 
   const activeOrgs = orgs.filter((o) => o.subscription_status === "active" || o.subscription_tier);
   const trialOrgs = orgs.filter((o) => !o.subscription_status || o.subscription_status === "trialing");
-  const mrr = activeOrgs.length * 2000;
-  const arr = mrr * 12;
+
+  // Real MRR from Stripe, with fallback to estimate
+  const mrr = mrrData?.mrr ?? activeOrgs.length * 2000;
+  const arr = mrrData?.arr ?? mrr * 12;
+  const mrrSource = mrrData?.source || "estimate";
   const burn = 9500;
   const isProfitable = mrr > burn;
 
@@ -81,11 +143,14 @@ export default function VisionaryView() {
   const greenClients = (healthData || []).filter((c) => c.health === "green");
   const championCount = orgs.filter((o: any) => o.is_champion).length;
 
-  // Flywheel: checkup invites (would need a dedicated endpoint, show what we can)
-  const totalClients = orgs.length;
-  const conversionRate = totalClients > 0 ? Math.round((activeOrgs.length / totalClients) * 100) : 0;
-
   const signal = signalData?.signal || signalData?.sentence || null;
+
+  const funnel = funnelData?.funnel;
+  const rates = funnelData?.conversion_rates;
+  const viral = funnelData?.viral;
+
+  // Build the ONE decision card from system state
+  const oneDecision = buildOneDecision(redClients, trialOrgs, tasksData || [], funnel);
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -96,19 +161,19 @@ export default function VisionaryView() {
           icon={<DollarSign className="h-4 w-4 text-emerald-500" />}
           value={`$${mrr.toLocaleString()}`}
           label="MRR"
-          sub={`$${arr.toLocaleString()} ARR`}
+          sub={mrrSource === "stripe" ? `$${arr.toLocaleString()} ARR` : `$${arr.toLocaleString()} ARR (est.)`}
         />
         <NumberCard
           icon={<Users className="h-4 w-4 text-blue-500" />}
-          value={String(activeOrgs.length)}
+          value={String(mrrData?.activeSubscriptions ?? activeOrgs.length)}
           label="Paying"
-          sub={`${trialOrgs.length} in pipeline`}
+          sub={`${mrrData?.trialingSubscriptions ?? trialOrgs.length} trialing`}
         />
         <NumberCard
           icon={<TrendingUp className="h-4 w-4 text-[#D56753]" />}
-          value={`${conversionRate}%`}
-          label="Conversion"
-          sub={`${totalClients} total accounts`}
+          value={rates?.end_to_end || "---"}
+          label="End-to-End"
+          sub="Scan to paid (7d)"
         />
         <NumberCard
           icon={<Target className="h-4 w-4 text-purple-500" />}
@@ -119,7 +184,30 @@ export default function VisionaryView() {
         />
       </div>
 
-      {/* Zone 2: This Week's Signal */}
+      {/* Zone 2: Flywheel Velocity (this week) */}
+      {funnel && (
+        <div className="bg-stone-50/80 border border-stone-200/60 rounded-2xl p-5">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Flywheel this week</p>
+          <div className="flex items-center justify-between gap-1 overflow-x-auto">
+            <FlywheelNode value={funnel.scans_started} label="Scans" />
+            <ArrowRight className="h-3 w-3 text-gray-300 shrink-0" />
+            <FlywheelNode value={funnel.emails_captured} label="Captured" />
+            <ArrowRight className="h-3 w-3 text-gray-300 shrink-0" />
+            <FlywheelNode value={funnel.accounts_created} label="Accounts" />
+            <ArrowRight className="h-3 w-3 text-gray-300 shrink-0" />
+            <FlywheelNode value={funnel.ttfv_yes} label="TTFV" />
+            <ArrowRight className="h-3 w-3 text-gray-300 shrink-0" />
+            <FlywheelNode value={funnel.subscriptions} label="Paid" />
+            <ArrowRight className="h-3 w-3 text-gray-300 shrink-0" />
+            <FlywheelNode value={viral?.shares || 0} label="Shares" />
+          </div>
+          {viral && viral.referral_signups > 0 && (
+            <p className="text-xs text-emerald-600 mt-3">{viral.referral_signups} referral-driven signup{viral.referral_signups !== 1 ? "s" : ""} this week</p>
+          )}
+        </div>
+      )}
+
+      {/* Zone 3: This Week's Signal */}
       {signal && (
         <div className="bg-[#212D40] rounded-2xl p-5">
           <div className="flex items-start gap-3">
@@ -129,37 +217,43 @@ export default function VisionaryView() {
         </div>
       )}
 
-      {/* Zone 2.5: What Needs You -- Chief of Staff task queue */}
-      {(() => {
-        const openTasks = (tasksData || []).filter((t) => t.status !== "done" && t.status !== "completed");
-        if (openTasks.length === 0) return null;
-        return (
-          <div className="bg-white border border-gray-200 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">What Needs You</p>
-              <span className="text-xs font-semibold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">{openTasks.length}</span>
-            </div>
-            <div className="space-y-2">
-              {openTasks.slice(0, 5).map((t) => (
-                <div key={t.id} className="flex items-start gap-2 py-1 border-b border-gray-100 last:border-0">
-                  <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                    t.priority === "urgent" ? "bg-red-500" : t.priority === "high" ? "bg-amber-500" : "bg-gray-300"
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-[#1A1D23] font-medium truncate">{t.title}</p>
-                    {t.source && <p className="text-xs text-gray-400">{t.source}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* Zone 4: One Decision Card */}
+      {oneDecision && (
+        <div className={`rounded-2xl p-5 ${
+          oneDecision.urgency === "red"
+            ? "bg-red-50 border border-red-200"
+            : oneDecision.urgency === "amber"
+            ? "bg-amber-50 border border-amber-200"
+            : "bg-stone-50/80 border border-stone-200/60"
+        }`}>
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className={`h-3.5 w-3.5 ${
+              oneDecision.urgency === "red" ? "text-red-500" : oneDecision.urgency === "amber" ? "text-amber-500" : "text-gray-400"
+            }`} />
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Needs your decision</p>
           </div>
-        );
-      })()}
+          <p className="text-sm font-semibold text-[#1A1D23]">{oneDecision.title}</p>
+          <p className="text-xs text-gray-500 mt-1">{oneDecision.detail}</p>
+        </div>
+      )}
 
-      {/* Zone 3: Client Health at a Glance */}
+      {/* Zone 5: Conversion Funnel */}
+      {rates && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Conversion funnel (7d)</p>
+          <div className="space-y-2">
+            <FunnelRow label="Scan to gate" rate={rates.scan_to_gate} />
+            <FunnelRow label="Gate to email" rate={rates.gate_to_capture} />
+            <FunnelRow label="Email to TTFV" rate={rates.capture_to_ttfv} />
+            <FunnelRow label="TTFV to paid" rate={rates.ttfv_to_subscribe} />
+          </div>
+        </div>
+      )}
+
+      {/* Zone 6: Client Health */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Client Health</p>
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-4 mb-3">
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <span className="text-sm font-semibold text-[#1A1D23]">{greenClients.length}</span>
@@ -174,35 +268,23 @@ export default function VisionaryView() {
           </div>
         </div>
 
-        {/* RED clients -- needs Corey's decision */}
         {redClients.length > 0 && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-              <p className="text-xs font-semibold text-red-500 uppercase tracking-wider">Needs your decision</p>
-            </div>
             {redClients.map((c) => (
               <div key={c.id} className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                 <p className="text-sm font-semibold text-[#1A1D23]">{c.name}</p>
-                <p className="text-xs text-red-600 mt-0.5">{c.risk || "Engagement dropped. Call or defer?"}</p>
+                <p className="text-xs text-red-600 mt-0.5">{c.risk || "Engagement dropped"}</p>
               </div>
             ))}
           </div>
         )}
 
-        {/* AMBER clients -- awareness only */}
-        {amberClients.length > 0 && redClients.length === 0 && (
-          <p className="text-sm text-amber-600">
-            {amberClients.length} client{amberClients.length !== 1 ? "s" : ""} need{amberClients.length === 1 ? "s" : ""} a check. None critical.
-          </p>
-        )}
-
         {redClients.length === 0 && amberClients.length === 0 && (
-          <p className="text-sm text-emerald-600">All clients healthy. No decisions needed.</p>
+          <p className="text-sm text-emerald-600">All clients healthy.</p>
         )}
       </div>
 
-      {/* Zone 4: Foundation Pulse */}
+      {/* Zone 7: Foundation Pulse */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <Heart className="h-4 w-4 text-[#D56753]" />
@@ -223,36 +305,67 @@ export default function VisionaryView() {
           </div>
         </div>
       </div>
-
-      {/* Zone 5: Flywheel Status */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-5">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Flywheel</p>
-        <div className="space-y-2 text-sm text-gray-600">
-          <div className="flex items-center justify-between">
-            <span>Checkup to signup</span>
-            <span className="font-semibold text-[#1A1D23]">{conversionRate}%</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>Monday email (system)</span>
-            <span className="font-semibold text-[#1A1D23]">{activeOrgs.length > 0 ? "Active" : "Waiting for Mailgun"}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>Agent signal bus</span>
-            <span className="font-semibold text-emerald-600">Live (42 agents)</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>Competitor invites</span>
-            <span className="font-semibold text-[#1A1D23]">Wired</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>Lob card pipeline</span>
-            <span className="font-semibold text-amber-500">Queuing (needs LOB_API_KEY)</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
+
+// ─── One Decision Card Logic ─────────────────────────────────────
+// Surfaces the single most important decision from system state.
+// Priority: red clients > expiring trials > urgent tasks > nothing.
+
+function buildOneDecision(
+  redClients: ClientHealth[],
+  trialOrgs: AdminOrganization[],
+  tasks: Array<{ id: number; title: string; status: string; priority: string; due_date?: string }>,
+  funnel?: FunnelData["funnel"] | null,
+): { title: string; detail: string; urgency: "red" | "amber" | "green" } | null {
+  // 1. Red client needs intervention
+  if (redClients.length > 0) {
+    const c = redClients[0];
+    return {
+      title: `${c.name} needs attention`,
+      detail: c.risk || "Engagement dropped. Call or defer?",
+      urgency: "red",
+    };
+  }
+
+  // 2. Trials about to expire
+  const expiringTrials = trialOrgs.filter((o: any) => {
+    if (!o.trial_end) return false;
+    const daysLeft = Math.ceil((new Date(o.trial_end).getTime() - Date.now()) / 86_400_000);
+    return daysLeft >= 0 && daysLeft <= 2;
+  });
+  if (expiringTrials.length > 0) {
+    return {
+      title: `${expiringTrials.length} trial${expiringTrials.length > 1 ? "s" : ""} expire${expiringTrials.length === 1 ? "s" : ""} in 48 hours`,
+      detail: "Review their engagement and decide: extend, convert, or let expire?",
+      urgency: "amber",
+    };
+  }
+
+  // 3. Urgent task from dream team
+  const urgentTasks = tasks.filter((t) => t.priority === "urgent" && t.status !== "done" && t.status !== "completed");
+  if (urgentTasks.length > 0) {
+    return {
+      title: urgentTasks[0].title,
+      detail: `Urgent task. ${urgentTasks.length > 1 ? `${urgentTasks.length - 1} more waiting.` : ""}`,
+      urgency: "amber",
+    };
+  }
+
+  // 4. Flywheel stall (no scans this week)
+  if (funnel && funnel.scans_started === 0) {
+    return {
+      title: "Zero checkup scans this week",
+      detail: "The top of the flywheel is stalled. Distribution problem.",
+      urgency: "amber",
+    };
+  }
+
+  return null; // No decisions needed. Clean week.
+}
+
+// ─── Sub-components ──────────────────────────────────────────────
 
 function NumberCard({
   icon,
@@ -275,6 +388,36 @@ function NumberCard({
       </div>
       <p className={`text-2xl font-semibold ${valueColor || "text-[#1A1D23]"}`}>{value}</p>
       <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
+    </div>
+  );
+}
+
+function FlywheelNode({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="text-center min-w-[48px]">
+      <p className="text-lg font-semibold text-[#1A1D23]">{value}</p>
+      <p className="text-xs text-gray-400 uppercase tracking-wider leading-tight">{label}</p>
+    </div>
+  );
+}
+
+function FunnelRow({ label, rate }: { label: string; rate: string }) {
+  const pct = parseInt(rate) || 0;
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2 flex-1">
+        <span className="text-sm text-gray-600">{label}</span>
+        <ChevronRight className="h-3 w-3 text-gray-300" />
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full ${pct >= 50 ? "bg-emerald-500" : pct >= 20 ? "bg-amber-400" : "bg-red-400"}`}
+            style={{ width: `${Math.min(pct, 100)}%` }}
+          />
+        </div>
+        <span className="text-sm font-semibold text-[#1A1D23] w-10 text-right">{rate}</span>
+      </div>
     </div>
   );
 }

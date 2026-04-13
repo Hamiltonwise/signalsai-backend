@@ -81,12 +81,6 @@ export default function IntegratorView() {
 
   // Pipeline: categorize orgs by onboarding stage
   const withGBP = orgs.filter((o: any) => o.gbp_access_token || o.google_connected);
-  const withPMS = orgs.filter((o: any) => o.pms_uploaded || o.has_pms_data);
-  const newSignups = orgs.filter((o) => {
-    const age = (Date.now() - new Date(o.created_at).getTime()) / 86_400_000;
-    return age <= 7;
-  });
-
   const opsStatus = redCount === 0 && urgentTasks.length === 0;
 
   return (
@@ -113,16 +107,18 @@ export default function IntegratorView() {
         </div>
       </div>
 
-      {/* Zone 2: Client Pipeline */}
+      {/* Zone 2: Onboarding Pipeline (5 stages) */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <Users className="h-4 w-4 text-blue-500" />
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Onboarding Pipeline</p>
         </div>
-        <div className="space-y-2">
-          <PipelineRow label="Signed up (last 7 days)" count={newSignups.length} color="blue" />
-          <PipelineRow label="Google connected" count={withGBP.length} total={orgs.length} color="emerald" />
-          <PipelineRow label="Data uploaded" count={withPMS.length} total={orgs.length} color="purple" />
+        <div className="grid grid-cols-5 gap-2 text-center mb-4">
+          <PipelineStage label="Created" count={orgs.filter((o: any) => !o.gbp_access_token && !o.google_connected).length} color="bg-gray-400" />
+          <PipelineStage label="GBP" count={withGBP.filter((o: any) => !o.subscription_status || o.subscription_status === "trialing").length} color="bg-blue-500" />
+          <PipelineStage label="TTFV" count={orgs.filter((o: any) => o.ttfv_confirmed && (!o.subscription_status || o.subscription_status === "trialing")).length} color="bg-purple-500" />
+          <PipelineStage label="Paid" count={orgs.filter((o) => o.subscription_status === "active").length} color="bg-emerald-500" />
+          <PipelineStage label="At Risk" count={health.filter((c) => c.health === "red" || c.health === "amber").length} color="bg-red-500" />
         </div>
 
         {/* Stuck accounts (signed up > 7 days, no GBP) */}
@@ -133,7 +129,7 @@ export default function IntegratorView() {
           });
           if (stuck.length === 0) return null;
           return (
-            <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="pt-3 border-t border-gray-100">
               <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider mb-2">
                 Stuck ({stuck.length})
               </p>
@@ -147,6 +143,56 @@ export default function IntegratorView() {
           );
         })()}
       </div>
+
+      {/* Zone 2.5: This Week's Actions (auto-generated from org state) */}
+      {(() => {
+        const actions: { org: string; action: string; urgency: "red" | "amber" }[] = [];
+
+        for (const o of orgs) {
+          const org = o as any;
+          const age = (Date.now() - new Date(o.created_at).getTime()) / 86_400_000;
+
+          // Trial expiring within 48 hours
+          if (org.trial_end) {
+            const daysLeft = Math.ceil((new Date(org.trial_end).getTime() - Date.now()) / 86_400_000);
+            if (daysLeft >= 0 && daysLeft <= 2) {
+              actions.push({ org: o.name, action: `Trial ends in ${daysLeft}d, no billing info`, urgency: "red" });
+            }
+          }
+
+          // No login after signup (> 3 days)
+          if (age > 3 && !org.last_login_at) {
+            actions.push({ org: o.name, action: `No login since signup (${Math.floor(age)}d ago)`, urgency: "amber" });
+          }
+
+          // GBP disconnected (had it, lost it)
+          if (org.gbp_disconnected_at && !org.gbp_access_token) {
+            actions.push({ org: o.name, action: "GBP disconnected", urgency: "amber" });
+          }
+        }
+
+        if (actions.length === 0) return null;
+
+        // Sort: red first
+        actions.sort((a, b) => (a.urgency === "red" ? -1 : 1) - (b.urgency === "red" ? -1 : 1));
+
+        return (
+          <div className="bg-white border border-gray-200 rounded-2xl p-5">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">This week's actions</p>
+            <div className="space-y-2">
+              {actions.slice(0, 6).map((a, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm">
+                  <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${a.urgency === "red" ? "bg-red-500" : "bg-amber-400"}`} />
+                  <div>
+                    <span className="font-medium text-[#1A1D23]">{a.org}</span>
+                    <span className="text-gray-500 ml-1">{a.action}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Zone 3: Team Workload */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
@@ -215,15 +261,12 @@ export default function IntegratorView() {
   );
 }
 
-function PipelineRow({ label, count, total, color }: { label: string; count: number; total?: number; color: string }) {
-  const colorMap: Record<string, string> = { blue: "bg-blue-500", emerald: "bg-emerald-500", purple: "bg-purple-500" };
+function PipelineStage({ label, count, color }: { label: string; count: number; color: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-600">{label}</span>
-      <div className="flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full ${colorMap[color] || "bg-gray-400"}`} />
-        <span className="text-sm font-semibold text-[#1A1D23]">{count}{total ? ` / ${total}` : ""}</span>
-      </div>
+    <div className="text-center">
+      <div className={`w-3 h-3 rounded-full ${color} mx-auto mb-1`} />
+      <p className="text-lg font-semibold text-[#1A1D23]">{count}</p>
+      <p className="text-xs text-gray-400 uppercase tracking-wider">{label}</p>
     </div>
   );
 }

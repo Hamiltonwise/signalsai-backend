@@ -45,6 +45,7 @@ import adminSettingsRoutes from "./routes/admin/settings";
 import adminSchedulesRoutes from "./routes/admin/schedules";
 import adminSignalRoutes from "./routes/admin/signal";
 import checkupFunnelRoutes from "./routes/admin/checkupFunnel";
+import adminRevenueRoutes from "./routes/admin/revenue";
 import agentRunnerRoutes from "./routes/admin/agentRunner";
 import adminDreamTeamRoutes from "./routes/admin/dreamTeam";
 import adminFlagIssueRoutes from "./routes/admin/flagIssue";
@@ -300,6 +301,7 @@ app.use("/api/admin/signal", adminSignalRoutes);
 app.use("/api/admin/ceo-chat", ceoChatRoutes);
 app.use("/api/admin/clarity-metrics", clarityMetricsRoutes);
 app.use("/api/admin/checkup-funnel", checkupFunnelRoutes);
+app.use("/api/admin/revenue", adminRevenueRoutes);
 app.use("/api/admin/agent", agentRunnerRoutes); // Dream Team agent runner (invoke any agent from HQ)
 app.use("/api/admin/dream-team", adminDreamTeamRoutes);
 app.use("/api/admin", adminFlagIssueRoutes); // Bug flag button in admin header
