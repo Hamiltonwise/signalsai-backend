@@ -75,13 +75,31 @@ There is NO Dave dependency for sandbox. If code is pushed, it is deployed.
 If something is not working on sandbox, it is a code problem -- fix it directly.
 Never say "blocked by EC2" or "blocked by Dave" for sandbox work. That is false.
 
+## Session Discipline (LOCKED -- April 13 diagnosis)
+
+Read `memory/context/session-contract.md` at session start.
+
+Every session is THINKING or BUILD. Not both.
+- THINKING: Corey explores problems. Output = locked decisions. No code.
+- BUILD: Starts with locked decisions. Build, verify, produce Dave-ready card.
+
+The explore-build blur is the #1 time waster. Corey spent 1000+ hours because
+sessions jumped from "describe intent" to "build code" without locking decisions.
+Dave then received multiple experimental versions and couldn't tell which was decided.
+
+Before ideation: brief constraints (Dave's patterns, Knowns, vocabulary, blast radius).
+Before code: answer the 5 decision lock questions in the session contract.
+Before commit: run all 4 sweep scripts.
+Before handoff: run the pre-handoff quality gate.
+
 ## Session Start
 
-1. Read `CURRENT-SPRINT.md` -- this is the GPS. It tells you where you are, what's verified, and what the next waypoint is. Do not skip this. Do not re-plan from scratch.
-2. `git branch --show-current && git status --short`
-3. Read `docs/PRODUCT-OPERATIONS.md` -- check which Knowns are PASS/FAIL/UNTESTED
-4. Update `CURRENT-SPRINT.md` Current Position if anything is stale
-5. Execute the next waypoint, or fix failing tests if any exist
+1. Declare session type: THINKING or BUILD
+2. Read `CURRENT-SPRINT.md` -- this is the GPS.
+3. `git branch --show-current && git status --short`
+4. Read `docs/PRODUCT-OPERATIONS.md` -- check which Knowns are PASS/FAIL/UNTESTED
+5. If BUILD: read `memory/context/session-contract.md` for quality gates
+6. Execute the next waypoint, or fix failing tests if any exist
 
 ## Before Every Build
 
@@ -95,7 +113,24 @@ Write a Customer Reality Check in the conversation:
 
 1. `cd frontend && npx tsc -b --force && npm run build` (zero errors)
 2. `npx tsc --noEmit` from repo root (zero errors)
-3. Check the map: describe what each affected page shows. If you can't describe it with certainty, don't commit.
+3. `bash scripts/constitution-check.sh --critical-path` (7/7 PASS)
+4. `bash scripts/data-flow-audit.sh` (0 issues)
+5. Check the map: describe what each affected page shows. If you can't describe it with certainty, don't commit.
+
+## Quality Scripts (run before every handoff to Dave)
+
+Four automated quality gates. All must pass before Dave sees any work.
+
+| Script | What it catches | Run time |
+|--------|----------------|----------|
+| `scripts/constitution-check.sh` | Known violations (K2-K15), position claims, fabricated data | <5s |
+| `scripts/vertical-sweep.sh --customer-only` | Dental-specific language in customer-facing code | <5s |
+| `scripts/data-flow-audit.sh` | Logic bugs: location context, competitor selection, queryKey scoping | <5s |
+| `scripts/content-quality-lint.sh` | Content quality: placeholders, empty states, dollar figures, design system | <5s |
+
+If any script fails, fix the issue before committing. These scripts exist because
+every bug they catch was a real bug found on April 12-13 that would have reached
+a customer or caused Dave to pause.
 
 ## Before Presenting Work to Corey (Pre-Presentation Gate)
 
@@ -118,6 +153,21 @@ The three instruments are the product. The email is a pointer, not the whole sto
 Build features app-first. Email is additive.
 Never say "the email is the product." That is stale and wrong.
 
+## AI Content Safety (LOCKED -- April 13, Dave + Corey agreed)
+
+Never show AI-generated recommendations to customers without human review.
+Show DATA (reviews, ratings, competitor names, GBP completeness). Hide ADVICE.
+
+Why: On April 13, the AI recommended "add a patient testimonial video showing
+your consultation process from intake to quote." That's a HIPAA violation.
+Dave said: "we don't trust AI so much... it doesn't know what's going to be right."
+
+Before any AI-generated text reaches a customer, check:
+1. Could this be a HIPAA violation?
+2. Could this be factually wrong? (wrong competitor, wrong review count)
+3. Is this a recommendation or a fact? (show facts, hide recommendations)
+4. Would a doctor who knows their market see through this?
+
 ## Standing Rules
 
 - Never push to main directly
@@ -127,6 +177,7 @@ Never say "the email is the product." That is stale and wrong.
 - No font-black or font-extrabold. Max weight: font-semibold
 - No #212D40 for text. Use #1A1D23
 - No fabricated content
+- No AI-generated recommendations in customer-facing output without human review
 - One feature = one commit = one verifiable step
 
 ## Global Model Default
