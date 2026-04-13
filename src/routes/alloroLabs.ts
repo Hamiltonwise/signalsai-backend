@@ -19,6 +19,7 @@ router.get("/benchmarks", async (req: Request, res: Response) => {
 
     if (!specialty || typeof specialty !== "string") {
       return res.status(400).json({
+        success: false,
         error: "specialty query parameter is required",
       });
     }
@@ -32,6 +33,7 @@ router.get("/benchmarks", async (req: Request, res: Response) => {
 
     if (orgIds.length < 5) {
       return res.json({
+        success: true,
         specialty: normalizedSpecialty,
         sampleSize: orgIds.length,
         message: "Insufficient sample size. Minimum 5 organizations required for anonymized benchmarks.",
@@ -41,12 +43,13 @@ router.get("/benchmarks", async (req: Request, res: Response) => {
 
     const ids = orgIds.map((o: any) => o.id);
 
-    // Get latest weekly ranking snapshots for these orgs
+    // Get latest weekly ranking snapshots for these orgs (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     const snapshots = await db("weekly_ranking_snapshots")
       .whereIn("organization_id", ids)
-      .whereRaw(
-        "created_at >= NOW() - INTERVAL '30 days'"
-      )
+      .where("created_at", ">=", thirtyDaysAgo)
       .orderBy("created_at", "desc");
 
     // Deduplicate: keep only the latest snapshot per org
@@ -61,6 +64,7 @@ router.get("/benchmarks", async (req: Request, res: Response) => {
 
     if (latestSnapshots.length < 5) {
       return res.json({
+        success: true,
         specialty: normalizedSpecialty,
         sampleSize: latestSnapshots.length,
         message: "Insufficient snapshot data. Minimum 5 organizations with recent data required.",
@@ -91,6 +95,7 @@ router.get("/benchmarks", async (req: Request, res: Response) => {
     };
 
     return res.json({
+      success: true,
       specialty: normalizedSpecialty,
       sampleSize: latestSnapshots.length,
       data: {
@@ -104,7 +109,7 @@ router.get("/benchmarks", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("[AlloroLabs] Benchmark error:", err);
-    return res.status(500).json({ error: "Failed to generate benchmarks" });
+    return res.status(500).json({ success: false, error: "Failed to generate benchmarks" });
   }
 });
 
