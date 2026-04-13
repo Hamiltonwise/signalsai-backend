@@ -25,6 +25,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { apiGet, apiPost } from "@/api/index";
+import { useLocationContext } from "@/contexts/locationContext";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -171,10 +172,12 @@ function SnapshotCard({ snapshot, isLatest }: { snapshot: RankingSnapshot; isLat
 
 export default function RankingsScreen() {
   const queryClient = useQueryClient();
+  const { selectedLocation } = useLocationContext();
+  const locationId = selectedLocation?.id ?? null;
 
   // Fetch checkup context for new accounts without snapshots yet
   const { data: checkupCtx } = useQuery({
-    queryKey: ["dashboard-context"],
+    queryKey: ["dashboard-context", locationId],
     queryFn: async () => {
       const res = await apiGet({ path: "/user/dashboard-context" });
       return res?.success ? res.checkup_context : null;
@@ -182,21 +185,23 @@ export default function RankingsScreen() {
     staleTime: 30 * 60_000,
   });
 
-  // Fetch snapshots
+  // Fetch snapshots (scoped to location for multi-location accounts)
   const { data: snapshotData, isLoading: snapshotsLoading, isError: isSnapshotsError } = useQuery({
-    queryKey: ["rankings-snapshots"],
+    queryKey: ["rankings-snapshots", locationId],
     queryFn: async () => {
-      const res = await apiGet({ path: "/rankings-intelligence/snapshots" });
+      const params = locationId ? `?locationId=${locationId}` : "";
+      const res = await apiGet({ path: `/rankings-intelligence/snapshots${params}` });
       return res?.success ? res.snapshots as RankingSnapshot[] : [];
     },
     staleTime: 5 * 60_000,
   });
 
-  // Fetch drift alerts
+  // Fetch drift alerts (scoped to location)
   const { data: alertsData, isError: isAlertsError } = useQuery({
-    queryKey: ["drift-alerts"],
+    queryKey: ["drift-alerts", locationId],
     queryFn: async () => {
-      const res = await apiGet({ path: "/rankings-intelligence/drift-alerts" });
+      const params = locationId ? `?locationId=${locationId}` : "";
+      const res = await apiGet({ path: `/rankings-intelligence/drift-alerts${params}` });
       return res?.success ? res.alerts as DriftAlert[] : [];
     },
     staleTime: 5 * 60_000,
@@ -208,7 +213,7 @@ export default function RankingsScreen() {
       return apiPost({ path: "/rankings-intelligence/dismiss-alert", passedData: { sourceId, alertType } });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["drift-alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["drift-alerts", locationId] });
     },
   });
 

@@ -70,10 +70,13 @@ rankingsIntelligenceRoutes.get(
         return res.json({ success: true, snapshots: [] });
       }
 
-      const snapshots = await db("weekly_ranking_snapshots")
+      const locationId = req.query.locationId ? Number(req.query.locationId) : null;
+      const query = db("weekly_ranking_snapshots")
         .where({ org_id: orgId })
         .orderBy("week_start", "desc")
         .limit(12);
+      if (locationId) query.where({ location_id: locationId });
+      const snapshots = await query;
 
       return res.json({ success: true, snapshots });
     } catch (error: any) {
