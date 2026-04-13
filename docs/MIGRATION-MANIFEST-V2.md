@@ -3,8 +3,10 @@
 Sandbox to Production -- One Card at a Time
 Deploy card. Run tests. Pass gate. Next card.
 
-April 12, 2026 | Branch: sandbox | 755 commits ahead of main
+April 12, 2026 | Branch: sandbox | 764 commits ahead of main
 Last updated: April 12, 2026 (late evening)
+
+Companion docs: `docs/DAVE-CONFIDENCE-SHEET.md` (3 gates) | `docs/SANDBOX-INVENTORY.md` (every file explained)
 
 Ordered by complexity: simplest first, each card builds on the last
 
@@ -53,7 +55,7 @@ The Agent System (58 agents) is NOT a card. It is a backlog. Each agent gets its
 
 Blast Radius: Green = deploy without asking. Yellow = notify #alloro-dev, then deploy. Red = Corey approves before any code.
 
-Migrations: All additive (new columns, new tables). None drop or rename existing data. Run with: `npx knex migrate:latest`
+Migrations: 50 are pure additive (new tables, new columns, seed data). 7 require manual review -- see `docs/SANDBOX-INVENTORY.md` "REQUIRES REVIEW" section. 2 contain sandbox-only hardcoded passwords (do not run on production). Run with: `npx knex migrate:latest`
 
 Workers: 8 active on sandbox (minds-worker PM2 process). Same Redis. No new PM2 processes.
 
@@ -484,3 +486,152 @@ Every `process.env.*` in src/. **Bold = required for AAE and customer-facing fea
 **AI:** **ANTHROPIC_API_KEY**, MINDS_LLM_MODEL
 
 **Payments:** **STRIPE_SECRET_KEY**, STRIPE_WEBHOOK_SECRET, STRIPE_GROWTH_PRICE_ID, STRIPE_FULL_PRICE_ID
+
+---
+
+## VERIFICATION COMMANDS FOR DAVE
+
+Copy-paste each command. Compare output to the expected result. If any command returns something unexpected, stop and flag it before proceeding.
+
+All commands assume you are in the repo root (`~/Desktop/alloro`).
+
+---
+
+### 1. Verify PM system is untouched
+
+**What it checks:** Your task/PM controller files have zero changes between main and sandbox.
+
+```bash
+git diff main..sandbox -- src/controllers/tasks/ src/controllers/monday/ | wc -l
+```
+
+**Expected output:** `0`
+
+If non-zero: something modified your PM system. Do not proceed until reviewed.
+
+---
+
+### 2. Verify website builder is untouched
+
+**What it checks:** The PageEditor component tree has zero changes between main and sandbox.
+
+```bash
+git diff main..sandbox -- frontend/src/components/PageEditor/ | wc -l
+```
+
+**Expected output:** `0`
+
+If non-zero: diff the files individually to confirm the change is cosmetic or intentional.
+
+---
+
+### 3. Verify response shape compliance
+
+**What it checks:** Every route that returns `json({ error: ... })` also includes `success:` in the same response. This is your convention.
+
+```bash
+grep -rn 'json({ error:' src/routes/ --include="*.ts" | grep -v 'success:' | wc -l
+```
+
+**Expected output:** `0`
+
+If non-zero: a route is returning an error without `success: false`. Fix before deploying.
+
+---
+
+### 4. Verify TypeScript compiles clean
+
+**What it checks:** Both frontend and backend compile with zero type errors.
+
+```bash
+cd frontend && npx tsc --noEmit && cd .. && npx tsc --noEmit
+```
+
+**Expected output:** No output (silence means zero errors).
+
+If you see errors: do not deploy. Fix type errors first.
+
+---
+
+### 5. Verify no hardcoded secrets
+
+**What it checks:** No AWS keys or OpenAI/Anthropic secret keys are hardcoded in source files.
+
+```bash
+grep -rn 'sk-\|AKIA' src/ --include="*.ts" | grep -v process.env | wc -l
+```
+
+**Expected output:** `0`
+
+If non-zero: a secret is hardcoded. Remove it immediately and rotate the key.
+
+---
+
+### 6. Verify constitution check (critical path)
+
+**What it checks:** All 7 critical-path tests from the product constitution pass.
+
+```bash
+bash scripts/constitution-check.sh --critical-path
+```
+
+**Expected output:** `7/7 PASS`
+
+If any test fails: the failing test tells you exactly what is broken. Fix before deploying.
+
+---
+
+### 7. Count new vs modified files
+
+**What it checks:** How many files were added vs modified. Helps you gauge the size of each card.
+
+```bash
+# New files added on sandbox
+git diff main..sandbox --diff-filter=A --name-only | wc -l
+
+# Modified files on sandbox
+git diff main..sandbox --diff-filter=M --name-only | wc -l
+```
+
+**Expected output:** Numbers will vary. Use these to scope your review. New files are lower risk (no production regression). Modified files need line-by-line review.
+
+To see the actual file lists:
+
+```bash
+# List new files
+git diff main..sandbox --diff-filter=A --name-only
+
+# List modified files
+git diff main..sandbox --diff-filter=M --name-only
+```
+
+---
+
+### 8. Verify no deleted backend routes
+
+**What it checks:** No route files were deleted on sandbox. All existing endpoints are preserved.
+
+```bash
+git diff main..sandbox --diff-filter=D --name-only | grep src/routes/ | wc -l
+```
+
+**Expected output:** `0`
+
+If non-zero: a route was deleted. Check if it was intentional (replaced) or accidental.
+
+---
+
+### Run Order
+
+Run these in sequence before starting Card 1. If all 8 pass, the sandbox branch is safe to cherry-pick from. If any fail, flag it in #alloro-dev before proceeding.
+
+| # | Check | Expected | Pass? |
+|---|-------|----------|-------|
+| 1 | PM system untouched | 0 | |
+| 2 | Website builder untouched | 0 | |
+| 3 | Response shape compliance | 0 | |
+| 4 | TypeScript compiles clean | no output | |
+| 5 | No hardcoded secrets | 0 | |
+| 6 | Constitution check | 7/7 PASS | |
+| 7 | New/modified file count | noted | |
+| 8 | No deleted routes | 0 | |

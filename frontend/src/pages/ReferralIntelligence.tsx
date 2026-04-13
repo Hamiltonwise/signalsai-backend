@@ -115,7 +115,7 @@ function TopReferrers({ referrers }: { referrers: Referrer[] }) {
       <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
         Top Referrers
       </h2>
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-stone-200/60 bg-stone-50/80 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 text-left">
@@ -395,7 +395,7 @@ function GPDiscoverySection() {
             {data.gps.length} referral source{data.gps.length !== 1 ? "s" : ""} found within {data.radius || radius} miles not in your referral history
           </p>
 
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-2xl border border-stone-200/60 bg-stone-50/80 overflow-hidden">
             {data.gps.map((gp, i) => (
               <div
                 key={gp.placeId}
@@ -585,7 +585,7 @@ export default function ReferralIntelligence() {
     : "Where your customers come from and how those channels are trending.";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 px-4 py-8">
+    <div className="mx-auto max-w-2xl space-y-8 px-4 py-8 min-h-screen bg-[#F8F6F2]">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-[#1A1D23]">
@@ -600,7 +600,7 @@ export default function ReferralIntelligence() {
       {isLoading && (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+            <div key={i} className="h-24 animate-pulse rounded-2xl border border-stone-200/60 bg-stone-50/80" />
           ))}
         </div>
       )}

@@ -221,7 +221,7 @@ export default function RankingsScreen() {
   const positionDelta = latest?.position && prev?.position ? prev.position - latest.position : null;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
+    <div className="mx-auto max-w-2xl px-4 py-8 space-y-6 min-h-screen bg-[#F8F6F2]">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-[#1A1D23]">Your Market</h1>
@@ -398,7 +398,7 @@ function ActivityFeed() {
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+    <div className="rounded-2xl border border-stone-200/60 bg-stone-50/80 overflow-hidden">
       <div className="px-5 pt-4 pb-2">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
           What Alloro Did This Week
