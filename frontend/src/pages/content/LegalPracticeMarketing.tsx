@@ -19,11 +19,11 @@ const TWO_CHANNEL =
 const SCENARIOS = [
   {
     title: "The family law attorney who does not know a new firm opened in the same building",
-    body: "A new family law practice opened two floors above yours. They launched with a modern website, a $3,000/month Google Ads budget, and an aggressive review generation strategy. In six months, they accumulated 140 Google reviews. You have 38, built over a decade of excellent representation. When someone searches \"family lawyer near me,\" they see the new firm first. Your case outcomes are better. Your experience is deeper. But Google does not rank on decades of courtroom success -- it ranks on the volume of people who said something publicly. The new firm is capturing every potential client who searches before calling.",
+    body: "A new family law practice opened two floors above yours. They launched with a modern website, a significant Google Ads budget, and an aggressive review generation strategy. In six months, they accumulated 140 Google reviews. You have 38, built over a decade of excellent representation. When someone searches \"family lawyer near me,\" they see the new firm first. Your case outcomes are better. Your experience is deeper. But Google does not rank on decades of courtroom success, it ranks on the volume of people who said something publicly. The new firm is capturing every potential client who searches before calling.",
   },
   {
     title: "The estate planning attorney whose top referral source shifted quietly",
-    body: "Your highest-volume referral source was a financial advisor who sent you 12 clients a year for seven years. Over the last six months, that dropped to two. The financial advisor started recommending a firm that is closer to their office, responds to referrals within an hour, and sends a handwritten thank-you note after each one. Nobody told you the relationship changed. Nobody had to. The financial advisor never said \"I'm sending clients elsewhere\" -- they just stopped calling. At an average case value of $5,500, those 10 missing referrals represent $55,000 in annual revenue you will not recover.",
+    body: "Your highest-volume referral source was a financial advisor who sent you 12 clients a year for seven years. Over the last six months, that dropped to two. The financial advisor started recommending a firm that is closer to their office, responds to referrals within an hour, and sends a handwritten thank-you note after each one. Nobody told you the relationship changed. Nobody had to. The financial advisor never said \"I'm sending clients elsewhere\", they just stopped calling. Multiply those 10 missing referrals by your average case value to see the annual impact.",
   },
   {
     title: "The solo practitioner competing against a firm with 8 partners",
@@ -160,10 +160,10 @@ export default function LegalPracticeMarketing() {
               is growing. Know which referral sources are active and which have
               gone quiet. The cost of that intelligence is trivial compared to
               the cost of discovering the problem six months late. One lost
-              referral source at 12 clients per year at $5,500 per case is
-              $66,000 in annual revenue. One widening review gap is every
-              potential client who chose the competitor instead of you. The math
-              is not abstract -- it is your practice.
+              referral source at 12 clients per year, each worth your average
+              case value, adds up to significant annual revenue. One widening
+              review gap is every potential client who chose the competitor
+              instead of you. The math is not abstract, it is your practice.
             </p>
           </div>
 

@@ -294,7 +294,7 @@ export default function HomePage() {
             </div>
           </div>
           <p className="text-center text-sm font-medium text-[#1A1D23]/60 mt-6">
-            That relationship was worth $27,000 a year.
+            That relationship was worth tens of thousands a year.
             It was in the Monday email.
           </p>
         </div>

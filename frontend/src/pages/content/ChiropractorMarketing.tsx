@@ -22,7 +22,7 @@ const SCENARIOS = [
   },
   {
     title: "The practice that lost their top referring orthopedic surgeon",
-    body: "Your highest-volume referring orthopedic surgeon sent you 10 patients a month for four years. Over the last 90 days, that dropped to two. You did not notice because your schedule still felt busy -- existing patients and other referral sources filled the gap temporarily. But that one surgeon represented $8,000 a month in new patient revenue. They started sending cases to a chiropractor who is closer to their office and returns reports faster. By the time you notice the gap, the new referral habit is set.",
+    body: "Your highest-volume referring orthopedic surgeon sent you 10 patients a month for four years. Over the last 90 days, that dropped to two. You did not notice because your schedule still felt busy, existing patients and other referral sources filled the gap temporarily. But multiply those lost patients by your average case value and the impact is immediate. They started sending cases to a chiropractor who is closer to their office and returns reports faster. By the time you notice the gap, the new referral habit is set.",
   },
   {
     title: "The solo chiro competing against a franchise chain",
@@ -171,7 +171,7 @@ export default function ChiropractorMarketing() {
               versus drifting, and know whether a new competitor has entered your
               market. The cost of that intelligence is trivial compared to the
               cost of discovering the problem six months late. One lost referring
-              physician at 10 patients per month is $96,000 a year. One widening
+              physician at 10 patients per month adds up fast. One widening
               review gap is every new patient who chose the competitor instead of
               you. The math is not abstract -- it is your revenue.
             </p>

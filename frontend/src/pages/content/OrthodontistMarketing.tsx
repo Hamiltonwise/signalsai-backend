@@ -14,11 +14,11 @@ import { useNavigate } from "react-router-dom";
 const SCENARIOS = [
   {
     title: "The ortho whose top pediatric dentist went quiet",
-    body: "Your highest-volume referring pediatric dentist sent eight cases a month for three years. Over the last 90 days, that dropped to two. You did not notice because your total case count only dipped slightly -- other GPs filled part of the gap. But that one pediatric dentist represented $14,000 a month in production. By the time the bank statement catches up, the relationship is already rebuilt with your competitor down the road.",
+    body: "Your highest-volume referring pediatric dentist sent eight cases a month for three years. Over the last 90 days, that dropped to two. You did not notice because your total case count only dipped slightly, other GPs filled part of the gap. But multiply those lost cases by your average case value. By the time the bank statement catches up, the relationship is already rebuilt with your competitor down the road.",
   },
   {
     title: "The practice that does not know a new Invisalign provider opened nearby",
-    body: "A corporate-backed clear aligner competitor opened two miles away with a $3,500 price point and a marketing budget you cannot match. Your GP referrals for aligner cases dropped 40% in 60 days. You are still running the same Facebook ads. The problem is not your marketing -- it is that your competitive landscape changed and nobody told you.",
+    body: "A corporate-backed clear aligner competitor opened two miles away with aggressive pricing and a marketing budget you cannot match. Your GP referrals for aligner cases dropped 40% in 60 days. You are still running the same Facebook ads. The problem is not your marketing, it is that your competitive landscape changed and nobody told you.",
   },
   {
     title: "The solo ortho competing against a DSO with 10x the review count",

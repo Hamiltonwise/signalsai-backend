@@ -22,7 +22,7 @@ const SCENARIOS = [
   },
   {
     title: "The specialty vet who does not know referrals are drifting",
-    body: "You are a veterinary oncologist. Your case volume comes primarily from general practice vets who refer complex cases to you. Your top three referring practices sent you 40 cases a month combined for two years. Over the last quarter, that dropped to 28. You did not notice because your schedule still felt full -- existing cases in treatment filled the slots. But those 12 missing monthly referrals represent $18,000 to $30,000 in lost revenue per month. One of the referring vets retired a partner. Another started sending cases to a new specialist who opened closer. The third is still sending -- but only the simple cases. The complex ones go elsewhere now.",
+    body: "You are a veterinary oncologist. Your case volume comes primarily from general practice vets who refer complex cases to you. Your top three referring practices sent you 40 cases a month combined for two years. Over the last quarter, that dropped to 28. You did not notice because your schedule still felt full, existing cases in treatment filled the slots. But multiply those 12 missing monthly referrals by your average case value. One of the referring vets retired a partner. Another started sending cases to a new specialist who opened closer. The third is still sending, but only the simple cases. The complex ones go elsewhere now.",
   },
   {
     title: "The small practice watching a new competitor open without being able to quantify the threat",

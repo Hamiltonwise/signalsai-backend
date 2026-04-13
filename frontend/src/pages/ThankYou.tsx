@@ -117,7 +117,7 @@ export default function ThankYou() {
           <p className="text-sm text-[#1A1D23]/70 leading-relaxed">
             Last month, a business owner discovered their top referral
             source had gone quiet for 6 weeks. That single relationship
-            was worth $27,000 a year. It was in their Monday briefing.
+            was worth tens of thousands a year. It was in their Monday briefing.
           </p>
         </div>
 

@@ -18,7 +18,7 @@ const DRIFT_CONCEPT = {
 
 const DOLLAR_FRAMEWORK = {
   title: "The dollar figure you are not tracking",
-  body: "One drifting GP at six cases per year represents $9,000 to $15,000 in annual revenue. Most specialist practices have three to five GPs in active drift at any given time. That is $27,000 to $75,000 in revenue that is quietly walking out the door -- and the practice owner will not see it until the bank statement looks different in three months.",
+  body: "One drifting GP at six cases per year represents real annual revenue, multiply by your average case value to see the number. Most specialist practices have three to five GPs in active drift at any given time. That revenue is quietly walking out the door, and the practice owner will not see it until the bank statement looks different in three months.",
 };
 
 const SPREADSHEET_PROBLEM =

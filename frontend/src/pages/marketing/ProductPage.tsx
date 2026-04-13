@@ -59,7 +59,7 @@ export default function ProductPage() {
               </p>
               <p className="text-sm text-[#1A1D23]/70 leading-relaxed">
                 Dr. Patel at Riverside Family sent you 6 cases in Q4.
-                Zero in the last 45 days. Estimated $9,000/year at risk.
+                Zero in the last 45 days. Revenue at risk.
               </p>
               <p className="text-sm text-[#1A1D23]/40 blur-[3px] select-none leading-relaxed">
                 Your ranking for the primary search query in your market

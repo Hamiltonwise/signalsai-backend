@@ -20,15 +20,15 @@ const REFERRAL_DEPENDENCY =
 const SCENARIOS = [
   {
     title: "The advisor whose top CPA retired a partner",
-    body: "Your highest-value referral source was a CPA firm that sent you 8 clients a year -- each with $500,000 or more in investable assets. One of the partners retired. The remaining partners brought in a new CPA who trained with a financial advisor across town and prefers to send clients there. Your referral volume from that firm dropped from 8 clients a year to 2. At an average first-year revenue of $5,000 per client (and a lifetime value far higher), those 6 missing referrals represent $30,000 in immediate revenue and $150,000+ in lifetime value. Nobody told you the relationship changed. The CPA firm never said \"we are sending clients elsewhere\" -- they just called less often.",
+    body: "Your highest-value referral source was a CPA firm that sent you 8 clients a year, each with significant investable assets. One of the partners retired. The remaining partners brought in a new CPA who trained with a financial advisor across town and prefers to send clients there. Your referral volume from that firm dropped from 8 clients a year to 2. Those 6 missing referrals represent real first-year revenue and substantial lifetime value. Nobody told you the relationship changed. The CPA firm never said \"we are sending clients elsewhere\", they just called less often.",
   },
   {
     title: "The practice that lost an estate attorney relationship over response time",
-    body: "An estate planning attorney sent you 10 referrals a year for five years. The attorney started sending clients to an advisor who responds to referrals within two hours and provides a summary of the initial consultation within 24 hours. You respond within two days and provide summaries weekly. The attorney noticed the difference. They did not tell you -- they just started routing clients to the faster advisor. Your service quality is equivalent. Your investment returns are comparable. The only difference was speed, and it was enough to redirect $50,000 in annual revenue.",
+    body: "An estate planning attorney sent you 10 referrals a year for five years. The attorney started sending clients to an advisor who responds to referrals within two hours and provides a summary of the initial consultation within 24 hours. You respond within two days and provide summaries weekly. The attorney noticed the difference. They did not tell you, they just started routing clients to the faster advisor. Your service quality is equivalent. Your investment returns are comparable. The only difference was speed, and it was enough to redirect those referrals and their associated revenue permanently.",
   },
   {
     title: "The solo advisor who does not know which referral relationship matters most",
-    body: "You have six professional referral sources. You think you know which one is most important based on how often they call. But you have never measured which one sends the highest-value clients. Your most frequent referrer sends younger professionals with $100,000 to invest. Your third-ranked referrer sends retirees with $800,000 or more. If the third-ranked referrer drifts, the revenue impact is eight times what you expect. You are protecting the wrong relationship because you are measuring frequency instead of value.",
+    body: "You have six professional referral sources. You think you know which one is most important based on how often they call. But you have never measured which one sends the highest-value clients. Your most frequent referrer sends younger professionals early in their careers. Your third-ranked referrer sends retirees with significantly more investable assets. If the third-ranked referrer drifts, the revenue impact is many times what you expect. You are protecting the wrong relationship because you are measuring frequency instead of value.",
   },
 ];
 
@@ -163,8 +163,8 @@ export default function FinancialAdvisorMarketing() {
               change that has already solidified. The cost of proactive outreach
               is trivial compared to the cost of replacing a CPA or attorney
               relationship. One lost CPA referral source at 8 high-value clients
-              per year represents $40,000 or more in immediate annual revenue --
-              and multiples of that in lifetime client value. You cannot afford
+              per year represents significant immediate annual revenue, and
+              multiples of that in lifetime client value. You cannot afford
               to find out four months late.
             </p>
           </div>

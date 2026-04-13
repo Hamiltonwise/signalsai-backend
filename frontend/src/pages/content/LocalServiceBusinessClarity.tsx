@@ -22,7 +22,7 @@ const SCENARIOS = [
   },
   {
     title: "The law firm whose top referral source quietly shifted",
-    body: "Your highest-volume referral source -- a financial advisor who sent you eight clients a year -- stopped referring six months ago. You did not notice because the total client count only dipped slightly. Other sources filled part of the gap. But those eight clients per year at an average case value of $4,500 represent $36,000 in annual revenue. The financial advisor started recommending a firm that is closer to their office and sends a thank-you note after every referral. Nobody told you. Nobody had to. The relationship ended without a conversation.",
+    body: "Your highest-volume referral source, a financial advisor who sent you eight clients a year, stopped referring six months ago. You did not notice because the total client count only dipped slightly. Other sources filled part of the gap. But multiply those eight missing clients by your average case value to see the annual impact. The financial advisor started recommending a firm that is closer to their office and sends a thank-you note after every referral. Nobody told you. Nobody had to. The relationship ended without a conversation.",
   },
   {
     title: "The physical therapist who has been told to \"improve your SEO\" three times",

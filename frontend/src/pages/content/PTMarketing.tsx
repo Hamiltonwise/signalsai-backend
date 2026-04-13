@@ -18,7 +18,7 @@ const MD_DEPENDENCY =
 const SCENARIOS = [
   {
     title: "The PT clinic whose top orthopedic surgeon retired a partner",
-    body: "Your highest-volume referral source was an orthopedic surgery group that sent 25 post-surgical patients per month. One of the partners retired. The remaining partners brought in a new surgeon who trained with a PT down the road and prefers to send cases there. Your referral volume from that group dropped from 25 to 14 over three months. You noticed the schedule felt lighter but attributed it to seasonality. It was not seasonality. It was a structural change in the referral relationship that nobody communicated to you. At an average case value of $1,200, that is $13,200 per month in lost revenue -- $158,400 per year.",
+    body: "Your highest-volume referral source was an orthopedic surgery group that sent 25 post-surgical patients per month. One of the partners retired. The remaining partners brought in a new surgeon who trained with a PT down the road and prefers to send cases there. Your referral volume from that group dropped from 25 to 14 over three months. You noticed the schedule felt lighter but attributed it to seasonality. It was not seasonality. It was a structural change in the referral relationship that nobody communicated to you. Multiply those lost cases by your average case value, and the annual impact becomes clear.",
   },
   {
     title: "The practice losing post-surgical cases to a competitor with better turnaround",
@@ -26,7 +26,7 @@ const SCENARIOS = [
   },
   {
     title: "The solo PT who does not know the real referral landscape",
-    body: "You have five referring physicians. You think you know who they are. But you have never measured which one sends the most revenue (not the most patients -- the most revenue, which accounts for case complexity and duration). Your top referrer by patient count sends routine cases worth $800 each. Your third-ranked referrer sends post-surgical spinal cases worth $3,200 each. If the third-ranked referrer drifts, the revenue impact is four times what you expect. You are protecting the wrong relationship because you are measuring the wrong metric.",
+    body: "You have five referring physicians. You think you know who they are. But you have never measured which one sends the most revenue, not the most patients, the most revenue, which accounts for case complexity and duration. Your top referrer by patient count sends routine cases. Your third-ranked referrer sends post-surgical spinal cases worth several times more per case. If the third-ranked referrer drifts, the revenue impact is far larger than you expect. You are protecting the wrong relationship because you are measuring the wrong metric.",
   },
 ];
 
@@ -172,7 +172,7 @@ export default function PTMarketing() {
               already solidified. The cost of proactive outreach is trivial
               compared to the cost of replacing a referring physician. One lost
               orthopedic surgeon at 15 post-surgical cases per month represents
-              $18,000 to $48,000 in monthly revenue depending on case
+              significant monthly revenue depending on case
               complexity. You cannot afford to find out three months late.
             </p>
           </div>

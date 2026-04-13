@@ -18,7 +18,7 @@ const SEASONAL_VULNERABILITY =
 const SCENARIOS = [
   {
     title: "The CPA who lost their top attorney referral source over turnaround time",
-    body: "An estate planning attorney sent you 15 clients a year for six years. The attorney started sending clients to a firm that returns work product in 48 hours instead of your 10-day turnaround during busy season. During tax season, your response time increases. During their estate planning season, the competing firm maintains the same speed year-round. The attorney never told you they were shifting -- they just stopped calling in September. By January, the habit was set. At an average annual billing of $3,200 per client, those 15 clients represent $48,000 in annual revenue and $240,000 in lifetime value.",
+    body: "An estate planning attorney sent you 15 clients a year for six years. The attorney started sending clients to a firm that returns work product in 48 hours instead of your 10-day turnaround during busy season. During tax season, your response time increases. During their estate planning season, the competing firm maintains the same speed year-round. The attorney never told you they were shifting, they just stopped calling in September. By January, the habit was set. Multiply those 15 missing clients by your average annual billing to see the revenue impact, then consider the lifetime value on top of that.",
   },
   {
     title: "The firm that does not know a boutique competitor is targeting their niche",
@@ -169,11 +169,11 @@ export default function CPAMarketing() {
               Act in the off-season. The firms that grow are the ones that
               invest in referral relationships and competitive intelligence when
               competitors are coasting between April and December. One lost
-              attorney referral source at 15 clients per year at $3,200 average
-              billing is $48,000 in annual revenue. One niche competitor
-              capturing your specialty market is every new client in that
-              vertical choosing them instead of you. The math is not abstract --
-              it is your firm's trajectory.
+              attorney referral source at 15 clients per year, each worth your
+              average billing, adds up to substantial annual revenue. One niche
+              competitor capturing your specialty market is every new client in
+              that vertical choosing them instead of you. The math is not
+              abstract, it is your firm's trajectory.
             </p>
           </div>
 
