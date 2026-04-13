@@ -118,7 +118,10 @@ export default function MondayPreview() {
       const latest = json.rankings[0];
       const raw = latest.rawData ?? latest.raw_data ?? null;
       const competitors = raw?.competitors ?? [];
-      const topComp = competitors.length > 0 ? competitors[0] : null;
+      // Use the backend's sorted topCompetitor, not unsorted competitors[0]
+      const topComp = raw?.topCompetitor ?? (competitors.length > 0
+        ? [...competitors].sort((a: any, b: any) => (b.reviewCount || 0) - (a.reviewCount || 0))[0]
+        : null);
       return {
         rankPosition: latest.rank_position ?? latest.rankPosition ?? null,
         location: latest.location || null,

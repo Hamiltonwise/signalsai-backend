@@ -843,7 +843,10 @@ export default function DoctorDashboard() {
       const latest = json.rankings[0];
       const raw = latest.rawData ?? latest.raw_data ?? null;
       const competitors = raw?.competitors ?? [];
-      const topComp = competitors.length > 0 ? competitors[0] : null;
+      // Use the backend's sorted topCompetitor, not unsorted competitors[0]
+      const topComp = raw?.topCompetitor ?? (competitors.length > 0
+        ? [...competitors].sort((a: any, b: any) => (b.reviewCount || 0) - (a.reviewCount || 0))[0]
+        : null);
       const prev = latest.previousAnalysis ?? latest.previous_analysis ?? null;
       return {
         rankPosition: latest.rank_position ?? latest.rankPosition ?? null,
