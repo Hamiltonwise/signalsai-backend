@@ -153,14 +153,14 @@ router.post("/approve/:token", async (req: Request, res: Response) => {
       .where({ approval_token: token })
       .first();
 
-    if (!action) return res.status(404).json({ error: "not_found" });
-    if (action.status === "executed") return res.json({ status: "already_done" });
-    if (action.status === "rejected") return res.json({ status: "already_rejected" });
-    if (action.status !== "draft") return res.status(400).json({ error: "invalid_status", status: action.status });
+    if (!action) return res.status(404).json({ success: false, error: "not_found" });
+    if (action.status === "executed") return res.json({ success: true, status: "already_done" });
+    if (action.status === "rejected") return res.json({ success: true, status: "already_rejected" });
+    if (action.status !== "draft") return res.status(400).json({ success: false, error: "invalid_status", status: action.status });
 
     if (new Date(action.expires_at) < new Date()) {
       await db("pending_actions").where({ id: action.id }).update({ status: "expired" });
-      return res.status(410).json({ error: "expired" });
+      return res.status(410).json({ success: false, error: "expired" });
     }
 
     await db("pending_actions").where({ id: action.id }).update({
@@ -175,15 +175,15 @@ router.post("/approve/:token", async (req: Request, res: Response) => {
         executed_at: new Date(),
         execution_result: JSON.stringify(result),
       });
-      return res.json({ status: "executed", result });
+      return res.json({ success: true, status: "executed", result });
     } catch (execErr: any) {
       await db("pending_actions").where({ id: action.id }).update({
         execution_result: JSON.stringify({ success: false, error: execErr.message }),
       });
-      return res.status(500).json({ status: "approved", exec_error: execErr.message });
+      return res.status(500).json({ success: false, status: "approved", exec_error: execErr.message });
     }
   } catch (err: any) {
-    return res.status(500).json({ error: "server_error", message: err.message });
+    return res.status(500).json({ success: false, error: "server_error", message: err.message });
   }
 });
 
@@ -200,17 +200,17 @@ router.post("/reject/:token", async (req: Request, res: Response) => {
       .where({ approval_token: token })
       .first();
 
-    if (!action) return res.status(404).json({ error: "not_found" });
-    if (action.status !== "draft") return res.json({ status: `already_${action.status}` });
+    if (!action) return res.status(404).json({ success: false, error: "not_found" });
+    if (action.status !== "draft") return res.json({ success: true, status: `already_${action.status}` });
 
     await db("pending_actions").where({ id: action.id }).update({
       status: "rejected",
       rejected_at: new Date(),
     });
 
-    return res.json({ status: "rejected" });
+    return res.json({ success: true, status: "rejected" });
   } catch (err: any) {
-    return res.status(500).json({ error: "server_error", message: err.message });
+    return res.status(500).json({ success: false, error: "server_error", message: err.message });
   }
 });
 
@@ -227,7 +227,7 @@ router.post("/reject/:token", async (req: Request, res: Response) => {
 router.get("/pending/:orgId", async (req: Request, res: Response) => {
   try {
     const orgId = parseInt(req.params.orgId, 10);
-    if (!orgId) return res.status(400).json({ error: "Invalid org ID" });
+    if (!orgId) return res.status(400).json({ success: false, error: "Invalid org ID" });
 
     const actions = await db("pending_actions")
       .where({ org_id: orgId, status: "draft" })
@@ -244,10 +244,10 @@ router.get("/pending/:orgId", async (req: Request, res: Response) => {
         "expires_at",
       );
 
-    return res.json({ actions });
+    return res.json({ success: true, actions });
   } catch (err: any) {
     console.error(`[DFY Approval] List error: ${err.message}`);
-    return res.status(500).json({ error: "Failed to fetch pending actions" });
+    return res.status(500).json({ success: false, error: "Failed to fetch pending actions" });
   }
 });
 
@@ -260,7 +260,7 @@ router.get("/pending/:orgId", async (req: Request, res: Response) => {
 router.get("/history/:orgId", async (req: Request, res: Response) => {
   try {
     const orgId = parseInt(req.params.orgId, 10);
-    if (!orgId) return res.status(400).json({ error: "Invalid org ID" });
+    if (!orgId) return res.status(400).json({ success: false, error: "Invalid org ID" });
 
     const actions = await db("pending_actions")
       .where({ org_id: orgId })
@@ -279,10 +279,10 @@ router.get("/history/:orgId", async (req: Request, res: Response) => {
         "rejected_at",
       );
 
-    return res.json({ actions });
+    return res.json({ success: true, actions });
   } catch (err: any) {
     console.error(`[DFY Approval] History error: ${err.message}`);
-    return res.status(500).json({ error: "Failed to fetch action history" });
+    return res.status(500).json({ success: false, error: "Failed to fetch action history" });
   }
 });
 

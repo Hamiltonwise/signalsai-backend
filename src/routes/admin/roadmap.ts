@@ -19,7 +19,7 @@ roadmapRoutes.get(
   async (_req: any, res) => {
     try {
       const state = await calculateRoadmapState();
-      res.json(state);
+      res.json({ success: true, ...state });
     } catch (error: any) {
       console.error("[roadmap] Error calculating roadmap state:", error);
       res.status(500).json({

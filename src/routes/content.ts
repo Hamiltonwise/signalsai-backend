@@ -20,7 +20,7 @@ router.get("/:slug", async (req: Request, res: Response) => {
       .first();
 
     if (!content) {
-      return res.status(404).json({ error: "Content not found" });
+      return res.status(404).json({ success: false, error: "Content not found" });
     }
 
     return res.json({

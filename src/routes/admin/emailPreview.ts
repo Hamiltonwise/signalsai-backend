@@ -33,14 +33,14 @@ emailPreviewRoutes.get(
     try {
       // Admin check
       if (req.user?.role !== "admin" && req.user?.role !== "super_admin") {
-        return res.status(403).json({ error: "Admin only" });
+        return res.status(403).json({ success: false, error: "Admin only" });
       }
 
       const orgId = parseInt(req.params.orgId, 10);
-      if (!orgId) return res.status(400).json({ error: "Invalid orgId" });
+      if (!orgId) return res.status(400).json({ success: false, error: "Invalid orgId" });
 
       const org = await db("organizations").where({ id: orgId }).first();
-      if (!org) return res.status(404).json({ error: "Org not found" });
+      if (!org) return res.status(404).json({ success: false, error: "Org not found" });
 
       const orgUser = await db("organization_users")
         .where({ organization_id: orgId, role: "admin" })
@@ -260,7 +260,7 @@ emailPreviewRoutes.get(
       return res.send(fullHtml);
     } catch (err: any) {
       console.error("[EmailPreview] Error:", err.message);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
     }
   },
 );

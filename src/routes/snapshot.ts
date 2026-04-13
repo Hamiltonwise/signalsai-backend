@@ -173,7 +173,7 @@ router.get("/overview", async (_req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("[Snapshot] Overview error:", err.message);
-    res.status(500).json({ error: "Snapshot failed", detail: "Internal error" });
+    res.status(500).json({ success: false, error: "Snapshot failed", detail: "Internal error" });
   }
 });
 
@@ -230,7 +230,7 @@ router.get("/organizations", async (_req: Request, res: Response) => {
       organizations: enriched,
     });
   } catch (err: any) {
-    res.status(500).json({ error: "Snapshot failed", detail: "Internal error" });
+    res.status(500).json({ success: false, error: "Snapshot failed", detail: "Internal error" });
   }
 });
 
@@ -259,7 +259,7 @@ router.get("/revenue", async (_req: Request, res: Response) => {
       organizations: orgs,
     });
   } catch (err: any) {
-    res.status(500).json({ error: "Snapshot failed", detail: "Internal error" });
+    res.status(500).json({ success: false, error: "Snapshot failed", detail: "Internal error" });
   }
 });
 
@@ -308,7 +308,7 @@ router.get("/agent-outputs", async (_req: Request, res: Response) => {
       recent_outputs: recent,
     });
   } catch (err: any) {
-    res.status(500).json({ error: "Snapshot failed", detail: "Internal error" });
+    res.status(500).json({ success: false, error: "Snapshot failed", detail: "Internal error" });
   }
 });
 
@@ -338,7 +338,7 @@ router.get("/dream-team", async (_req: Request, res: Response) => {
       recent_resume_entries: resumes,
     });
   } catch (err: any) {
-    res.status(500).json({ error: "Snapshot failed", detail: "Internal error" });
+    res.status(500).json({ success: false, error: "Snapshot failed", detail: "Internal error" });
   }
 });
 
@@ -383,7 +383,7 @@ router.get("/client-health", async (_req: Request, res: Response) => {
       total: enriched.length,
     });
   } catch (err: any) {
-    res.status(500).json({ error: "Snapshot failed", detail: "Internal error" });
+    res.status(500).json({ success: false, error: "Snapshot failed", detail: "Internal error" });
   }
 });
 

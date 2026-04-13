@@ -35,7 +35,7 @@ ozEngineRoutes.get(
   async (req: any, res) => {
     try {
       const orgId = req.user?.organizationId;
-      if (!orgId) return res.status(400).json({ error: "No organization" });
+      if (!orgId) return res.status(400).json({ success: false, error: "No organization" });
 
       const ozMoment = await getOzEngineResult(orgId);
       return res.json({ success: true, ozMoment });

@@ -32,7 +32,7 @@ const mondayPreviewRoutes = express.Router();
 
 function adminOnly(req: any, res: any): boolean {
   if (req.user?.role !== "admin" && req.user?.role !== "super_admin") {
-    res.status(403).json({ error: "Admin only" });
+    res.status(403).json({ success: false, error: "Admin only" });
     return false;
   }
   return true;
@@ -290,6 +290,7 @@ mondayPreviewRoutes.get(
       });
 
       return res.json({
+        success: true,
         previews,
         globalPaused: globalStatus.paused,
         globalPauseReason: globalStatus.reason,
@@ -298,7 +299,7 @@ mondayPreviewRoutes.get(
       });
     } catch (err: any) {
       console.error("[MondayPreview] Error:", err.message);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
     }
   },
 );
@@ -314,7 +315,7 @@ mondayPreviewRoutes.post(
       if (!adminOnly(req, res)) return;
 
       const { orgId, reason } = req.body;
-      if (!orgId) return res.status(400).json({ error: "orgId required" });
+      if (!orgId) return res.status(400).json({ success: false, error: "orgId required" });
 
       await db("behavioral_events").insert({
         org_id: orgId,
@@ -327,7 +328,7 @@ mondayPreviewRoutes.post(
 
       return res.json({ success: true, held: true, orgId });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
     }
   },
 );
@@ -343,7 +344,7 @@ mondayPreviewRoutes.post(
       if (!adminOnly(req, res)) return;
 
       const { orgId } = req.body;
-      if (!orgId) return res.status(400).json({ error: "orgId required" });
+      if (!orgId) return res.status(400).json({ success: false, error: "orgId required" });
 
       await db("behavioral_events").insert({
         org_id: orgId,
@@ -355,7 +356,7 @@ mondayPreviewRoutes.post(
 
       return res.json({ success: true, held: false, orgId });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
     }
   },
 );
@@ -383,7 +384,7 @@ mondayPreviewRoutes.post(
 
       return res.json({ success: true, paused: true });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
     }
   },
 );
@@ -408,7 +409,7 @@ mondayPreviewRoutes.post(
 
       return res.json({ success: true, paused: false });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
     }
   },
 );
@@ -423,9 +424,9 @@ mondayPreviewRoutes.get(
     try {
       if (!adminOnly(req, res)) return;
       const status = await isGloballyPaused();
-      return res.json(status);
+      return res.json({ success: true, ...status });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
     }
   },
 );
@@ -441,20 +442,20 @@ mondayPreviewRoutes.post(
       if (!adminOnly(req, res)) return;
 
       const { orgId, testEmail } = req.body;
-      if (!orgId) return res.status(400).json({ error: "orgId required" });
+      if (!orgId) return res.status(400).json({ success: false, error: "orgId required" });
 
       // SAFETY: Always default to info@getalloro.com, never to the customer.
       // An explicit testEmail can override (e.g. corey@getalloro.com), but
       // the system will never accidentally send a test to a customer inbox.
       const recipientEmail = testEmail || "info@getalloro.com";
-      if (!recipientEmail) return res.status(400).json({ error: "No email to send to" });
+      if (!recipientEmail) return res.status(400).json({ success: false, error: "No email to send to" });
 
       // Use the REAL email pipeline -- identical to what the customer receives,
       // only the recipient and subject prefix change. One code path. One email.
       const { sendMondayEmailForOrg } = await import("../../jobs/mondayEmail");
 
       const org = await db("organizations").where({ id: orgId }).first();
-      if (!org) return res.status(404).json({ error: "Org not found" });
+      if (!org) return res.status(404).json({ success: false, error: "Org not found" });
 
       const success = await sendMondayEmailForOrg(orgId, {
         overrideRecipient: recipientEmail,
@@ -464,7 +465,7 @@ mondayPreviewRoutes.post(
       return res.json({ success, sentTo: recipientEmail, orgName: org.name });
     } catch (err: any) {
       console.error("[MondayPreview] Test send error:", err.message);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
     }
   },
 );
@@ -480,7 +481,7 @@ mondayPreviewRoutes.post(
       if (!adminOnly(req, res)) return;
 
       const { orgId, headline, context } = req.body;
-      if (!orgId || !headline) return res.status(400).json({ error: "orgId and headline required" });
+      if (!orgId || !headline) return res.status(400).json({ success: false, error: "orgId and headline required" });
 
       await db("behavioral_events").insert({
         org_id: orgId,
@@ -495,7 +496,7 @@ mondayPreviewRoutes.post(
 
       return res.json({ success: true, orgId, headline });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
     }
   },
 );
@@ -511,12 +512,12 @@ mondayPreviewRoutes.post(
       if (!adminOnly(req, res)) return;
 
       const { orgId } = req.body;
-      if (!orgId) return res.status(400).json({ error: "orgId required" });
+      if (!orgId) return res.status(400).json({ success: false, error: "orgId required" });
 
       const ozMoment = await getOzEngineResult(orgId);
       return res.json({ success: true, orgId, ozMoment });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
     }
   },
 );
