@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useLocation, Navigate, useNavigate } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
 import { clearFlowParams } from "./conferenceFallback";
@@ -51,26 +51,31 @@ export default function BuildingScreen() {
     setReady(true);
   }, [navigate]);
 
+  const [showContinue, setShowContinue] = useState(false);
+
+  const goForward = useCallback(() => {
+    clearFlowParams();
+    navigate("/checkup/upload-prompt", {
+      replace: true,
+      state: {
+        referralCode: state?.referralCode || null,
+        checkupScore: state?.checkupScore || null,
+        businessName: state?.businessName || null,
+        topCompetitorName: state?.topCompetitorName || null,
+        reviewGap: state?.reviewGap || null,
+        city: state?.city || null,
+      },
+    });
+  }, [navigate, state]);
+
   // Navigate forward after the confirmation moment
   useEffect(() => {
     if (!ready) return;
-    const destination = "/checkup/upload-prompt";
-    const timer = setTimeout(() => {
-      clearFlowParams();
-      navigate(destination, {
-        replace: true,
-        state: {
-          referralCode: state?.referralCode || null,
-          checkupScore: state?.checkupScore || null,
-          businessName: state?.businessName || null,
-          topCompetitorName: state?.topCompetitorName || null,
-          reviewGap: state?.reviewGap || null,
-          city: state?.city || null,
-        },
-      });
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [ready, navigate, state]);
+    const timer = setTimeout(goForward, 4000);
+    // Show manual continue button as fallback after 5 seconds
+    const fallback = setTimeout(() => setShowContinue(true), 5000);
+    return () => { clearTimeout(timer); clearTimeout(fallback); };
+  }, [ready, goForward]);
 
   if (!state?.businessName) {
     return <Navigate to="/checkup" replace />;
@@ -129,6 +134,16 @@ export default function BuildingScreen() {
           See how {businessName} compares to your competitors, track your reviews, and monitor your online presence. Your readings update automatically.
         </p>
       </div>
+
+      {/* Fallback continue button if auto-advance fails */}
+      {showContinue && (
+        <button
+          onClick={goForward}
+          className="text-sm font-medium text-[#D56753] hover:underline transition-colors"
+        >
+          Continue to your dashboard
+        </button>
+      )}
     </div>
   );
 }

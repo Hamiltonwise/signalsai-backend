@@ -28,6 +28,11 @@ export default function SharedResults() {
 
   useEffect(() => {
     if (!shareId) return;
+    // Timeout: if fetch takes > 10s, show error state instead of infinite spinner
+    const timeout = setTimeout(() => {
+      setError(true);
+      setLoading(false);
+    }, 10000);
     fetch(`/api/checkup/shared/${shareId}`)
       .then((r) => r.json())
       .then((data) => {
@@ -39,7 +44,8 @@ export default function SharedResults() {
         }
       })
       .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .finally(() => { clearTimeout(timeout); setLoading(false); });
+    return () => clearTimeout(timeout);
   }, [shareId]);
 
   return (
