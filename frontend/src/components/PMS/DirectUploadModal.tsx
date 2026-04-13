@@ -103,12 +103,12 @@ export const DirectUploadModal: React.FC<DirectUploadModalProps> = ({
       if (result.success) {
         setUploadStatus("success");
         setMessage(
-          "We're processing your PMS data now. We'll notify you once it's ready."
+          "Your referral data is being analyzed. You'll see it on your dashboard shortly."
         );
 
         showUploadToast(
-          "PMS export received!",
-          "We'll notify when ready for checking"
+          "Data received!",
+          "Referral insights loading on dashboard"
         );
 
         if (typeof window !== "undefined") {
@@ -184,7 +184,7 @@ export const DirectUploadModal: React.FC<DirectUploadModalProps> = ({
                   Direct Upload
                 </h2>
                 <p className="text-sm text-slate-500 mt-0.5">
-                  Upload your PMS export directly
+                  Upload your export file directly
                 </p>
               </div>
               <button

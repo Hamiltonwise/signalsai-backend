@@ -19,8 +19,8 @@ interface ClientStep {
 const CLIENT_STEPS: ClientStep[] = [
   {
     id: "data_entry",
-    label: "Enter your PMS Data",
-    description: "Upload your PMS export file or enter data manually",
+    label: "Enter Your Data",
+    description: "Upload your export file or enter data manually",
     icon: FileText,
     backendSteps: ["file_upload"],
   },

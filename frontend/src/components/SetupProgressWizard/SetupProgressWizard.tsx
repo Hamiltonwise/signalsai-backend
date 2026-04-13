@@ -86,7 +86,7 @@ export function SetupProgressWizard() {
     },
     {
       number: 2,
-      title: "Upload your PMS data",
+      title: "Upload your data",
       completed: progress.step2_pms_uploaded,
       link: "Go to Referrals Hub",
       onClick: goToReferralsHub,
