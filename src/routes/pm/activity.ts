@@ -1,3 +1,9 @@
+/**
+ * PM Activity API -- Global activity feed.
+ *
+ * GET /api/pm/activity - Paginated activity feed across all projects.
+ */
+
 import express from "express";
 import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";

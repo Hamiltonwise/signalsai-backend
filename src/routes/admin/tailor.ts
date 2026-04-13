@@ -1,3 +1,10 @@
+/**
+ * Tailor API -- Per-org text overrides and customization.
+ *
+ * GET  /api/admin/tailor - List text overrides for an org
+ * POST /api/admin/tailor - Create or update a text override
+ */
+
 import express, { Response } from "express";
 import { db } from "../../database/connection";
 import { authenticateToken, AuthRequest } from "../../middleware/auth";

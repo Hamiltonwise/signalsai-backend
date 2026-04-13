@@ -967,8 +967,9 @@ export async function hydrateOrg(
     const rating = checkupData?.place?.rating || null;
     const reviewCount = checkupData?.place?.reviewCount || 0;
 
+    const baseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const analyzeResponse = await axios.post(
-      `http://localhost:${port}/api/checkup/analyze`,
+      `${baseUrl}/api/checkup/analyze`,
       { name: businessName, city, state, category, types, rating, reviewCount, placeId },
       { timeout: 30000 }
     );
@@ -1076,8 +1077,9 @@ export async function hydrateAll(
 
       try {
         // Call hydrate for this org
+        const hydrateBase = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
         const hydrateResp = await axios.post(
-          `http://localhost:${port}/api/admin/organizations/${org.id}/hydrate`,
+          `${hydrateBase}/api/admin/organizations/${org.id}/hydrate`,
           {},
           {
             timeout: 45000,

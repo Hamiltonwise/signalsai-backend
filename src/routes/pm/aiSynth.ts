@@ -1,3 +1,9 @@
+/**
+ * PM AI Synth API -- AI-powered project synthesis and document processing.
+ *
+ * Handles file uploads and AI analysis for project management.
+ */
+
 import express from "express";
 import multer from "multer";
 import { authenticateToken } from "../../middleware/auth";

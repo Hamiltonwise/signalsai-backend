@@ -1,3 +1,12 @@
+/**
+ * PM Projects API -- CRUD for internal projects.
+ *
+ * GET    /api/pm/projects     - List all projects
+ * POST   /api/pm/projects     - Create project
+ * PATCH  /api/pm/projects/:id - Update project
+ * DELETE /api/pm/projects/:id - Archive project
+ */
+
 import express from "express";
 import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";

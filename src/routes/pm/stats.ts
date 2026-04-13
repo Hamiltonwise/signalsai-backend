@@ -1,3 +1,10 @@
+/**
+ * PM Stats API -- Project velocity and workload metrics.
+ *
+ * GET /api/pm/stats          - Overall project stats
+ * GET /api/pm/stats/velocity - Sprint velocity over time
+ */
+
 import express from "express";
 import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";

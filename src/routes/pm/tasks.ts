@@ -1,3 +1,13 @@
+/**
+ * PM Tasks API -- Task CRUD, ordering, and column management.
+ *
+ * POST  /api/pm/projects/:id/tasks      - Create task
+ * PATCH /api/pm/tasks/:id               - Update task
+ * PATCH /api/pm/tasks/:id/move          - Move task between columns
+ * PATCH /api/pm/tasks/reorder           - Reorder tasks within column
+ * DELETE /api/pm/tasks/:id              - Delete task
+ */
+
 import express from "express";
 import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";

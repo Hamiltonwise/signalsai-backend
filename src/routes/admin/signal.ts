@@ -68,7 +68,7 @@ signalRoutes.get(
         generated_at: new Date().toISOString(),
       });
     } catch (err) {
-      console.error("Signal endpoint error:", err);
+      console.error("[Signal] Endpoint error:", err);
       return res.json({
         signal: "Alloro is watching. First signals arrive after your next agent run.",
         generated_at: new Date().toISOString(),

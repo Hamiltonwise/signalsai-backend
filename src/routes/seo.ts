@@ -1,3 +1,13 @@
+/**
+ * SEO API -- Programmatic SEO pages, stats, and hub.
+ *
+ * GET  /api/seo/:slug     - Render a programmatic SEO page
+ * GET  /api/seo/pages     - List published pages with filters
+ * GET  /api/seo/stats     - Dashboard stats for SEO performance
+ * POST /api/seo/pages/:slug/checkup-start - Track checkup starts
+ * GET  /api/seo/hub       - SEO hub overview
+ */
+
 import { Router, Request, Response } from "express";
 import {
   ProgrammaticPageModel,
@@ -72,7 +82,7 @@ router.get("/pages/:slug", async (req: Request, res: Response) => {
       canonical: pageUrl,
     });
   } catch (err) {
-    console.error("SEO page error:", err);
+    console.error("[SEO] Page error:", err);
     return res.status(500).json({ error: "Failed to load page" });
   }
 });
@@ -105,7 +115,7 @@ router.get("/pages", async (req: Request, res: Response) => {
       offset: start,
     });
   } catch (err) {
-    console.error("SEO pages list error:", err);
+    console.error("[SEO] Pages list error:", err);
     return res.status(500).json({ error: "Failed to list pages" });
   }
 });
@@ -119,7 +129,7 @@ router.get("/stats", async (_req: Request, res: Response) => {
     const stats = await ProgrammaticPageModel.getStats();
     return res.json(stats);
   } catch (err) {
-    console.error("SEO stats error:", err);
+    console.error("[SEO] Stats error:", err);
     return res.status(500).json({ error: "Failed to get stats" });
   }
 });
@@ -178,7 +188,7 @@ router.get("/hub/:type/:slug", async (req: Request, res: Response) => {
       total: pages.length,
     });
   } catch (err) {
-    console.error("SEO hub error:", err);
+    console.error("[SEO] Hub error:", err);
     return res.status(500).json({ error: "Failed to load hub" });
   }
 });

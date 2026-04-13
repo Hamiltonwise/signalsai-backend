@@ -186,10 +186,9 @@ export async function approveByClient(jobId: number, clientApproval: boolean) {
 
       if (account) {
         // Trigger monthly agents
+        const agentBaseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
         await axios.post(
-          `http://localhost:${
-            process.env.PORT || 3000
-          }/api/agents/monthly-agents-run`,
+          `${agentBaseUrl}/api/agents/monthly-agents-run`,
           {
             googleAccountId: account.id,
             force: true,

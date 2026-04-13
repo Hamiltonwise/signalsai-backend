@@ -70,7 +70,7 @@ dreamTeamRoutes.get(
 
       return res.json({ success: true, nodes });
     } catch (err) {
-      console.error("Dream Team list error:", err);
+      console.error("[DreamTeam] List error:", err);
       return res.status(500).json({ success: false, error: "Failed to load team" });
     }
   },
@@ -200,7 +200,7 @@ dreamTeamRoutes.get(
         kpis,
       });
     } catch (err) {
-      console.error("Dream Team detail error:", err);
+      console.error("[DreamTeam] Detail error:", err);
       return res.status(500).json({ success: false, error: "Failed to load node" });
     }
   },
@@ -240,7 +240,7 @@ dreamTeamRoutes.patch(
       const node = await db("dream_team_nodes").where({ id }).first();
       return res.json({ success: true, node });
     } catch (err) {
-      console.error("Dream Team update error:", err);
+      console.error("[DreamTeam] Update error:", err);
       return res.status(500).json({ success: false, error: "Failed to update node" });
     }
   },
@@ -272,7 +272,7 @@ dreamTeamRoutes.post(
 
       return res.json({ success: true, entry });
     } catch (err) {
-      console.error("Dream Team resume error:", err);
+      console.error("[DreamTeam] Resume error:", err);
       return res.status(500).json({ success: false, error: "Failed to add note" });
     }
   },
@@ -330,7 +330,7 @@ dreamTeamRoutes.get(
         },
       });
     } catch (err) {
-      console.error("Dream Team tasks list error:", err);
+      console.error("[DreamTeam] Tasks list error:", err);
       return res.status(500).json({ success: false, error: "Failed to list tasks" });
     }
   },
@@ -375,7 +375,7 @@ dreamTeamRoutes.post(
 
       return res.json({ success: true, task });
     } catch (err) {
-      console.error("Dream Team task create error:", err);
+      console.error("[DreamTeam] Task create error:", err);
       return res.status(500).json({ success: false, error: "Failed to create task" });
     }
   },
@@ -405,7 +405,7 @@ dreamTeamRoutes.patch(
       const task = await db("dream_team_tasks").where({ id }).first();
       return res.json({ success: true, task });
     } catch (err) {
-      console.error("Dream Team task update error:", err);
+      console.error("[DreamTeam] Task update error:", err);
       return res.status(500).json({ success: false, error: "Failed to update task" });
     }
   },

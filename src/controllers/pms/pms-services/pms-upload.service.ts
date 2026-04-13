@@ -117,11 +117,10 @@ export async function processManualEntry(
       );
 
       // Fire async request to start monthly agents (don't wait)
+      const agentBaseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
       axios
         .post(
-          `http://localhost:${
-            process.env.PORT || 3000
-          }/api/agents/monthly-agents-run`,
+          `${agentBaseUrl}/api/agents/monthly-agents-run`,
           {
             googleAccountId: account.id,
             domain: domain,
