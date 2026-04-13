@@ -115,7 +115,7 @@ function SnapshotCard({ snapshot, isLatest }: { snapshot: RankingSnapshot; isLat
     : snapshot.bullets || [];
 
   return (
-    <div className={`rounded-2xl border bg-white p-4 sm:p-6 ${isLatest ? "border-[#D56753]/20 shadow-[0_4px_20px_rgba(213,103,83,0.06)]" : "border-gray-200"}`}>
+    <div className={`rounded-2xl border bg-stone-50/80 p-4 sm:p-6 ${isLatest ? "border-[#D56753]/20 shadow-[0_4px_20px_rgba(213,103,83,0.06)]" : "border-stone-200/60"}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -289,7 +289,7 @@ export default function RankingsScreen() {
       {snapshotsLoading && (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-40 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+            <div key={i} className="h-40 animate-pulse rounded-2xl border border-stone-200/60 bg-stone-50/80" />
           ))}
         </div>
       )}
@@ -386,7 +386,7 @@ function ActivityFeed() {
   // Empty state for new accounts
   if (entries.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-5">
+      <div className="rounded-2xl border border-dashed border-stone-200/60 bg-stone-50/80 p-5">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
           What Alloro Did This Week
         </p>

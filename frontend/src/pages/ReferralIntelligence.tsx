@@ -207,7 +207,7 @@ function ThisWeeksMove({ action }: { action: RecommendedAction | null }) {
       <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
         This Week's Move
       </h2>
-      <div className="rounded-2xl border-2 border-[#D56753]/20 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border-2 border-[#D56753]/20 bg-stone-50/80 p-6 shadow-sm">
         <p className="text-base leading-relaxed text-[#1A1D23]">
           {action.message}
         </p>
@@ -238,7 +238,7 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
   const isTouchDevice = typeof window !== "undefined" && "ontouchstart" in window;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-8">
+    <div className="rounded-2xl border border-stone-200/60 bg-stone-50/80 p-8">
       <h3 className="text-lg font-semibold text-[#1A1D23] text-center mb-2">
         See who sends you business
       </h3>
