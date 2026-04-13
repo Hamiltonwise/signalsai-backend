@@ -18,7 +18,7 @@ The destination is defined by the 15 Knowns in the Product Constitution. If all 
 
 ## Current Position
 
-**Last updated:** April 12, 2026 (evening -- post-production-readiness sweep)
+**Last updated:** April 12, 2026 (late evening -- post-Dave-prep + AAE audit)
 **Branch:** sandbox
 **EC2 sandbox:** Auto-deploys on push. No Dave dependency.
 
@@ -124,9 +124,15 @@ RESOLVED. The Oz Moment system IS the hero. It shows intelligence findings from 
 
 ### Waypoint 4: Send Dave clean handoff
 
-**Why:** Cards 4 and 8 need Dave execution. Prior cards (1-3, 5-6) need delivery.
+**Why:** Cards 4 and 8 need Dave execution. Prior cards (1-3, 5-6) need delivery. Confidence sheet + Slack message are written and verified (docs/DAVE-CONFIDENCE-SHEET.md, docs/DAVE-SLACK-MESSAGE.md). Corey copy-pastes Slack message to #alloro-dev.
 
 **Done gate:** Dave has received clean handoff in #alloro-dev.
+
+### Waypoint 5: Send 3 client draft emails
+
+**Why:** Pre-AAE touchpoint. Shawn (McP Endo), Merideth (DentalEMR), Dr. Kargoli (1Endo). Drafts ready in Gmail. Dashboard updates they reference are deployed.
+
+**Done gate:** Emails sent.
 
 ---
 
@@ -142,6 +148,14 @@ RESOLVED. The Oz Moment system IS the hero. It shows intelligence findings from 
 | April 12 (PM) | Business Clarity category restored | 9 files. Corey correction: BC is the created category. Only Score is K6. |
 | April 12 (PM) | Type bug fix | PMSVisualPillars wizard demo data mismatches fixed. |
 | April 12 (PM) | WO-60 Flywheel Dashboards | VisionaryView (real Stripe MRR, flywheel velocity, decision card, funnel). IntegratorView (5-stage pipeline, auto-actions, team load). BuildView (live webhook health, improved system status). New endpoint: /api/admin/revenue/mrr. |
+| April 12 (PM) | Dave pattern audit round 1 | 15 files: JSDoc headers, console tags, response shapes. Commit d4b0044f. |
+| April 12 (PM) | Dave pattern audit round 2 | 15 more files: hardcoded localhost URLs replaced with API_BASE_URL, remaining JSDoc + console tags. Commit 1fe758a1. |
+| April 12 (PM) | Response shape alignment batch 1 | All API responses have { success: boolean }. Commit 8198512d. |
+| April 12 (PM) | Response shape alignment batch 2 | Intelligence, SEO, auth, webhooks aligned. Commit df69d797. |
+| April 12 (PM) | Dave Confidence Sheet | docs/DAVE-CONFIDENCE-SHEET.md answering his 3 validation gates. Commit ce5f66ce. |
+| April 12 (PM) | Dave Slack Message | docs/DAVE-SLACK-MESSAGE.md copy-paste ready for #alloro-dev. |
+| April 12 (PM) | AAE demo code audit | Full trace: /aae -> EntryScreen -> ScanningTheater -> ResultsScreen -> BuildingScreen -> UploadPrompt. Conference mode resilient: 5s timeout, offline fallback, personalized data. Zero broken paths. |
+| April 12 (PM) | Client fire scan | Slack, Fireflies, Gmail last 48hrs. No fires. 1Endo go-live in progress (Jo handling). 3 client draft emails ready to send. |
 
 ---
 

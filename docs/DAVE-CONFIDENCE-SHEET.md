@@ -28,7 +28,7 @@ YES. Existing endpoints preserved:
 - **checkup.ts** is the largest change (+1,150 lines): new conference mode, QR flow, ClearPath builder. All original endpoints untouched -- new routes appended below existing ones.
 - **billing.ts** adds subscription management endpoints. Original webhook handler unchanged.
 - **73 new route files added.** All behind `authenticateToken` + `superAdminMiddleware` or public rate limiters matching existing patterns.
-- **69 new migrations.** All additive (CREATE TABLE, ADD COLUMN). No DROP, no ALTER existing columns, no data mutations.
+- **69 new migrations.** 50 are pure additive (CREATE TABLE, ADD COLUMN, seed data). 7 require manual review -- see `docs/SANDBOX-INVENTORY.md` "REQUIRES REVIEW" section. 2 contain hardcoded sandbox passwords (do not run on production).
 
 ### Gate 3: Output Code Consistent with Existing Codebase?
 
@@ -82,8 +82,9 @@ Explicitly excluded to reduce blast radius:
 - **Migration Manifest:** 13 cards, ordered simplest-first, in #alloro-dev
 - **Card 1:** Green, frontend-only, ~15 minutes
 - **Cards 1-6:** Green blast radius, no DB/auth/billing changes
-- **Cards 7-9:** Yellow, new services + 1 migration each
-- **Cards 10-11:** Red, require Corey approval + Dave conversation
+- **Cards 7-11:** Yellow, new services + migrations, notify #alloro-dev then deploy
+- **Card 12:** Red (Trial + Billing Gate), requires Corey approval + Dave conversation
+- **Card 13:** Yellow (Agent Canon + Identity System), backlog item
 - **AAE conference:** April 15-18. Conference mode runs on sandbox with fallback data. No prod deploy needed for AAE.
 
 ---
