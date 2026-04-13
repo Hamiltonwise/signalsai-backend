@@ -457,6 +457,24 @@ These fixes are already on sandbox and included in the card diffs above:
 | e5dfa179 | Vocabulary wired into UploadPrompt, PMSUploadWizardModal, wizardConfig | 1, 6 |
 | 921cc2af | Complete vertical sweep -- zero dental terms in customer-facing code | 1 |
 | 537fdc85 | alloroLabs.ts response shape aligned with Dave's pattern | N/A |
+| 8198512d | Response shape alignment batch 1 -- 9 route files, ~40 response paths | N/A |
+| df69d797 | Response shape alignment batch 2 -- intelligence, seo, auth, webhooks | N/A |
+| 921cc2af + 00c4d050 | Vertical sweep final -- PMS references in customer-facing components | 1 |
+| 1996fdb4 + 9576a854 | Visual consistency -- bg-[#F8F6F2] backgrounds, design system cards | 8, 9 |
+| c0c0c9bf | Navigation dead ends eliminated (BuildingScreen fallback, SharedResults timeout) | 6 |
+| 4f22e3ee | **Day 2 retention fix** -- early-lifecycle events surfaced in proof-of-work feed | 9 |
+| 2f42f597 | **Hidden system work surfaced** -- 15 new event types in activity feed + annual value at risk on drift alerts | 5, 9 |
+
+### Key product changes Dave should know about:
+
+**The activity feed now shows what the system does.** Before: 8 event types translated for the customer, 20+ invisible. After: 23 event types surfaced. "Responded to Sarah's Google review on your behalf." "Mailed a thank-you card to Dr. Torres." "Detected Wasatch Endodontics gained 15 reviews." The customer sees proof the system is working.
+
+**Drift alerts now show dollar risk.** `annualValueAtRisk` was already computed by the backend but never rendered. Now the referral drift card shows "$48,000/year at risk" when a referral source goes quiet. One field, already in the API response, now visible.
+
+**Data lineage for these changes:**
+- `src/routes/user/homeIntelligence.ts:describeEvent()` -- translates `behavioral_events.event_type` into human-readable strings for the "What Alloro Did" section on HomePage
+- `frontend/src/pages/ReferralIntelligence.tsx:DriftAlerts()` -- renders `annualValueAtRisk` field from existing API response
+- No new tables. No new endpoints. No new migrations. Pure translation layer.
 
 ## REFERENCE: ACTIVE WORKERS
 
