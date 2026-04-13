@@ -155,17 +155,13 @@ export default function Dashboard() {
       .catch(() => setLemonisChecked(true));
   }, [orgId, onboardingCompleted, navigate]);
 
-  // Placeholder data - replace with actual hook data later
-  const ready = true;
-  const session = { user: { id: "1", email: "user@example.com" } };
   const clientId = orgId ? String(orgId) : selectedDomain?.domain || "";
-  const clientLoading = false;
-  const clientError = null;
+
   // Wait for Lemonis guard to complete before rendering
   if (!lemonisChecked) return null;
 
-  // Fast redirect to sign in if not authenticated
-  if (!session) {
+  // Redirect to sign in if not authenticated
+  if (!userProfile) {
     window.location.href = "/signin";
     return null;
   }
@@ -173,7 +169,7 @@ export default function Dashboard() {
   return (
     <div className="w-full max-w-[1600px] mx-auto min-h-screen flex flex-col bg-alloro-bg font-body text-alloro-navy">
       {/* Show loading state while checking onboarding */}
-      {!ready || checkingOnboarding ? (
+      {isLoadingUserProperties || checkingOnboarding ? (
         <div className="flex-1 flex items-center justify-center bg-alloro-bg">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-alloro-orange/20 border-t-alloro-orange mx-auto mb-4"></div>
@@ -184,14 +180,7 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
-      ) : clientLoading ? (
-        <div className="h-full flex items-center justify-center bg-alloro-bg">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-alloro-orange/20 border-t-alloro-orange mx-auto mb-4"></div>
-            <p className="text-slate-600 font-medium">Resolving client access...</p>
-          </div>
-        </div>
-      ) : clientError ? (
+      ) : !orgId ? (
         <div className="h-full flex items-center justify-center bg-gray-50/50">
           <div className="max-w-md w-full mx-4">
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 text-center">
@@ -201,7 +190,7 @@ export default function Dashboard() {
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 Client Access Error
               </h2>
-              <p className="text-gray-600 mb-6">{clientError}</p>
+              <p className="text-gray-600 mb-6">Unable to load your organization. Please try again.</p>
               <button
                 onClick={() => window.location.reload()}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors"
@@ -419,8 +408,8 @@ export default function Dashboard() {
               isOpen={showGBPModal}
               onClose={() => setShowGBPModal(false)}
               clientId={clientId}
-              ready={ready}
-              session={session}
+              ready={!!userProfile}
+              session={userProfile ? { user: { email: userProfile.email || "" } } : null}
               onSuccess={() => setHasProperties(true)}
             />
 
