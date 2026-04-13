@@ -12,14 +12,7 @@ import { ArrowRight, Gift, Users } from "lucide-react";
 import { validateReferralCode } from "../api/checkup";
 import MarketingLayout from "../components/marketing/MarketingLayout";
 
-// ─── Fallback (SLC demo data) ───────────────────────────────────────
-
-const FALLBACK = {
-  specialty: "endodontics",
-  city: "Salt Lake City",
-  reviewGap: 27,
-  keyword: "endodontist near me",
-};
+// No hardcoded fallback data. Generic copy is used when no ref code is present.
 
 export default function ReferralProgram() {
   const [searchParams] = useSearchParams();
@@ -82,10 +75,11 @@ export default function ReferralProgram() {
             </p>
           ) : (
             <p className="text-sm text-[#1A1D23]/80 leading-relaxed">
-              A {FALLBACK.specialty} business in {FALLBACK.city} found
-              that their top competitor has {FALLBACK.reviewGap} more
-              reviews and ranks above them for "{FALLBACK.keyword}." They
-              saw their result in 60 seconds.
+              A business owner ran their Business Clarity Checkup and
+              discovered where they rank against every competitor in
+              their market, with named competitors on a live map and the
+              one move that changes their week. They saw their result in
+              60 seconds.
             </p>
           )}
         </div>
