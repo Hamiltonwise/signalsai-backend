@@ -94,6 +94,33 @@ function describeEvent(
     case "cro_engine_run":
       return "Analyzed your website for conversion opportunities";
 
+    case "checkup.completed":
+    case "checkup_completed":
+      return ctx.city
+        ? `Mapped your competitive landscape in ${ctx.city}`
+        : "Mapped your competitive landscape";
+
+    case "account.created":
+    case "account_created":
+      return "Your Alloro account was created and your first scan started";
+
+    case "welcome_intelligence.sent":
+    case "welcome.intelligence_sent":
+      return "Delivered your welcome intelligence package";
+
+    case "instant_snapshot.completed":
+    case "snapshot.instant":
+      return ctx.competitorName
+        ? `Took your first competitive snapshot against ${ctx.competitorName}`
+        : "Took your first competitive snapshot";
+
+    case "website.generated":
+    case "patientpath.built":
+      return "Built your personalized website from your review data";
+
+    case "vocabulary.configured":
+      return "Configured your industry-specific intelligence settings";
+
     default:
       return null;
   }
