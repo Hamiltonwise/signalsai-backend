@@ -164,11 +164,13 @@ test.describe("Marketing Pages Smoke", () => {
   for (const pg of publicPages) {
     test(`${pg.name} page loads`, async ({ page }) => {
       const response = await page.goto(`${BASE}${pg.path}`, {
-        waitUntil: "domcontentloaded",
+        waitUntil: "networkidle",
         timeout: 15000,
       });
       expect(response?.status()).toBeLessThan(500);
 
+      // Wait for React hydration before checking body text
+      await page.waitForTimeout(2000);
       const bodyText = await page.locator("body").textContent();
       expect(bodyText?.trim().length).toBeGreaterThan(100);
 
