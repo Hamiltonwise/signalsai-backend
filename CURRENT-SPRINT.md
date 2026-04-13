@@ -18,55 +18,52 @@ The destination is defined by the 15 Knowns in the Product Constitution. If all 
 
 ## Current Position
 
-**Last updated:** April 12, 2026 (late evening -- post-Dave-prep + AAE audit)
+**Last updated:** April 13, 2026 (evening -- post-transcript-analysis + system fixes)
 **Branch:** sandbox
 **EC2 sandbox:** Auto-deploys on push. No Dave dependency.
 
-### Production Readiness Sweep (April 12 -- Cowork session)
+### April 13 Session Summary
 
-Corey directive: "The sandbox is 100% ready to go straight into production. The entire dashboard and process needs to be ready to be sent to anyone."
+Two sessions today: (1) fire list fixes + content quality lint, (2) Fireflies transcript analysis + operating protocol upgrade.
 
-253 files changed across two commits:
+**Fire list fixes (4 commits, pushed to sandbox remote):**
 
 | Commit | Description |
 |--------|-------------|
-| `36f80b0e` | Brand cleanup, design system compliance, semantic fixes, Layer 2 script, TS type fixes |
-| `93b979f1` | Restore "Business Clarity" category name (was incorrectly stripped with Score) |
+| `fa1bd9c0` | ComparePage: hasData gate prevents zero-value renders, WarmEmptyState when no data |
+| `1763b25c` | ReferralProgram: removed hardcoded endodontics/SLC fallback, replaced with generic copy |
+| `855bf2ba` | 12+ content pages: removed unverified dollar figures ($14k, $27k, etc.), kept verified Alloro pricing |
+| `cafae254` | content-quality-lint.sh: 6-check static analysis gate (5 PASS, 1 WARNING) |
 
-### What was fixed
+**System improvements (uncommitted -- memory/protocol files):**
+- Operating protocol: added upstream session discipline (thinking vs build sessions, decision lock gate, AI content safety gate)
+- Session contract: new file for Corey-Claude session start (memory/context/session-contract.md)
+- Memory files: Dave and Corey profiles updated with April 13 transcript quotes
+- ReferralMatrices.tsx: "PMS" -> generic language in empty states
 
-| Category | Scope | Details |
-|----------|-------|---------|
-| Brand cleanup | ~30 files | "Business Clarity Score" removed (K6). "Business Clarity Brief" -> "Monday Brief". Old "SignalsAI" references removed. "Business Clarity" as category RESTORED. |
-| Design system | ~150 files | #212D40 -> #1A1D23, font-bold -> font-semibold, em-dashes removed. Entire frontend. |
-| Broken promises | 2 files | BuildingScreen: "Coming soon" -> "In your dashboard now". ResultsScreen: Unfulfillable notification promise removed. |
-| Dead features | 1 file | BuildingScreen referenced v1 website preview feature not in v2. |
-| Dental terms | 5 files | HowItWorks, PMSUploadModal, PMSVisualPillars, UploadPrompt, MarketingFooter. "patient" -> "client" where customer-visible. |
-| Hardcoded URLs | 2 files | templateRenderer.ts: window.location.origin. base.ts/MondayBriefEmail.ts: LOGO_URL env-aware. |
-| Type bugs | 1 file | PMSVisualPillars: wizard demo data mismatches (doctor->partner, mktProduction->mktRevenue). Pre-existing TS errors. |
-| Browser tab | 1 file | CheckupLayout: old brand name in title tag. |
+### Prior work still on sandbox (April 12)
+
+| Commit | Description |
+|--------|-------------|
+| `36f80b0e` | Production readiness sweep: 253 files, brand cleanup, design system, semantic fixes |
+| `93b979f1` | Business Clarity category restoration |
+| Dave pattern audits | JSDoc, console tags, response shapes, hardcoded URLs (4 commits) |
+| Dave Confidence Sheet | docs/DAVE-CONFIDENCE-SHEET.md |
 
 ### Verification gates
 
 | Gate | Result |
 |------|--------|
-| TypeScript | Zero errors |
-| Vite build | Passes (sandbox filesystem blocks rmSync, not a code issue) |
-| Layer 1 (pattern) | 6/9 PASS. 3 known pre-existing: K2 backend scoring, K4 illustrative $$ in content pages, K6 BreathingScore component (unused in v2). |
-| Layer 2 (semantic) | 8/8 PASS. 1 warning: GBP OAuth callback (Dave Card 8). |
+| TypeScript | Zero errors (verified April 13 during fire list commits) |
+| Content quality lint | 5/6 PASS, 1 WARNING (ReviewRequests.tsx || 0 without empty state -- non-blocking) |
+| Layer 2 (semantic) | 8/8 PASS |
 
-### New tooling
+### Tooling (4 automated quality scripts)
 
-**scripts/constitution-check-layer2.sh** -- Semantic compliance check.
-Scans 49 customer-reachable files across 8 checks:
-1. Broken promises (unfulfillable copy)
-2. Dental terms in generic pages
-3. Old brand names (Business Clarity Score, SignalsAI)
-4. Hardcoded production URLs
-5. Dead feature references
-6. Placeholder/test data
-7. Layer 1 regressions in customer files
-8. Empty state quality
+1. **scripts/constitution-check.sh** -- Layer 1 pattern compliance
+2. **scripts/vertical-sweep.sh** -- Vertical leakage detection
+3. **scripts/data-flow-audit.sh** -- Logic bugs grep can't find
+4. **scripts/content-quality-lint.sh** -- Placeholder data, unsafe defaults, dollar figures, auth bypass, design system
 
 ### Dave tasks pending
 
@@ -75,64 +72,55 @@ Scans 49 customer-reachable files across 8 checks:
 | Card 4 | APP_URL env var not set on sandbox EC2 | Yellow |
 | Card 8 | GBP OAuth callback hardcoded to production in src/routes/auth/gbp.ts:22 | Red (auth) |
 
-Card 8 requires: (1) Change callback URL to read from process.env.APP_URL, (2) Add sandbox redirect URI in Google Console.
-
-### What's deployed and committed (on sandbox branch)
-
-All commits below are on sandbox. Push needed from local machine to trigger auto-deploy.
-
-| Item | Commit | Confidence |
-|------|--------|------------|
-| Production readiness sweep (253 files) | 36f80b0e | Green (TypeScript clean, Layer 2 8/8 PASS) |
-| Business Clarity category restoration | 93b979f1 | Green |
-| WO-60 Flywheel Dashboards | pending commit | Green (TypeScript clean) |
-| All prior foundation sprint work | See Route History | Yellow (not browser-verified) |
-
-### What's NOT done
+### What's NOT done (AAE-critical)
 
 | Item | Risk | Notes |
 |------|------|-------|
-| Push to sandbox remote | Blocking deploy | Needs credentials (push from local) |
-| Browser verification (phone test) | Yellow | Code-verified, not browser-verified |
-| Dave Card 4 + Card 8 | Yellow/Red | APP_URL env var + GBP OAuth |
+| Browser verification (phone test) | Yellow | Code-verified, not browser-verified. Must happen before AAE. |
+| Dave Card 4 + Card 8 | Yellow/Red | APP_URL env var + GBP OAuth. Card 8 blocks GBP demo. |
+| Demo seed data | Low | Dental-only content, fabricated $$ in seed. Static fallback Demo.tsx works without it. |
+| DEMO_MODE env var on EC2 | Unknown | Auto-login path needs this. Static fallback doesn't. |
 
-### Home page hero status
+### What IS done
 
-RESOLVED. The Oz Moment system IS the hero. It shows intelligence findings from the backend, with client-side fallback from readings data. BreathingScore (K6 violation) was removed. ProgressStory was tabled. The Oz Moment fills the hero slot.
+| Item | Confidence |
+|------|------------|
+| All fire list items fixed and committed | Green |
+| Production readiness sweep (253 files) | Green |
+| Content quality lint passing | Green |
+| Operating protocol upgraded with upstream discipline | Green |
+| Session contract written | Green |
+| Dave handoff package ready (Confidence Sheet + Slack message) | Green |
+| AAE demo code audited -- static fallback is conference-safe | Green |
 
 ---
 
 ## Next Waypoint
 
-### Waypoint 1: Push commits to sandbox, verify deploy
+### Waypoint 1: Browser verification on sandbox URL
 
-**Why:** Two commits (36f80b0e, 93b979f1) are on the local sandbox branch but not pushed to remote. Sandbox auto-deploys on push. Cannot browser-verify until deployed.
+**Why:** All code is committed and pushed. 4 automated quality scripts pass. But nobody has loaded the sandbox in a browser and walked through it. AAE is April 15. This is the single highest-risk gap.
 
-**Done gate:** `git push origin sandbox` succeeds. Sandbox URL loads with changes.
+**Done gate:** Corey completes one phone walkthrough: entry -> scanning -> results -> dashboard. Reports what worked and what didn't.
 
-### Waypoint 2: End-to-end phone test on sandbox URL
+### Waypoint 2: Send Dave clean handoff
 
-**Why:** Code is verified. Browser experience is not. One real phone, one QR scan, one full run: entry -> scanning -> results -> account creation -> dashboard. Timed.
-
-**Done gate:** Corey completes the walkthrough. Reports what worked and what didn't.
-
-### Waypoint 3: WO-60 Flywheel Dashboards (admin ops)
-
-**Why:** Internal HQ dashboards need flywheel metrics. VisionaryView (Corey), IntegratorView (Jo), BuildView (Dave). Yellow blast radius. Serves Inevitable Unicorn North Star.
-
-**Done gate:** All three view upgrades committed. Real Stripe MRR. Conversion funnel. One Decision Card.
-
-### Waypoint 4: Send Dave clean handoff
-
-**Why:** Cards 4 and 8 need Dave execution. Prior cards (1-3, 5-6) need delivery. Confidence sheet + Slack message are written and verified (docs/DAVE-CONFIDENCE-SHEET.md, docs/DAVE-SLACK-MESSAGE.md). Corey copy-pastes Slack message to #alloro-dev.
+**Why:** Cards 4 and 8 need Dave execution. Confidence sheet + Slack message are written (docs/DAVE-CONFIDENCE-SHEET.md, docs/DAVE-SLACK-MESSAGE.md). Dave's bandwidth is split across DentalEMR, 1Endo, AAE landing page. The earlier he gets this, the better.
 
 **Done gate:** Dave has received clean handoff in #alloro-dev.
 
-### Waypoint 5: Send 3 client draft emails
+### Waypoint 3: Send 3 client draft emails
 
-**Why:** Pre-AAE touchpoint. Shawn (McP Endo), Merideth (DentalEMR), Dr. Kargoli (1Endo). Drafts ready in Gmail. Dashboard updates they reference are deployed.
+**Why:** Pre-AAE touchpoint. Shawn (McP Endo), Merideth (DentalEMR), Dr. Kargoli (1Endo). Dashboard updates they reference must be deployed and browser-verified first.
 
 **Done gate:** Emails sent.
+
+### Waypoint 4 (post-AAE queue): Cleanup
+
+- ReviewRequests.tsx empty state (lint warning)
+- Demo seed data: remove fabricated dollar figures, add non-dental verticals
+- Wire lint scripts into CI as pre-commit gates
+- 1Endo location switcher + review count (needs DB access)
 
 ---
 
@@ -156,6 +144,13 @@ RESOLVED. The Oz Moment system IS the hero. It shows intelligence findings from 
 | April 12 (PM) | Dave Slack Message | docs/DAVE-SLACK-MESSAGE.md copy-paste ready for #alloro-dev. |
 | April 12 (PM) | AAE demo code audit | Full trace: /aae -> EntryScreen -> ScanningTheater -> ResultsScreen -> BuildingScreen -> UploadPrompt. Conference mode resilient: 5s timeout, offline fallback, personalized data. Zero broken paths. |
 | April 12 (PM) | Client fire scan | Slack, Fireflies, Gmail last 48hrs. No fires. 1Endo go-live in progress (Jo handling). 3 client draft emails ready to send. |
+| April 13 (PM) | Fire list fixes | ComparePage hasData gate, ReferralProgram fallback removed, dollar figures removed from 12+ content pages. 4 commits pushed. |
+| April 13 (PM) | Content quality lint | 6-check static analysis script. 5 PASS, 1 WARNING. |
+| April 13 (PM) | Demo.tsx audit | Full trace of AAE booth demo flow. Static fallback is conference-safe. Seed data has dental-only content + fabricated $$. |
+| April 13 (PM) | Transcript analysis | Fireflies transcript (1095 lines) analyzed line-by-line. 5 friction points identified. |
+| April 13 (PM) | Operating protocol upgrade | Upstream session discipline added: thinking vs build sessions, decision lock, AI content safety gate. |
+| April 13 (PM) | Session contract | New file: memory/context/session-contract.md. Read-at-session-start discipline for Corey-Claude sessions. |
+| April 13 (PM) | Memory updates | dave.md: upstream quality quotes. corey.md: session pattern diagnosis. |
 
 ---
 

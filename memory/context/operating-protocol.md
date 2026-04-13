@@ -129,6 +129,64 @@ Corey can use ANY of these. All are valid. AI handles the rest.
 The only requirement: Corey states what's wrong or what should be true.
 He never needs to say how to fix it.
 
+## Upstream Session Discipline (ADDED April 13, 2026 -- from Corey-Dave transcript analysis)
+
+### The Problem This Solves
+
+The Corey-to-Dave handoff works. The protocol below it works. But Corey's upstream sessions with Claude (Cowork, Claude Code) were producing volume without decisions. Multiple versions of the same feature accumulated in sandbox. Dave received exploratory output disguised as specs. Dave's agents tried to interpret brainstorms, producing inconsistent results. Corey spent hours iterating and felt low ROI on his time.
+
+Dave said it directly (April 13): "If you finish the brainstorming part and ideating and just I get tasks, it's going to be smoother."
+
+Corey said it directly (April 13): "I feel like I waste a lot of time right now... from the amount of effort that I put out, I don't see it on my end."
+
+### Session Types
+
+Every Corey-Claude session is one of two types. Name it at the start.
+
+**Thinking Session** -- exploring, ideating, evaluating options.
+- Output: a decision, not code. "We're going with option B because X."
+- Code may be written to test ideas, but it's disposable.
+- Nothing from a thinking session goes to Dave. Nothing gets committed to sandbox as a feature.
+- Time-box: 90 minutes max. If no decision by then, the decision is "not ready."
+
+**Build Session** -- executing a locked decision.
+- Starts with: "The deliverable is ___." One sentence. Specific.
+- AI produces a Work Order before writing code.
+- Code gets committed. One feature per commit.
+- Output goes to Dave when ready.
+
+The boundary: if the word "alternatively" or "option" appears in the session, it's a thinking session. Thinking sessions don't produce Dave documents.
+
+### Decision Lock
+
+Before any feature leaves Corey's session for Dave:
+1. One direction is chosen. Not three. Not a hybrid. One.
+2. The chosen direction is written to `memory/decisions/YYYY-MM-DD-short-name.md` with status LOCKED.
+3. AI writes the Work Order against that one direction.
+4. Corey confirms: "Lock it."
+
+If Corey can't choose, the feature isn't ready. Queue it. Move to something that is ready.
+
+Build sessions must reference a LOCKED decision file. If there's no decision file, the build session should not start. This is the traceability chain: decision log -> work order -> code -> pre-commit gate -> Dave card.
+
+### AI Content Safety Gate
+
+Any AI-generated text that a customer or prospect will see is treated as Red blast radius, regardless of the feature's blast radius. This includes:
+- Checkup results and recommendations
+- Competitor analysis and comparisons
+- Email copy
+- Dashboard narrative text
+
+Verification required before shipping:
+- Competitor classification is correct (specialty matches, not just proximity)
+- No medical, legal, or compliance-violating advice (HIPAA, etc.)
+- No fabricated statistics or revenue figures
+- Data matches what a human can verify on Google
+
+### Corey Time ROI Rule
+
+AI should reduce Corey's time per decision, not increase it. If Corey is in a build-evaluate-reject loop for more than 3 iterations on the same feature, stop. The problem is upstream: the decision isn't locked, or the constraints aren't clear enough. Switch to a thinking session and lock the decision before building again.
+
 ## Protocol Rules
 
 1. Corey never writes engineering specs. If he's writing file names and line numbers, the system failed.
@@ -138,6 +196,9 @@ He never needs to say how to fix it.
 5. Cards are sequenced simplest-first. Complexity noted on every card.
 6. One feature = one commit = one checkpoint. The IKEA rule still applies.
 7. Red blast radius still requires Corey approval before any code. This is non-negotiable.
+8. Dave never receives a document with options or alternatives. If there are options, Corey hasn't decided yet.
+9. AI-generated customer-facing content is Red blast radius regardless of feature blast radius.
+10. Every Corey-Claude session names its type (thinking or build) and its deliverable in the first message.
 
 ## When the System Breaks
 
@@ -148,8 +209,11 @@ If any of these happen, stop and fix the system, not the symptom:
 - Outputs are "all over the place" -> too many things changed at once. Break into smaller cards.
 - Dave stalls -> he's missing information. Ask what's unclear, don't push harder.
 - Corey is frustrated by visuals -> design system sweep needed before feature work.
+- Multiple versions exist in sandbox with no decision -> thinking session didn't finish. Lock it before building more.
+- Corey feels low ROI on time spent -> build-evaluate-reject loop. Stop building, lock the decision upstream.
+- Dave's agents produce inconsistent output -> they received brainstorm, not spec. Check for "alternatively" in the source doc.
 
 ## Living Document
 
 This protocol evolves. When something doesn't work, update this doc.
-Last updated: April 11, 2026.
+Last updated: April 13, 2026 (added upstream session discipline from Corey-Dave transcript analysis).

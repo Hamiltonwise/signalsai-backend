@@ -65,6 +65,15 @@ These are the patterns his agents check for. Deviating from any of them creates 
 - "persist this to claude md so as any engineer-communicated doc is built in this fashion"
 - He is bought in. He's not resistant. He needs clean input.
 
+## What He Said About Upstream Quality (April 13 -- direct quotes from transcript)
+- "If you kind of provide the actual instructions than what we're trying to achieve... if you're going to do the brainstorming on your Claude and then my Claude tries to brainstorm out of the document that you gave me, it's going to have a lot of opinions in that idea that's going to get confused."
+- "So if you finish the brainstorming part and ideating and just I get tasks, it's going to be smoother."
+- "Because Claude has given us so many ideas, I think we kind of are now jumping a lot of ideas that we didn't know what to pick and what to do."
+- "Right now we're just all over the place with lots of these versions and some of them are not working."
+- "I still don't know what we want to show... we just have to figure out what we want."
+- "I just want to start building." (His frustration: he can build anything, but nobody has told him what.)
+- Translation: the card format works. The upstream decision-making doesn't. Dave needs ONE direction, not three options.
+
 ## Communication
 - Email: dave@getalloro.com
 - Slack: #alloro-dev, available for standby during Go Lives

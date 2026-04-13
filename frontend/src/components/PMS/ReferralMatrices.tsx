@@ -147,7 +147,7 @@ const MatricesEmptyState = () => (
         No source data available
       </h3>
       <p className="text-sm text-slate-500 font-medium">
-        Upload PMS data to see attribution
+        Upload your data to see attribution
       </p>
     </div>
 
@@ -264,7 +264,7 @@ const MatricesProcessingState: React.FC<MatricesProcessingStateProps> = ({
 
   // Dynamic title and subtitle based on state
   const title = isAwaitingClientApproval
-    ? "Your PMS Data is Ready for Review"
+    ? "Your Data is Ready for Review"
     : "Generating Your Attribution Matrix";
 
   const subtitle = isAwaitingClientApproval

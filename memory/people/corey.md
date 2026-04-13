@@ -24,6 +24,18 @@ Founder and CEO of Alloro (getalloro.com). Also runs Hamilton Wise, the services
 - Visual inconsistency derails his ability to evaluate substance. His own words: "The UX/UI is so distracting I haven't been able to even begin to comprehend the story being told."
 - Tries to do too many roles when Jo is absent. The Product Map doc was Corey doing Jo's integrator job, and it took enormous effort.
 
+## Session Pattern Diagnosis (April 13, 2026 -- from transcript analysis)
+
+Corey's Claude sessions blend exploration and building. He describes a problem, Claude proposes solutions, Corey evaluates, rejects, iterates. This loop can run for hours. The output often looks like a spec (code in sandbox, visual mockups) but is actually still exploratory because no decision was locked.
+
+Corey said it himself (line 1066): "I feel like I waste a lot of time right now. I've put in probably over a thousand hours."
+
+The pattern: Corey ideates with Claude -> Claude builds something -> Corey evaluates and finds it wrong -> iterates -> eventually gets something close -> sends to Dave -> Dave's agents try to process what is actually still exploratory -> confusion.
+
+The fix: separate thinking sessions (explore, no code committed) from build sessions (locked decision, code committed). See `memory/context/operating-protocol.md` upstream session discipline section.
+
+Additional insight from the April 13 call: Corey said "I don't know exactly how I want things to look and I don't know what exactly is possible today." This means his sessions with Claude need to start with a constraints briefing: what's buildable today with existing code, what would require new work, what's blocked. This narrows the solution space before ideation begins, reducing the explore-reject loop.
+
 ## The Key Insight (April 11, 2026)
 Corey's descriptive output is the RIGHT input for AI translation. He should never try to write prescriptive engineering specs himself. The system is: Corey describes the outcome/feeling/customer experience -> AI translates to prescriptive specs with file paths, line numbers, verification tests -> Dave's agents execute. This removes Corey from the translation bottleneck and lets him stay in his zone of product vision and customer empathy.
 

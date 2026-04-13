@@ -111,10 +111,21 @@ Write a Customer Reality Check in the conversation:
 
 ## Before Every Commit
 
-1. `cd frontend && npx tsc -b --force && npm run build` (zero errors)
-2. `npx tsc --noEmit` from repo root (zero errors)
-3. `bash scripts/constitution-check.sh --critical-path` (7/7 PASS)
-4. `bash scripts/data-flow-audit.sh` (0 issues)
+The pre-commit hook (.git/hooks/pre-commit) runs automatically on `git commit`:
+
+Hard gates (block on failure -- these pass clean, any failure is a new regression):
+1. data-flow-audit.sh -- logic bugs, wrong data consumed
+2. content-quality-lint.sh -- placeholders, zero defaults, dollar figures
+3. TypeScript type check (`tsc -b --force`)
+
+Advisory gates (warn, don't block -- known pre-existing issues, promote to hard once clean):
+4. constitution-check.sh -- 3 known pre-existing failures
+5. vertical-sweep.sh -- 108 known dental terms awaiting useVocab() migration
+
+If a hard gate fails, the commit is blocked. Fix the error, then commit again.
+
+Manual checks the hook can't do:
+4. `npm run build` in frontend/ (zero errors)
 5. Check the map: describe what each affected page shows. If you can't describe it with certainty, don't commit.
 
 ## Quality Scripts (run before every handoff to Dave)
