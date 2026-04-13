@@ -1,3 +1,10 @@
+/**
+ * Public Score Card -- Shareable checkup results.
+ *
+ * Public (no auth) endpoint for rendering a score card
+ * from a completed checkup. Used in email share links.
+ */
+
 import express from "express";
 import { db } from "../database/connection";
 

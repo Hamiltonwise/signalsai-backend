@@ -22,10 +22,10 @@ The library required the trip. Google eliminated the trip. Alloro eliminates the
 | One Endo (Dr. Safe Cuda) | $1,500/mo | NOT in Stripe yet | Go Live April 10 |
 | McPherson | $0 | N/A | Beta/study club model (RISE Scholars #1 and #2) |
 
-Stripe-verified MRR: $3,500 (Garrison + Artful)
-Potential MRR if all billing activated: ~$13,500+/mo
-Gap: ~$10,000/mo not yet flowing through Stripe
-Note: Dave (CTO) has a $2,000/mo test subscription in Stripe -- needs cleanup before external demos.
+Alloro Stripe MRR: $3,500 (Garrison + Artful)
+Old HW Stripe: DEMR ($3,500) + Caswell ($5,000) still on Hamilton Wise account
+1Endo: billing set up, not yet completed
+Note: Dave (CTO) has a $2,000/mo test subscription in Alloro Stripe -- needs cleanup before external demos.
 
 ## Tech Stack
 - Frontend: React 18+, TypeScript, Vite, Tailwind CSS, shadcn/ui

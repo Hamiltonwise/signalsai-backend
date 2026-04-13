@@ -167,13 +167,14 @@ proofOfWorkRoutes.get(
       }
 
       return res.json({
+        success: true,
         prooflineTimeline,
         reviewTrajectory,
         competitorLandscape,
       });
     } catch (err: any) {
       console.error("[ProofOfWork] Error:", err.message);
-      return res.status(500).json({ error: "Failed to load proof of work" });
+      return res.status(500).json({ success: false, error: "Failed to load proof of work" });
     }
   },
 );

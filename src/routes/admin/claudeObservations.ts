@@ -211,7 +211,8 @@ async function gatherObservations(role: string): Promise<Observation[]> {
 
       // Check Redis
       try {
-        const healthRes = await fetch("http://localhost:3000/api/health");
+        const healthBaseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+        const healthRes = await fetch(`${healthBaseUrl}/api/health`);
         const health = await healthRes.json();
         if (health.redis !== "connected") {
           observations.push({

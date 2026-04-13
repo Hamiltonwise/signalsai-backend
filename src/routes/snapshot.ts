@@ -1,3 +1,10 @@
+/**
+ * Snapshot API -- Weekly ranking snapshot data for client dashboards.
+ *
+ * Token-authenticated endpoints for reading and comparing
+ * weekly ranking snapshots across organizations.
+ */
+
 import { Router, Request, Response } from "express";
 import { db } from "../database/connection";
 import { validateSnapshotToken } from "../middleware/snapshotToken";
@@ -165,7 +172,7 @@ router.get("/overview", async (_req: Request, res: Response) => {
       },
     });
   } catch (err: any) {
-    console.error("Snapshot overview error:", err.message);
+    console.error("[Snapshot] Overview error:", err.message);
     res.status(500).json({ error: "Snapshot failed", detail: "Internal error" });
   }
 });

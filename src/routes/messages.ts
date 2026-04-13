@@ -1,3 +1,11 @@
+/**
+ * Messages API -- Internal team messaging.
+ *
+ * GET  /api/messages       - List messages for current user
+ * POST /api/messages       - Send a new message
+ * PATCH /api/messages/:id/read - Mark a message as read
+ */
+
 import express from "express";
 import { authenticateToken } from "../middleware/auth";
 import { rbacMiddleware, type RBACRequest } from "../middleware/rbac";
@@ -63,7 +71,7 @@ messagesRoutes.get("/", async (req: RBACRequest, res: Response) => {
       currentUserId: userId,
     });
   } catch (err) {
-    console.error("GET /api/messages error:", err);
+    console.error("[Messages] GET error:", err);
     return res.status(500).json({ success: false, error: "Failed to fetch messages" });
   }
 });
@@ -101,7 +109,7 @@ messagesRoutes.post("/", async (req: RBACRequest, res: Response) => {
 
     return res.status(201).json({ success: true, message });
   } catch (err) {
-    console.error("POST /api/messages error:", err);
+    console.error("[Messages] POST error:", err);
     return res.status(500).json({ success: false, error: "Failed to send message" });
   }
 });
@@ -133,7 +141,7 @@ messagesRoutes.patch("/:id/read", async (req: RBACRequest, res: Response) => {
 
     return res.json({ success: true, updated: updated > 0 });
   } catch (err) {
-    console.error("PATCH /api/messages/:id/read error:", err);
+    console.error("[Messages] PATCH read error:", err);
     return res.status(500).json({ success: false, error: "Failed to mark message as read" });
   }
 });

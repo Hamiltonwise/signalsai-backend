@@ -277,7 +277,7 @@ missionControlRoutes.get(
 
       return res.json({ success: true, agents, byTeam, summary });
     } catch (err: any) {
-      console.error("Mission Control error:", err?.message, err?.stack?.split("\n").slice(0, 3).join(" | "));
+      console.error("[MissionControl] Error:", err?.message, err?.stack?.split("\n").slice(0, 3).join(" | "));
       return res.status(500).json({ success: false, error: "Failed to load mission control", detail: err?.message });
     }
   }
@@ -305,7 +305,7 @@ missionControlRoutes.get(
       const costs = await getMonthlyCosts();
       return res.json({ success: true, period: "monthly", ...costs });
     } catch (err) {
-      console.error("Cost tracking error:", err);
+      console.error("[MissionControl] Cost tracking error:", err);
       return res.status(500).json({ success: false, error: "Failed to load costs" });
     }
   }

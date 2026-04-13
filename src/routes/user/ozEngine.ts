@@ -38,10 +38,10 @@ ozEngineRoutes.get(
       if (!orgId) return res.status(400).json({ error: "No organization" });
 
       const ozMoment = await getOzEngineResult(orgId);
-      return res.json({ ozMoment });
+      return res.json({ success: true, ozMoment });
     } catch (err: any) {
       console.error("[OzEngine] Error:", err.message);
-      return res.status(500).json({ error: "Failed to compute insight" });
+      return res.status(500).json({ success: false, error: "Failed to compute insight" });
     }
   },
 );

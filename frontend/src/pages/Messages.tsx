@@ -51,7 +51,7 @@ const MESSAGE_TYPE_COLORS: Record<string, string> = {
   action_item: "bg-amber-50 text-amber-700",
 };
 
-export const Messages: React.FC = () => {
+const Messages: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -510,3 +510,5 @@ export const Messages: React.FC = () => {
     </div>
   );
 };
+
+export default Messages;

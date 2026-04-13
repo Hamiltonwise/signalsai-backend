@@ -1,3 +1,10 @@
+/**
+ * Project Management API -- Internal task and project tracking.
+ *
+ * Mounts sub-routes: projects, tasks, aiSynth, brief, activity, stats, users.
+ * All routes require authentication.
+ */
+
 import express from "express";
 import projectsRoutes from "./projects";
 import tasksRoutes from "./tasks";

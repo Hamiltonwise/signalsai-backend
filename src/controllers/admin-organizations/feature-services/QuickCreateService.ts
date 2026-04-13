@@ -273,9 +273,9 @@ export async function quickCreateFromPlace(
   // 4. Run competitive analysis (same engine as checkup) and persist to org
   try {
     const axios = (await import("axios")).default;
-    const port = process.env.PORT || 3000;
+    const baseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const analyzeResponse = await axios.post(
-      `http://localhost:${port}/api/checkup/analyze`,
+      `${baseUrl}/api/checkup/analyze`,
       {
         name: businessName,
         city,

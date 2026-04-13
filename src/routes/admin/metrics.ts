@@ -140,6 +140,7 @@ router.get("/", async (_req: Request, res: Response) => {
     const arpu = paying > 0 ? Math.round(mrr.total / paying) : 0;
 
     res.json({
+      success: true,
       mrr: {
         total: mrr.total,
         byOrg: mrr.byOrg,
@@ -156,7 +157,7 @@ router.get("/", async (_req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("[AdminMetrics] Error:", err.message);
-    res.status(500).json({ error: "Failed to compute metrics" });
+    res.status(500).json({ success: false, error: "Failed to compute metrics" });
   }
 });
 

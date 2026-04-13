@@ -57,7 +57,7 @@ const GPDiscoveryPage = React.lazy(() => import("./pages/partner/GPDiscoveryPage
 const CampaignIntelligence = React.lazy(() => import("./pages/partner/CampaignIntelligence"));
 const Changelog = React.lazy(() => import("./pages/Changelog"));
 const ReferralProgram = React.lazy(() => import("./pages/ReferralProgram"));
-const MessagesPage = React.lazy(() => import("./pages/Messages").then(m => ({ default: m.Messages })));
+const MessagesPage = React.lazy(() => import("./pages/Messages"));
 
 // --- Five-Page Dashboard (v2) ---
 const HomePage = React.lazy(() => import("./pages/HomePage"));

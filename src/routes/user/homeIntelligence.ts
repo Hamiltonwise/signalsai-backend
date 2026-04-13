@@ -415,6 +415,7 @@ homeIntelligenceRoutes.get(
       }
 
       return res.json({
+        success: true,
         watchline,
         watchlineType,
         weeklyFinding,
@@ -422,7 +423,7 @@ homeIntelligenceRoutes.get(
       });
     } catch (err: any) {
       console.error("[HomeIntelligence] Error:", err.message);
-      return res.status(500).json({ error: "Failed to load intelligence" });
+      return res.status(500).json({ success: false, error: "Failed to load intelligence" });
     }
   },
 );

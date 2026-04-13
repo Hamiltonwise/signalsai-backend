@@ -24,6 +24,7 @@ router.get("/:slug", async (req: Request, res: Response) => {
     }
 
     return res.json({
+      success: true,
       id: content.id,
       slug: content.slug,
       title: content.title,
@@ -40,7 +41,7 @@ router.get("/:slug", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("[Content] Fetch error:", err);
-    return res.status(500).json({ error: "Failed to load content" });
+    return res.status(500).json({ success: false, error: "Failed to load content" });
   }
 });
 
