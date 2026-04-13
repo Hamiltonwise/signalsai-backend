@@ -121,6 +121,62 @@ function describeEvent(
     case "vocabulary.configured":
       return "Configured your industry-specific intelligence settings";
 
+    // Oz moments: the system doing things FOR the customer
+    case "dfy.review_reply_posted":
+      return props.review_author
+        ? `Responded to ${props.review_author}'s Google review on your behalf`
+        : "Posted a response to a Google review on your behalf";
+
+    case "lob.card_queued":
+      return props.recipient
+        ? `Mailed a thank-you card to ${props.recipient}`
+        : "Mailed a physical thank-you card to a referral source";
+
+    case "referral.thank_you_sent":
+      return props.gp_name
+        ? `Sent a thank-you to ${props.gp_name} for their referrals`
+        : "Sent a thank-you to a referral source";
+
+    // Competitive intelligence
+    case "gp.gone_dark":
+    case "gp.drift_detected":
+    case "referral.drift_detected":
+      return props.gp_name
+        ? `Detected ${props.gp_name} has stopped referring`
+        : "Detected a referral source has gone quiet";
+
+    case "competitor.disruption_detected":
+    case "competitor.movement":
+      return props.competitor
+        ? `Detected a change in ${props.competitor}'s market position`
+        : "Detected a competitive shift in your market";
+
+    case "ranking_improvement":
+      return "Your local search visibility improved this week";
+
+    case "review_growth":
+      return props.count
+        ? `${props.count} new Google reviews added this period`
+        : "New Google reviews detected";
+
+    // Content intelligence
+    case "content.draft_generated":
+      return props.title
+        ? `Drafted content: "${props.title}"`
+        : "Drafted new content for your business";
+
+    case "content.trend_detected":
+      return props.trend
+        ? `Spotted a market trend: ${props.trend}`
+        : "Detected a relevant market trend";
+
+    // Trial lifecycle
+    case "trial_email.sent":
+      return "Sent your trial progress update";
+
+    case "result_email.sent":
+      return "Emailed your checkup results";
+
     default:
       return null;
   }

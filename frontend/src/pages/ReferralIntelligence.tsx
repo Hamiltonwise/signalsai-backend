@@ -177,6 +177,11 @@ function DriftAlerts({ alerts }: { alerts: DriftAlert[] }) {
                 <p className="text-xs text-gray-400 mt-1">
                   {a.priorReferrals} referral{a.priorReferrals !== 1 ? "s" : ""} previously
                 </p>
+                {a.annualValueAtRisk > 0 && (
+                  <p className="text-sm font-semibold text-[#D56753] mt-2">
+                    ${a.annualValueAtRisk.toLocaleString()}/year at risk
+                  </p>
+                )}
               </div>
               <div className="text-right shrink-0">
                 <p className="text-xs font-medium text-[#D56753] uppercase tracking-wide">
