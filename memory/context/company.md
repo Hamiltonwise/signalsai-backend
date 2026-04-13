@@ -11,17 +11,21 @@ Autonomous growth infrastructure for local service businesses. Not software. Not
 ## The Google Moment
 The library required the trip. Google eliminated the trip. Alloro eliminates the question. Intelligence comes to you before you search for it.
 
-## Current Customers (as of April 2026)
-| Customer | Revenue | Status |
-|----------|---------|--------|
-| Artful Orthodontics | $1,500/mo | Active, new review celebration |
-| Garrison Orthodontics | $2,000/mo | Active, monthly check-ins |
-| One Endo (Dr. Safe Cuda) | $1,500/mo | Go Live April 10 |
-| Caswell | $5,000/mo | Active |
-| DentalEMR | $3,500/mo | Active, services client |
-| McPherson | $0 | Beta/study club model |
+## Current Customers (as of April 12, 2026)
+| Customer | Revenue | Stripe Status | Notes |
+|----------|---------|---------------|-------|
+| Garrison Orthodontics | $2,000/mo | Active (sub_1THnrvD) | Monthly check-ins, AI search #1, reference account |
+| Artful Orthodontics | $1,500/mo | Active (sub_1THUSbD) | Grandfathered discount (couldn't afford full price, didn't see value yet). Data accuracy issues with Edge PMS. Form submission drop. |
+| Caswell | $2,000 + $1,500 x 2 locations = $5,000/mo | NOT in Stripe yet | Multi-location |
+| DentalEMR | $3,500/mo | NOT in Stripe yet | Exception pricing. Partner/reseller. AAE conference prep. |
+| Kargoli | Discounted (TBD) | NOT in Stripe yet | Early adopter discount |
+| One Endo (Dr. Safe Cuda) | $1,500/mo | NOT in Stripe yet | Go Live April 10 |
+| McPherson | $0 | N/A | Beta/study club model (RISE Scholars #1 and #2) |
 
-Total: ~$13,500-15,000/month
+Stripe-verified MRR: $3,500 (Garrison + Artful)
+Potential MRR if all billing activated: ~$13,500+/mo
+Gap: ~$10,000/mo not yet flowing through Stripe
+Note: Dave (CTO) has a $2,000/mo test subscription in Stripe -- needs cleanup before external demos.
 
 ## Tech Stack
 - Frontend: React 18+, TypeScript, Vite, Tailwind CSS, shadcn/ui
