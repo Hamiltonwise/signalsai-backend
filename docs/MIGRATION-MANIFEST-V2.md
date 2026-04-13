@@ -4,8 +4,24 @@ Sandbox to Production -- One Card at a Time
 Deploy card. Run tests. Pass gate. Next card.
 
 April 12, 2026 | Branch: sandbox | 755 commits ahead of main
+Last updated: April 12, 2026 (late evening)
 
 Ordered by complexity: simplest first, each card builds on the last
+
+---
+
+## PATTERN COMPLIANCE (verify with one command)
+
+All new route files on sandbox match Dave's main branch conventions:
+
+- **Response shape:** `{ success: boolean }` on every error response. `grep -rn 'json({ error:' src/routes/ | grep -v 'success:'` returns **zero hits**.
+- **Console logging:** `[Tag]` prefix on every log. No bare `console.log()` in route files.
+- **JSDoc headers:** Every new route file has a purpose block at file top.
+- **Knex builder:** No raw SQL outside of Knex's `.whereRaw()` (case-insensitive matching).
+- **Default exports:** All new pages use `export default`.
+- **TypeScript:** `npx tsc --noEmit` returns **zero errors**.
+
+**What WASN'T touched:** Dave's PM system (37 files), website builder, notification system, form submissions, E2E test framework, infrastructure configs. All intact.
 
 ---
 
