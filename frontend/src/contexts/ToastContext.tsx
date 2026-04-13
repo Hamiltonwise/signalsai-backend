@@ -49,7 +49,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const borders = {
     success: "border-l-emerald-500",
     error: "border-l-red-500",
-    info: "border-l-[#212D40]",
+    info: "border-l-[#1A1D23]",
   };
 
   return (
