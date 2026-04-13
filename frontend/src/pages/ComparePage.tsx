@@ -139,6 +139,16 @@ function ComparePageInner() {
   const clientReviews = place.reviewCount || rankingRaw?.rawData?.clientReviews || 0;
   const clientPhotos = place.photosCount || place.photos?.length || rankingRaw?.rawData?.clientPhotos || 0;
 
+  // Data can never be empty: gate all sections behind actual data existence
+  const hasData = !!(
+    competitorName ||
+    clientReviews > 0 ||
+    clientRating > 0 ||
+    clientPhotos > 0 ||
+    (checkupData && Object.keys(checkupData).length > 0) ||
+    rankingRaw
+  );
+
   const googleSearchUrl = orgName ? `https://www.google.com/search?q=${encodeURIComponent(orgName)}` : null;
   const competitorSearchUrl = competitorName ? `https://www.google.com/search?q=${encodeURIComponent(competitorName)}` : null;
 
@@ -167,7 +177,18 @@ function ComparePageInner() {
 
         {/* Side-by-Side Comparison (gated after trial) */}
         <BlurGate locked={locked} featureName="Competitive intelligence" onSubscribe={onSubscribe}>
-        {competitorName && (
+
+        {!hasData && (
+          <Section title="Your Competitive Position" defaultOpen={true}>
+            <WarmEmptyState
+              happening="Alloro is analyzing your market right now."
+              when="Your side-by-side comparison appears once competitor data syncs, usually within 24 hours."
+              promise="You'll see exactly how you stack up on reviews, ratings, and photos against your top competitor."
+            />
+          </Section>
+        )}
+
+        {hasData && competitorName && (
           <Section title="You vs Your Top Competitor" defaultOpen={true}>
             <div className="overflow-x-auto">
               <table className="w-full text-base">
@@ -224,6 +245,7 @@ function ComparePageInner() {
         )}
 
         {/* Market Intelligence */}
+        {hasData && (
         <Section title="What This Means" defaultOpen={true}>
           <div className="space-y-5">
             {clientReviews < (competitorReviews || 0) && competitorName && (() => {
@@ -290,7 +312,7 @@ function ComparePageInner() {
                 </div>
               );
             })()}
-            {clientPhotos < 10 && clientPhotos >= 0 && (
+            {clientPhotos < 10 && (place.photosCount != null || place.photos?.length != null || rankingRaw?.rawData?.clientPhotos != null) && (
               <div>
                 <p className="text-sm font-semibold text-[#1A1D23]">
                   {clientPhotos} photo{clientPhotos !== 1 ? "s" : ""} on your profile
@@ -300,18 +322,12 @@ function ComparePageInner() {
                 </p>
               </div>
             )}
-            {!competitorName && clientReviews === 0 && clientPhotos === 0 && (
-              <WarmEmptyState
-                happening="Alloro is analyzing your market right now."
-                when="Your side-by-side comparison appears once competitor data syncs."
-                promise="You'll see exactly how you stack up on reviews, ratings, and photos against your top competitor."
-              />
-            )}
           </div>
         </Section>
+        )}
 
         {/* How People Reach You (GBP Performance) */}
-        {(() => {
+        {hasData && (() => {
           const perfData = rankingRaw?.rawData?.client_gbp?.performance;
           if (!perfData) return null;
           const calls = perfData.calls || 0;
@@ -351,7 +367,7 @@ function ComparePageInner() {
         })()}
 
         {/* Full Competitor Landscape */}
-        {(() => {
+        {hasData && (() => {
           const rawData = rankingRaw?.rawData || rankingRaw?.raw_data;
           const rawCompetitors = rawData?.competitors;
           if (!Array.isArray(rawCompetitors) || rawCompetitors.length < 2) return null;
@@ -429,6 +445,7 @@ function ComparePageInner() {
         })()}
 
         {/* Google Business Profile completeness */}
+        {hasData && (
         <Section title="Google Business Profile" defaultOpen={true}>
           {(() => {
             const gbpFields = [
@@ -461,7 +478,7 @@ function ComparePageInner() {
             );
           })()}
         </Section>
-
+        )}
 
         </BlurGate>
 
