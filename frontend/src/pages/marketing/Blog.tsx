@@ -11,7 +11,7 @@ import MarketingLayout from "../../components/marketing/MarketingLayout";
 const POSTS = [
   {
     slug: "the-second-job-problem",
-    category: "Intelligence",
+    category: "Business Clarity",
     title: "The second job nobody warned you about",
     summary:
       "We've watched hundreds of business owners realize the same thing in year two: the business they bought to have freedom became the job they left. This post is about the exact point where that turns.",
@@ -35,7 +35,7 @@ const POSTS = [
 export default function Blog() {
   return (
     <MarketingLayout
-      title="Blog - Alloro"
+      title="Blog - Business Clarity"
       description="One post a week. Each one comes from something we actually saw in client data. No aggregated advice."
     >
       {/* Hero */}

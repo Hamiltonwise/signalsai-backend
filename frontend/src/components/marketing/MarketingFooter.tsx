@@ -21,7 +21,7 @@ export default function MarketingFooter() {
             <span className="text-sm font-semibold text-[#1A1D23]">alloro</span>
           </div>
           <p className="text-xs text-gray-500 leading-relaxed">
-            Intelligence for local service professionals.
+            Business Clarity for local service professionals.
           </p>
           <p className="mt-4 text-xs text-gray-400">
             &copy; 2026 Alloro, Inc. All rights reserved.

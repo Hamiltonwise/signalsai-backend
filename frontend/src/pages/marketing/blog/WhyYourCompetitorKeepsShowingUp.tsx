@@ -103,7 +103,7 @@ export default function WhyYourCompetitorKeepsShowingUp() {
             can't make informed decisions about where to put your limited time.
           </p>
           <p>
-            That's not a marketing problem. That's an intelligence problem.
+            That's not a marketing problem. That's a Business Clarity problem.
           </p>
           <p>
             The businesses that win at local search are the ones that see the

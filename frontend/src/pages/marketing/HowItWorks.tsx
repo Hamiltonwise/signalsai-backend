@@ -184,7 +184,7 @@ export default function HowItWorks() {
               {
                 "@type": "HowTo",
                 "name": "How Alloro Works",
-                "description": "Three steps to clarity about your business for your business.",
+                "description": "Three steps to Business Clarity for your business.",
                 "step": [
                   { "@type": "HowToStep", "name": "The Checkup", "text": "Enter your business name. Alloro scans your market and delivers your score in 60 seconds." },
                   { "@type": "HowToStep", "name": "The Monday Brief", "text": "Create an account. Every Monday at 7am, your Monday Brief arrives." },

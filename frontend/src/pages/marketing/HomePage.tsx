@@ -125,7 +125,7 @@ export default function HomePage() {
 
   return (
     <MarketingLayout
-      title="Alloro"
+      title="Alloro - Business Clarity"
       description="You took the leap. You trained for years. You bought the business for freedom. Alloro gives it back."
     >
       {/* ═══ HERO -- The Recognition ═══
@@ -364,7 +364,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="rounded-2xl overflow-hidden shadow-warm border border-[#D56753]/8 hover:shadow-warm-lg transition-all duration-300">
-              <img src="/product-dashboard.png" alt="Alloro Dashboard: Your business at a glance" className="w-full" loading="lazy" />
+              <img src="/product-dashboard.png" alt="Alloro Dashboard: Your business clarity at a glance" className="w-full" loading="lazy" />
               <div className="p-4 bg-gradient-to-b from-white to-[#FFF9F7]">
                 <p className="text-sm font-semibold text-[#1A1D23]">Your Dashboard</p>
                 <p className="text-xs text-[#1A1D23]/50 mt-1">One action. Market position. Website status. Everything that matters, nothing that doesn't.</p>
@@ -530,7 +530,7 @@ export default function HomePage() {
                 "@type": "Organization",
                 name: "Alloro",
                 url: "https://getalloro.com",
-                description: "Local business intelligence platform. Gives every business owner the life they set out to build.",
+                description: "Business Clarity platform. Gives every business owner the life they set out to build.",
                 logo: "https://getalloro.com/logo.png",
                 founder: { "@type": "Person", name: "Corey Wise", jobTitle: "Founder" },
                 sameAs: ["https://www.linkedin.com/company/getalloro"],
@@ -539,7 +539,7 @@ export default function HomePage() {
                 "@type": "WebSite",
                 "@id": "https://getalloro.com/#website",
                 url: "https://getalloro.com",
-                name: "Alloro",
+                name: "Alloro - Business Clarity",
                 publisher: { "@id": "https://getalloro.com/#organization" },
                 potentialAction: {
                   "@type": "SearchAction",
@@ -553,7 +553,7 @@ export default function HomePage() {
                 applicationCategory: "BusinessApplication",
                 operatingSystem: "Web",
                 offers: { "@type": "Offer", price: "2000", priceCurrency: "USD", priceValidUntil: "2027-12-31" },
-                description: "Local business intelligence platform. AI agents monitor your competitive position, build your web presence, and deliver one actionable finding every Monday.",
+                description: "Business Clarity platform. AI agents monitor your competitive position, build your web presence, and deliver one actionable finding every Monday.",
                 featureList: "Competitive intelligence, AI-built websites, Review monitoring, Referral tracking, SEO and AEO optimization",
               },
               {

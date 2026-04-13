@@ -91,7 +91,7 @@ export default function Story() {
             that's a successor, a buyer, or their own kid.
           </p>
           <p className="text-base text-[#1A1D23]/80 leading-relaxed">
-            That's what Alloro means. Not a dashboard.
+            That's what Business Clarity means. Not a dashboard.
             Not a report. The confidence that comes from knowing
             which referral source went quiet last month, which
             competitor just opened near you, and what to do about

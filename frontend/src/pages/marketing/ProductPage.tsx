@@ -1,7 +1,7 @@
 /**
  * ProductPage -- /product
  *
- * "What Alloro actually looks like."
+ * "What Business Clarity actually looks like."
  * Checkup, Monday Email, Website, Agent System, Pricing.
  * Locked copy from Website Architecture spec.
  */
@@ -19,7 +19,7 @@ export default function ProductPage() {
       {/* Headline */}
       <section className="px-5 py-16 sm:py-24 bg-white">
         <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] text-center tracking-tight max-w-lg mx-auto">
-          What Alloro actually looks like.
+          What Business Clarity actually looks like.
         </h1>
       </section>
 

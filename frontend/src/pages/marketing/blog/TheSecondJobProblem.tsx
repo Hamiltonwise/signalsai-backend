@@ -86,7 +86,7 @@ export default function TheSecondJobProblem() {
             What clarity looks like
           </h2>
           <p>
-            Alloro is not a report. It's not a dashboard. It's the
+            Business Clarity is not a report. It's not a dashboard. It's the
             confidence that comes from knowing three things:
           </p>
           <ol className="list-decimal pl-6 space-y-2">

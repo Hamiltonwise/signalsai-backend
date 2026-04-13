@@ -63,7 +63,7 @@ export default function PricingPage() {
                   desc="Weekly competitive position tracking across local search, reviews, and online visibility. Your score. Their score. What changed."
                 />
                 <IncludeItem
-                  title="The full intelligence layer."
+                  title="The full Business Clarity layer."
                   desc="Connect your data and Alloro puts a dollar figure on every finding. What's working, what's slipping, and what to do about it this week."
                 />
               </div>
@@ -121,8 +121,8 @@ export default function PricingPage() {
               { "@id": "https://getalloro.com/#organization", "@type": "Organization", "name": "Alloro", "url": "https://getalloro.com" },
               {
                 "@type": "Product",
-                "name": "Alloro",
-                "description": "Local business intelligence platform for local service professionals.",
+                "name": "Alloro Business Clarity",
+                "description": "Business Clarity platform for local service professionals.",
                 "url": "https://getalloro.com/pricing",
                 "brand": { "@id": "https://getalloro.com/#organization" },
                 "offers": {
@@ -143,7 +143,7 @@ export default function PricingPage() {
                 "mainEntity": [
                   { "@type": "Question", "name": "How much does Alloro cost?", "acceptedAnswer": { "@type": "Answer", "text": "Alloro costs $2,000 per location per month. No contracts, cancel anytime." } },
                   { "@type": "Question", "name": "Is there a free trial?", "acceptedAnswer": { "@type": "Answer", "text": "The free market scan takes in 60 seconds with no credit card. Subscription starts when you want weekly Monday briefings." } },
-                  { "@type": "Question", "name": "What is included in the subscription?", "acceptedAnswer": { "@type": "Answer", "text": "Your weekly Monday Brief with one finding and one action, a professional website built by AI, revenue source intelligence with drift alerts, competitive position tracking, and the full intelligence layer that gets more specific as you connect more data." } },
+                  { "@type": "Question", "name": "What is included in the subscription?", "acceptedAnswer": { "@type": "Answer", "text": "Your weekly Monday Brief with one finding and one action, a professional website built by AI, revenue source intelligence with drift alerts, competitive position tracking, and the Business Clarity layer that gets more specific as you connect more data." } },
                   { "@type": "Question", "name": "Can I cancel anytime?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. No contracts, no cancellation fees. Your data stays yours." } },
                 ],
               },
