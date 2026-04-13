@@ -109,10 +109,10 @@ intelligencePanelRoutes.get(
       // Weighted average: SEO 40%, AEO 30%, CRO 30%
       const combinedScore = Math.round(seoScore * 0.4 + aeoScore * 0.3 + croScore * 0.3);
 
-      return res.json({ combinedScore, seoScore, aeoScore, croScore });
+      return res.json({ success: true, combinedScore, seoScore, aeoScore, croScore });
     } catch (error: any) {
       console.error("[IntelPanel] Score error:", error.message);
-      return res.status(500).json({ error: "Failed to calculate score" });
+      return res.status(500).json({ success: false, error: "Failed to calculate score" });
     }
   }
 );

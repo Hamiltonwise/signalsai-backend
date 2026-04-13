@@ -30,7 +30,7 @@ router.get("/pages/:slug", async (req: Request, res: Response) => {
     const page = await ProgrammaticPageModel.findBySlug(slug);
 
     if (!page || page.status !== "published") {
-      return res.status(404).json({ error: "Page not found" });
+      return res.status(404).json({ success: false, error: "Page not found" });
     }
 
     // Increment page views (fire-and-forget)
@@ -83,7 +83,7 @@ router.get("/pages/:slug", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("[SEO] Page error:", err);
-    return res.status(500).json({ error: "Failed to load page" });
+    return res.status(500).json({ success: false, error: "Failed to load page" });
   }
 });
 
@@ -116,7 +116,7 @@ router.get("/pages", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("[SEO] Pages list error:", err);
-    return res.status(500).json({ error: "Failed to list pages" });
+    return res.status(500).json({ success: false, error: "Failed to list pages" });
   }
 });
 
@@ -130,7 +130,7 @@ router.get("/stats", async (_req: Request, res: Response) => {
     return res.json(stats);
   } catch (err) {
     console.error("[SEO] Stats error:", err);
-    return res.status(500).json({ error: "Failed to get stats" });
+    return res.status(500).json({ success: false, error: "Failed to get stats" });
   }
 });
 
@@ -151,7 +151,7 @@ router.post("/pages/:slug/checkup-start", async (req: Request, res: Response) =>
 
     return res.json({ ok: true });
   } catch (err) {
-    return res.status(500).json({ error: "Failed to track" });
+    return res.status(500).json({ success: false, error: "Failed to track" });
   }
 });
 
@@ -170,7 +170,7 @@ router.get("/hub/:type/:slug", async (req: Request, res: Response) => {
     } else if (type === "city") {
       pages = await ProgrammaticPageModel.findByCity(slug);
     } else {
-      return res.status(400).json({ error: "Invalid hub type. Use 'specialty' or 'city'." });
+      return res.status(400).json({ success: false, error: "Invalid hub type. Use 'specialty' or 'city'." });
     }
 
     return res.json({
@@ -189,7 +189,7 @@ router.get("/hub/:type/:slug", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("[SEO] Hub error:", err);
-    return res.status(500).json({ error: "Failed to load hub" });
+    return res.status(500).json({ success: false, error: "Failed to load hub" });
   }
 });
 

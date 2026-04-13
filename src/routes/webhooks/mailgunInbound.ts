@@ -49,7 +49,7 @@ mailgunInboundRoutes.post("/inbound", async (req, res) => {
     const { timestamp, token, signature } = req.body || {};
     if (SIGNING_KEY && !verifyMailgunSignature(timestamp, token, signature)) {
       console.warn("[MailgunInbound] Invalid signature, rejecting");
-      return res.status(403).json({ error: "Invalid signature" });
+      return res.status(403).json({ success: false, error: "Invalid signature" });
     }
 
     // Parse inbound email fields

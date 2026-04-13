@@ -24,7 +24,7 @@ router.get("/google/reconnect", controller.getReconnectUrl);
 router.use((error: any, req: Request, res: Response, next: NextFunction) => {
   console.error("[AUTH] Unhandled route error:", error);
   if (!res.headersSent) {
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ success: false, error: "Internal server error" });
   }
   next(error);
 });

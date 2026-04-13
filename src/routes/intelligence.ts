@@ -23,7 +23,7 @@ function getOrgId(req: express.Request): number | null {
 intelligenceRoutes.get("/summary", authenticateToken, async (req, res) => {
   try {
     const orgId = getOrgId(req);
-    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    if (!orgId) return res.status(400).json({ success: false, error: "No organization found" });
 
     const seoAudit = await db("patientpath_seo_audits")
       .where({ organization_id: orgId })
@@ -64,7 +64,7 @@ intelligenceRoutes.get("/summary", authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error("[Intelligence] Summary error:", err);
-    return res.status(500).json({ error: "Failed to load intelligence summary" });
+    return res.status(500).json({ success: false, error: "Failed to load intelligence summary" });
   }
 });
 
@@ -72,7 +72,7 @@ intelligenceRoutes.get("/summary", authenticateToken, async (req, res) => {
 intelligenceRoutes.get("/seo", authenticateToken, async (req, res) => {
   try {
     const orgId = getOrgId(req);
-    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    if (!orgId) return res.status(400).json({ success: false, error: "No organization found" });
 
     const audits = await db("patientpath_seo_audits")
       .where({ organization_id: orgId })
@@ -82,7 +82,7 @@ intelligenceRoutes.get("/seo", authenticateToken, async (req, res) => {
     return res.json({ audits });
   } catch (err) {
     console.error("[Intelligence] SEO error:", err);
-    return res.status(500).json({ error: "Failed to load SEO data" });
+    return res.status(500).json({ success: false, error: "Failed to load SEO data" });
   }
 });
 
@@ -90,7 +90,7 @@ intelligenceRoutes.get("/seo", authenticateToken, async (req, res) => {
 intelligenceRoutes.get("/aeo", authenticateToken, async (req, res) => {
   try {
     const orgId = getOrgId(req);
-    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    if (!orgId) return res.status(400).json({ success: false, error: "No organization found" });
 
     const faqs = await db("patientpath_faq_content")
       .where({ organization_id: orgId })
@@ -99,7 +99,7 @@ intelligenceRoutes.get("/aeo", authenticateToken, async (req, res) => {
     return res.json({ faqs });
   } catch (err) {
     console.error("[Intelligence] AEO error:", err);
-    return res.status(500).json({ error: "Failed to load AEO data" });
+    return res.status(500).json({ success: false, error: "Failed to load AEO data" });
   }
 });
 
@@ -107,7 +107,7 @@ intelligenceRoutes.get("/aeo", authenticateToken, async (req, res) => {
 intelligenceRoutes.get("/cro", authenticateToken, async (req, res) => {
   try {
     const orgId = getOrgId(req);
-    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    if (!orgId) return res.status(400).json({ success: false, error: "No organization found" });
 
     const experiments = await db("cro_experiments")
       .where({ organization_id: orgId })
@@ -116,7 +116,7 @@ intelligenceRoutes.get("/cro", authenticateToken, async (req, res) => {
     return res.json({ experiments });
   } catch (err) {
     console.error("[Intelligence] CRO error:", err);
-    return res.status(500).json({ error: "Failed to load CRO data" });
+    return res.status(500).json({ success: false, error: "Failed to load CRO data" });
   }
 });
 
@@ -124,7 +124,7 @@ intelligenceRoutes.get("/cro", authenticateToken, async (req, res) => {
 intelligenceRoutes.get("/score/:orgId", authenticateToken, async (req, res) => {
   try {
     const orgId = parseInt(req.params.orgId) || getOrgId(req);
-    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    if (!orgId) return res.status(400).json({ success: false, error: "No organization found" });
 
     const [ga4, gsc] = await Promise.all([
       fetchGA4Data(orgId, 30).catch(() => null),
@@ -169,7 +169,7 @@ intelligenceRoutes.get("/score/:orgId", authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error("[Intelligence] Score error:", err);
-    return res.status(500).json({ error: "Failed to load intelligence score" });
+    return res.status(500).json({ success: false, error: "Failed to load intelligence score" });
   }
 });
 
@@ -191,7 +191,7 @@ intelligenceRoutes.get("/seo/:orgId", authenticateToken, async (req, res) => {
     return res.json({ audits, ga4, gsc });
   } catch (err) {
     console.error("[Intelligence] SEO error:", err);
-    return res.status(500).json({ error: "Failed to load SEO data" });
+    return res.status(500).json({ success: false, error: "Failed to load SEO data" });
   }
 });
 
@@ -207,7 +207,7 @@ intelligenceRoutes.get("/aeo/:orgId", authenticateToken, async (req, res) => {
     return res.json({ faqs });
   } catch (err) {
     console.error("[Intelligence] AEO error:", err);
-    return res.status(500).json({ error: "Failed to load AEO data" });
+    return res.status(500).json({ success: false, error: "Failed to load AEO data" });
   }
 });
 
@@ -223,7 +223,7 @@ intelligenceRoutes.get("/cro/:orgId", authenticateToken, async (req, res) => {
     return res.json({ experiments });
   } catch (err) {
     console.error("[Intelligence] CRO error:", err);
-    return res.status(500).json({ error: "Failed to load CRO data" });
+    return res.status(500).json({ success: false, error: "Failed to load CRO data" });
   }
 });
 

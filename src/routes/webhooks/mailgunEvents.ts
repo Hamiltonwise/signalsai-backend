@@ -28,7 +28,7 @@ mailgunEventsRoutes.post("/events", async (req, res) => {
     if (timestamp && token && sig) {
       if (!verifyMailgunSignature(timestamp, token, sig)) {
         console.warn("[MailgunEvents] Invalid signature, rejecting");
-        return res.status(406).json({ error: "Invalid signature" });
+        return res.status(406).json({ success: false, error: "Invalid signature" });
       }
     }
 
