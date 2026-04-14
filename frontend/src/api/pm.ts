@@ -373,6 +373,16 @@ export async function getAttachmentDownloadUrl(
   return res.data;
 }
 
+export async function getAttachmentTextContent(
+  taskId: string,
+  attachmentId: string
+): Promise<{ text: string; truncated: boolean; total_bytes: number }> {
+  const res = await apiGet({
+    path: `/pm/tasks/${taskId}/attachments/${attachmentId}/text`,
+  });
+  return res.data;
+}
+
 export async function deleteAttachment(
   taskId: string,
   attachmentId: string

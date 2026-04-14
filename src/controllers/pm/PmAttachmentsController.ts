@@ -24,6 +24,7 @@ import {
   uploadToS3,
   deleteFromS3,
   generatePresignedUrl,
+  getFromS3,
 } from "../../utils/core/s3";
 import {
   ALLOWED_MIME_TYPES,
@@ -224,6 +225,68 @@ export async function getAttachmentDownloadUrl(
     return res.json({ success: true, data: { url, expires_at } });
   } catch (error) {
     return handleError(res, error, "getAttachmentDownloadUrl");
+  }
+}
+
+// GET /api/pm/tasks/:id/attachments/:attachmentId/text
+// Server-side proxy that streams the S3 object body as plain text up to
+// a safe byte cap (default 2MB). Avoids browser CORS against S3 for
+// text-based previews (csv, txt, html, css, js, json, xml, yaml, md).
+export async function getAttachmentTextContent(
+  req: AuthRequest,
+  res: Response
+): Promise<any> {
+  try {
+    const { id: taskId, attachmentId } = req.params;
+    const capRaw = parseInt(String(req.query?.cap || ""), 10);
+    const MAX = 2 * 1024 * 1024; // 2 MB hard ceiling
+    const cap = Number.isFinite(capRaw) && capRaw > 0 ? Math.min(capRaw, MAX) : MAX;
+
+    const attachment = await PmTaskAttachmentModel.findOne({
+      id: attachmentId,
+      task_id: taskId,
+    });
+    if (!attachment) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Attachment not found" });
+    }
+
+    const obj = await getFromS3(attachment.s3_key);
+    const chunks: Buffer[] = [];
+    let total = 0;
+    let truncated = false;
+
+    await new Promise<void>((resolve, reject) => {
+      const stream = obj.body as NodeJS.ReadableStream;
+      stream.on("data", (chunk: Buffer | string) => {
+        const buf = Buffer.isBuffer(chunk)
+          ? chunk
+          : Buffer.from(chunk as string);
+        if (total + buf.length > cap) {
+          const remaining = cap - total;
+          if (remaining > 0) chunks.push(buf.subarray(0, remaining));
+          total = cap;
+          truncated = true;
+          // Stop reading more bytes; mark as ended.
+          (stream as any).destroy?.();
+          resolve();
+          return;
+        }
+        chunks.push(buf);
+        total += buf.length;
+      });
+      stream.on("end", () => resolve());
+      stream.on("error", reject);
+    });
+
+    const text = Buffer.concat(chunks).toString("utf8");
+    return res.json({
+      success: true,
+      data: { text, truncated, total_bytes: total },
+    });
+  } catch (error) {
+    return handleError(res, error, "getAttachmentTextContent");
   }
 }
 

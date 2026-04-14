@@ -24,6 +24,14 @@ export const ALLOWED_MIME_TYPES: string[] = [
   "text/csv",
   "text/plain",
   "text/markdown",
+  "text/html",
+  "text/css",
+  "text/javascript",
+  "application/javascript",
+  "text/xml",
+  "application/xml",
+  "text/yaml",
+  "application/yaml",
   "video/mp4",
   "application/zip",
   "application/x-zip-compressed",
@@ -50,6 +58,15 @@ export const PREVIEWABLE_MIME_TYPES: string[] = [
   "text/csv",
   "text/plain",
   "text/markdown",
+  "text/html",
+  "text/css",
+  "text/javascript",
+  "application/javascript",
+  "text/xml",
+  "application/xml",
+  "text/yaml",
+  "application/yaml",
+  "application/json",
   "video/mp4",
 ];
 
@@ -57,11 +74,17 @@ export const PREVIEWABLE_MIME_TYPES: string[] = [
  * Explicitly rejected — even if somehow they squeak onto the allowed list,
  * these are hard-denied. Guards against executable/script upload abuse.
  */
+/**
+ * Hard-deny list. These are kept out even though some (text/html,
+ * application/javascript) look "text-ish" — they're risky enough that
+ * we deliberately never let the browser render them. NOTE: user-visible
+ * HTML/JS/CSS uploads ARE allowed now (text/html, text/css, etc.) and
+ * are previewed via the server-side /text proxy as plain text — never
+ * via a URL the browser could execute.
+ */
 export const BLOCKED_MIME_TYPES: string[] = [
   "application/x-msdownload",
   "application/x-sh",
-  "application/javascript",
-  "text/html",
   "application/xhtml+xml",
   "application/x-executable",
 ];

@@ -1,25 +1,23 @@
 /**
  * AttachmentPreviewModal — renders a single attachment inline when possible.
  *
- * Fetches a fresh 1-hour presigned URL on mount, then picks a preview mode
- * by MIME type:
- *   - image/*       → <img> fit-contain
- *   - application/pdf → <embed>
- *   - video/mp4     → <video controls>
- *   - text/csv      → papaparse → HTML table (first 1000 rows)
- *   - text/plain, text/markdown → plain <pre> (NOT rendered as markdown)
- *   - everything else → icon + filename + big Download button
+ * Fetches a fresh 1-hour presigned URL on mount for image/pdf/video
+ * previews. Text-based previews (csv, txt, html, css, js, json, xml,
+ * yaml, markdown) go through the server-side /text proxy endpoint so
+ * the browser never hits S3 directly (avoids CORS). Text previews
+ * include a Copy-to-clipboard button.
  *
- * Closes on backdrop click or ESC. Fetches text-based previews through the
- * presigned URL client-side — S3 serves range-friendly bytes, and plain-text
- * never hits an HTML parser on our side.
+ * Close: backdrop click or ESC.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Download, File as FileIcon } from "lucide-react";
+import { X, Download, File as FileIcon, Copy, Check } from "lucide-react";
 import Papa from "papaparse";
-import { getAttachmentDownloadUrl } from "../../api/pm";
+import {
+  getAttachmentDownloadUrl,
+  getAttachmentTextContent,
+} from "../../api/pm";
 import type { PmTaskAttachment } from "../../types/pm";
 
 interface AttachmentPreviewModalProps {
@@ -31,20 +29,57 @@ interface AttachmentPreviewModalProps {
 
 const CSV_ROW_CAP = 1000;
 
-function getPreviewKind(
-  mime: string
-):
-  | "image"
-  | "pdf"
-  | "video"
-  | "csv"
-  | "text"
-  | "none" {
+type PreviewKind = "image" | "pdf" | "video" | "csv" | "text" | "none";
+
+// Extension → preview kind fallback. Some uploads arrive with MIME
+// application/octet-stream (browsers fail to detect), so we also
+// consider the filename extension.
+const TEXT_EXTS = new Set([
+  "txt",
+  "md",
+  "markdown",
+  "html",
+  "htm",
+  "css",
+  "js",
+  "mjs",
+  "cjs",
+  "ts",
+  "tsx",
+  "jsx",
+  "json",
+  "xml",
+  "yaml",
+  "yml",
+  "log",
+  "ini",
+  "conf",
+  "env",
+  "sh",
+  "sql",
+]);
+
+function getExt(filename: string): string {
+  const idx = filename.lastIndexOf(".");
+  return idx >= 0 ? filename.slice(idx + 1).toLowerCase() : "";
+}
+
+function getPreviewKind(mime: string, filename: string): PreviewKind {
   if (mime.startsWith("image/")) return "image";
   if (mime === "application/pdf") return "pdf";
-  if (mime === "video/mp4") return "video";
-  if (mime === "text/csv") return "csv";
-  if (mime === "text/plain" || mime === "text/markdown") return "text";
+  if (mime === "video/mp4" || mime.startsWith("video/")) return "video";
+  if (mime === "text/csv" || getExt(filename) === "csv") return "csv";
+  if (
+    mime.startsWith("text/") ||
+    mime === "application/json" ||
+    mime === "application/javascript" ||
+    mime === "application/xml" ||
+    mime === "application/yaml"
+  ) {
+    return "text";
+  }
+  // Extension fallback for octet-stream / unknown MIME
+  if (TEXT_EXTS.has(getExt(filename))) return "text";
   return "none";
 }
 
@@ -54,16 +89,18 @@ export function AttachmentPreviewModal({
   onClose,
   onDownload,
 }: AttachmentPreviewModalProps) {
-  const kind = useMemo(() => getPreviewKind(attachment.mime_type), [
-    attachment.mime_type,
-  ]);
+  const kind = useMemo(
+    () => getPreviewKind(attachment.mime_type, attachment.filename),
+    [attachment.mime_type, attachment.filename]
+  );
   const [url, setUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string | null>(null);
+  const [textTruncated, setTextTruncated] = useState(false);
   const [csvRows, setCsvRows] = useState<string[][] | null>(null);
   const [csvTruncated, setCsvTruncated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  // ESC to close
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -72,34 +109,51 @@ export function AttachmentPreviewModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Fetch the presigned URL; for text/csv also fetch the body content.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        // Non-text previews (image/pdf/video) use the direct presigned URL.
+        if (kind === "image" || kind === "pdf" || kind === "video") {
+          const { url: presigned } = await getAttachmentDownloadUrl(
+            taskId,
+            attachment.id
+          );
+          if (!cancelled) setUrl(presigned);
+          return;
+        }
+
+        // Text & CSV go through the server proxy — no browser→S3 CORS.
+        if (kind === "text" || kind === "csv") {
+          const { text, truncated } = await getAttachmentTextContent(
+            taskId,
+            attachment.id
+          );
+          if (cancelled) return;
+          if (kind === "csv") {
+            const parsed = Papa.parse<string[]>(text, {
+              skipEmptyLines: true,
+            });
+            const rows = (parsed.data as string[][]) || [];
+            const cappedOut = rows.length > CSV_ROW_CAP;
+            setCsvRows(cappedOut ? rows.slice(0, CSV_ROW_CAP) : rows);
+            setCsvTruncated(cappedOut || truncated);
+            setTextContent(text); // kept for Copy button
+          } else {
+            setTextContent(text);
+            setTextTruncated(truncated);
+          }
+          // Non-null URL unlocks the body render branch — any value works.
+          setUrl("server-proxy");
+          return;
+        }
+
+        // Non-previewable: fetch URL so the Download button has a target.
         const { url: presigned } = await getAttachmentDownloadUrl(
           taskId,
           attachment.id
         );
-        if (cancelled) return;
-        setUrl(presigned);
-
-        if (kind === "text") {
-          const res = await fetch(presigned);
-          const text = await res.text();
-          if (!cancelled) setTextContent(text);
-        } else if (kind === "csv") {
-          const res = await fetch(presigned);
-          const text = await res.text();
-          if (cancelled) return;
-          const parsed = Papa.parse<string[]>(text, {
-            skipEmptyLines: true,
-          });
-          const rows = (parsed.data as string[][]) || [];
-          const truncated = rows.length > CSV_ROW_CAP;
-          setCsvRows(truncated ? rows.slice(0, CSV_ROW_CAP) : rows);
-          setCsvTruncated(truncated);
-        }
+        if (!cancelled) setUrl(presigned);
       } catch (err) {
         if (!cancelled) {
           console.error("[AttachmentPreview] fetch failed:", err);
@@ -111,6 +165,23 @@ export function AttachmentPreviewModal({
       cancelled = true;
     };
   }, [taskId, attachment.id, kind]);
+
+  const handleCopy = async () => {
+    const toCopy =
+      kind === "csv" && csvRows
+        ? textContent ?? ""
+        : textContent ?? "";
+    if (!toCopy) return;
+    try {
+      await navigator.clipboard.writeText(toCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard permission or insecure context */
+    }
+  };
+
+  const canCopy = kind === "text" || kind === "csv";
 
   return (
     <AnimatePresence>
@@ -141,6 +212,25 @@ export function AttachmentPreviewModal({
               {attachment.filename}
             </p>
             <div className="flex items-center gap-1">
+              {canCopy && textContent !== null && (
+                <button
+                  onClick={handleCopy}
+                  title="Copy to clipboard"
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-pm-text-secondary hover:bg-pm-bg-hover hover:text-pm-text-primary"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => onDownload(attachment)}
                 title="Download"
@@ -195,7 +285,10 @@ export function AttachmentPreviewModal({
                   <p className="text-sm text-pm-text-muted">Parsing...</p>
                 ) : (
                   <>
-                    <div className="overflow-auto rounded-lg border" style={{ borderColor: "var(--color-pm-border)" }}>
+                    <div
+                      className="overflow-auto rounded-lg border"
+                      style={{ borderColor: "var(--color-pm-border)" }}
+                    >
                       <table className="min-w-full text-xs">
                         <tbody>
                           {csvRows.map((row, rIdx) => (
@@ -234,12 +327,25 @@ export function AttachmentPreviewModal({
                 )}
               </div>
             ) : kind === "text" ? (
-              <pre
-                className="h-full w-full overflow-auto p-4 text-xs text-pm-text-primary"
-                style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-              >
-                {textContent ?? "Loading..."}
-              </pre>
+              <>
+                <pre
+                  className="h-full w-full overflow-auto p-4 text-xs text-pm-text-primary"
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    fontFamily:
+                      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+                  }}
+                >
+                  {textContent ?? "Loading..."}
+                </pre>
+                {textTruncated && (
+                  <p className="border-t p-2 text-center text-[11px] text-pm-text-muted"
+                     style={{ borderColor: "var(--color-pm-border)" }}>
+                    File truncated — download for full content
+                  </p>
+                )}
+              </>
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-8 text-center">
                 <FileIcon className="h-16 w-16 text-pm-text-muted" />
