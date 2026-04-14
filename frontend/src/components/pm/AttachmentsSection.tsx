@@ -203,8 +203,12 @@ export function AttachmentsSection({
 
   const handleDownload = async (att: PmTaskAttachment) => {
     try {
-      const { url } = await getAttachmentDownloadUrl(taskId, att.id);
-      // Trigger browser download: anchor + click
+      // forceDownload=true signs the URL with Content-Disposition:
+      // attachment so the browser saves the file instead of rendering
+      // it inline (anchor `download` attr is ignored cross-origin).
+      const { url } = await getAttachmentDownloadUrl(taskId, att.id, {
+        forceDownload: true,
+      });
       const a = document.createElement("a");
       a.href = url;
       a.download = att.filename;

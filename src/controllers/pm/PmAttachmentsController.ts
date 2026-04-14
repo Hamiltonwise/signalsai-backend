@@ -208,7 +208,15 @@ export async function getAttachmentDownloadUrl(
     }
 
     const expiresInSeconds = 3600;
-    const url = await generatePresignedUrl(attachment.s3_key, expiresInSeconds);
+    // ?download=1 → sign URL with Content-Disposition: attachment so the
+    // browser forces a file download instead of rendering inline. The
+    // default (no query) is a preview-friendly URL.
+    const forceDownload = req.query?.download === "1";
+    const url = await generatePresignedUrl(
+      attachment.s3_key,
+      expiresInSeconds,
+      forceDownload ? attachment.filename : undefined
+    );
     const expires_at = new Date(
       Date.now() + expiresInSeconds * 1000
     ).toISOString();
