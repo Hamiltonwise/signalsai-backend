@@ -68,23 +68,28 @@ export async function syncReferralSourcesFromPmsJob(
 
   for (const row of rawData) {
     // Flexible column detection: match against common header variations
-    // Doctors export from Edge, Dentrix, Eaglesoft, OpenDental -- all use different names
-    // Covers: Dentrix, Eaglesoft, Open Dental, Edge/DentalEMR, Dolphin, OrthoTrac, Curve
+    // Covers ALL verticals: dental PMS, home services CRM, accounting, legal, veterinary
     const name = findColumn(row, [
+      // Universal
       "Referral Source", "referral_source", "Source", "source",
-      "Referred By", "referred_by", "Referring Doctor", "referring_doctor",
-      "Referring Provider", "referring_provider", "Referrer", "referrer",
-      "GP Name", "gp_name", "Doctor", "doctor", "Provider", "provider",
-      "Ref Doctor", "Ref Source", "Referring Dentist", "Referring Practice",
+      "Referred By", "referred_by", "Referrer", "referrer",
       "Lead Source", "lead_source", "Channel", "channel",
-      // Dentrix specific
-      "Referring Doctor/Other", "Referred BY",
-      // Open Dental specific
-      "Referred To", "Last Name",
-      // OrthoTrac specific
+      "Provider", "provider",
+      // Dental PMS (Dentrix, Eaglesoft, Open Dental, Edge, OrthoTrac, Dolphin)
+      "Referring Doctor", "referring_doctor", "Referring Provider", "referring_provider",
+      "GP Name", "gp_name", "Doctor", "doctor",
+      "Ref Doctor", "Ref Source", "Referring Dentist", "Referring Practice",
+      "Referring Doctor/Other", "Referred BY", "Referred To", "Last Name",
       "Referral",
-      // DentalEMR/Edge
-      "Referring Doctor",
+      // Home services (CRM, call tracking, lead management)
+      "How Did You Hear About Us", "How Found", "Marketing Source",
+      "Ad Source", "Campaign", "campaign", "Ad Campaign",
+      "Booking Source", "Booking Channel",
+      // CPA / Financial / Legal (client referral tracking)
+      "Referral Partner", "Referring Attorney", "Referring CPA",
+      "Referring Firm", "Business Source", "Client Source",
+      // Veterinary
+      "Referring Vet", "Referring Veterinarian", "Referring Clinic",
     ]);
 
     if (!name) continue;
@@ -112,6 +117,9 @@ export async function syncReferralSourcesFromPmsJob(
       "Total Referrals", "Listed Referrals",
       // Open Dental
       "Patient Count",
+      // Home services / general
+      "Jobs", "jobs", "Leads", "leads", "Bookings", "bookings",
+      "Calls", "calls", "Appointments", "appointments",
     ]) || "1")) || 1;
 
     const dateStr = findColumn(row, [
@@ -126,12 +134,20 @@ export async function syncReferralSourcesFromPmsJob(
     const month = dateStr ? dateStr.substring(0, 7) : "unknown";
 
     const nameLower = name.toLowerCase();
+    // Classify source type: marketing (digital channels), partner (referral relationships), or self (walk-in/direct)
+    const isDigital = nameLower.includes("google") || nameLower.includes("yelp") ||
+      nameLower.includes("facebook") || nameLower.includes("instagram") ||
+      nameLower.includes("angi") || nameLower.includes("homeadvisor") ||
+      nameLower.includes("thumbtack") || nameLower.includes("nextdoor") ||
+      nameLower.includes("website") || nameLower.includes("internet") ||
+      nameLower.includes("online") || nameLower.includes("ad") ||
+      nameLower.includes("seo") || nameLower.includes("ppc");
     const isSelf = nameLower.includes("self") || nameLower.includes("direct") ||
-      nameLower.includes("google") || nameLower.includes("yelp") ||
-      nameLower.includes("website") || nameLower.includes("internet");
+      nameLower.includes("walk-in") || nameLower.includes("walkin");
+    const sourceType = isDigital ? "digital" : isSelf ? "self" : "partner";
 
     if (!sources.has(name)) {
-      sources.set(name, { count: 0, production: 0, lastDate: null, type: isSelf ? "self" : "doctor", months: {} });
+      sources.set(name, { count: 0, production: 0, lastDate: null, type: sourceType, months: {} });
     }
     const src = sources.get(name)!;
     src.count += refs;

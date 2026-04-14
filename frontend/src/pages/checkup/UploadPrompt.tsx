@@ -5,11 +5,12 @@ import { PMSUploadWizardModal } from "../../components/PMS/PMSUploadWizardModal"
 import { useVocab } from "../../contexts/vocabularyContext";
 
 /**
- * /checkup/upload-prompt -- Closes the banner loop.
+ * /checkup/upload-prompt -- Closes the loop from the checkup.
  *
- * Closes the loop from the checkup promise.
  * Checkup: showed Google competitive intelligence (reviews, ratings).
- * This screen: "Upload your referral report and we'll show you which one."
+ * This screen: "Show us where your customers come from."
+ * Works for ALL verticals: dental referral reports, plumber call logs,
+ * CPA client lists, vet referral tracking. Any format.
  *
  * Appears AFTER BuildingScreen, BEFORE ColleagueShare.
  * The prospect just created an account and has a JWT in localStorage.
@@ -74,7 +75,7 @@ export default function UploadPrompt() {
             Now show us where your {vocab.patientTerm}s come from.
           </h2>
           <p className="text-sm text-gray-500 leading-relaxed max-w-sm mx-auto">
-            Upload a recent report. 60 seconds, and we'll tell you which {vocab.referralTerm} needs attention.
+            A spreadsheet, a screenshot, even a photo of a report. 60 seconds, and we'll tell you which {vocab.referralTerm} needs attention.
           </p>
         </div>
 
