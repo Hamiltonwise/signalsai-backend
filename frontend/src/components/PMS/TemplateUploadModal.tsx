@@ -259,7 +259,7 @@ export const TemplateUploadModal: React.FC<TemplateUploadModalProps> = ({
                         <input
                           ref={fileInputRef}
                           type="file"
-                          accept=".csv,.txt,.xlsx,.xls"
+                          accept=".csv,.txt,.xlsx,.xls,.png,.jpg,.jpeg,.pdf,.webp,.heic"
                           onChange={handleFileInputChange}
                           className="hidden"
                         />

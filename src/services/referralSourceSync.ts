@@ -11,6 +11,31 @@
 
 import { db } from "../database/connection";
 
+/**
+ * Find a column value by trying multiple header name variations.
+ * Doctors export from Edge, Dentrix, Eaglesoft, OpenDental -- all different headers.
+ * Returns the first non-empty match or empty string.
+ */
+function findColumn(row: Record<string, string>, candidates: string[]): string {
+  for (const key of candidates) {
+    const val = row[key];
+    if (val && String(val).trim()) return String(val).trim();
+  }
+  // Fuzzy fallback: check if any row key CONTAINS one of the candidate stems
+  const rowKeys = Object.keys(row);
+  for (const candidate of candidates) {
+    const stem = candidate.toLowerCase().replace(/[_\s]/g, "");
+    for (const rowKey of rowKeys) {
+      const normalizedKey = rowKey.toLowerCase().replace(/[_\s]/g, "");
+      if (normalizedKey.includes(stem) || stem.includes(normalizedKey)) {
+        const val = row[rowKey];
+        if (val && String(val).trim()) return String(val).trim();
+      }
+    }
+  }
+  return "";
+}
+
 export async function syncReferralSourcesFromPmsJob(
   orgId: number,
   rawData: Record<string, string>[],
@@ -30,22 +55,39 @@ export async function syncReferralSourcesFromPmsJob(
   }>();
 
   for (const row of rawData) {
-    const name = (
-      row["Referral Source"] || row["referral_source"] ||
-      row["Source"] || row["source"] || row["Referred By"] ||
-      row["referred_by"] || ""
-    ).trim();
+    // Flexible column detection: match against common header variations
+    // Doctors export from Edge, Dentrix, Eaglesoft, OpenDental -- all use different names
+    const name = findColumn(row, [
+      "Referral Source", "referral_source", "Source", "source",
+      "Referred By", "referred_by", "Referring Doctor", "referring_doctor",
+      "Referring Provider", "referring_provider", "Referrer", "referrer",
+      "GP Name", "gp_name", "Doctor", "doctor", "Provider", "provider",
+      "Ref Doctor", "Ref Source", "Referring Dentist", "Referring Practice",
+      "Lead Source", "lead_source", "Channel", "channel",
+    ]);
 
     if (!name) continue;
 
     const production = parseFloat(
-      String(row["Production"] || row["production"] || row["Amount"] || row["Fee"] || "0")
-        .replace(/[$,]/g, "")
+      String(findColumn(row, [
+        "Production", "production", "Amount", "amount", "Fee", "fee",
+        "Revenue", "revenue", "Value", "value", "Total", "total",
+        "Net Production", "net_production", "Gross Production",
+        "Case Value", "case_value", "Procedure Amount",
+      ]) || "0").replace(/[$,]/g, "")
     ) || 0;
 
-    const refs = parseInt(String(row["Number of Referrals"] || row["referral_count"] || "1")) || 1;
+    const refs = parseInt(String(findColumn(row, [
+      "Number of Referrals", "referral_count", "Count", "count",
+      "Referrals", "referrals", "Qty", "qty", "Patients", "patients",
+      "Cases", "cases", "Starts", "starts", "New Patients", "new_patients",
+    ]) || "1")) || 1;
 
-    const dateStr = row["Date"] || row["date"] || row["Appointment Date"] || null;
+    const dateStr = findColumn(row, [
+      "Date", "date", "Appointment Date", "appointment_date",
+      "Referral Date", "referral_date", "Visit Date", "visit_date",
+      "Service Date", "service_date", "Appt Date", "appt_date",
+    ]) || null;
     const month = dateStr ? dateStr.substring(0, 7) : "unknown";
 
     const nameLower = name.toLowerCase();

@@ -151,6 +151,14 @@ export async function processManualEntry(
     // Don't fail the request if agent trigger fails
   }
 
+  // Sync referral sources from manual entry data -- this powers the intelligence
+  // page regardless of whether Google connection or monthly agents exist
+  if (organizationId && parsedManualData.length > 0) {
+    syncReferralSourcesFromPmsJob(organizationId, parsedManualData as Record<string, string>[]).catch((err) => {
+      console.error(`[PMS] Referral source sync failed for manual entry job ${jobId}:`, err instanceof Error ? err.message : err);
+    });
+  }
+
   return {
     recordsProcessed: parsedManualData.length,
     recordsStored: parsedManualData.length,
@@ -384,6 +392,15 @@ export async function processFileUpload(
 
     console.log(`[PMS] Parser webhook responded for job ${jobId}:`, response.status);
 
+    // Auto-approve: the customer uploaded data and the parser processed it.
+    // No admin gate needed -- the intelligence page should show results immediately.
+    try {
+      await PmsJobModel.updateById(jobId, { is_approved: true, status: "approved" } as any);
+      console.log(`[PMS] Job ${jobId}: auto-approved after successful webhook processing`);
+    } catch (approveErr: any) {
+      console.error(`[PMS] Job ${jobId}: auto-approve failed (non-blocking):`, approveErr.message);
+    }
+
     // Sync referral sources to referral_sources table (powers Monday email, GP discovery, drift detection)
     if (organizationId && jsonData.length > 0) {
       syncReferralSourcesFromPmsJob(organizationId, jsonData as Record<string, string>[]).catch((err) => {
@@ -406,6 +423,7 @@ export async function processFileUpload(
             note: "Processed locally. Full n8n analysis pending retry.",
           }),
           status: "pending_retry",
+          is_approved: true, // Auto-approve: customer gets immediate value from local processing
         } as any);
 
         await updateAutomationStatus(jobId, {
@@ -432,7 +450,17 @@ export async function processFileUpload(
 
     // Sync referral sources even on webhook failure (the data is local, pipe it through)
     if (organizationId && jsonData.length > 0) {
-      syncReferralSourcesFromPmsJob(organizationId, jsonData as Record<string, string>[]).catch(() => {});
+      syncReferralSourcesFromPmsJob(organizationId, jsonData as Record<string, string>[]).catch((err) => {
+        console.error(`[PMS] Referral source sync failed for job ${jobId} (n8n fallback, non-blocking):`, err instanceof Error ? err.message : err);
+      });
+    }
+
+    // Auto-approve on local processing too -- customer uploaded data, give them value
+    try {
+      await PmsJobModel.updateById(jobId, { is_approved: true } as any);
+      console.log(`[PMS] Job ${jobId}: auto-approved after local preprocessing`);
+    } catch {
+      // non-blocking
     }
 
     // Use preprocessor results for instant finding when available (more accurate than raw extraction)
