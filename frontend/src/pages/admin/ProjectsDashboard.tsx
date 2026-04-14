@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FolderPlus, Plus, Sparkles } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { usePmStore } from "../../stores/pmStore";
 import { CreateProjectModal } from "../../components/pm/CreateProjectModal";
 import { CreateTaskModal } from "../../components/pm/CreateTaskModal";
 import { StatsRow } from "../../components/pm/StatsRow";
 import { VelocityChart } from "../../components/pm/VelocityChart";
+import { TasksOverTimeChart } from "../../components/pm/TasksOverTimeChart";
 import { ActivityTimeline } from "../../components/pm/ActivityTimeline";
 import { ActivityModal } from "../../components/pm/ActivityModal";
 import { FloatingClock } from "../../components/pm/FloatingClock";
 import { MeTabView } from "../../components/pm/MeTabView";
 import { CrossProjectAISynthModal } from "../../components/pm/CrossProjectAISynthModal";
+import { NoProjects } from "../../components/pm/EmptyStates";
 import { formatDeadline } from "../../utils/pmDateFormat";
 
 const containerVariants = {
@@ -115,6 +117,9 @@ export default function ProjectsDashboard() {
           <VelocityChart />
         </div>
 
+        {/* Tasks over time — 14-day daily completions */}
+        <TasksOverTimeChart />
+
         {/* Main content: Grid + Activity */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Project Grid (2/3) */}
@@ -124,49 +129,7 @@ export default function ProjectsDashboard() {
                 <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#D66853] border-t-transparent" />
               </div>
             ) : projects.length === 0 ? (
-              /* Empty state */
-              <div
-                className="flex flex-col items-center justify-center py-16 rounded-xl"
-                style={{
-                  border: "2px dashed var(--color-pm-border)",
-                  borderRadius: "12px",
-                }}
-              >
-                <div
-                  className="flex h-14 w-14 items-center justify-center rounded-2xl mb-4"
-                  style={{ backgroundColor: "var(--color-pm-accent-subtle)" }}
-                >
-                  <FolderPlus
-                    className="h-7 w-7"
-                    strokeWidth={1.5}
-                    style={{ color: "var(--color-pm-text-muted)" }}
-                  />
-                </div>
-                <h2
-                  className="text-lg font-semibold mb-1.5"
-                  style={{ color: "var(--color-pm-text-primary)" }}
-                >
-                  No projects yet
-                </h2>
-                <p
-                  className="text-sm text-center max-w-[320px] mb-6"
-                  style={{ color: "var(--color-pm-text-secondary)" }}
-                >
-                  Create your first project to start tracking tasks.
-                </p>
-                <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowCreateModal(true)}
-                  className="rounded-lg px-6 py-3 text-sm font-semibold text-white transition-colors duration-150"
-                  style={{
-                    backgroundColor: "#D66853",
-                    boxShadow: "0 2px 8px rgba(214,104,83,0.25)",
-                  }}
-                >
-                  Create Project
-                </motion.button>
-              </div>
+              <NoProjects onCreate={() => setShowCreateModal(true)} />
             ) : (
               <motion.div
                 variants={containerVariants}

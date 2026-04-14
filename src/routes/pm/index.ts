@@ -7,11 +7,15 @@ import statsRoutes from "./stats";
 import usersRoutes from "./users";
 import myTasksRoutes from "./myTasks";
 import notificationsRoutes from "./notifications";
+import attachmentsRoutes from "./attachments";
+import commentsRoutes from "./comments";
 
 const router = express.Router();
 
 router.use("/projects", projectsRoutes);
 router.use("/", tasksRoutes);
+router.use("/", attachmentsRoutes);
+router.use("/", commentsRoutes);
 router.use("/tasks", myTasksRoutes);
 router.use("/ai-synth", aiSynthRoutes);
 router.use("/activity", activityRoutes);

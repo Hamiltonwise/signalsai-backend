@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, FolderKanban, Plus, Maximize, ClipboardList } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePmStore } from "../../stores/pmStore";
+import { NoSearchResults } from "./EmptyStates";
 
 
 interface CommandPaletteProps {
@@ -189,9 +190,7 @@ export function CommandPalette({
             {/* Results */}
             <div className="max-h-80 overflow-y-auto py-2">
               {results.length === 0 ? (
-                <p className="px-4 py-6 text-center text-sm text-gray-400">
-                  No results for &ldquo;{query}&rdquo;
-                </p>
+                <NoSearchResults query={query} />
               ) : (
                 results.map((result, i) => {
                   const Icon = result.icon;

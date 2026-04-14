@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Bell, Check, X, CheckCheck, Trash2 } from "lucide-react";
+import { Bell, Check, X, CheckCheck, Trash2, AtSign, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PmNotification } from "../../types/pm";
 import { fetchNotifications, markNotificationsRead, deleteAllNotifications, fetchPmUsers } from "../../api/pm";
@@ -19,6 +19,8 @@ function notificationMessage(n: PmNotification, userMap: Map<number, string>): s
   const task = n.metadata?.task_title ?? "a task";
   if (n.type === "task_assigned") return `${actor} assigned you "${task}"`;
   if (n.type === "task_unassigned") return `${actor} unassigned you from "${task}"`;
+  if (n.type === "mention_in_comment") return `${actor} mentioned you in "${task}"`;
+  if (n.type === "task_commented") return `${actor} commented on "${task}"`;
   return `${actor} completed "${task}" you assigned`;
 }
 
@@ -26,6 +28,8 @@ const TYPE_ICON: Record<PmNotification["type"], React.ReactNode> = {
   task_assigned: <Check className="h-3 w-3" style={{ color: "#3D8B40" }} />,
   task_unassigned: <X className="h-3 w-3" style={{ color: "#C43333" }} />,
   assignee_completed_task: <CheckCheck className="h-3 w-3" style={{ color: "#5B9BD5" }} />,
+  mention_in_comment: <AtSign className="h-3 w-3" style={{ color: "#D66853" }} />,
+  task_commented: <MessageCircle className="h-3 w-3" style={{ color: "#5B9BD5" }} />,
 };
 
 interface NotificationCardProps {
