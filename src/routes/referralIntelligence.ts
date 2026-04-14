@@ -11,6 +11,7 @@ import express from "express";
 import { authenticateToken } from "../middleware/auth";
 import { aggregatePmsData } from "../utils/pms/pmsAggregator";
 import { db } from "../database/connection";
+import { detectCompensationPatterns } from "../services/referralAnalytics";
 
 const referralIntelligenceRoutes = express.Router();
 
@@ -224,11 +225,20 @@ referralIntelligenceRoutes.get(
         };
       }
 
+      // Compensation detection: the Mythos-level pattern
+      let compensationAlerts: any[] = [];
+      try {
+        compensationAlerts = await detectCompensationPatterns(orgId);
+      } catch {
+        // referral_sources table may not have monthly fields yet
+      }
+
       return res.json({
         success: true,
         hasData: true,
         topReferrers: topReferrers.slice(0, 20),
         driftAlerts: driftAlerts.slice(0, 10),
+        compensationAlerts: compensationAlerts.slice(0, 5),
         recommendedAction,
       });
     } catch (error: any) {

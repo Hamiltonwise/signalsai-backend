@@ -242,6 +242,151 @@ export async function getTopReferrers(
   return ranked.map((r, i) => ({ rank: i + 1, ...r }));
 }
 
+// ─── Compensation Detection (Mythos-level pattern) ───
+
+/**
+ * The hidden vulnerability: Source A declines, Source B compensates,
+ * the schedule stays full, and the owner never notices. When Source B
+ * stops compensating, the owner feels both losses at once -- 60 days
+ * after the real problem started.
+ *
+ * This detects the pattern and projects forward.
+ */
+
+export interface CompensationAlert {
+  declining_source: string;
+  declining_source_id: number;
+  compensating_source: string;
+  compensating_source_id: number;
+  decline_months: number;
+  decline_percentage: number;
+  compensation_status: "active" | "ending" | "ended";
+  projected_impact_days: number;
+  annual_value_at_risk: number;
+  narrative: string;
+}
+
+export async function detectCompensationPatterns(
+  orgId: number,
+): Promise<CompensationAlert[]> {
+  if (!(await hasReferralSourcesTable())) return [];
+
+  const sources = await db("referral_sources")
+    .where({ organization_id: orgId })
+    .select("*");
+
+  if (sources.length < 2) return [];
+
+  const avgCaseValue = await getAvgCaseValue(orgId);
+  const alerts: CompensationAlert[] = [];
+
+  // Build monthly profiles for each source
+  const profiles = sources.map((source) => {
+    const name = source.gp_name || source.name || source.provider_name || "Unknown";
+    const monthly: number[] = [];
+    for (let i = 1; i <= 6; i++) {
+      const key = `referral_count_month_${i}` in source
+        ? `referral_count_month_${i}`
+        : `month_${i}_count`;
+      monthly.push(source[key] ?? 0);
+    }
+    return {
+      id: source.id,
+      name,
+      monthly, // [most_recent, ..., oldest]
+      priorAvg: source.prior_3_month_avg ?? source.monthly_average ?? 0,
+      recentCount: source.recent_referral_count ?? source.referral_count_last_30d ?? 0,
+    };
+  });
+
+  // Find declining sources (3+ months of decline)
+  for (const declining of profiles) {
+    const m = declining.monthly;
+    if (m.length < 4) continue;
+
+    // Check for sustained decline: each month lower than the one before it
+    let declineMonths = 0;
+    for (let i = 0; i < m.length - 1; i++) {
+      if (m[i] < m[i + 1] * 0.85) declineMonths++;
+      else break;
+    }
+    if (declineMonths < 2) continue;
+
+    // Calculate decline percentage
+    const peakMonth = Math.max(...m.slice(1));
+    if (peakMonth === 0) continue;
+    const currentMonth = m[0];
+    const declinePct = Math.round(((peakMonth - currentMonth) / peakMonth) * 100);
+    if (declinePct < 20) continue; // Less than 20% decline isn't significant
+
+    // Lost referrals per month
+    const lostPerMonth = peakMonth - currentMonth;
+
+    // Find sources that grew during the same period (compensators)
+    for (const compensator of profiles) {
+      if (compensator.id === declining.id) continue;
+      const cm = compensator.monthly;
+      if (cm.length < 4) continue;
+
+      // Did this source grow while the other declined?
+      let growthMonths = 0;
+      for (let i = 0; i < Math.min(declineMonths, cm.length - 1); i++) {
+        if (cm[i] > cm[i + 1] * 1.1) growthMonths++;
+      }
+      if (growthMonths < 2) continue;
+
+      // Compensation magnitude: did the growth roughly offset the decline?
+      const compGrowth = cm[0] - cm[declineMonths];
+      if (compGrowth < lostPerMonth * 0.4) continue; // Less than 40% offset isn't compensation
+
+      // Is the compensation still active or ending?
+      let status: "active" | "ending" | "ended" = "active";
+      if (cm[0] <= cm[1]) {
+        status = cm[0] < cm[1] * 0.9 ? "ended" : "ending";
+      }
+
+      // Project forward: if compensation ends, when does the owner feel it?
+      const projectedDays = status === "active" ? 90
+        : status === "ending" ? 60
+        : 30;
+
+      const annualRisk = Math.round(lostPerMonth * 12 * avgCaseValue);
+
+      // Build the narrative
+      let narrative = "";
+      if (status === "active") {
+        narrative = `${declining.name} has sent ${declinePct}% fewer referrals over the last ${declineMonths} months. You haven't felt it because ${compensator.name} picked up the slack. If ${compensator.name} slows down, you'll feel both losses at once.`;
+      } else if (status === "ending") {
+        narrative = `${declining.name} declined ${declinePct}% over ${declineMonths} months. ${compensator.name} was compensating, but their referrals are now flattening too. You'll likely feel this within ${projectedDays} days. Estimated annual impact: $${annualRisk.toLocaleString()}.`;
+      } else {
+        narrative = `${declining.name} declined ${declinePct}% and ${compensator.name} has stopped compensating. The combined loss is approximately $${annualRisk.toLocaleString()}/year. This needs attention now.`;
+      }
+
+      alerts.push({
+        declining_source: declining.name,
+        declining_source_id: declining.id,
+        compensating_source: compensator.name,
+        compensating_source_id: compensator.id,
+        decline_months: declineMonths,
+        decline_percentage: declinePct,
+        compensation_status: status,
+        projected_impact_days: projectedDays,
+        annual_value_at_risk: annualRisk,
+        narrative,
+      });
+    }
+  }
+
+  // Sort by urgency: ended > ending > active, then by value at risk
+  const statusPriority = { ended: 0, ending: 1, active: 2 };
+  alerts.sort((a, b) =>
+    statusPriority[a.compensation_status] - statusPriority[b.compensation_status]
+    || b.annual_value_at_risk - a.annual_value_at_risk
+  );
+
+  return alerts;
+}
+
 // ─── getThisWeeksMove ───
 
 /**
