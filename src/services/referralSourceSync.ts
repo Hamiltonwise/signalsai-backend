@@ -146,6 +146,13 @@ export async function syncReferralSourcesFromPmsJob(
     }
   }
 
-  console.log(`[ReferralSourceSync] Org ${orgId}: synced ${synced}, skipped ${skipped}`);
+  if (synced === 0 && sources.size === 0) {
+    // No referral source column found in the data. Log the headers so we can
+    // add them to the flexible matching or debug the customer's export format.
+    const sampleHeaders = rawData.length > 0 ? Object.keys(rawData[0]).join(", ") : "empty";
+    console.warn(`[ReferralSourceSync] Org ${orgId}: ZERO sources found. Headers in data: [${sampleHeaders}]. Add these to findColumn() if they represent referral sources.`);
+  }
+
+  console.log(`[ReferralSourceSync] Org ${orgId}: synced ${synced}, skipped ${skipped}, unique sources: ${sources.size}`);
   return { synced, skipped };
 }
