@@ -17,16 +17,28 @@ import { db } from "../database/connection";
  * Returns the first non-empty match or empty string.
  */
 function findColumn(row: Record<string, string>, candidates: string[]): string {
+  // Exact match first
   for (const key of candidates) {
     const val = row[key];
     if (val && String(val).trim()) return String(val).trim();
   }
-  // Fuzzy fallback: check if any row key CONTAINS one of the candidate stems
+  // Normalized match: strip spaces, underscores, hyphens, case
   const rowKeys = Object.keys(row);
   for (const candidate of candidates) {
-    const stem = candidate.toLowerCase().replace(/[_\s]/g, "");
+    const norm = candidate.toLowerCase().replace(/[\s_-]/g, "");
     for (const rowKey of rowKeys) {
-      const normalizedKey = rowKey.toLowerCase().replace(/[_\s]/g, "");
+      const rowNorm = rowKey.toLowerCase().replace(/[\s_-]/g, "");
+      if (rowNorm === norm) {
+        const val = row[rowKey];
+        if (val && String(val).trim()) return String(val).trim();
+      }
+    }
+  }
+  // Fuzzy: row key contains candidate or vice versa
+  for (const candidate of candidates) {
+    const stem = candidate.toLowerCase().replace(/[\s_-]/g, "");
+    for (const rowKey of rowKeys) {
+      const normalizedKey = rowKey.toLowerCase().replace(/[\s_-]/g, "");
       if (normalizedKey.includes(stem) || stem.includes(normalizedKey)) {
         const val = row[rowKey];
         if (val && String(val).trim()) return String(val).trim();
@@ -39,7 +51,7 @@ function findColumn(row: Record<string, string>, candidates: string[]): string {
 export async function syncReferralSourcesFromPmsJob(
   orgId: number,
   rawData: Record<string, string>[],
-): Promise<{ synced: number; skipped: number }> {
+): Promise<{ synced: number; skipped: number; zeroSourcesDetected?: boolean; headersSeen?: string[] }> {
   const hasTable = await db.schema.hasTable("referral_sources");
   if (!hasTable) return { synced: 0, skipped: 0 };
 
@@ -57,6 +69,7 @@ export async function syncReferralSourcesFromPmsJob(
   for (const row of rawData) {
     // Flexible column detection: match against common header variations
     // Doctors export from Edge, Dentrix, Eaglesoft, OpenDental -- all use different names
+    // Covers: Dentrix, Eaglesoft, Open Dental, Edge/DentalEMR, Dolphin, OrthoTrac, Curve
     const name = findColumn(row, [
       "Referral Source", "referral_source", "Source", "source",
       "Referred By", "referred_by", "Referring Doctor", "referring_doctor",
@@ -64,6 +77,14 @@ export async function syncReferralSourcesFromPmsJob(
       "GP Name", "gp_name", "Doctor", "doctor", "Provider", "provider",
       "Ref Doctor", "Ref Source", "Referring Dentist", "Referring Practice",
       "Lead Source", "lead_source", "Channel", "channel",
+      // Dentrix specific
+      "Referring Doctor/Other", "Referred BY",
+      // Open Dental specific
+      "Referred To", "Last Name",
+      // OrthoTrac specific
+      "Referral",
+      // DentalEMR/Edge
+      "Referring Doctor",
     ]);
 
     if (!name) continue;
@@ -74,6 +95,12 @@ export async function syncReferralSourcesFromPmsJob(
         "Revenue", "revenue", "Value", "value", "Total", "total",
         "Net Production", "net_production", "Gross Production",
         "Case Value", "case_value", "Procedure Amount",
+        // Dentrix specific
+        "Treatment Plan Total", "Production Total",
+        // Eaglesoft specific
+        "Cost",
+        // OrthoTrac/Dolphin specific
+        "Charges", "Contracts", "Payments",
       ]) || "0").replace(/[$,]/g, "")
     ) || 0;
 
@@ -81,12 +108,20 @@ export async function syncReferralSourcesFromPmsJob(
       "Number of Referrals", "referral_count", "Count", "count",
       "Referrals", "referrals", "Qty", "qty", "Patients", "patients",
       "Cases", "cases", "Starts", "starts", "New Patients", "new_patients",
+      // Dentrix specific
+      "Total Referrals", "Listed Referrals",
+      // Open Dental
+      "Patient Count",
     ]) || "1")) || 1;
 
     const dateStr = findColumn(row, [
       "Date", "date", "Appointment Date", "appointment_date",
       "Referral Date", "referral_date", "Visit Date", "visit_date",
       "Service Date", "service_date", "Appt Date", "appt_date",
+      // Dentrix/Eaglesoft specific
+      "First Visit Date", "Date Became New Patient", "Profile Created Date",
+      // Open Dental specific
+      "Date Refer", "Date Done",
     ]) || null;
     const month = dateStr ? dateStr.substring(0, 7) : "unknown";
 
@@ -147,12 +182,15 @@ export async function syncReferralSourcesFromPmsJob(
   }
 
   if (synced === 0 && sources.size === 0) {
-    // No referral source column found in the data. Log the headers so we can
-    // add them to the flexible matching or debug the customer's export format.
     const sampleHeaders = rawData.length > 0 ? Object.keys(rawData[0]).join(", ") : "empty";
-    console.warn(`[ReferralSourceSync] Org ${orgId}: ZERO sources found. Headers in data: [${sampleHeaders}]. Add these to findColumn() if they represent referral sources.`);
+    console.warn(`[ReferralSourceSync] Org ${orgId}: ZERO sources found. Headers: [${sampleHeaders}]. ${rawData.length} rows examined.`);
   }
 
   console.log(`[ReferralSourceSync] Org ${orgId}: synced ${synced}, skipped ${skipped}, unique sources: ${sources.size}`);
-  return { synced, skipped };
+  return {
+    synced,
+    skipped,
+    zeroSourcesDetected: synced === 0 && sources.size === 0,
+    headersSeen: rawData.length > 0 ? Object.keys(rawData[0]) : [],
+  };
 }
