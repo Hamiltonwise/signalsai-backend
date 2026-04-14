@@ -764,8 +764,14 @@ export async function sendMondayEmailForOrg(
     if (websiteUpdates > 0) receipts.push(`Updated your website ${websiteUpdates} time${websiteUpdates !== 1 ? "s" : ""}`);
     if (gapAnalyses > 0) receipts.push("Analyzed your competitor gaps and updated your strategy");
 
-    // Always include competitive tracking as proof of work
-    receipts.push("Monitored your competitors and refreshed your market data");
+    // Only claim competitive monitoring if a snapshot actually ran this week
+    const recentSnapshot = await db("weekly_ranking_snapshots")
+      .where({ org_id: orgId })
+      .where("created_at", ">=", new Date(Date.now() - 8 * 24 * 60 * 60 * 1000))
+      .first();
+    if (recentSnapshot) {
+      receipts.push("Scanned your competitors and refreshed your market data");
+    }
 
     if (receipts.length > 0) {
       proofOfWork = "What Alloro did this week: " + receipts.join(". ") + ".";
