@@ -254,16 +254,20 @@ axios.interceptors.response.use(
 );
 
 // ─── Global 402 Interceptor ───
-// Emits a custom event when the billingGateMiddleware returns ACCOUNT_LOCKED.
-// AuthContext listens for this and updates billingStatus so the UI reacts immediately.
+// Emits custom events when billingGateMiddleware returns billing-related codes.
+// AuthContext / Dashboard listens and updates UI immediately.
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (
-      error?.response?.status === 402 &&
-      error?.response?.data?.errorCode === "ACCOUNT_LOCKED"
-    ) {
-      window.dispatchEvent(new CustomEvent("billing:locked-out"));
+    if (error?.response?.status === 402) {
+      const errorCode = error?.response?.data?.errorCode;
+      if (errorCode === "ACCOUNT_LOCKED") {
+        window.dispatchEvent(new CustomEvent("billing:locked-out"));
+      } else if (errorCode === "TRIAL_EXPIRED") {
+        window.dispatchEvent(new CustomEvent("billing:trial-expired"));
+      } else if (errorCode === "TRIAL_GRACE") {
+        window.dispatchEvent(new CustomEvent("billing:trial-grace"));
+      }
     }
     return Promise.reject(error);
   }

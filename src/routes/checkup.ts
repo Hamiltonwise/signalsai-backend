@@ -1565,8 +1565,8 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
         }, trx);
       }
 
-      // Set trial period: 7 days from now
-      const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      // Set trial period: 14 days (2 Monday emails before trial ends)
+      const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
       await trx("organizations").where({ id: newOrg.id }).update({
         trial_start_at: new Date(),
         trial_end_at: trialEnd,
@@ -1866,7 +1866,7 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
     // Set trial columns on org + enqueue 7-day email sequence
     try {
       const trialStart = new Date();
-      const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const trialEnd = new Date(trialStart.getTime() + 14 * 24 * 60 * 60 * 1000);
       await db("organizations").where({ id: org.id }).update({
         trial_start_at: trialStart,
         trial_end_at: trialEnd,
