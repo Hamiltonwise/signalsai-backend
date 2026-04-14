@@ -100,14 +100,18 @@ export async function uploadAttachment(
 
     await uploadToS3(s3Key, file.buffer, mime);
 
-    const created = await PmTaskAttachmentModel.create({
-      task_id: taskId,
-      uploaded_by: req.user!.userId,
-      filename: originalName,
-      s3_key: s3Key,
-      mime_type: mime,
-      size_bytes: file.size,
-    });
+    // Bypass BaseModel.create — it auto-stamps updated_at, and pm_task_attachments
+    // has no such column (attachments are immutable once uploaded).
+    const [created] = await db("pm_task_attachments")
+      .insert({
+        task_id: taskId,
+        uploaded_by: req.user!.userId,
+        filename: originalName,
+        s3_key: s3Key,
+        mime_type: mime,
+        size_bytes: file.size,
+      })
+      .returning("*");
 
     await logPmActivity({
       project_id: task.project_id,

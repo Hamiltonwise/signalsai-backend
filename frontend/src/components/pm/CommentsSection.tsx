@@ -36,6 +36,7 @@ interface PmUser {
 
 interface CommentsSectionProps {
   taskId: string;
+  onCountChange?: (count: number) => void;
 }
 
 /** id="pm-comments-section" anchor target for notification click-through */
@@ -215,7 +216,7 @@ function substituteMentions(text: string): React.ReactNode {
   return parts;
 }
 
-export function CommentsSection({ taskId }: CommentsSectionProps) {
+export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps) {
   const [comments, setComments] = useState<PmTaskComment[]>([]);
   const [users, setUsers] = useState<PmUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -253,6 +254,10 @@ export function CommentsSection({ taskId }: CommentsSectionProps) {
       cancelled = true;
     };
   }, [taskId]);
+
+  useEffect(() => {
+    onCountChange?.(comments.length);
+  }, [comments.length, onCountChange]);
 
   const handleCreate = useCallback(
     async (body: string, mentions: number[]) => {

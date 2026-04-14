@@ -37,6 +37,7 @@ import { getCurrentUserId } from "../../utils/currentUser";
 interface AttachmentsSectionProps {
   taskId: string;
   taskCreatedBy: number;
+  onCountChange?: (count: number) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -64,6 +65,7 @@ function iconForMime(mime: string) {
 export function AttachmentsSection({
   taskId,
   taskCreatedBy,
+  onCountChange,
 }: AttachmentsSectionProps) {
   const [attachments, setAttachments] = useState<PmTaskAttachment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +95,10 @@ export function AttachmentsSection({
       cancelled = true;
     };
   }, [taskId]);
+
+  useEffect(() => {
+    onCountChange?.(attachments.length);
+  }, [attachments.length, onCountChange]);
 
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
