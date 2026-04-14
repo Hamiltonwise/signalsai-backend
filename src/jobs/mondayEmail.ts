@@ -213,7 +213,7 @@ export async function sendMondayEmailForOrg(
     firstWeekBody += "Alloro is now monitoring your market. Next Monday, you'll see what changed.";
 
     // 5-minute fix for first week (never reference dashboard for first-week users)
-    const firstWeekFix = "5-MINUTE FIX: Open your Google Business Profile and make sure your hours, photos, and services are complete. Complete profiles consistently rank higher in local search.";
+    const firstWeekFix = "5-MINUTE FIX: Text your 3 most recent customers and ask for a Google review. That's it. Alloro is already monitoring your profile completeness and will handle the rest.";
     firstWeekBody += `\n\n${firstWeekFix}`;
 
     const hasLoggedInFirst = !!(user.last_login_at || user.first_login_at);
@@ -603,9 +603,9 @@ export async function sendMondayEmailForOrg(
       fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. At 3/week, you close the ${reviewGap}-review gap by ${targetDate}. Consistency is the strategy.`;
     }
   } else if (steadyWeeks >= 3) {
-    fiveMinuteFix = `5-MINUTE FIX: Position held for ${steadyWeeks} weeks. That's earned. Send 3 review requests${bestConvertingDay ? ` on ${bestConvertingDay} (your best day)` : ""} and add a photo to your Google Business Profile to widen the lead.`;
+    fiveMinuteFix = `5-MINUTE FIX: Position held for ${steadyWeeks} weeks. That's earned. Text 3 ${customerTerm}s from this week for a review${bestConvertingDay ? ` (${bestConvertingDay}s convert best for you)` : ""}. Alloro handles the rest.`;
   } else {
-    fiveMinuteFix = `5-MINUTE FIX: Respond to any unanswered Google reviews. Each response signals activity to Google's ranking algorithm.`;
+    fiveMinuteFix = `5-MINUTE FIX: You have unanswered Google reviews. Alloro drafted responses for you. Open your dashboard and approve them with one tap.`;
   }
 
   findingBody += `\n\n${fiveMinuteFix}`;

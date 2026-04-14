@@ -152,7 +152,7 @@ function resolveAction(props: OneActionCardProps): OneAction {
       return {
         severity: "amber",
         title: `You dropped ${positions} position${positions !== 1 ? "s" : ""}${drop.keyword ? ` for "${drop.keyword}"` : ""} this week.`,
-        detail: "A 2+ position drop means a competitor made a move or your profile lost a signal. Check what changed.",
+        detail: "A 2+ position drop means a competitor made a move or your profile lost a signal. Alloro is investigating what changed.",
         cta: "See why",
         ctaLink: "/rankings",
         icon: TrendingDown,
@@ -168,7 +168,7 @@ function resolveAction(props: OneActionCardProps): OneAction {
       return {
         severity: "amber",
         title: `${cv.competitorName} added ${cv.competitorReviewsThisMonth} reviews this month. You added ${cv.clientReviewsThisMonth}.`,
-        detail: "When a competitor collects reviews at 2x your pace, the gap widens every week. Match their pace to hold your position.",
+        detail: "When a competitor collects reviews at 2x your pace, the gap widens every week. Text 3 recent customers for a review this week.",
         cta: "Close the gap",
         icon: MessageSquare,
         rule: "review_velocity_gap",
