@@ -127,6 +127,8 @@ export async function uploadAttachment(
     });
 
     const enriched = await enrichAttachment(created);
+    // The uploader can always delete their own upload; task creator also can.
+    enriched.can_delete = true;
     return res.status(201).json({ success: true, data: enriched });
   } catch (error) {
     return handleError(res, error, "uploadAttachment");
@@ -155,6 +157,7 @@ export async function listAttachments(
         "users.email as uploader_email"
       );
 
+    const callerId = req.user!.userId;
     const attachments = rows.map((row: any) => ({
       id: row.id,
       task_id: row.task_id,
@@ -171,6 +174,10 @@ export async function listAttachments(
           : row.size_bytes,
       is_previewable: isMimePreviewable(row.mime_type),
       created_at: row.created_at,
+      // Server-verified: matches the check enforced by deleteAttachment
+      // (uploader OR task creator can delete).
+      can_delete:
+        row.uploaded_by === callerId || task.created_by === callerId,
     }));
 
     return res.json({ success: true, data: { attachments } });

@@ -160,6 +160,8 @@ export interface PmTaskAttachment {
   size_bytes: number;
   is_previewable: boolean;
   created_at: string;
+  /** Server-verified: true if the caller may delete this attachment. */
+  can_delete?: boolean;
 }
 
 export interface PmNotification {
@@ -205,4 +207,6 @@ export interface PmTaskComment {
   mention_names: Record<number, string>;
   edited_at: string | null;
   created_at: string;
+  /** Server-verified: true if the caller authored this comment. */
+  is_mine?: boolean;
 }

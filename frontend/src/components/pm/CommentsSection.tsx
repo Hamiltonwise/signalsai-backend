@@ -339,7 +339,12 @@ export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps)
       ) : (
         <ul className="mb-3 space-y-3">
           {comments.map((c) => {
-            const isAuthor = currentUserId !== null && c.author_id === currentUserId;
+            // Server-verified is_mine is authoritative; fall back to the
+            // client JWT check if the server didn't stamp it (old rows).
+            const isAuthor =
+              typeof c.is_mine === "boolean"
+                ? c.is_mine
+                : currentUserId !== null && c.author_id === currentUserId;
             const isEditing = editingId === c.id;
             return (
               <li
@@ -385,10 +390,11 @@ export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps)
                     </span>
                   )}
                   {isAuthor && !isEditing && (
-                    <div className="ml-auto flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="ml-auto flex items-center gap-1">
                       <button
                         onClick={() => setEditingId(c.id)}
                         title="Edit"
+                        aria-label="Edit comment"
                         className="rounded p-1 text-pm-text-muted hover:bg-pm-bg-secondary hover:text-pm-text-primary"
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -396,6 +402,7 @@ export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps)
                       <button
                         onClick={() => handleDelete(c.id)}
                         title="Delete"
+                        aria-label="Delete comment"
                         className="rounded p-1 text-pm-text-muted hover:bg-red-500/10 hover:text-pm-danger"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
