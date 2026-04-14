@@ -23,7 +23,9 @@ All new route files on sandbox match Dave's main branch conventions:
 - **Default exports:** All new pages use `export default`.
 - **TypeScript:** `npx tsc --noEmit` returns **zero errors**.
 
-**What WASN'T touched:** Dave's PM system (37 files), website builder, notification system, form submissions, E2E test framework, infrastructure configs. All intact.
+**What WASN'T touched:** Dave's PM system (37 files), notification system, form submissions, E2E test framework, infrastructure configs. All intact.
+
+**What was touched cosmetically only:** 10 PageEditor files received em-dash replacements and font-weight fixes (standing rule enforcement). Zero logic changes. Verify: `git diff main..sandbox -- frontend/src/components/PageEditor/ | grep '^[+-]' | grep -v '^\(+++\|---\)' | head -20` -- all changes are `—` to `--` or `font-bold` to `font-semibold`.
 
 ---
 
@@ -576,10 +578,12 @@ If you see errors: do not deploy. Fix type errors first.
 **What it checks:** No AWS keys or OpenAI/Anthropic secret keys are hardcoded in source files.
 
 ```bash
-grep -rn 'sk-\|AKIA' src/ --include="*.ts" | grep -v process.env | wc -l
+grep -rn 'sk-ant-\|sk-proj-\|AKIA[A-Z0-9]' src/ --include="*.ts" | grep -v process.env | wc -l
 ```
 
 **Expected output:** `0`
+
+Note: the pattern matches Anthropic keys (`sk-ant-`), OpenAI keys (`sk-proj-`), and AWS keys (`AKIA` + uppercase). It does NOT match `service.task-` or other import paths that contain `sk-` as a substring.
 
 If non-zero: a secret is hardcoded. Remove it immediately and rotate the key.
 
