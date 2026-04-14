@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
-import { Clock, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import type { PmActivityEntry } from "../../types/pm";
 import { fetchGlobalActivity, fetchProjectActivity, clearActivity as clearActivityApi } from "../../api/pm";
+import { NoActivity } from "./EmptyStates";
 
 const ACTION_LABELS: Record<string, string> = {
   task_created: "created task",
@@ -92,10 +93,7 @@ export function ActivityTimeline({ projectId, compact = false, onSeeMore }: Acti
       </div>
 
       {entries.length === 0 && !isLoading ? (
-        <div className="flex flex-col items-center justify-center py-12 px-5">
-          <Clock className="h-5 w-5 mb-2" strokeWidth={1.5} style={{ color: "var(--color-pm-text-muted)" }} />
-          <p className="text-[12px]" style={{ color: "var(--color-pm-text-muted)" }}>No activity yet</p>
-        </div>
+        <NoActivity />
       ) : (
         <motion.div variants={containerVariants} initial="hidden" animate="show">
           {entries.map((entry) => {

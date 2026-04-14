@@ -20,6 +20,7 @@ import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import type { TaskContextAction } from "./TaskCard";
 import { showWarningToast } from "../../lib/toast";
+import { triggerCelebration } from "./CompletionCelebration";
 
 interface KanbanBoardProps {
   project: PmProjectDetail;
@@ -218,6 +219,18 @@ export function KanbanBoard({
     } else {
       moveTask(taskId, targetColumnId, targetPosition);
     }
+
+    // Celebration: only on *transition into* Done, not same-column drops inside Done.
+    const targetCol = currentProject.columns.find((c) => c.id === targetColumnId);
+    if (
+      wasCrossColumn &&
+      targetCol?.name === "Done" &&
+      originalCol?.id !== targetColumnId
+    ) {
+      // Defer slightly so the card has rendered in its new column.
+      setTimeout(() => triggerCelebration(taskId), 30);
+    }
+
     preDragSnapshot.current = null;
   };
 

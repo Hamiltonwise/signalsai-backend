@@ -82,6 +82,10 @@ export interface PmVelocityData {
   data: Array<{ label: string; period_start: string; completed: number; overdue: number }>;
 }
 
+export interface ChartDataResponse {
+  daily_completions: Array<{ date: string; count: number }>;
+}
+
 export interface CreateProjectInput {
   name: string;
   description?: string;
@@ -145,13 +149,60 @@ export interface PmMyTasksResponse {
   done: PmMyTask[];
 }
 
+export interface PmTaskAttachment {
+  id: string;
+  task_id: string;
+  uploaded_by: number;
+  uploaded_by_name: string;
+  filename: string;
+  s3_key: string;
+  mime_type: string;
+  size_bytes: number;
+  is_previewable: boolean;
+  created_at: string;
+}
+
 export interface PmNotification {
   id: string;
   user_id: number;
-  type: "task_assigned" | "task_unassigned" | "assignee_completed_task";
+  type:
+    | "task_assigned"
+    | "task_unassigned"
+    | "assignee_completed_task"
+    | "mention_in_comment"
+    | "task_commented";
   task_id: string | null;
   actor_user_id: number;
-  metadata: { task_title?: string; project_name?: string; actor_name?: string } | null;
+  metadata: {
+    task_title?: string;
+    project_name?: string;
+    actor_name?: string;
+    comment_preview?: string;
+  } | null;
   is_read: boolean;
+  created_at: string;
+}
+
+/**
+ * Flat markdown comment on a PM task.
+ *
+ * - `body` is raw markdown. Rendered client-side with react-markdown in a
+ *   strict no-HTML configuration (see CommentsSection.tsx).
+ * - `mentions` is the authoritative list of mentioned user ids — it is
+ *   stored server-side as a native PG INTEGER[] column and is NEVER
+ *   re-parsed from the body. `mention_names` is a server-resolved display
+ *   map used to highlight @Name tokens in the rendered markdown.
+ * - `edited_at` is null for unmodified comments. The UI renders an
+ *   "(edited)" label when this is non-null.
+ */
+export interface PmTaskComment {
+  id: string;
+  task_id: string;
+  author_id: number;
+  author_name: string;
+  body: string;
+  mentions: number[];
+  mention_names: Record<number, string>;
+  edited_at: string | null;
   created_at: string;
 }

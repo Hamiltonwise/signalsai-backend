@@ -8,6 +8,9 @@ import { fetchPmUsers } from "../../api/pm";
 import { formatDeadline, endOfDayPST } from "../../utils/pmDateFormat";
 import { PriorityTriangle } from "./PriorityTriangle";
 import { RichTextEditor } from "./RichTextEditor";
+import { triggerCelebration } from "./CompletionCelebration";
+import { AttachmentsSection } from "./AttachmentsSection";
+import { CommentsSection } from "./CommentsSection";
 
 const PRIORITIES = [
   { value: "P1", label: "Top of the hour" },
@@ -27,6 +30,8 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
   const updateTask = usePmStore((s) => s.updateTask);
   const assignTask = usePmStore((s) => s.assignTask);
   const deleteTask = usePmStore((s) => s.deleteTask);
+  const activeProject = usePmStore((s) => s.activeProject);
+  const prevColumnIdRef = useRef<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string>("P3");
@@ -50,6 +55,24 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
   useEffect(() => {
     fetchPmUsers().then(setUsers).catch(() => {});
   }, []);
+
+  // Celebration: when this task's column changes into a Done column while the
+  // panel is open, fire a burst. Only on transition, never on initial mount.
+  useEffect(() => {
+    if (!task) {
+      prevColumnIdRef.current = null;
+      return;
+    }
+    const prev = prevColumnIdRef.current;
+    const current = task.column_id;
+    if (prev && prev !== current) {
+      const newCol = activeProject?.columns.find((c) => c.id === current);
+      if (newCol?.name === "Done") {
+        setTimeout(() => triggerCelebration(task.id), 30);
+      }
+    }
+    prevColumnIdRef.current = current;
+  }, [task, activeProject]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -173,6 +196,19 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
                   placeholder="Add a description..."
                 />
               </div>
+
+              {/* Attachments (lives between Description and the Comments
+                  section). Sticking to the PM dark theme tokens defined
+                  globally in pm.css. */}
+              <AttachmentsSection
+                taskId={task.id}
+                taskCreatedBy={task.created_by}
+              />
+
+              {/* Comments — flat markdown with @mentions. Added by Plan C;
+                  renders via react-markdown in a strict no-raw-HTML config
+                  (see CommentsSection.tsx). */}
+              <CommentsSection taskId={task.id} />
 
               {/* Assigned To */}
               <div>

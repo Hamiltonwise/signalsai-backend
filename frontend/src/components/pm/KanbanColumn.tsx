@@ -8,6 +8,7 @@ import type { PmColumn, PmTask } from "../../types/pm";
 import { TaskCard } from "./TaskCard";
 import type { TaskContextAction } from "./TaskCard";
 import { QuickAddTask } from "./QuickAddTask";
+import { NoTasksInColumn } from "./EmptyStates";
 
 const COLUMN_ACCENTS: Record<string, string> = {
   "Backlog": "var(--color-pm-text-muted)",
@@ -92,14 +93,7 @@ export function KanbanColumn({
           items={column.tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
         >
-          {column.tasks.length === 0 && !isOver && (
-            <div
-              className="flex items-center justify-center py-8 text-[12px]"
-              style={{ color: "var(--color-pm-text-muted)" }}
-            >
-              No tasks
-            </div>
-          )}
+          {column.tasks.length === 0 && !isOver && <NoTasksInColumn />}
           {column.tasks.map((task) => (
             <TaskCard
               key={task.id}

@@ -171,6 +171,34 @@ export async function getVelocity(req: AuthRequest, res: Response): Promise<any>
   }
 }
 
+// GET /api/pm/stats/chart-data
+// 14-day daily task_completed counts, zero-filled
+export async function getChartData(_req: AuthRequest, res: Response): Promise<any> {
+  try {
+    const rawRows = await db.raw(`
+      SELECT d.date::date as date, COUNT(a.id)::int as count
+      FROM generate_series(CURRENT_DATE - INTERVAL '13 days', CURRENT_DATE, '1 day') as d(date)
+      LEFT JOIN pm_activity_log a
+        ON a.action = 'task_completed'
+        AND DATE(a.created_at) = d.date::date
+      GROUP BY d.date
+      ORDER BY d.date ASC
+    `);
+
+    const daily_completions = rawRows.rows.map((r: any) => ({
+      date:
+        r.date instanceof Date
+          ? r.date.toISOString().slice(0, 10)
+          : String(r.date).slice(0, 10),
+      count: Number(r.count) || 0,
+    }));
+
+    return res.json({ success: true, data: { daily_completions } });
+  } catch (error) {
+    return handleError(res, error, "getChartData");
+  }
+}
+
 // GET /api/pm/stats/me
 export async function getMyStats(req: AuthRequest, res: Response): Promise<any> {
   try {

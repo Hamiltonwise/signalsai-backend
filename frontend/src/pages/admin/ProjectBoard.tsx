@@ -24,6 +24,7 @@ import { CreateTaskModal } from "../../components/pm/CreateTaskModal";
 import { ActivityTimeline } from "../../components/pm/ActivityTimeline";
 import { FocusMode } from "../../components/pm/FocusMode";
 import { CommandPalette } from "../../components/pm/CommandPalette";
+import { CompletionCelebration } from "../../components/pm/CompletionCelebration";
 import { MoveToProjectModal } from "../../components/pm/MoveToProjectModal";
 import { BulkActionBar } from "../../components/ui/DesignSystem";
 import { formatDeadline } from "../../utils/pmDateFormat";
@@ -656,6 +657,9 @@ export default function ProjectBoard() {
       </div>
 
       <CreateTaskModal isOpen={showCreateTask} onClose={() => setShowCreateTask(false)} preselectedProjectId={activeProject.id} />
+
+      {/* Global celebration overlay */}
+      <CompletionCelebration />
 
       {/* Delete Confirmation */}
       <AnimatePresence>

@@ -122,6 +122,7 @@ export function TaskCard({
       onClick={onClick}
       {...attributes}
       {...listeners}
+      data-task-id={task.id}
       className="group relative rounded-lg p-3 transition-all duration-150 hover:translate-y-[-1px] hover:shadow-[var(--pm-shadow-card-hover)] hover:border-[var(--color-pm-border-hover)]"
       onMouseLeave={() => setShowDeleteConfirm(false)}
     >

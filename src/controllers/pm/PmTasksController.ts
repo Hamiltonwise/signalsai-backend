@@ -4,7 +4,35 @@ import { PmTaskModel } from "../../models/PmTaskModel";
 import { PmColumnModel } from "../../models/PmColumnModel";
 import { db } from "../../database/connection";
 import { logPmActivity } from "./pmActivityLogger";
+import { deleteFromS3 } from "../../utils/core/s3";
 import type { QueryContext } from "../../models/BaseModel";
+
+/**
+ * Fire-and-log S3 cleanup for the given attachment S3 keys.
+ *
+ * The DB rows are removed via FK ON DELETE CASCADE when the task is deleted,
+ * but S3 has no such cascade — we must delete each object individually.
+ * Failures are logged but do not throw; an S3 failure must not block the
+ * task delete from completing.
+ */
+async function cleanupAttachmentS3Objects(taskIds: string[]): Promise<void> {
+  if (taskIds.length === 0) return;
+  const rows: Array<{ s3_key: string }> = await db("pm_task_attachments")
+    .whereIn("task_id", taskIds)
+    .select("s3_key");
+  if (rows.length === 0) return;
+  const results = await Promise.allSettled(
+    rows.map((r) => deleteFromS3(r.s3_key))
+  );
+  results.forEach((r, i) => {
+    if (r.status === "rejected") {
+      console.error(
+        `[PM-TASKS] Failed to delete S3 object ${rows[i].s3_key}:`,
+        r.reason
+      );
+    }
+  });
+}
 
 async function insertNotification(
   ctx: QueryContext,
@@ -373,6 +401,10 @@ export async function deleteTask(req: AuthRequest, res: Response): Promise<any> 
       metadata: { title: existing.title, column_id: existing.column_id },
     });
 
+    // Clean up S3 attachment objects (DB rows cascade via FK). This must run
+    // before the task is deleted because the query joins on task_id.
+    await cleanupAttachmentS3Objects([id]);
+
     await db.transaction(async (trx) => {
       await PmTaskModel.deleteById(id, trx);
 
@@ -544,6 +576,9 @@ export async function bulkDeleteTasks(req: AuthRequest, res: Response): Promise<
     }
 
     const affectedColumnIds = new Set<string>(tasks.map((t) => t.column_id));
+
+    // Clean up S3 attachments before the DB cascade removes their rows.
+    await cleanupAttachmentS3Objects(tasks.map((t) => t.id));
 
     await db.transaction(async (trx) => {
       // Log each deletion before removing the row

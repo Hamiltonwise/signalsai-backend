@@ -1,4 +1,6 @@
+import axios from "axios";
 import { apiGet, apiPost, apiPut, apiDelete } from "./index";
+import { getPriorityItem } from "../hooks/useLocalStorage";
 import type {
   PmProject,
   PmProjectDetail,
@@ -12,8 +14,26 @@ import type {
   CreateTaskInput,
   PmAiSynthBatch,
   PmAiSynthBatchTask,
+  PmTaskAttachment,
+  PmTaskComment,
   PmVelocityData,
+  ChartDataResponse,
 } from "../types/pm";
+
+const API_BASE =
+  (import.meta as unknown as { env?: { VITE_API_URL?: string } })?.env
+    ?.VITE_API_URL ?? "/api";
+
+function getAuthHeader(): Record<string, string> {
+  const isPilot =
+    typeof window !== "undefined" &&
+    (window.sessionStorage?.getItem("pilot_mode") === "true" ||
+      !!window.sessionStorage?.getItem("token"));
+  const jwt = isPilot
+    ? window.sessionStorage.getItem("token")
+    : getPriorityItem("auth_token") || getPriorityItem("token");
+  return jwt ? { Authorization: `Bearer ${jwt}` } : {};
+}
 
 // --- Projects ---
 
@@ -135,6 +155,11 @@ export async function fetchStats(): Promise<PmStats> {
 
 export async function fetchVelocity(range: "7d" | "4w" | "3m" = "7d"): Promise<PmVelocityData> {
   const res = await apiGet({ path: `/pm/stats/velocity?range=${range}` });
+  return res.data;
+}
+
+export async function getChartData(): Promise<ChartDataResponse> {
+  const res = await apiGet({ path: "/pm/stats/chart-data" });
   return res.data;
 }
 
@@ -294,4 +319,104 @@ export async function rejectBatchTask(batchId: string, taskId: string): Promise<
 
 export async function deleteBatch(batchId: string): Promise<void> {
   await apiDelete({ path: `/pm/ai-synth/batches/${batchId}` });
+}
+
+// --- Task Attachments ---
+
+export async function listAttachments(
+  taskId: string
+): Promise<PmTaskAttachment[]> {
+  const res = await apiGet({ path: `/pm/tasks/${taskId}/attachments` });
+  return res?.data?.attachments ?? [];
+}
+
+/**
+ * Upload a single file to a task.
+ *
+ * Uses axios directly (bypassing apiPost) so callers can observe upload
+ * progress via `onProgress(0..1)` for large files.
+ */
+export async function uploadAttachment(
+  taskId: string,
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<PmTaskAttachment> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const { data } = await axios.post(
+    `${API_BASE}/pm/tasks/${taskId}/attachments`,
+    formData,
+    {
+      headers: getAuthHeader(),
+      onUploadProgress: (evt) => {
+        if (!onProgress) return;
+        const total = evt.total ?? file.size;
+        if (!total) return;
+        const pct = Math.min(1, (evt.loaded || 0) / total);
+        onProgress(pct);
+      },
+    }
+  );
+  return data.data as PmTaskAttachment;
+}
+
+export async function getAttachmentDownloadUrl(
+  taskId: string,
+  attachmentId: string
+): Promise<{ url: string; expires_at: string }> {
+  const res = await apiGet({
+    path: `/pm/tasks/${taskId}/attachments/${attachmentId}/url`,
+  });
+  return res.data;
+}
+
+export async function deleteAttachment(
+  taskId: string,
+  attachmentId: string
+): Promise<void> {
+  await apiDelete({
+    path: `/pm/tasks/${taskId}/attachments/${attachmentId}`,
+  });
+}
+
+// --- Task Comments ---
+
+export async function listComments(taskId: string): Promise<PmTaskComment[]> {
+  const res = await apiGet({ path: `/pm/tasks/${taskId}/comments` });
+  return res?.data?.comments ?? [];
+}
+
+export async function createComment(
+  taskId: string,
+  body: string,
+  mentions: number[]
+): Promise<PmTaskComment> {
+  const res = await apiPost({
+    path: `/pm/tasks/${taskId}/comments`,
+    passedData: { body, mentions },
+  });
+  return res.data;
+}
+
+export async function updateComment(
+  taskId: string,
+  commentId: string,
+  body: string,
+  mentions: number[]
+): Promise<PmTaskComment> {
+  const res = await apiPut({
+    path: `/pm/tasks/${taskId}/comments/${commentId}`,
+    passedData: { body, mentions },
+  });
+  return res.data;
+}
+
+export async function deleteComment(
+  taskId: string,
+  commentId: string
+): Promise<void> {
+  await apiDelete({
+    path: `/pm/tasks/${taskId}/comments/${commentId}`,
+  });
 }
