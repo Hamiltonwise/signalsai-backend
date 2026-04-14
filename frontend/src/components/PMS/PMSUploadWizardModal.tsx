@@ -136,14 +136,27 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
         if (result.data?.instantFinding) {
           setInstantFinding(result.data.instantFinding);
         }
-        setMessage(
-          "Your referral data is being analyzed. You'll see it on your dashboard shortly."
-        );
 
-        showUploadToast(
-          "Data received!",
-          "Referral insights loading on dashboard"
-        );
+        // Check if the sync found referral sources or not
+        const syncFailed = result.data?.referralSyncResult?.zeroSourcesDetected;
+
+        if (syncFailed) {
+          setMessage(
+            "We received your file but couldn't identify referral source columns. Try exporting a report that includes a 'Referring Doctor' or 'Referral Source' column, or use the manual entry option."
+          );
+          showUploadToast(
+            "File received",
+            "We need a report with referral source names to generate intelligence"
+          );
+        } else {
+          setMessage(
+            "Your referral data is being analyzed. You'll see it on your dashboard shortly."
+          );
+          showUploadToast(
+            "Data received!",
+            "Referral insights loading on dashboard"
+          );
+        }
 
         if (typeof window !== "undefined") {
           try {

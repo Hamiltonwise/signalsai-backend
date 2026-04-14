@@ -321,6 +321,9 @@ export async function processFileUpload(
   // Use passed locationId if available, otherwise resolve from org
   const locationId = passedLocationId ?? await resolveLocationId(organizationId);
 
+  // Track sync result for customer feedback on unrecognized formats
+  let syncResult: { synced: number; skipped: number; zeroSourcesDetected?: boolean; headersSeen?: string[] } | null = null;
+
   // Run self-sufficient operator detection (fire-and-forget)
   if (organizationId && jsonData.length > 0) {
     const headers = Object.keys(jsonData[0] || {});
@@ -403,9 +406,11 @@ export async function processFileUpload(
 
     // Sync referral sources to referral_sources table (powers Monday email, GP discovery, drift detection)
     if (organizationId && jsonData.length > 0) {
-      syncReferralSourcesFromPmsJob(organizationId, jsonData as Record<string, string>[]).catch((err) => {
+      try {
+        syncResult = await syncReferralSourcesFromPmsJob(organizationId, jsonData as Record<string, string>[]);
+      } catch (err) {
         console.error(`[PMS] Referral source sync failed for job ${jobId} (non-blocking):`, err instanceof Error ? err.message : err);
-      });
+      }
     }
   } catch (webhookError: any) {
     console.error(`[PMS] Parser webhook failed for job ${jobId}:`, webhookError.message);
@@ -514,5 +519,7 @@ export async function processFileUpload(
     hipaaReport: preprocessResult?.hipaaReport ?? null,
     referralSummary: preprocessResult?.referralSummary ?? null,
     stats: preprocessResult?.stats ?? null,
+    // Customer feedback: did we find referral sources in their data?
+    referralSyncResult: syncResult ?? undefined,
   };
 }
