@@ -363,10 +363,22 @@ export async function uploadAttachment(
 
 export async function getAttachmentDownloadUrl(
   taskId: string,
-  attachmentId: string
+  attachmentId: string,
+  opts?: { forceDownload?: boolean }
 ): Promise<{ url: string; expires_at: string }> {
+  const qs = opts?.forceDownload ? "?download=1" : "";
   const res = await apiGet({
-    path: `/pm/tasks/${taskId}/attachments/${attachmentId}/url`,
+    path: `/pm/tasks/${taskId}/attachments/${attachmentId}/url${qs}`,
+  });
+  return res.data;
+}
+
+export async function getAttachmentTextContent(
+  taskId: string,
+  attachmentId: string
+): Promise<{ text: string; truncated: boolean; total_bytes: number }> {
+  const res = await apiGet({
+    path: `/pm/tasks/${taskId}/attachments/${attachmentId}/text`,
   });
   return res.data;
 }

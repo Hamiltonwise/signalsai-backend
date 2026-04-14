@@ -49,6 +49,15 @@ router.get(
   controller.getAttachmentDownloadUrl
 );
 
+// GET /api/pm/tasks/:id/attachments/:attachmentId/text
+// Server-proxied text body (bypasses S3 CORS for inline previews).
+router.get(
+  "/tasks/:id/attachments/:attachmentId/text",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.getAttachmentTextContent
+);
+
 // DELETE /api/pm/tasks/:id/attachments/:attachmentId
 router.delete(
   "/tasks/:id/attachments/:attachmentId",

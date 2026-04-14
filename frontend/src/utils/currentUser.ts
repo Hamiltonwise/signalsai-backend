@@ -5,26 +5,22 @@
  * author/uploader" (UI hides edit/delete controls; the server still
  * enforces the real authorization check).
  *
- * Lives in utils/ so any PM feature (attachments, comments, future
- * surfaces) can import a single source of truth for "who is the caller?"
- * client-side.
+ * Uses getPriorityItem("auth_token") so pilot-mode (sessionStorage) and
+ * normal-mode (localStorage) sessions both resolve to the current user.
  */
+import { getPriorityItem } from "../hooks/useLocalStorage";
+
 export function getCurrentUserId(): number | null {
   try {
-    const isPilot =
-      typeof window !== "undefined" &&
-      (window.sessionStorage?.getItem("pilot_mode") === "true" ||
-        !!window.sessionStorage?.getItem("token"));
-    const token = isPilot
-      ? window.sessionStorage.getItem("token")
-      : localStorage.getItem("auth_token") || localStorage.getItem("token");
+    const token =
+      getPriorityItem("auth_token") || getPriorityItem("token");
     if (!token) return null;
     const payload = token.split(".")[1];
     if (!payload) return null;
     const decoded = JSON.parse(
       atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
     );
-    const id = decoded?.userId ?? decoded?.id;
+    const id = decoded?.userId ?? decoded?.id ?? decoded?.user_id;
     return typeof id === "number" ? id : null;
   } catch {
     return null;

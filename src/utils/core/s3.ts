@@ -86,13 +86,30 @@ export function buildS3Key(
 }
 
 /**
- * Generate a pre-signed URL for downloading an S3 object
+ * Generate a pre-signed URL for downloading an S3 object.
+ *
+ * When `downloadFilename` is provided, the signed request overrides the
+ * object's Content-Disposition to `attachment; filename="..."` so the
+ * browser forces a download instead of rendering inline. Without it the
+ * browser honors the object's stored disposition (usually inline for
+ * images / PDFs).
  */
 export async function generatePresignedUrl(
   key: string,
-  expiresInSeconds: number = 3600
+  expiresInSeconds: number = 3600,
+  downloadFilename?: string
 ): Promise<string> {
-  const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ...(downloadFilename
+      ? {
+          ResponseContentDisposition: `attachment; filename="${encodeURIComponent(
+            downloadFilename
+          )}"`,
+        }
+      : {}),
+  });
   return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
 }
 

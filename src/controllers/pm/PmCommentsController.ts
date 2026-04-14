@@ -79,7 +79,7 @@ function normalizeMentions(raw: unknown): number[] {
   return Array.from(new Set(out));
 }
 
-async function enrichCommentRow(row: any): Promise<any> {
+async function enrichCommentRow(row: any, callerId?: number): Promise<any> {
   if (!row) return row;
   const author: { email: string | null } | undefined = await db("users")
     .where({ id: row.author_id })
@@ -99,6 +99,7 @@ async function enrichCommentRow(row: any): Promise<any> {
     mention_names,
     edited_at: row.edited_at,
     created_at: row.created_at,
+    is_mine: callerId !== undefined ? row.author_id === callerId : undefined,
   };
 }
 
@@ -109,7 +110,9 @@ export async function createComment(
 ): Promise<any> {
   try {
     const taskId = req.params.id;
-    const authorId = req.user!.userId;
+    // users.id is BIGINT (pg returns string); author_id is INTEGER (number).
+    // Coerce once so notification dedup + equality checks line up.
+    const authorId = Number(req.user!.userId);
 
     const body: string = typeof req.body?.body === "string" ? req.body.body : "";
     if (!body.trim()) {
@@ -217,7 +220,7 @@ export async function createComment(
       return inserted;
     });
 
-    const enriched = await enrichCommentRow(created);
+    const enriched = await enrichCommentRow(created, authorId);
     return res.status(201).json({ success: true, data: enriched });
   } catch (error) {
     return handleError(res, error, "createComment");
@@ -263,6 +266,8 @@ export async function listComments(
     }
     const mentionNameMap = await resolveMentionNames(allMentionIds);
 
+    // users.id is BIGINT (pg returns string); author_id is INTEGER.
+    const callerId = Number(req.user!.userId);
     const comments = rows.map((r: any) => {
       const mentions: number[] = Array.isArray(r.mentions) ? r.mentions : [];
       const mention_names: Record<number, string> = {};
@@ -281,6 +286,10 @@ export async function listComments(
         mention_names,
         edited_at: r.edited_at,
         created_at: r.created_at,
+        // Server-verified permission flag — UI mirrors this instead of
+        // decoding the JWT client-side. Matches the check enforced by
+        // updateComment/deleteComment.
+        is_mine: r.author_id === callerId,
       };
     });
 
@@ -297,7 +306,8 @@ export async function updateComment(
 ): Promise<any> {
   try {
     const { id: taskId, commentId } = req.params;
-    const callerId = req.user!.userId;
+    // users.id is BIGINT (pg returns string); author_id is INTEGER.
+    const callerId = Number(req.user!.userId);
 
     const existing = await PmTaskCommentModel.findOne({
       id: commentId,
@@ -358,7 +368,7 @@ export async function updateComment(
     });
 
     const updated = await PmTaskCommentModel.findById(commentId);
-    const enriched = await enrichCommentRow(updated);
+    const enriched = await enrichCommentRow(updated, callerId);
     return res.json({ success: true, data: enriched });
   } catch (error) {
     return handleError(res, error, "updateComment");
@@ -372,7 +382,8 @@ export async function deleteComment(
 ): Promise<any> {
   try {
     const { id: taskId, commentId } = req.params;
-    const callerId = req.user!.userId;
+    // users.id is BIGINT (pg returns string); author_id is INTEGER.
+    const callerId = Number(req.user!.userId);
 
     const existing = await PmTaskCommentModel.findOne({
       id: commentId,

@@ -27,6 +27,8 @@ import {
 import type { PmTaskComment } from "../../types/pm";
 import { CommentComposer, CommentEditor } from "./CommentComposer";
 import { getCurrentUserId } from "../../utils/currentUser";
+import { PmContextMenu } from "./PmContextMenu";
+import { PmConfirmDialog } from "./PmConfirmDialog";
 
 interface PmUser {
   id: number;
@@ -36,6 +38,7 @@ interface PmUser {
 
 interface CommentsSectionProps {
   taskId: string;
+  onCountChange?: (count: number) => void;
 }
 
 /** id="pm-comments-section" anchor target for notification click-through */
@@ -215,13 +218,20 @@ function substituteMentions(text: string): React.ReactNode {
   return parts;
 }
 
-export function CommentsSection({ taskId }: CommentsSectionProps) {
+export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps) {
   const [comments, setComments] = useState<PmTaskComment[]>([]);
   const [users, setUsers] = useState<PmUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number;
+    y: number;
+    comment: PmTaskComment;
+  } | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const currentUserId = getCurrentUserId();
 
   const refresh = useCallback(async () => {
@@ -253,6 +263,10 @@ export function CommentsSection({ taskId }: CommentsSectionProps) {
       cancelled = true;
     };
   }, [taskId]);
+
+  useEffect(() => {
+    onCountChange?.(comments.length);
+  }, [comments.length, onCountChange]);
 
   const handleCreate = useCallback(
     async (body: string, mentions: number[]) => {
@@ -299,7 +313,6 @@ export function CommentsSection({ taskId }: CommentsSectionProps) {
 
   const handleDelete = useCallback(
     async (commentId: string) => {
-      if (!window.confirm("Delete this comment?")) return;
       try {
         await deleteComment(taskId, commentId);
         setComments((prev) => prev.filter((c) => c.id !== commentId));
@@ -334,11 +347,20 @@ export function CommentsSection({ taskId }: CommentsSectionProps) {
       ) : (
         <ul className="mb-3 space-y-3">
           {comments.map((c) => {
-            const isAuthor = currentUserId !== null && c.author_id === currentUserId;
+            // Server-verified is_mine is authoritative; fall back to the
+            // client JWT check if the server didn't stamp it (old rows).
+            const isAuthor =
+              typeof c.is_mine === "boolean"
+                ? c.is_mine
+                : currentUserId !== null && c.author_id === currentUserId;
             const isEditing = editingId === c.id;
             return (
               <li
                 key={c.id}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setCtxMenu({ x: e.clientX, y: e.clientY, comment: c });
+                }}
                 className="group rounded-lg border px-3 py-2.5"
                 style={{
                   borderColor: "var(--color-pm-border)",
@@ -380,17 +402,19 @@ export function CommentsSection({ taskId }: CommentsSectionProps) {
                     </span>
                   )}
                   {isAuthor && !isEditing && (
-                    <div className="ml-auto flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="ml-auto flex items-center gap-1">
                       <button
                         onClick={() => setEditingId(c.id)}
                         title="Edit"
+                        aria-label="Edit comment"
                         className="rounded p-1 text-pm-text-muted hover:bg-pm-bg-secondary hover:text-pm-text-primary"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDelete(c.id)}
+                        onClick={() => setPendingDeleteId(c.id)}
                         title="Delete"
+                        aria-label="Delete comment"
                         className="rounded p-1 text-pm-text-muted hover:bg-red-500/10 hover:text-pm-danger"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -429,6 +453,59 @@ export function CommentsSection({ taskId }: CommentsSectionProps) {
         users={users}
         submitting={submitting}
         onSubmit={handleCreate}
+      />
+
+      {ctxMenu && (() => {
+        const c = ctxMenu.comment;
+        const mine =
+          typeof c.is_mine === "boolean"
+            ? c.is_mine
+            : currentUserId !== null && c.author_id === currentUserId;
+        return (
+          <PmContextMenu
+            open
+            x={ctxMenu.x}
+            y={ctxMenu.y}
+            onClose={() => setCtxMenu(null)}
+            items={[
+              {
+                id: "edit",
+                label: "Edit",
+                icon: <Pencil className="h-3.5 w-3.5" />,
+                disabled: !mine,
+                onClick: () => setEditingId(c.id),
+              },
+              {
+                id: "delete",
+                label: "Delete",
+                icon: <Trash2 className="h-3.5 w-3.5" />,
+                danger: true,
+                disabled: !mine,
+                onClick: () => setPendingDeleteId(c.id),
+              },
+            ]}
+          />
+        );
+      })()}
+
+      <PmConfirmDialog
+        open={!!pendingDeleteId}
+        danger
+        title="Delete comment?"
+        message="This comment will be removed permanently. This can't be undone."
+        confirmLabel="Delete"
+        loading={deleting}
+        onCancel={() => !deleting && setPendingDeleteId(null)}
+        onConfirm={async () => {
+          if (!pendingDeleteId) return;
+          setDeleting(true);
+          try {
+            await handleDelete(pendingDeleteId);
+          } finally {
+            setDeleting(false);
+            setPendingDeleteId(null);
+          }
+        }}
       />
     </div>
   );

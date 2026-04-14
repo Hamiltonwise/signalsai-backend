@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Trash2, Calendar } from "lucide-react";
+import { X, Sparkles, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { PmTask } from "../../types/pm";
 import { usePmStore } from "../../stores/pmStore";
@@ -11,6 +11,9 @@ import { RichTextEditor } from "./RichTextEditor";
 import { triggerCelebration } from "./CompletionCelebration";
 import { AttachmentsSection } from "./AttachmentsSection";
 import { CommentsSection } from "./CommentsSection";
+import { PmTabs } from "./PmTabs";
+import { AnimatedSelect } from "./AnimatedSelect";
+import { DeadlinePicker } from "./DeadlinePicker";
 
 const PRIORITIES = [
   { value: "P1", label: "Top of the hour" },
@@ -19,6 +22,8 @@ const PRIORITIES = [
   { value: "P4", label: "This week" },
   { value: "P5", label: "Next week" },
 ] as const;
+
+type TabId = "details" | "attachments" | "comments";
 
 interface TaskDetailPanelProps {
   task: PmTask | null;
@@ -39,6 +44,9 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [assignedTo, setAssignedTo] = useState<number | null>(null);
   const [users, setUsers] = useState<Array<{ id: number; display_name: string; email: string }>>([]);
+  const [activeTab, setActiveTab] = useState<TabId>("details");
+  const [attachmentCount, setAttachmentCount] = useState(0);
+  const [commentCount, setCommentCount] = useState(0);
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -49,6 +57,7 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
       setDeadline(task.deadline ? new Date(task.deadline).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }) : "");
       setAssignedTo(task.assigned_to ?? null);
       setShowDeleteConfirm(false);
+      setActiveTab("details");
     }
   }, [task]);
 
@@ -81,6 +90,10 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
   }, [onClose]);
+
+  // Stable callbacks so the section-level count effects don't churn.
+  const handleAttachmentCount = useCallback((n: number) => setAttachmentCount(n), []);
+  const handleCommentCount = useCallback((n: number) => setCommentCount(n), []);
 
   if (!task) return null;
 
@@ -116,6 +129,11 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
     } as any);
   };
 
+  const handleAssignChange = (userId: number | null) => {
+    setAssignedTo(userId);
+    assignTask(task.id, userId);
+  };
+
   const handleDelete = async () => {
     await deleteTask(task.id);
     onClose();
@@ -126,6 +144,11 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
   const isCompletedLate = !!task.completed_at && !!task.deadline && (
     new Date(task.completed_at).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }) > task.deadline.slice(0, 10)
   );
+
+  const assigneeOptions: Array<{ value: number | null; label: string }> = [
+    { value: null, label: "Unassigned" },
+    ...users.map((u) => ({ value: u.id as number | null, label: u.display_name })),
+  ];
 
   return (
     <AnimatePresence>
@@ -172,8 +195,8 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
               </button>
             </div>
 
-            <div className="space-y-6 px-6 py-6">
-              {/* Title */}
+            {/* Title (always visible above tabs) */}
+            <div className="px-6 pt-6">
               <input
                 ref={titleRef}
                 value={title}
@@ -183,178 +206,187 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
                 className="w-full bg-transparent text-lg font-bold text-pm-text-primary placeholder:text-pm-text-muted focus:outline-none"
                 placeholder="Task title"
               />
+            </div>
 
-              {/* Description (Rich Text) */}
-              <div onBlur={handleDescriptionBlur}>
-                <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
-                  Description
-                </label>
-                <RichTextEditor
-                  value={description}
-                  onChange={setDescription}
-                  minHeight={140}
-                  placeholder="Add a description..."
+            {/* Tabs */}
+            <div className="mt-4 px-6">
+              <PmTabs
+                tabs={[
+                  { id: "details", label: "Details" },
+                  { id: "attachments", label: "Attachments", count: attachmentCount },
+                  { id: "comments", label: "Comments", count: commentCount },
+                ]}
+                activeId={activeTab}
+                onChange={(id) => setActiveTab(id as TabId)}
+              />
+            </div>
+
+            {/* Tab bodies — always mounted so counts stay live; hidden via
+                CSS when inactive. Keeps tab switching instant and avoids
+                losing in-flight state (e.g. a draft comment). */}
+            <div className="px-6 py-6">
+              {/* DETAILS */}
+              <div className={activeTab === "details" ? "space-y-6" : "hidden"}>
+                {/* Description (Rich Text) */}
+                <div onBlur={handleDescriptionBlur}>
+                  <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
+                    Description
+                  </label>
+                  <RichTextEditor
+                    value={description}
+                    onChange={setDescription}
+                    minHeight={140}
+                    placeholder="Add a description..."
+                  />
+                </div>
+
+                {/* Assigned To */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
+                    Assigned To
+                  </label>
+                  <AnimatedSelect<number | null>
+                    value={assignedTo}
+                    options={assigneeOptions}
+                    onChange={handleAssignChange}
+                    placeholder="Unassigned"
+                  />
+                </div>
+
+                {/* Priority */}
+                {isBacklog ? (
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
+                      Priority
+                    </label>
+                    <p className="text-xs text-pm-text-muted">
+                      Move out of Backlog to set priority
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
+                      Priority
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {PRIORITIES.map((p) => (
+                        <button
+                          key={p.value}
+                          onClick={() => handlePriorityChange(p.value)}
+                          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+                            priority === p.value
+                              ? "bg-pm-bg-hover text-pm-text-primary ring-1 ring-pm-border-hover"
+                              : "text-pm-text-muted hover:bg-pm-bg-hover"
+                          }`}
+                        >
+                          <PriorityTriangle priority={p.value as any} size={12} />
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Deadline */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
+                    Deadline
+                  </label>
+                  <DeadlinePicker
+                    value={deadline}
+                    onChange={handleDeadlineChange}
+                  />
+                </div>
+
+                {/* Completed At (read-only, shown when task is done) */}
+                {task.completed_at && (
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
+                      Completed
+                    </label>
+                    <div
+                      className="flex items-center gap-2 rounded-lg py-2 px-3 text-sm"
+                      style={{
+                        backgroundColor: "var(--color-pm-bg-primary)",
+                        border: "1px solid var(--color-pm-border)",
+                        color: "#3D8B40",
+                      }}
+                    >
+                      <span>
+                        {new Date(task.completed_at).toLocaleDateString("en-US", {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          timeZone: "America/Los_Angeles",
+                        })}
+                      </span>
+                      {isCompletedLate && (
+                        <span className="text-[11px] font-semibold text-[#C43333] ml-auto">
+                          completed late
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Metadata */}
+                {(task.creator_name || task.created_at) && (
+                  <p className="text-[11px]" style={{ color: "var(--color-pm-text-muted)" }}>
+                    {task.creator_name && <>Created by <span className="font-medium">{task.creator_name}</span></>}
+                    {task.created_at && <> · {formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}</>}
+                  </p>
+                )}
+
+                {/* Delete */}
+                <div className="border-t border-pm-border pt-6">
+                  {!showDeleteConfirm ? (
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-pm-danger hover:bg-red-500/10 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete task
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-pm-text-secondary">
+                        Are you sure?
+                      </span>
+                      <button
+                        onClick={handleDelete}
+                        className="rounded-lg bg-pm-danger px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600 transition-colors"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteConfirm(false)}
+                        className="rounded-lg px-3 py-1.5 text-sm font-medium text-pm-text-muted hover:text-pm-text-primary transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ATTACHMENTS */}
+              <div className={activeTab === "attachments" ? "" : "hidden"}>
+                <AttachmentsSection
+                  taskId={task.id}
+                  taskCreatedBy={task.created_by}
+                  onCountChange={handleAttachmentCount}
                 />
               </div>
 
-              {/* Attachments (lives between Description and the Comments
-                  section). Sticking to the PM dark theme tokens defined
-                  globally in pm.css. */}
-              <AttachmentsSection
-                taskId={task.id}
-                taskCreatedBy={task.created_by}
-              />
-
-              {/* Comments — flat markdown with @mentions. Added by Plan C;
-                  renders via react-markdown in a strict no-raw-HTML config
-                  (see CommentsSection.tsx). */}
-              <CommentsSection taskId={task.id} />
-
-              {/* Assigned To */}
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
-                  Assigned To
-                </label>
-                <select
-                  value={assignedTo ?? ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const userId = val ? parseInt(val, 10) : null;
-                    setAssignedTo(userId);
-                    assignTask(task.id, userId);
-                  }}
-                  className="w-full rounded-lg border border-pm-border bg-pm-bg-primary py-2 px-3 text-sm text-pm-text-primary focus:border-pm-accent focus:outline-none focus:ring-1 focus:ring-pm-accent"
-                >
-                  <option value="">Unassigned</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.display_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Priority */}
-              {isBacklog ? (
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
-                    Priority
-                  </label>
-                  <p className="text-xs text-pm-text-muted">
-                    Move out of Backlog to set priority
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
-                    Priority
-                  </label>
-                  <div className="flex gap-2">
-                    {PRIORITIES.map((p) => (
-                      <button
-                        key={p.value}
-                        onClick={() => handlePriorityChange(p.value)}
-                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
-                          priority === p.value
-                            ? "bg-pm-bg-hover text-pm-text-primary ring-1 ring-pm-border-hover"
-                            : "text-pm-text-muted hover:bg-pm-bg-hover"
-                        }`}
-                      >
-                        <PriorityTriangle priority={p.value as any} size={12} />
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Deadline */}
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
-                  Deadline
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pm-text-muted" />
-                  <input
-                    type="date"
-                    value={deadline}
-                    onChange={(e) => handleDeadlineChange(e.target.value)}
-                    className="w-full rounded-lg border border-pm-border bg-pm-bg-primary py-2 pl-10 pr-3 text-sm text-pm-text-primary focus:border-pm-accent focus:outline-none focus:ring-1 focus:ring-pm-accent"
-                  />
-                </div>
-              </div>
-
-              {/* Completed At (read-only, shown when task is done) */}
-              {task.completed_at && (
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
-                    Completed
-                  </label>
-                  <div
-                    className="flex items-center gap-2 rounded-lg py-2 px-3 text-sm"
-                    style={{
-                      backgroundColor: "var(--color-pm-bg-primary)",
-                      border: "1px solid var(--color-pm-border)",
-                      color: "#3D8B40",
-                    }}
-                  >
-                    <span>
-                      {new Date(task.completed_at).toLocaleDateString("en-US", {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                        timeZone: "America/Los_Angeles",
-                      })}
-                    </span>
-                    {isCompletedLate && (
-                      <span className="text-[11px] font-semibold text-[#C43333] ml-auto">
-                        completed late
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Metadata */}
-              {(task.creator_name || task.created_at) && (
-                <p className="text-[11px]" style={{ color: "var(--color-pm-text-muted)" }}>
-                  {task.creator_name && <>Created by <span className="font-medium">{task.creator_name}</span></>}
-                  {task.created_at && <> · {formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}</>}
-                </p>
-              )}
-
-              {/* Delete */}
-              <div className="border-t border-pm-border pt-6">
-                {!showDeleteConfirm ? (
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-pm-danger hover:bg-red-500/10 transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete task
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-pm-text-secondary">
-                      Are you sure?
-                    </span>
-                    <button
-                      onClick={handleDelete}
-                      className="rounded-lg bg-pm-danger px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600 transition-colors"
-                    >
-                      Delete
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteConfirm(false)}
-                      className="rounded-lg px-3 py-1.5 text-sm font-medium text-pm-text-muted hover:text-pm-text-primary transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
+              {/* COMMENTS */}
+              <div className={activeTab === "comments" ? "" : "hidden"}>
+                <CommentsSection
+                  taskId={task.id}
+                  onCountChange={handleCommentCount}
+                />
               </div>
             </div>
           </motion.div>
