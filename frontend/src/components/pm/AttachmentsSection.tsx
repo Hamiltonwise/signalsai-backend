@@ -34,6 +34,7 @@ import type { PmTaskAttachment } from "../../types/pm";
 import { AttachmentPreviewModal } from "./AttachmentPreviewModal";
 import { getCurrentUserId } from "../../utils/currentUser";
 import { PmContextMenu } from "./PmContextMenu";
+import { PmConfirmDialog } from "./PmConfirmDialog";
 import { Eye } from "lucide-react";
 
 interface AttachmentsSectionProps {
@@ -83,6 +84,10 @@ export function AttachmentsSection({
     y: number;
     att: PmTaskAttachment;
   } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PmTaskAttachment | null>(
+    null
+  );
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentUserId = getCurrentUserId();
 
@@ -398,9 +403,7 @@ export function AttachmentsSection({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (window.confirm(`Delete "${att.filename}"?`)) {
-                          handleDelete(att);
-                        }
+                        setPendingDelete(att);
                       }}
                       title="Delete"
                       aria-label="Delete attachment"
@@ -454,15 +457,35 @@ export function AttachmentsSection({
               icon: <Trash2 className="h-3.5 w-3.5" />,
               danger: true,
               disabled: !canDelete(ctxMenu.att),
-              onClick: () => {
-                if (window.confirm(`Delete "${ctxMenu.att.filename}"?`)) {
-                  handleDelete(ctxMenu.att);
-                }
-              },
+              onClick: () => setPendingDelete(ctxMenu.att),
             },
           ]}
         />
       )}
+
+      <PmConfirmDialog
+        open={!!pendingDelete}
+        danger
+        title="Delete attachment?"
+        message={
+          pendingDelete
+            ? `"${pendingDelete.filename}" will be removed from this task and its file deleted from storage. This can't be undone.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        loading={deleting}
+        onCancel={() => !deleting && setPendingDelete(null)}
+        onConfirm={async () => {
+          if (!pendingDelete) return;
+          setDeleting(true);
+          try {
+            await handleDelete(pendingDelete);
+          } finally {
+            setDeleting(false);
+            setPendingDelete(null);
+          }
+        }}
+      />
     </div>
   );
 }

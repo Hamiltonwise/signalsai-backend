@@ -28,6 +28,7 @@ import type { PmTaskComment } from "../../types/pm";
 import { CommentComposer, CommentEditor } from "./CommentComposer";
 import { getCurrentUserId } from "../../utils/currentUser";
 import { PmContextMenu } from "./PmContextMenu";
+import { PmConfirmDialog } from "./PmConfirmDialog";
 
 interface PmUser {
   id: number;
@@ -229,6 +230,8 @@ export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps)
     y: number;
     comment: PmTaskComment;
   } | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const currentUserId = getCurrentUserId();
 
   const refresh = useCallback(async () => {
@@ -310,7 +313,6 @@ export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps)
 
   const handleDelete = useCallback(
     async (commentId: string) => {
-      if (!window.confirm("Delete this comment?")) return;
       try {
         await deleteComment(taskId, commentId);
         setComments((prev) => prev.filter((c) => c.id !== commentId));
@@ -410,7 +412,7 @@ export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps)
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDelete(c.id)}
+                        onClick={() => setPendingDeleteId(c.id)}
                         title="Delete"
                         aria-label="Delete comment"
                         className="rounded p-1 text-pm-text-muted hover:bg-red-500/10 hover:text-pm-danger"
@@ -479,12 +481,32 @@ export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps)
                 icon: <Trash2 className="h-3.5 w-3.5" />,
                 danger: true,
                 disabled: !mine,
-                onClick: () => handleDelete(c.id),
+                onClick: () => setPendingDeleteId(c.id),
               },
             ]}
           />
         );
       })()}
+
+      <PmConfirmDialog
+        open={!!pendingDeleteId}
+        danger
+        title="Delete comment?"
+        message="This comment will be removed permanently. This can't be undone."
+        confirmLabel="Delete"
+        loading={deleting}
+        onCancel={() => !deleting && setPendingDeleteId(null)}
+        onConfirm={async () => {
+          if (!pendingDeleteId) return;
+          setDeleting(true);
+          try {
+            await handleDelete(pendingDeleteId);
+          } finally {
+            setDeleting(false);
+            setPendingDeleteId(null);
+          }
+        }}
+      />
     </div>
   );
 }
