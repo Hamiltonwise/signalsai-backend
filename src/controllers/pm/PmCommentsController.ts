@@ -110,7 +110,9 @@ export async function createComment(
 ): Promise<any> {
   try {
     const taskId = req.params.id;
-    const authorId = req.user!.userId;
+    // users.id is BIGINT (pg returns string); author_id is INTEGER (number).
+    // Coerce once so notification dedup + equality checks line up.
+    const authorId = Number(req.user!.userId);
 
     const body: string = typeof req.body?.body === "string" ? req.body.body : "";
     if (!body.trim()) {
@@ -264,7 +266,8 @@ export async function listComments(
     }
     const mentionNameMap = await resolveMentionNames(allMentionIds);
 
-    const callerId = req.user!.userId;
+    // users.id is BIGINT (pg returns string); author_id is INTEGER.
+    const callerId = Number(req.user!.userId);
     const comments = rows.map((r: any) => {
       const mentions: number[] = Array.isArray(r.mentions) ? r.mentions : [];
       const mention_names: Record<number, string> = {};
@@ -303,7 +306,8 @@ export async function updateComment(
 ): Promise<any> {
   try {
     const { id: taskId, commentId } = req.params;
-    const callerId = req.user!.userId;
+    // users.id is BIGINT (pg returns string); author_id is INTEGER.
+    const callerId = Number(req.user!.userId);
 
     const existing = await PmTaskCommentModel.findOne({
       id: commentId,
@@ -378,7 +382,8 @@ export async function deleteComment(
 ): Promise<any> {
   try {
     const { id: taskId, commentId } = req.params;
-    const callerId = req.user!.userId;
+    // users.id is BIGINT (pg returns string); author_id is INTEGER.
+    const callerId = Number(req.user!.userId);
 
     const existing = await PmTaskCommentModel.findOne({
       id: commentId,

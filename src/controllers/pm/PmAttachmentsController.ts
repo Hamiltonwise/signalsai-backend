@@ -157,7 +157,10 @@ export async function listAttachments(
         "users.email as uploader_email"
       );
 
-    const callerId = req.user!.userId;
+    // users.id is BIGINT → pg driver returns it as string on the JWT,
+    // but uploaded_by (INTEGER) comes back as number. Coerce once so all
+    // strict-equality checks below line up.
+    const callerId = Number(req.user!.userId);
     const attachments = rows.map((row: any) => ({
       id: row.id,
       task_id: row.task_id,
@@ -239,7 +242,8 @@ export async function deleteAttachment(
       return res.status(404).json({ success: false, error: "Task not found" });
     }
 
-    const callerId = req.user!.userId;
+    // JWT userId comes as a string (bigint); uploaded_by is integer.
+    const callerId = Number(req.user!.userId);
     const isUploader = attachment.uploaded_by === callerId;
     const isTaskCreator = task.created_by === callerId;
     if (!isUploader && !isTaskCreator) {

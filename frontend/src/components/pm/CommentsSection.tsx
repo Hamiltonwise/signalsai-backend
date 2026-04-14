@@ -27,6 +27,7 @@ import {
 import type { PmTaskComment } from "../../types/pm";
 import { CommentComposer, CommentEditor } from "./CommentComposer";
 import { getCurrentUserId } from "../../utils/currentUser";
+import { PmContextMenu } from "./PmContextMenu";
 
 interface PmUser {
   id: number;
@@ -223,6 +224,11 @@ export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps)
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number;
+    y: number;
+    comment: PmTaskComment;
+  } | null>(null);
   const currentUserId = getCurrentUserId();
 
   const refresh = useCallback(async () => {
@@ -349,6 +355,10 @@ export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps)
             return (
               <li
                 key={c.id}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setCtxMenu({ x: e.clientX, y: e.clientY, comment: c });
+                }}
                 className="group rounded-lg border px-3 py-2.5"
                 style={{
                   borderColor: "var(--color-pm-border)",
@@ -442,6 +452,39 @@ export function CommentsSection({ taskId, onCountChange }: CommentsSectionProps)
         submitting={submitting}
         onSubmit={handleCreate}
       />
+
+      {ctxMenu && (() => {
+        const c = ctxMenu.comment;
+        const mine =
+          typeof c.is_mine === "boolean"
+            ? c.is_mine
+            : currentUserId !== null && c.author_id === currentUserId;
+        return (
+          <PmContextMenu
+            open
+            x={ctxMenu.x}
+            y={ctxMenu.y}
+            onClose={() => setCtxMenu(null)}
+            items={[
+              {
+                id: "edit",
+                label: "Edit",
+                icon: <Pencil className="h-3.5 w-3.5" />,
+                disabled: !mine,
+                onClick: () => setEditingId(c.id),
+              },
+              {
+                id: "delete",
+                label: "Delete",
+                icon: <Trash2 className="h-3.5 w-3.5" />,
+                danger: true,
+                disabled: !mine,
+                onClick: () => handleDelete(c.id),
+              },
+            ]}
+          />
+        );
+      })()}
     </div>
   );
 }

@@ -33,6 +33,8 @@ import {
 import type { PmTaskAttachment } from "../../types/pm";
 import { AttachmentPreviewModal } from "./AttachmentPreviewModal";
 import { getCurrentUserId } from "../../utils/currentUser";
+import { PmContextMenu } from "./PmContextMenu";
+import { Eye } from "lucide-react";
 
 interface AttachmentsSectionProps {
   taskId: string;
@@ -76,6 +78,11 @@ export function AttachmentsSection({
   const [previewing, setPreviewing] = useState<PmTaskAttachment | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number;
+    y: number;
+    att: PmTaskAttachment;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentUserId = getCurrentUserId();
 
@@ -318,6 +325,10 @@ export function AttachmentsSection({
             return (
               <li
                 key={att.id}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setCtxMenu({ x: e.clientX, y: e.clientY, att });
+                }}
                 className="group relative overflow-hidden rounded-lg border transition-colors hover:border-pm-border-hover"
                 style={{
                   borderColor: "var(--color-pm-border)",
@@ -415,6 +426,41 @@ export function AttachmentsSection({
           attachment={previewing}
           onClose={() => setPreviewing(null)}
           onDownload={handleDownload}
+        />
+      )}
+
+      {ctxMenu && (
+        <PmContextMenu
+          open
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          items={[
+            {
+              id: "preview",
+              label: "Preview",
+              icon: <Eye className="h-3.5 w-3.5" />,
+              onClick: () => setPreviewing(ctxMenu.att),
+            },
+            {
+              id: "download",
+              label: "Download",
+              icon: <Download className="h-3.5 w-3.5" />,
+              onClick: () => handleDownload(ctxMenu.att),
+            },
+            {
+              id: "delete",
+              label: "Delete",
+              icon: <Trash2 className="h-3.5 w-3.5" />,
+              danger: true,
+              disabled: !canDelete(ctxMenu.att),
+              onClick: () => {
+                if (window.confirm(`Delete "${ctxMenu.att.filename}"?`)) {
+                  handleDelete(ctxMenu.att);
+                }
+              },
+            },
+          ]}
         />
       )}
     </div>
