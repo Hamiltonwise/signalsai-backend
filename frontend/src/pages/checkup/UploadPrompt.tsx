@@ -119,8 +119,11 @@ export default function UploadPrompt() {
             clientId={clientId}
             onSuccess={() => {
               setShowModal(false);
-              // Brief pause to let the success state register, then forward
-              setTimeout(goToShare, 1500);
+              // Take them to their referral intelligence -- they just uploaded
+              // the most valuable data they have. Show them what it reveals.
+              setTimeout(() => {
+                navigate("/dashboard/referrals", { replace: true });
+              }, 1500);
             }}
           />
         )}

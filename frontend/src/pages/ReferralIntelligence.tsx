@@ -5,7 +5,7 @@
  * Three sections: Top Referrers, Drift Alerts, This Week's Move.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ThankYouDrafts from "../components/dashboard/ThankYouDrafts";
 import {
@@ -560,6 +560,18 @@ export default function ReferralIntelligence() {
 
   const [showUploadWizard, setShowUploadWizard] = useState(false);
 
+  // Refetch when PMS data is uploaded -- the customer just landed here expecting to see results
+  useEffect(() => {
+    const handleUpload = () => {
+      // Brief delay to let backend sync complete, then refetch all queries
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["referral-intelligence"] });
+      }, 3000);
+    };
+    window.addEventListener("pms:job-uploaded", handleUpload);
+    return () => window.removeEventListener("pms:job-uploaded", handleUpload);
+  }, [queryClient]);
+
   // Intelligence mode drives which sections render
   const { data: dashCtx } = useQuery({
     queryKey: ["dashboard-context"],
@@ -631,6 +643,31 @@ export default function ReferralIntelligence() {
 
           {/* Thank-You Drafts -- referral_based only (GP-specific) */}
           {isReferralMode && <ThankYouDrafts />}
+
+          {/* Compensation Alerts -- the Mythos pattern: hidden decline masked by another source */}
+          {data.compensationAlerts && data.compensationAlerts.length > 0 && (
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[#D56753] mb-4 flex items-center gap-1.5">
+                Hidden Pattern Detected
+              </h2>
+              <div className="space-y-3">
+                {data.compensationAlerts.map((alert: any, i: number) => (
+                  <div
+                    key={i}
+                    className="rounded-2xl p-5 border-2 border-[#D56753]/20"
+                    style={{ backgroundColor: "rgba(213, 103, 83, 0.06)" }}
+                  >
+                    <p className="text-sm text-[#1A1D23] leading-relaxed">{alert.narrative}</p>
+                    {alert.annual_value_at_risk > 0 && (
+                      <p className="text-sm font-semibold text-[#D56753] mt-2">
+                        ${alert.annual_value_at_risk.toLocaleString()}/year at risk
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Drift Alerts -- always visible (relevant to all revenue sources) */}
           <DriftAlerts alerts={data.driftAlerts} />

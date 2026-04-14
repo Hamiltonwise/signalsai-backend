@@ -1046,7 +1046,11 @@ export default function HomePage() {
           onClose={() => setShowUploadModal(false)}
           clientId={orgId ? String(orgId) : ""}
           locationId={selectedLocation?.id}
-          onSuccess={() => setShowUploadModal(false)}
+          onSuccess={() => {
+            setShowUploadModal(false);
+            // Take them to their data. Don't leave them staring at the same page.
+            navigate("/dashboard/referrals");
+          }}
         />
       )}
     </div>
