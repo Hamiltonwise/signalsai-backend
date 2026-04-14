@@ -31,7 +31,7 @@ function describeEvent(type: string, meta: Record<string, any>): string | null {
     case "seo.page_indexed":
       return "Got a new page indexed by Google";
     case "seo.aeo_block_published":
-      return "Published an AI-search-optimized content block";
+      return "Published content to help you show up in AI search results";
     case "review.draft_generated":
       return "Drafted a response to a new review";
     case "review.response_posted":

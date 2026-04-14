@@ -190,6 +190,12 @@ export interface PMSUploadResponse {
     } | null;
     parserFailed?: boolean;
     parserMessage?: string;
+    referralSyncResult?: {
+      synced: number;
+      skipped: number;
+      zeroSourcesDetected?: boolean;
+      headersSeen?: string[];
+    };
   };
   error?: string;
   message?: string;
