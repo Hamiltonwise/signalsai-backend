@@ -67,10 +67,9 @@ Two sessions today: (1) fire list fixes + content quality lint, (2) Fireflies tr
 
 ### Dave tasks pending
 
-| Card | Issue | Blast Radius |
-|------|-------|-------------|
-| Card 4 | APP_URL env var not set on sandbox EC2 | Yellow |
-| Card 8 | GBP OAuth callback hardcoded to production in src/routes/auth/gbp.ts:22 | Red (auth) |
+See Dave Sprint page in Notion (single source of truth for Dave's cards):
+https://app.notion.com/p/32bfdaf120c481aea0e5cfcdfc173292
+Currently: Card 4 (APP_URL, Green) + Card 8 (GBP OAuth, Yellow).
 
 ### What's NOT done (AAE-critical)
 

@@ -79,9 +79,13 @@ Never say "blocked by EC2" or "blocked by Dave" for sandbox work. That is false.
 
 Read `memory/context/session-contract.md` at session start.
 
-Every session is THINKING or BUILD. Not both.
-- THINKING: Corey explores problems. Output = locked decisions. No code.
+Every session is THINKING, BUILD, or BUG TRIAGE.
+- THINKING: Corey explores problems. Output = locked decisions. Code goes to scratch/ branch only.
 - BUILD: Starts with locked decisions. Build, verify, produce Dave-ready card.
+- BUG TRIAGE: Something is broken. Skip the contract. Fix it, confirm root cause, commit.
+
+AI infers the type from Corey's opening -- he doesn't have to declare it.
+False clarity test: if AI can't write a Work Order in 60 seconds, it's THINKING.
 
 The explore-build blur is the #1 time waster. Corey spent 1000+ hours because
 sessions jumped from "describe intent" to "build code" without locking decisions.
@@ -92,14 +96,23 @@ Before code: answer the 5 decision lock questions in the session contract.
 Before commit: run all 4 sweep scripts.
 Before handoff: run the pre-handoff quality gate.
 
+## Information Architecture
+
+Read `.claude/rules/information-architecture.md` for the full system.
+Core principle: Notion is the interface layer (cross-team status). Repo is the build layer.
+Each category has ONE authoritative source. Never duplicate across Notion and repo.
+Dave's tasks live in his Notion Sprint page only (not duplicated in CURRENT-SPRINT.md).
+After every handoff or milestone, sync the relevant Notion page (see sync triggers in the rules file).
+
 ## Session Start
 
-1. Declare session type: THINKING or BUILD
+1. Infer session type from Corey's opening (THINKING, BUILD, or BUG TRIAGE) and reflect it back
 2. Read `CURRENT-SPRINT.md` -- this is the GPS.
 3. `git branch --show-current && git status --short`
 4. Read `docs/PRODUCT-OPERATIONS.md` -- check which Knowns are PASS/FAIL/UNTESTED
-5. If BUILD: read `memory/context/session-contract.md` for quality gates
-6. Execute the next waypoint, or fix failing tests if any exist
+5. Check Build Queue cockpit in Notion for active WO and decisions pending Corey
+6. If BUILD: read `memory/context/session-contract.md` for quality gates
+7. Execute the next waypoint, or fix failing tests if any exist
 
 ## Before Every Build
 
@@ -197,10 +210,14 @@ model: claude-sonnet-4-6
 
 ## Key Pages
 
-- Build Queue: https://www.notion.so/32dfdaf120c48141a798f219d02ac76d
-- Build State: https://www.notion.so/32dfdaf120c4810f908ee3a1ea7452b7
+- Build Queue (cockpit): https://www.notion.so/32dfdaf120c48141a798f219d02ac76d
+- Agent Status Dashboard: https://www.notion.so/328fdaf120c481e8be98dd225f0bad70
+- Dave Sprint: https://www.notion.so/32bfdaf120c481aea0e5cfcdfc173292
+- Dave Context Brief: https://www.notion.so/328fdaf120c4815cbbc8e2c6b10bfc05
+- Jo Context Brief: https://www.notion.so/328fdaf120c48148bb2dfada3a71bf21
 
 ## Rules (loaded automatically)
 
 @.claude/rules/task-routing.md
 @.claude/rules/build-safety.md
+@.claude/rules/information-architecture.md
