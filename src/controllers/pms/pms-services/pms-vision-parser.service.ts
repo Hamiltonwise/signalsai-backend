@@ -12,6 +12,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import * as fs from "fs";
 import * as path from "path";
+import sharp from "sharp";
 
 let llm: Anthropic | null = null;
 function getLLM(): Anthropic {
@@ -56,8 +57,48 @@ function getMediaType(file: Express.Multer.File): "image/png" | "image/jpeg" | "
 export async function parseWithVision(file: Express.Multer.File): Promise<VisionParseResult> {
   try {
     const anthropic = getLLM();
-    const base64 = file.buffer.toString("base64");
-    const mediaType = getMediaType(file);
+    const ext = path.extname(file.originalname).toLowerCase();
+    const isPdf = ext === ".pdf";
+    const isHeic = ext === ".heic" || ext === ".heif";
+
+    // Convert HEIC to JPEG (iPhones default to HEIC)
+    let imageBuffer = file.buffer;
+    if (isHeic) {
+      try {
+        imageBuffer = await sharp(file.buffer).jpeg({ quality: 90 }).toBuffer();
+        console.log(`[Vision Parser] Converted HEIC to JPEG (${file.originalname})`);
+      } catch (convErr: any) {
+        console.error(`[Vision Parser] HEIC conversion failed: ${convErr.message}`);
+        return {
+          success: false,
+          rows: [],
+          confidence: "low" as const,
+          description: "Could not process iPhone photo format",
+          error: "Your photo is in HEIC format which we couldn't convert. Try taking the photo with your camera set to 'Most Compatible' in Settings > Camera > Formats, or screenshot the report instead.",
+        };
+      }
+    }
+
+    const base64 = imageBuffer.toString("base64");
+
+    // Build the content block: PDF uses document type, images use image type
+    const contentBlock: any = isPdf
+      ? {
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: "application/pdf",
+            data: base64,
+          },
+        }
+      : {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: isHeic ? "image/jpeg" : getMediaType(file),
+            data: base64,
+          },
+        };
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -66,14 +107,7 @@ export async function parseWithVision(file: Express.Multer.File): Promise<Vision
         {
           role: "user",
           content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mediaType,
-                data: base64,
-              },
-            },
+            contentBlock,
             {
               type: "text",
               text: `You are extracting business data from an image. This could be a screenshot of software, a photo of a handwritten ledger, a printed report, or anything else a business owner might photograph.
