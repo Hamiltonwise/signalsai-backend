@@ -12,7 +12,7 @@ export async function startAudit(req: Request, res: Response) {
 
     const auditId = await triggerAuditWorkflow(domain, practice_search_string);
 
-    console.log(`[Audit] Received audit_id from n8n: ${auditId}`);
+    console.log(`[Audit] Audit queued: ${auditId}`);
 
     return res.json({
       success: true,

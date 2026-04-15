@@ -28,6 +28,7 @@ import AlloroPostsDocs from "./admin/AlloroPostsDocs";
 import ProjectsDashboard from "./admin/ProjectsDashboard";
 import ProjectBoard from "./admin/ProjectBoard";
 import { PmErrorBoundary } from "@/components/pm/PmErrorBoundary";
+import LeadgenSubmissions from "./admin/LeadgenSubmissions";
 
 function WebDevEngine() {
   return (
@@ -98,6 +99,7 @@ function AdminWithLayout() {
         <Route path="sentry-test" element={<SentryTest />} />
         <Route path="pm" element={<PmErrorBoundary><ProjectsDashboard /></PmErrorBoundary>} />
         <Route path="pm/:projectId" element={<PmErrorBoundary><ProjectBoard /></PmErrorBoundary>} />
+        <Route path="leadgen-submissions" element={<LeadgenSubmissions />} />
       </Routes>
     </AdminLayout>
   );

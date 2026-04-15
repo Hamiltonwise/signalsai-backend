@@ -1,0 +1,439 @@
+/**
+ * Leadgen Tracking Controller
+ *
+ * Public-facing handlers for anonymous session + event tracking from the
+ * leadgen audit tool. Three entry points:
+ *
+ *   POST /leadgen/session  — upsert a session row on first landing
+ *   POST /leadgen/event    — append an event + patch session state
+ *   POST /leadgen/beacon   — same as /event but tolerates sendBeacon quirks
+ *
+ * All three are rate-limited + gated by `X-Leadgen-Key` (the beacon route
+ * tolerates key-in-body because sendBeacon cannot set custom headers).
+ *
+ * Invariants enforced here:
+ *   - `final_stage` never downgrades (see util.event-ordering.isLaterStage)
+ *   - `abandoned=true` is only set when the session hasn't completed yet
+ *     (see util.event-ordering.shouldSetAbandoned)
+ *   - Known session fields (email, audit_id, domain, practice_search_string)
+ *     are never overwritten with null once set
+ */
+
+import { Request, Response } from "express";
+import { db } from "../../database/connection";
+import {
+  FinalStage,
+  ILeadgenSession,
+  STAGE_ORDER,
+} from "../../models/LeadgenSessionModel";
+import {
+  isLaterStage,
+  shouldSetAbandoned,
+} from "./feature-utils/util.event-ordering";
+import { parseUserAgent } from "../../lib/userAgent";
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_REGEX.test(value);
+}
+
+function isValidEventName(value: unknown): value is FinalStage {
+  return (
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(STAGE_ORDER, value)
+  );
+}
+
+/**
+ * Build the patch object for session fields that the client may have
+ * discovered partway through the flow (audit_id once the audit starts,
+ * email on paywall submit, etc.). Never overwrites a non-null value with
+ * null — once known, these fields stick.
+ */
+function buildSessionPatch(
+  current: ILeadgenSession,
+  incoming: {
+    audit_id?: unknown;
+    email?: unknown;
+    domain?: unknown;
+    practice_search_string?: unknown;
+    referrer?: unknown;
+    utm_source?: unknown;
+    utm_medium?: unknown;
+    utm_campaign?: unknown;
+    utm_term?: unknown;
+    utm_content?: unknown;
+  }
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  if (
+    typeof incoming.audit_id === "string" &&
+    incoming.audit_id.length > 0 &&
+    current.audit_id == null
+  ) {
+    patch.audit_id = incoming.audit_id;
+  }
+  if (
+    typeof incoming.email === "string" &&
+    incoming.email.length > 0 &&
+    current.email == null
+  ) {
+    patch.email = incoming.email;
+  }
+  if (
+    typeof incoming.domain === "string" &&
+    incoming.domain.length > 0 &&
+    current.domain == null
+  ) {
+    patch.domain = incoming.domain;
+  }
+  if (
+    typeof incoming.practice_search_string === "string" &&
+    incoming.practice_search_string.length > 0 &&
+    current.practice_search_string == null
+  ) {
+    patch.practice_search_string = incoming.practice_search_string;
+  }
+
+  // Acquisition fields — all write-once. First visit wins; subsequent upserts
+  // / events never overwrite (prevents a mid-session internal nav from
+  // clobbering the original referrer/UTM values).
+  const acquisitionFields: Array<
+    [keyof typeof incoming, keyof ILeadgenSession]
+  > = [
+    ["referrer", "referrer"],
+    ["utm_source", "utm_source"],
+    ["utm_medium", "utm_medium"],
+    ["utm_campaign", "utm_campaign"],
+    ["utm_term", "utm_term"],
+    ["utm_content", "utm_content"],
+  ];
+  for (const [inKey, sessionKey] of acquisitionFields) {
+    const value = incoming[inKey];
+    if (
+      typeof value === "string" &&
+      value.length > 0 &&
+      current[sessionKey] == null
+    ) {
+      patch[sessionKey as string] = value;
+    }
+  }
+
+  return patch;
+}
+
+// ---------------------------------------------------------------------------
+// POST /leadgen/session
+// ---------------------------------------------------------------------------
+
+/**
+ * Upserts a session row. Body:
+ *   { session_id, referrer?, utm_source?, utm_medium?, utm_campaign?, utm_term?, utm_content? }
+ *
+ * If the row exists we only bump `last_seen_at` — acquisition fields are
+ * preserved from the first visit.
+ */
+export async function upsertSession(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const {
+      session_id,
+      referrer,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_term,
+      utm_content,
+    } = req.body || {};
+
+    if (!isValidUuid(session_id)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "invalid_session_id" });
+    }
+
+    const userAgent = req.headers["user-agent"];
+    const existing = (await db("leadgen_sessions")
+      .where({ id: session_id })
+      .first()) as ILeadgenSession | undefined;
+
+    const now = new Date();
+
+    if (existing) {
+      // Back-fill write-once fields on subsequent pings if they were missing.
+      // Acquisition fields (referrer/utm_*) also back-filled here via
+      // buildSessionPatch — but only when not already set.
+      const update: Record<string, unknown> = {
+        last_seen_at: now,
+        updated_at: now,
+        ...buildSessionPatch(existing, {
+          referrer,
+          utm_source,
+          utm_medium,
+          utm_campaign,
+          utm_term,
+          utm_content,
+        }),
+      };
+
+      if (!existing.user_agent && typeof userAgent === "string") {
+        update.user_agent = userAgent;
+      }
+
+      // Write-once UA-derived fields. Only populate when the column is
+      // currently null — treat them identically to first_seen_at.
+      if (
+        typeof userAgent === "string" &&
+        (existing.browser == null ||
+          existing.os == null ||
+          existing.device_type == null)
+      ) {
+        const parsed = parseUserAgent(userAgent);
+        if (existing.browser == null && parsed.browser != null) {
+          update.browser = parsed.browser;
+        }
+        if (existing.os == null && parsed.os != null) {
+          update.os = parsed.os;
+        }
+        if (existing.device_type == null && parsed.device_type != null) {
+          update.device_type = parsed.device_type;
+        }
+      }
+
+      await db("leadgen_sessions").where({ id: session_id }).update(update);
+    } else {
+      const parsed = parseUserAgent(
+        typeof userAgent === "string" ? userAgent : null
+      );
+      await db("leadgen_sessions").insert({
+        id: session_id,
+        referrer: typeof referrer === "string" ? referrer : null,
+        utm_source: typeof utm_source === "string" ? utm_source : null,
+        utm_medium: typeof utm_medium === "string" ? utm_medium : null,
+        utm_campaign: typeof utm_campaign === "string" ? utm_campaign : null,
+        utm_term: typeof utm_term === "string" ? utm_term : null,
+        utm_content: typeof utm_content === "string" ? utm_content : null,
+        user_agent: typeof userAgent === "string" ? userAgent : null,
+        browser: parsed.browser,
+        os: parsed.os,
+        device_type: parsed.device_type,
+        final_stage: "landed",
+        completed: false,
+        abandoned: false,
+        first_seen_at: now,
+        last_seen_at: now,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error("[LeadgenTracking] upsertSession error:", error);
+    return res.status(500).json({ ok: false, error: "internal_error" });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared event-ingestion core (used by POST /event and POST /beacon)
+// ---------------------------------------------------------------------------
+
+/**
+ * Processes an event payload. Creates the session row defensively if the
+ * client sent an event without first hitting /session. Returns a status
+ * code + body the caller can serialize (the beacon route ignores both and
+ * always 204s).
+ */
+async function ingestEvent(body: unknown): Promise<{
+  status: number;
+  body: Record<string, unknown>;
+}> {
+  const {
+    session_id,
+    event_name,
+    event_data,
+    audit_id,
+    email,
+    domain,
+    practice_search_string,
+    referrer,
+    utm_source,
+    utm_medium,
+    utm_campaign,
+    utm_term,
+    utm_content,
+  } = (body || {}) as Record<string, unknown>;
+
+  if (!isValidUuid(session_id)) {
+    return { status: 400, body: { ok: false, error: "invalid_session_id" } };
+  }
+  if (!isValidEventName(event_name)) {
+    return { status: 400, body: { ok: false, error: "invalid_event_name" } };
+  }
+
+  const now = new Date();
+
+  // Load (or defensively create) the session.
+  let session = (await db("leadgen_sessions")
+    .where({ id: session_id })
+    .first()) as ILeadgenSession | undefined;
+
+  if (!session) {
+    await db("leadgen_sessions").insert({
+      id: session_id,
+      final_stage: "landed",
+      completed: false,
+      abandoned: false,
+      first_seen_at: now,
+      last_seen_at: now,
+      created_at: now,
+      updated_at: now,
+    });
+    session = (await db("leadgen_sessions")
+      .where({ id: session_id })
+      .first()) as ILeadgenSession;
+  }
+
+  // Insert the event row.
+  await db("leadgen_events").insert({
+    session_id,
+    event_name,
+    event_data:
+      event_data != null ? JSON.stringify(event_data) : null,
+    created_at: now,
+  });
+
+  // Build the session patch.
+  const patch: Record<string, unknown> = {
+    last_seen_at: now,
+    updated_at: now,
+    ...buildSessionPatch(session, {
+      audit_id,
+      email,
+      domain,
+      practice_search_string,
+      referrer,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_term,
+      utm_content,
+    }),
+  };
+
+  // `abandoned` is a boolean flag, NOT a progression stage — never let it
+  // become `final_stage`. Otherwise a stray beforeunload beacon (e.g. from a
+  // prior tab reusing the same sessionStorage id) would stamp final_stage=
+  // abandoned (ordinal 99) and every later real-progression event would be
+  // rejected as a downgrade, leaving the session stuck at "Abandoned" even
+  // after the user completes the flow.
+  if (event_name !== "abandoned" && isLaterStage(event_name, session.final_stage)) {
+    patch.final_stage = event_name;
+  } else if (
+    event_name !== "abandoned" &&
+    session.final_stage === "abandoned" &&
+    isLaterStage(event_name, "landed")
+  ) {
+    // Recovery path: session is marked final_stage='abandoned' from legacy
+    // data — any real progression event should pull it back to real.
+    patch.final_stage = event_name;
+  }
+
+  if (event_name === "results_viewed") {
+    patch.completed = true;
+    // User reached the end — retroactively clear any abandoned flag that
+    // leaked in from a prior tab's beforeunload beacon.
+    patch.abandoned = false;
+  }
+
+  if (event_name === "account_created") {
+    patch.completed = true;
+    patch.abandoned = false;
+  }
+
+  // T8e — abandoned guard. Never flip `abandoned=true` when the session is
+  // already completed OR when it already reached a terminal success stage
+  // (`results_viewed` / `account_created`). `shouldSetAbandoned` handles the
+  // completed case; this extra check defends against a lagging beforeunload
+  // beacon arriving after a success stage was stamped but `completed` was
+  // not yet persisted (race with the same request).
+  if (event_name === "abandoned") {
+    const terminalSuccess =
+      session.completed === true ||
+      session.final_stage === "results_viewed" ||
+      session.final_stage === "account_created";
+
+    if (terminalSuccess) {
+      console.log(
+        "[LeadgenTracking] abandoned guard prevented downgrade",
+        {
+          session_id,
+          final_stage: session.final_stage,
+          completed: session.completed,
+        }
+      );
+    } else if (shouldSetAbandoned(event_name, session.completed)) {
+      patch.abandoned = true;
+    }
+  }
+
+  await db("leadgen_sessions").where({ id: session_id }).update(patch);
+
+  return { status: 200, body: { ok: true } };
+}
+
+// ---------------------------------------------------------------------------
+// POST /leadgen/event
+// ---------------------------------------------------------------------------
+
+export async function recordEvent(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const result = await ingestEvent(req.body);
+    return res.status(result.status).json(result.body);
+  } catch (error) {
+    console.error("[LeadgenTracking] recordEvent error:", error);
+    return res.status(500).json({ ok: false, error: "internal_error" });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /leadgen/beacon
+// ---------------------------------------------------------------------------
+
+/**
+ * Beacon handler — same ingestion semantics as /event but:
+ *   - Always returns 204 (sendBeacon discards responses)
+ *   - Tolerates `text/plain` Content-Type (sendBeacon blob fallback)
+ *   - Never leaks error state to the client
+ *
+ * If the body came in as a raw string (text/plain), parse it before
+ * handing off to the ingestion core.
+ */
+export async function recordBeacon(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    let payload: unknown = req.body;
+    if (typeof payload === "string") {
+      try {
+        payload = JSON.parse(payload);
+      } catch {
+        // Malformed — drop silently.
+        return res.status(204).end();
+      }
+    }
+    await ingestEvent(payload);
+  } catch (error) {
+    // Internal logging only — beacon client can't read responses anyway.
+    console.error("[LeadgenTracking] recordBeacon error:", error);
+  }
+  return res.status(204).end();
+}

@@ -1,20 +1,21 @@
 export interface StartAuditInput {
-  domain: string;
+  domain: string; // Empty string allowed — caller signaling "no website yet"
   practice_search_string: string;
 }
 
 export function validateStartAuditInput(body: any): StartAuditInput {
   const { domain, practice_search_string } = body;
 
-  if (!domain || !practice_search_string) {
+  if (!practice_search_string) {
     const error: any = new Error(
-      "Missing required fields: domain, practice_search_string"
+      "Missing required field: practice_search_string"
     );
     error.statusCode = 400;
     throw error;
   }
 
-  return { domain, practice_search_string };
+  // domain may be empty string — treated as "no website yet" downstream.
+  return { domain: domain ?? "", practice_search_string };
 }
 
 export function validateAuditIdParam(auditId: string | undefined): string {

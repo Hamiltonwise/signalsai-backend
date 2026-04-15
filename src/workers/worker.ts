@@ -16,7 +16,8 @@ import { processReviewSync } from "./processors/reviewSync.processor";
 import { processSchedulerTick } from "./processors/scheduler.processor";
 import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
-import { getMindsQueue, getPmQueue } from "./queues";
+import { processAuditLeadgen } from "./processors/auditLeadgen.processor";
+import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
 const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
@@ -219,8 +220,24 @@ const wbRestoreWorker = new Worker(
   }
 );
 
+// Audit Leadgen worker — long-running (3–5 min); higher lock duration.
+const auditLeadgenWorker = new Worker(
+  "audit-leadgen",
+  async (job) => {
+    await processAuditLeadgen(job);
+  },
+  {
+    connection,
+    concurrency: 3,
+    lockDuration: 600000, // 10 min
+    prefix: '{audit}',
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 50 },
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, auditLeadgenWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -247,6 +264,7 @@ async function shutdown(): Promise<void> {
   await schedulerWorker.close();
   await wbBackupWorker.close();
   await wbRestoreWorker.close();
+  await auditLeadgenWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");

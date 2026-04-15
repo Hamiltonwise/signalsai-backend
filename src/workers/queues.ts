@@ -31,12 +31,12 @@ export function getMindsQueue(name: string): Queue {
   return queues[queueName];
 }
 
-export function getPmQueue(name: string): Queue {
-  const queueName = `pm-${name}`;
+export function getAuditQueue(name: string): Queue {
+  const queueName = `audit-${name}`;
   if (!queues[queueName]) {
     queues[queueName] = new Queue(queueName, {
       connection: getRedisConnection(),
-      prefix: '{pm}',
+      prefix: '{audit}',
     });
   }
   return queues[queueName];

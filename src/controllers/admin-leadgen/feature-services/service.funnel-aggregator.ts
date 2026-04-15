@@ -1,0 +1,263 @@
+/**
+ * Funnel aggregation service for the admin leadgen page.
+ *
+ * **Cumulative counts (T1):** each bucket counts sessions whose *max
+ * reached stage ordinal* is ≥ the bucket ordinal — not sessions whose
+ * `final_stage` literally equals the bucket. A session that reached
+ * `results_viewed` therefore contributes to every earlier bucket too,
+ * which is what a funnel should actually show.
+ *
+ * Max stage is derived from `leadgen_events` via a single derived-table
+ * JOIN so we never run one query per session. Sessions with zero events
+ * (only the `landed` upsert) fall back to ordinal 0.
+ *
+ * The `abandoned` row is terminal and orthogonal — it counts sessions
+ * where `abandoned=true AND completed=false`, i.e. sessions that
+ * abandoned before reaching `results_viewed`. It does not participate
+ * in the drop-off calculation.
+ *
+ * **Stage timing (T8a):** a second single-query pass computes the
+ * average milliseconds between the first event at stage N and the
+ * first event at stage N+1, across sessions that hit both. Exposed as
+ * `avg_ms_to_reach` on each bucket (null for the first stage).
+ *
+ * `stage_viewed_3` (Photos sub-stage) is no longer emitted — legacy
+ * enum value kept for back-compat on existing rows, but we don't waste
+ * compute returning a dead bucket in the funnel response.
+ */
+
+import { db } from "../../../database/connection";
+import {
+  FinalStage,
+  STAGE_ORDER,
+} from "../../../models/LeadgenSessionModel";
+
+export interface FunnelStageRow {
+  name: FinalStage;
+  count: number;
+  drop_off_pct: number | null;
+  ordinal: number;
+  avg_ms_to_reach: number | null;
+}
+
+/**
+ * Stages that participate in the funnel progression, in render order.
+ * `stage_viewed_3` is intentionally excluded (legacy Photos sub-stage,
+ * no longer emitted). `abandoned` is appended after the progression
+ * loop as a terminal counter.
+ */
+const FUNNEL_STAGES: FinalStage[] = [
+  "landed",
+  "input_started",
+  "input_submitted",
+  "audit_started",
+  "stage_viewed_1",
+  "stage_viewed_2",
+  "stage_viewed_4",
+  "stage_viewed_5",
+  "results_viewed",
+  "report_engaged_1min",
+  "email_gate_shown",
+  "email_submitted",
+  "account_created",
+];
+
+/**
+ * Builds the SQL fragment that maps `leadgen_events.event_name` to its
+ * ordinal. Generated from `STAGE_ORDER` so adding a stage to the
+ * ordinal map automatically flows through.
+ *
+ * NOTE: `abandoned` (ordinal 99) is deliberately excluded — it's a
+ * terminal flag, not a progression marker. Including it would cause a
+ * session that merely abandoned (without reaching any real funnel
+ * stage) to have max_ordinal=99 and therefore contribute to EVERY
+ * cumulative bucket, including `account_created`. The terminal
+ * abandoned counter lives in its own branch driven by `s.abandoned`.
+ */
+function buildOrdinalCase(): string {
+  const lines = (Object.entries(STAGE_ORDER) as Array<[FinalStage, number]>)
+    .filter(([name]) => name !== "abandoned")
+    .map(([name, ord]) => `WHEN event_name = '${name}' THEN ${ord}`)
+    .join(" ");
+  return `CASE ${lines} ELSE 0 END`;
+}
+
+/**
+ * Returns one row per funnel stage (cumulative count + drop-off + avg
+ * time-to-reach) plus a terminal `abandoned` row. Rows are sorted by
+ * ordinal so the UI axis is stable.
+ */
+export async function aggregateFunnel(filters: {
+  from?: string;
+  to?: string;
+}): Promise<FunnelStageRow[]> {
+  const ordinalCase = buildOrdinalCase();
+
+  // --------------------------------------------------------------------
+  // Count query: one row per session with its max reached ordinal.
+  // Sessions with no events default to 0 (`landed`) because the upsert
+  // itself represents "landed".
+  // --------------------------------------------------------------------
+  const sessionMaxCte = db
+    .select("session_id")
+    .max({ max_ordinal: db.raw(ordinalCase) })
+    .from("leadgen_events")
+    .groupBy("session_id");
+
+  let base = db("leadgen_sessions as s")
+    .leftJoin(sessionMaxCte.as("sm"), "sm.session_id", "s.id")
+    .select<
+      Array<{
+        max_ordinal: number | string | null;
+        abandoned: boolean;
+        completed: boolean;
+      }>
+    >(
+      db.raw("COALESCE(sm.max_ordinal, 0)::int as max_ordinal"),
+      "s.abandoned as abandoned",
+      "s.completed as completed"
+    );
+
+  if (filters.from) {
+    base = base.where("s.first_seen_at", ">=", filters.from);
+  }
+  if (filters.to) {
+    base = base.where("s.first_seen_at", "<=", filters.to);
+  }
+
+  const sessionRows = await base;
+
+  // Count sessions hitting each stage ordinal cumulatively, plus the
+  // terminal abandoned bucket.
+  const cumulativeByOrdinal = new Map<number, number>();
+  let abandonedCount = 0;
+
+  for (const row of sessionRows) {
+    const maxOrd =
+      typeof row.max_ordinal === "string"
+        ? parseInt(row.max_ordinal, 10)
+        : Number(row.max_ordinal ?? 0);
+
+    for (const stage of FUNNEL_STAGES) {
+      const ord = STAGE_ORDER[stage];
+      if (maxOrd >= ord) {
+        cumulativeByOrdinal.set(ord, (cumulativeByOrdinal.get(ord) ?? 0) + 1);
+      }
+    }
+
+    // Terminal: abandoned before completing (reaching results_viewed).
+    if (row.abandoned && !row.completed) {
+      abandonedCount += 1;
+    }
+  }
+
+  // --------------------------------------------------------------------
+  // Timing query (T8a): for each event, compute time since the previous
+  // event (chronologically) in the same session. We aggregate per
+  // (session_id, event_name) first event only, then pair adjacent
+  // FUNNEL_STAGES and average the deltas in JS.
+  //
+  // Single query: pull (session_id, event_name, first_created_at) for
+  // every (session, event_name) pair — no N+1.
+  // --------------------------------------------------------------------
+  let firstEventQuery = db("leadgen_events as e")
+    .innerJoin("leadgen_sessions as s", "s.id", "e.session_id")
+    .select<
+      Array<{
+        session_id: string;
+        event_name: FinalStage;
+        first_at: Date;
+      }>
+    >(
+      "e.session_id",
+      "e.event_name",
+      db.raw("MIN(e.created_at) as first_at")
+    )
+    .groupBy("e.session_id", "e.event_name");
+
+  if (filters.from) {
+    firstEventQuery = firstEventQuery.where(
+      "s.first_seen_at",
+      ">=",
+      filters.from
+    );
+  }
+  if (filters.to) {
+    firstEventQuery = firstEventQuery.where(
+      "s.first_seen_at",
+      "<=",
+      filters.to
+    );
+  }
+
+  const firstEventRows = await firstEventQuery;
+
+  // session_id -> event_name -> first_at(ms)
+  const firstByStage = new Map<string, Map<FinalStage, number>>();
+  for (const row of firstEventRows) {
+    const t = new Date(row.first_at).getTime();
+    if (!Number.isFinite(t)) continue;
+    let perSession = firstByStage.get(row.session_id);
+    if (!perSession) {
+      perSession = new Map();
+      firstByStage.set(row.session_id, perSession);
+    }
+    // Only track stages we care about (skip legacy stage_viewed_3 etc.)
+    if (STAGE_ORDER[row.event_name] !== undefined) {
+      perSession.set(row.event_name, t);
+    }
+  }
+
+  // --------------------------------------------------------------------
+  // Build the output rows.
+  // --------------------------------------------------------------------
+  const progression: FunnelStageRow[] = [];
+  let prevCount: number | null = null;
+  let prevStage: FinalStage | null = null;
+
+  for (const name of FUNNEL_STAGES) {
+    const ordinal = STAGE_ORDER[name];
+    const count = cumulativeByOrdinal.get(ordinal) ?? 0;
+
+    // Drop-off vs. previous funnel stage.
+    let drop_off_pct: number | null;
+    if (prevCount === null) {
+      drop_off_pct = 0;
+    } else if (prevCount === 0) {
+      drop_off_pct = null;
+    } else {
+      drop_off_pct = ((prevCount - count) / prevCount) * 100;
+    }
+
+    // Avg ms from previous stage -> this stage (null for first stage).
+    let avg_ms_to_reach: number | null = null;
+    if (prevStage !== null) {
+      let sum = 0;
+      let n = 0;
+      for (const perSession of firstByStage.values()) {
+        const tPrev = perSession.get(prevStage);
+        const tCur = perSession.get(name);
+        if (tPrev !== undefined && tCur !== undefined && tCur >= tPrev) {
+          sum += tCur - tPrev;
+          n += 1;
+        }
+      }
+      avg_ms_to_reach = n > 0 ? Math.round(sum / n) : null;
+    }
+
+    progression.push({ name, count, drop_off_pct, ordinal, avg_ms_to_reach });
+    prevCount = count;
+    prevStage = name;
+  }
+
+  // Terminal abandoned row — no drop-off %, no timing.
+  progression.push({
+    name: "abandoned",
+    count: abandonedCount,
+    drop_off_pct: null,
+    ordinal: STAGE_ORDER.abandoned,
+    avg_ms_to_reach: null,
+  });
+
+  return progression;
+}

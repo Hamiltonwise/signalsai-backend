@@ -20,6 +20,8 @@ import {
   PanelLeftOpen,
   Settings,
   Clock,
+  Inbox,
+  UserCheck,
 } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 
@@ -30,6 +32,7 @@ export type AdminNavKey =
   | "ai-data-insights"
   | "practice-ranking"
   | "minds"
+  | "leadgen-submissions"
   | "app-logs"
   | "organization-management"
   | "websites"
@@ -49,6 +52,10 @@ const AGENTS_GROUP_ITEMS: NavItem[] = [
   { key: "ai-data-insights", label: "Agent Enhancements", icon: LineChart },
   { key: "practice-ranking", label: "Practice Ranking", icon: TrendingUp },
   { key: "minds", label: "Minds", icon: Brain },
+];
+
+const LEADGEN_ITEMS: NavItem[] = [
+  { key: "leadgen-submissions", label: "Leadgen Submissions", icon: Inbox },
 ];
 
 const DONE_FOR_YOU_ITEMS: NavItem[] = [
@@ -192,6 +199,23 @@ export function AdminSidebar({ topOffset }: AdminSidebarProps = {}) {
             )}
             <div className={`${collapsed ? "space-y-0.5 mt-0.5" : "space-y-1 mt-1"}`}>
               {AGENTS_GROUP_ITEMS.map((item) => renderNavLink(item, !collapsed))}
+            </div>
+          </div>
+
+          {/* Leadgen Group */}
+          <div className={collapsed ? "pt-1" : "pt-4"}>
+            {!collapsed ? (
+              <div className="flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+                <UserCheck className="h-3.5 w-3.5" />
+                <span>Leadgen</span>
+              </div>
+            ) : (
+              <div className="flex justify-center py-1">
+                <div className="w-5 border-t border-gray-600/50" />
+              </div>
+            )}
+            <div className={`${collapsed ? "space-y-0.5 mt-0.5" : "space-y-1 mt-1"}`}>
+              {LEADGEN_ITEMS.map((item) => renderNavLink(item, !collapsed))}
             </div>
           </div>
 

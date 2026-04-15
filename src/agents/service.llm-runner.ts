@@ -31,6 +31,11 @@ export interface LlmRunnerOptions {
   temperature?: number;
   /** Optional assistant prefill to steer output format (e.g. "{" for JSON) */
   prefill?: string;
+  /** Optional images to send alongside userMessage (multimodal input) */
+  images?: Array<{
+    mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+    base64: string;
+  }>;
 }
 
 export interface LlmRunnerResult {
@@ -63,23 +68,69 @@ export async function runAgent(
     maxTokens = 16384,
     temperature = 0,
     prefill,
+    images,
   } = options;
 
-  const messages: Anthropic.MessageParam[] = [
-    { role: "user", content: userMessage },
-  ];
+  const messages: Anthropic.MessageParam[] = [];
+
+  if (images && images.length > 0) {
+    const userContent: Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam> = [
+      ...images.map((img) => ({
+        type: "image" as const,
+        source: {
+          type: "base64" as const,
+          media_type: img.mediaType,
+          data: stripDataUrlPrefix(img.base64),
+        },
+      })),
+      { type: "text" as const, text: userMessage },
+    ];
+    messages.push({ role: "user", content: userContent });
+  } else {
+    messages.push({ role: "user", content: userMessage });
+  }
 
   if (prefill) {
     messages.push({ role: "assistant", content: prefill });
   }
 
-  const response = await getClient().messages.create({
-    model,
-    max_tokens: maxTokens,
-    temperature,
-    system: systemPrompt,
-    messages,
-  });
+  const imgSizeKB = images
+    ? Math.round(
+        images.reduce(
+          (sum, i) => sum + stripDataUrlPrefix(i.base64).length * 0.75,
+          0
+        ) / 1024
+      )
+    : 0;
+  const imgCount = images?.length ?? 0;
+  console.log(
+    `[LLM] → ${model} system=${systemPrompt.length}ch user=${userMessage.length}ch ` +
+      `images=${imgCount}${imgCount ? ` (${imgSizeKB}kB)` : ""} maxTokens=${maxTokens}`
+  );
+
+  const callStart = Date.now();
+  let response;
+  try {
+    response = await getClient().messages.create({
+      model,
+      max_tokens: maxTokens,
+      temperature,
+      system: systemPrompt,
+      messages,
+    });
+  } catch (err: any) {
+    const status = err?.status ?? err?.response?.status ?? "?";
+    const body = err?.error ?? err?.response?.data ?? err?.body;
+    console.error(
+      `[LLM] ✗ API error (${Date.now() - callStart}ms) status=${status} message="${err?.message}"`
+    );
+    if (body) {
+      console.error(
+        `[LLM]   body: ${typeof body === "string" ? body : JSON.stringify(body).slice(0, 500)}`
+      );
+    }
+    throw err;
+  }
 
   const textBlock = response.content.find(
     (b): b is Anthropic.TextBlock => b.type === "text"
@@ -95,6 +146,12 @@ export async function runAgent(
   // Attempt JSON parse with multiple extraction strategies
   const parsed = extractJson(raw);
 
+  console.log(
+    `[LLM] ✓ ${response.model} (${Date.now() - callStart}ms) ` +
+      `tokens=${response.usage.input_tokens}/${response.usage.output_tokens} ` +
+      `parsed=${parsed ? "ok" : "null"} raw=${raw.length}ch`
+  );
+
   return {
     raw,
     parsed,
@@ -102,6 +159,11 @@ export async function runAgent(
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
   };
+}
+
+function stripDataUrlPrefix(data: string): string {
+  const match = data.match(/^data:image\/[a-zA-Z0-9.+-]+;base64,(.*)$/);
+  return match ? match[1] : data;
 }
 
 // =====================================================================

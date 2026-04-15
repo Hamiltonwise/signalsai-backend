@@ -1,46 +1,42 @@
-const N8N_WEBHOOK_URL = process.env.WEB_SCRAPING_TOOL_AGENT_WEBHOOK;
+/**
+ * Audit Workflow Service
+ *
+ * Kicks off a leadgen audit by:
+ *   1. Creating an `audit_processes` row with status=pending, realtime_status=0.
+ *   2. Enqueueing a BullMQ job on the `audit-leadgen` queue.
+ *   3. Returning the audit id to the controller (frontend poll contract).
+ *
+ * Replaces the previous n8n `WEB_SCRAPING_TOOL_AGENT_WEBHOOK` relay. The
+ * heavy orchestration now lives in
+ * `src/workers/processors/auditLeadgen.processor.ts`.
+ */
+
+import { randomUUID } from "crypto";
+import { AuditProcessModel } from "../../../models/AuditProcessModel";
+import { getAuditQueue } from "../../../workers/queues";
 
 export async function triggerAuditWorkflow(
   domain: string,
   practiceSearchString: string
 ): Promise<string> {
-  if (!N8N_WEBHOOK_URL) {
-    const error: any = new Error("n8n webhook URL not configured");
-    error.statusCode = 500;
-    throw error;
-  }
+  const auditId = randomUUID();
 
-  // Call n8n webhook and WAIT for response
-  // n8n creates the DB record and returns the audit_id
-  const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      domain,
-      practice_search_string: practiceSearchString,
-    }),
+  await AuditProcessModel.create({
+    id: auditId,
+    domain,
+    practice_search_string: practiceSearchString,
+    status: "pending",
+    realtime_status: 0,
   });
 
-  if (!n8nResponse.ok) {
-    console.error(
-      `[Audit] n8n webhook failed with status: ${n8nResponse.status}`
-    );
-    const error: any = new Error(
-      `n8n webhook failed with status ${n8nResponse.status}`
-    );
-    error.statusCode = 502;
-    throw error;
-  }
+  const queue = getAuditQueue("leadgen");
+  await queue.add("process", {
+    auditId,
+    domain,
+    practiceSearchString,
+  });
 
-  // Parse response from n8n - expects { audit_id: "uuid" }
-  const n8nData = await n8nResponse.json();
+  console.log(`[Audit] Enqueued audit job ${auditId} for domain=${domain}`);
 
-  if (!n8nData.audit_id) {
-    console.error("[Audit] n8n response missing audit_id:", n8nData);
-    const error: any = new Error("n8n response missing audit_id");
-    error.statusCode = 502;
-    throw error;
-  }
-
-  return n8nData.audit_id;
+  return auditId;
 }
