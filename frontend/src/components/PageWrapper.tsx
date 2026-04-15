@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, Bell, Lock, CreditCard } from "lucide-react";
+import { Menu, Bell, Lock, CreditCard, ArrowRight } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import { MobileBottomNav } from "./MobileBottomNav";
 import { LocationTransitionOverlay } from "./LocationTransitionOverlay";
 import { SidebarProvider, useSidebar } from "./Admin/SidebarContext";
 import { useAuth } from "../hooks/useAuth";
@@ -52,11 +53,11 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-alloro-orange rounded-lg flex items-center justify-center text-white font-bold text-sm">
-              {onboardingCompleted
-                ? userProfile?.practiceName?.charAt(0)?.toUpperCase() || "A"
-                : "A"}
-            </div>
+            <img
+              src="/logo.png"
+              alt="Alloro"
+              className="w-8 h-8 rounded-lg object-contain"
+            />
             <span className="text-alloro-navy font-heading font-black text-base hidden sm:inline-block">
               {onboardingCompleted
                 ? userProfile?.practiceName || "Alloro"
@@ -100,48 +101,49 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
       >
         {/* Lockout Banner — persistent top bar when account is locked */}
         {isLockedOut && (
-          <div className="bg-red-50 border-b border-red-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
-            <div className="flex items-center gap-3">
-              <Lock size={16} className="text-red-600 shrink-0" />
-              <p className="text-sm text-red-800 font-medium">
-                Your account is locked. Add a payment method to restore full
-                access.
+          <div className="bg-red-50 border-b border-red-200 px-4 sm:px-6 py-3 sm:py-3.5 shrink-0">
+            <div className="flex items-center gap-3 max-w-5xl mx-auto">
+              <Lock size={14} className="text-red-600 shrink-0" />
+              <p className="flex-1 text-xs sm:text-[13px] text-red-800 font-medium leading-snug">
+                Your account is locked. Add a payment method to restore full access.
               </p>
+              {!isOnSettingsPage && (
+                <button
+                  onClick={() => navigate("/settings/billing")}
+                  className="group flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shrink-0 whitespace-nowrap shadow-sm"
+                >
+                  <span className="hidden sm:inline">Go to Settings</span>
+                  <span className="sm:hidden">Fix</span>
+                  <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                </button>
+              )}
             </div>
-            {!isOnSettingsPage && (
-              <button
-                onClick={() => navigate("/settings/billing")}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors shrink-0"
-              >
-                <CreditCard size={14} />
-                Go to Settings
-              </button>
-            )}
           </div>
         )}
 
         {/* Subscribe Banner — persistent for admin-granted users without Stripe */}
         {!isLockedOut && billingStatus?.isAdminGranted && !isOnSettingsPage && (
-          <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
-            <div className="flex items-center gap-3">
-              <CreditCard size={16} className="text-amber-600 shrink-0" />
-              <p className="text-sm text-amber-800 font-medium">
-                You haven't subscribed to Alloro yet. Head to Settings &gt;
-                Billing to get started.
+          <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-3 sm:py-3.5 shrink-0">
+            <div className="flex items-center gap-3 max-w-5xl mx-auto">
+              <CreditCard size={14} className="text-amber-600 shrink-0" />
+              <p className="flex-1 text-xs sm:text-[13px] text-amber-800 font-medium leading-snug">
+                You haven't subscribed to Alloro yet.{" "}
+                <span className="hidden sm:inline">Head to Settings › Billing to get started.</span>
               </p>
+              <button
+                onClick={() => navigate("/settings/billing")}
+                className="group flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-alloro-orange hover:bg-[#c45a47] rounded-lg transition-colors shrink-0 whitespace-nowrap shadow-sm"
+              >
+                Subscribe
+                <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+              </button>
             </div>
-            <button
-              onClick={() => navigate("/settings/billing")}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-alloro-orange text-white text-xs font-bold rounded-lg hover:bg-alloro-orange/90 transition-colors shrink-0"
-            >
-              <CreditCard size={14} />
-              Subscribe
-            </button>
           </div>
         )}
         {children}
       </main>
 
+      <MobileBottomNav onboardingCompleted={onboardingCompleted} />
       <LocationTransitionOverlay />
     </div>
   );

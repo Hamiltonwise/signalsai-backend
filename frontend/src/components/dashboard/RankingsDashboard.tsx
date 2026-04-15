@@ -878,7 +878,7 @@ function SearchPositionSection({ result }: { result: RankingResult }) {
 
   return (
     <section
-      data-wizard-target="rankings-search-position"
+      data-wizard-target="rankings-competitors"
       className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden"
     >
       <div className="px-10 py-8 border-b border-black/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -1256,7 +1256,10 @@ function PerformanceDashboard({
 
       {/* 5. RANK DRIVERS */}
       {result.llmAnalysis?.drivers && result.llmAnalysis.drivers.length > 0 && (
-        <section className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden text-left">
+        <section
+          data-wizard-target="rankings-factors"
+          className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden text-left"
+        >
           <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between">
             <div className="space-y-1">
               <h3 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
@@ -1617,7 +1620,6 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
 
   return (
     <section
-      data-wizard-target="rankings-factors"
       className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden text-left"
     >
       <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between">

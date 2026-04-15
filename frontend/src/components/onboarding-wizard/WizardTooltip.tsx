@@ -62,18 +62,23 @@ export function WizardTooltip({
       return;
     }
 
-    // Use wider width for final steps
-    const tooltipWidth = isFinalStep ? 480 : 400;
-    const tooltipHeight = 240;
-    const padding = 28;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
+    const isMobile = viewportWidth < 1024;
+    const sidebarWidth = isMobile ? 0 : 280;
+    const edgePad = isMobile ? 16 : 20;
+
+    // Use wider width for final steps, clamp to viewport on mobile
+    const configuredWidth = isFinalStep ? 480 : 400;
+    const tooltipWidth = Math.min(configuredWidth, viewportWidth - sidebarWidth - edgePad * 2);
+    const tooltipHeight = 240;
+    const padding = 28;
 
     // For page overview, center in viewport
     if (step.isPageOverview || !step.targetSelector) {
       setPosition({
         top: Math.max(100, (viewportHeight - tooltipHeight) / 2),
-        left: viewportWidth / 2,
+        left: sidebarWidth + (viewportWidth - sidebarWidth) / 2,
         arrowPosition: "top",
       });
       setIsReady(true);
@@ -93,7 +98,7 @@ export function WizardTooltip({
         console.warn(`Wizard: Element not found after ${maxRetries} retries: ${step.targetSelector}`);
         setPosition({
           top: Math.max(100, (viewportHeight - tooltipHeight) / 2),
-          left: viewportWidth / 2,
+          left: sidebarWidth + (viewportWidth - sidebarWidth) / 2,
           arrowPosition: "top",
         });
         setIsReady(true);
@@ -108,9 +113,9 @@ export function WizardTooltip({
     // Calculate horizontal position - center below element, but keep in bounds
     let left = rect.left + rect.width / 2;
 
-    // Keep tooltip within viewport horizontally (accounting for sidebar ~280px)
-    const minLeft = 280 + tooltipWidth / 2 + 20;
-    const maxLeft = viewportWidth - tooltipWidth / 2 - 20;
+    // Keep tooltip within viewport horizontally (account for sidebar on desktop only)
+    const minLeft = sidebarWidth + tooltipWidth / 2 + edgePad;
+    const maxLeft = viewportWidth - tooltipWidth / 2 - edgePad;
     left = Math.max(minLeft, Math.min(maxLeft, left));
 
     // Calculate vertical position - prefer below the element
@@ -203,15 +208,14 @@ export function WizardTooltip({
         <motion.div
           key={step.id}
           ref={tooltipRef}
-          initial={{ opacity: 0, scale: 0.9, y: position.arrowPosition === "top" ? -10 : 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.9, x: "-50%", y: position.arrowPosition === "top" ? -10 : 10 }}
+          animate={{ opacity: 1, scale: 1, x: "-50%", y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, x: "-50%" }}
           transition={{ type: "spring", duration: 0.4 }}
-          className="fixed z-[95] w-[480px] max-w-[calc(100vw-320px)]"
+          className="fixed z-[95] w-[480px] max-w-[calc(100vw-32px)] lg:max-w-[calc(100vw-320px)]"
           style={{
             top: position.top,
             left: position.left,
-            transform: "translateX(-50%)",
           }}
         >
           {/* Arrow pointer - orange for final steps */}
@@ -270,15 +274,7 @@ export function WizardTooltip({
               </p>
 
               {/* Navigation buttons - wider layout */}
-              <div className="flex items-center justify-between gap-4">
-                {/* Skip button */}
-                <button
-                  onClick={onSkip}
-                  className="text-sm font-semibold text-white/70 hover:text-white transition-colors whitespace-nowrap"
-                >
-                  Skip tour
-                </button>
-
+              <div className="flex items-center justify-end gap-4">
                 {/* Nav buttons */}
                 <div className="flex items-center gap-3">
                   {!isFirstStep && (
@@ -321,15 +317,14 @@ export function WizardTooltip({
       <motion.div
         key={step.id}
         ref={tooltipRef}
-        initial={{ opacity: 0, scale: 0.9, y: position.arrowPosition === "top" ? -10 : 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.9, x: "-50%", y: position.arrowPosition === "top" ? -10 : 10 }}
+        animate={{ opacity: 1, scale: 1, x: "-50%", y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, x: "-50%" }}
         transition={{ type: "spring", duration: 0.4 }}
-        className="fixed z-[95] w-[400px] max-w-[calc(100vw-320px)]"
+        className="fixed z-[95] w-[400px] max-w-[calc(100vw-32px)] lg:max-w-[calc(100vw-320px)]"
         style={{
           top: position.top,
           left: position.left,
-          transform: "translateX(-50%)",
         }}
       >
         {/* Arrow pointer - at top when tooltip is below element */}

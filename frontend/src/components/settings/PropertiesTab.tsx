@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiGet } from "../../api";
 import { MapPin, Plus, Star, Trash2, RefreshCw, Pencil } from "lucide-react";
@@ -47,16 +47,13 @@ export const PropertiesTab: React.FC = () => {
   const [editingNameId, setEditingNameId] = useState<number | null>(null);
   const [editingNameValue, setEditingNameValue] = useState("");
 
-  useEffect(() => {
-    const role = getPriorityItem("user_role") as UserRole | null;
-    setUserRole(role);
-    loadData();
-  }, [hasGoogleConnection]);
-
-  const canManageConnections = userRole === "admin";
-  const canRenameLocation = userRole === "admin" || userRole === "manager";
+  const inFlightRef = useRef(false);
 
   const loadData = useCallback(async () => {
+    // Prevent concurrent fetches — /locations is slow and repeat invocations
+    // were stacking hundreds of pending requests when this effect's deps churned.
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     try {
       setIsLoading(true);
       const locs = await getLocations();
@@ -65,8 +62,18 @@ export const PropertiesTab: React.FC = () => {
       console.error("Failed to fetch locations:", err);
     } finally {
       setIsLoading(false);
+      inFlightRef.current = false;
     }
   }, []);
+
+  useEffect(() => {
+    const role = getPriorityItem("user_role") as UserRole | null;
+    setUserRole(role);
+    loadData();
+  }, [loadData]);
+
+  const canManageConnections = userRole === "admin";
+  const canRenameLocation = userRole === "admin" || userRole === "manager";
 
   // Fetch available GBP profiles from Google API
   const fetchAvailableGBP = async () => {

@@ -117,12 +117,17 @@ export function OnboardingWizardProvider({ children }: { children: ReactNode }) 
     checkWizardStatus();
   }, [onboardingCompleted]);
 
-  // Navigate to correct page when step changes
+  // Navigate to correct page when step changes.
+  // Accept sub-routes as matches (e.g. /settings/integrations satisfies /settings)
+  // to avoid a navigate loop when the target route redirects to a child index.
   useEffect(() => {
     if (!isWizardActive || !currentStep) return;
 
     const targetRoute = getPageRoute(currentStep.page);
-    if (location.pathname !== targetRoute) {
+    const onTargetOrDescendant =
+      location.pathname === targetRoute ||
+      location.pathname.startsWith(targetRoute + "/");
+    if (!onTargetOrDescendant) {
       navigate(targetRoute);
     }
   }, [currentStep, isWizardActive, location.pathname, navigate]);

@@ -245,22 +245,22 @@ export default function Dashboard() {
                 {/* Step 1 - Connect Properties */}
                 <div
                   onClick={() => navigate("/settings/integrations")}
-                  className="group relative bg-white rounded-3xl border-2 border-alloro-orange shadow-xl shadow-alloro-orange/10 p-8 cursor-pointer hover:shadow-2xl hover:shadow-alloro-orange/20 transition-all duration-300 hover:-translate-y-1"
+                  className="group relative bg-white rounded-3xl border-2 border-alloro-orange shadow-xl shadow-alloro-orange/10 p-5 sm:p-8 cursor-pointer hover:shadow-2xl hover:shadow-alloro-orange/20 transition-all duration-300 hover:-translate-y-1"
                 >
-                  <div className="flex items-start gap-6">
+                  <div className="flex items-start gap-4 sm:gap-6">
                     {/* Step number */}
                     <div className="shrink-0">
-                      <div className="w-14 h-14 bg-gradient-to-br from-alloro-orange to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-alloro-orange/30 group-hover:scale-110 transition-transform">
-                        <span className="text-2xl font-black text-white">1</span>
+                      <div className="w-10 h-10 sm:w-14 sm:h-14 bg-gradient-to-br from-alloro-orange to-orange-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-alloro-orange/30 group-hover:scale-110 transition-transform">
+                        <span className="text-base sm:text-2xl font-black text-white">1</span>
                       </div>
                     </div>
                     {/* Content */}
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-black text-alloro-navy tracking-tight">Connect Your Google Business Profile</h3>
+                    <div className="flex-1 text-left min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                        <h3 className="text-base sm:text-xl font-black text-alloro-navy tracking-tight leading-snug">Connect Your Google Business Profile</h3>
                         <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg">Required</span>
                       </div>
-                      <p className="text-slate-500 font-medium leading-relaxed mb-4">
+                      <p className="text-sm sm:text-base text-slate-500 font-medium leading-relaxed mb-4">
                         Link your Google Business Profile to enable tracking and insights.
                       </p>
                       <div className="flex items-center gap-2 text-alloro-orange font-bold text-sm group-hover:gap-3 transition-all">
@@ -277,24 +277,24 @@ export default function Dashboard() {
                 </div>
 
                 {/* Step 2 - PMS Data (Locked) */}
-                <div className="relative bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 p-8 opacity-60">
-                  <div className="flex items-start gap-6">
+                <div className="relative bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 p-5 sm:p-8 opacity-60">
+                  <div className="flex items-start gap-4 sm:gap-6">
                     {/* Step number */}
                     <div className="shrink-0">
-                      <div className="w-14 h-14 bg-slate-200 rounded-2xl flex items-center justify-center">
-                        <span className="text-2xl font-black text-slate-400">2</span>
+                      <div className="w-10 h-10 sm:w-14 sm:h-14 bg-slate-200 rounded-xl sm:rounded-2xl flex items-center justify-center">
+                        <span className="text-base sm:text-2xl font-black text-slate-400">2</span>
                       </div>
                     </div>
                     {/* Content */}
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-black text-slate-400 tracking-tight">Upload Your PMS Data</h3>
+                    <div className="flex-1 text-left min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                        <h3 className="text-base sm:text-xl font-black text-slate-400 tracking-tight leading-snug">Upload Your PMS Data</h3>
                         <span className="px-2 py-1 bg-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1">
                           <Lock className="w-3 h-3" />
                           Locked
                         </span>
                       </div>
-                      <p className="text-slate-400 font-medium leading-relaxed">
+                      <p className="text-sm sm:text-base text-slate-400 font-medium leading-relaxed">
                         Once properties are connected, upload your practice management data to see referral analytics and revenue attribution.
                       </p>
                     </div>
