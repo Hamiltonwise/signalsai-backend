@@ -35,25 +35,62 @@ function getAuthHeader(): Record<string, string> {
   return jwt ? { Authorization: `Bearer ${jwt}` } : {};
 }
 
+// Guards against silent-HTML failures: apiGet swallows errors and returns
+// non-JSON bodies verbatim, so unvalidated `res.data` reads can produce
+// `undefined` and crash downstream renders. These helpers force a real
+// exception instead, which the stores' try/catch blocks are already set up
+// to handle.
+function pmEnvelopeError(res: unknown): Error {
+  let msg = "PM API returned unexpected response shape";
+  if (res && typeof res === "object") {
+    const r = res as { error?: string; errorMessage?: string };
+    if (typeof r.error === "string") msg = r.error;
+    else if (typeof r.errorMessage === "string") msg = r.errorMessage;
+  }
+  return new Error(`[PM API] ${msg}`);
+}
+
+function unwrapPmEnvelope<T = any>(res: unknown): T {
+  if (
+    res &&
+    typeof res === "object" &&
+    (res as { success?: unknown }).success === true &&
+    "data" in (res as Record<string, unknown>)
+  ) {
+    return (res as { data: T }).data;
+  }
+  throw pmEnvelopeError(res);
+}
+
+function assertPmEnvelope<T extends object>(res: unknown): asserts res is T {
+  if (
+    !res ||
+    typeof res !== "object" ||
+    !("data" in (res as Record<string, unknown>))
+  ) {
+    throw pmEnvelopeError(res);
+  }
+}
+
 // --- Projects ---
 
 export async function fetchProjects(
   status: string = "active"
 ): Promise<PmProject[]> {
   const res = await apiGet({ path: `/pm/projects?status=${status}` });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function fetchProject(id: string): Promise<PmProjectDetail> {
   const res = await apiGet({ path: `/pm/projects/${id}` });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function createProject(
   data: CreateProjectInput
 ): Promise<PmProject> {
   const res = await apiPost({ path: "/pm/projects", passedData: data });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function updateProject(
@@ -61,7 +98,7 @@ export async function updateProject(
   data: Partial<PmProject>
 ): Promise<PmProject> {
   const res = await apiPut({ path: `/pm/projects/${id}`, passedData: data });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function deleteProject(id: string): Promise<void> {
@@ -70,7 +107,7 @@ export async function deleteProject(id: string): Promise<void> {
 
 export async function archiveProject(id: string): Promise<PmProject> {
   const res = await apiPut({ path: `/pm/projects/${id}/archive`, passedData: {} });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 // --- Tasks ---
@@ -80,7 +117,7 @@ export async function createTask(
   data: CreateTaskInput
 ): Promise<PmTask> {
   const res = await apiPost({ path: `/pm/projects/${projectId}/tasks`, passedData: data });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function updateTask(
@@ -88,7 +125,7 @@ export async function updateTask(
   data: Partial<PmTask>
 ): Promise<PmTask> {
   const res = await apiPut({ path: `/pm/tasks/${taskId}`, passedData: data });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function moveTask(
@@ -103,7 +140,7 @@ export async function moveTask(
       position,
     },
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function assignTask(
@@ -116,7 +153,7 @@ export async function assignTask(
       assigned_to: assignedTo,
     },
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function deleteTask(taskId: string): Promise<void> {
@@ -133,7 +170,7 @@ export async function bulkMoveTasksToProject(
     path: "/pm/tasks/bulk/move-to-project",
     passedData: { task_ids: taskIds, target_project_id: targetProjectId },
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function bulkDeleteTasks(
@@ -143,24 +180,24 @@ export async function bulkDeleteTasks(
     path: "/pm/tasks/bulk/delete",
     passedData: { task_ids: taskIds },
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 // --- Stats ---
 
 export async function fetchStats(): Promise<PmStats> {
   const res = await apiGet({ path: "/pm/stats" });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function fetchVelocity(range: "7d" | "4w" | "3m" = "7d"): Promise<PmVelocityData> {
   const res = await apiGet({ path: `/pm/stats/velocity?range=${range}` });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function getChartData(): Promise<ChartDataResponse> {
   const res = await apiGet({ path: "/pm/stats/chart-data" });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 // --- Activity ---
@@ -172,6 +209,7 @@ export async function fetchGlobalActivity(
   const res = await apiGet({
     path: `/pm/activity?limit=${limit}&offset=${offset}`,
   });
+  assertPmEnvelope<{ data: PmActivityEntry[]; total: number }>(res);
   return res;
 }
 
@@ -183,6 +221,7 @@ export async function fetchProjectActivity(
   const res = await apiGet({
     path: `/pm/activity/projects/${projectId}/activity?limit=${limit}&offset=${offset}`,
   });
+  assertPmEnvelope<{ data: PmActivityEntry[]; total: number }>(res);
   return res;
 }
 
@@ -196,31 +235,31 @@ export async function fetchPmUsers(): Promise<
   Array<{ id: number; display_name: string; email: string }>
 > {
   const res = await apiGet({ path: "/pm/users" });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 // --- ME tab ---
 
 export async function fetchMyStats(): Promise<PmMyStats> {
   const res = await apiGet({ path: "/pm/stats/me" });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function fetchMyVelocity(range: "7d" | "4w" | "3m" = "7d"): Promise<PmVelocityData> {
   const res = await apiGet({ path: `/pm/stats/velocity/me?range=${range}` });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function fetchMyTasks(): Promise<PmMyTasksResponse> {
   const res = await apiGet({ path: "/pm/tasks/mine" });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 // --- Notifications ---
 
 export async function fetchNotifications(): Promise<PmNotification[]> {
   const res = await apiGet({ path: "/pm/notifications" });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function markNotificationsRead(): Promise<void> {
@@ -244,13 +283,13 @@ export async function extractBatch(
     formData.append("scope", "project");
     formData.append("file", file);
     const res = await apiPost({ path: "/pm/ai-synth/extract", passedData: formData });
-    return res.data;
+    return unwrapPmEnvelope(res);
   }
   const res = await apiPost({
     path: "/pm/ai-synth/extract",
     passedData: { project_id: projectId, scope: "project", text },
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function extractCrossProjectBatch(
@@ -262,13 +301,13 @@ export async function extractCrossProjectBatch(
     formData.append("scope", "cross_project");
     formData.append("file", file);
     const res = await apiPost({ path: "/pm/ai-synth/extract", passedData: formData });
-    return res.data;
+    return unwrapPmEnvelope(res);
   }
   const res = await apiPost({
     path: "/pm/ai-synth/extract",
     passedData: { scope: "cross_project", text },
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function fetchCrossProjectBatches(
@@ -278,6 +317,7 @@ export async function fetchCrossProjectBatches(
   const res = await apiGet({
     path: `/pm/ai-synth/batches/cross-project?limit=${limit}&offset=${offset}`,
   });
+  assertPmEnvelope<{ data: PmAiSynthBatch[]; total: number }>(res);
   return res;
 }
 
@@ -290,7 +330,7 @@ export async function setBatchTaskTargetProject(
     path: `/pm/ai-synth/batches/${batchId}/tasks/${taskId}/target-project`,
     passedData: { target_project_id: targetProjectId },
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function fetchBatches(
@@ -299,22 +339,23 @@ export async function fetchBatches(
   offset = 0
 ): Promise<{ data: PmAiSynthBatch[]; total: number }> {
   const res = await apiGet({ path: `/pm/ai-synth/batches?project_id=${projectId}&limit=${limit}&offset=${offset}` });
+  assertPmEnvelope<{ data: PmAiSynthBatch[]; total: number }>(res);
   return res;
 }
 
 export async function fetchBatch(batchId: string): Promise<PmAiSynthBatch> {
   const res = await apiGet({ path: `/pm/ai-synth/batches/${batchId}` });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function approveBatchTask(batchId: string, taskId: string): Promise<any> {
   const res = await apiPut({ path: `/pm/ai-synth/batches/${batchId}/tasks/${taskId}/approve`, passedData: {} });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function rejectBatchTask(batchId: string, taskId: string): Promise<any> {
   const res = await apiPut({ path: `/pm/ai-synth/batches/${batchId}/tasks/${taskId}/reject`, passedData: {} });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function deleteBatch(batchId: string): Promise<void> {
@@ -327,7 +368,8 @@ export async function listAttachments(
   taskId: string
 ): Promise<PmTaskAttachment[]> {
   const res = await apiGet({ path: `/pm/tasks/${taskId}/attachments` });
-  return res?.data?.attachments ?? [];
+  const data = unwrapPmEnvelope<{ attachments: PmTaskAttachment[] }>(res);
+  return data?.attachments ?? [];
 }
 
 /**
@@ -370,7 +412,7 @@ export async function getAttachmentDownloadUrl(
   const res = await apiGet({
     path: `/pm/tasks/${taskId}/attachments/${attachmentId}/url${qs}`,
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function getAttachmentTextContent(
@@ -380,7 +422,7 @@ export async function getAttachmentTextContent(
   const res = await apiGet({
     path: `/pm/tasks/${taskId}/attachments/${attachmentId}/text`,
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function deleteAttachment(
@@ -396,7 +438,8 @@ export async function deleteAttachment(
 
 export async function listComments(taskId: string): Promise<PmTaskComment[]> {
   const res = await apiGet({ path: `/pm/tasks/${taskId}/comments` });
-  return res?.data?.comments ?? [];
+  const data = unwrapPmEnvelope<{ comments: PmTaskComment[] }>(res);
+  return data?.comments ?? [];
 }
 
 export async function createComment(
@@ -408,7 +451,7 @@ export async function createComment(
     path: `/pm/tasks/${taskId}/comments`,
     passedData: { body, mentions },
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function updateComment(
@@ -421,7 +464,7 @@ export async function updateComment(
     path: `/pm/tasks/${taskId}/comments/${commentId}`,
     passedData: { body, mentions },
   });
-  return res.data;
+  return unwrapPmEnvelope(res);
 }
 
 export async function deleteComment(
