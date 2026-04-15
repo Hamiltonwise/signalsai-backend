@@ -96,22 +96,40 @@ export default function LeadgenSubmissions() {
     [page, search, status, from, to, hasEmail]
   );
 
-  const loadList = useCallback(async () => {
-    setListLoading(true);
-    setListError(null);
-    try {
-      const res = await listSubmissions(currentFilters);
-      setItems(res.items);
-      setTotal(res.total);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to load";
-      setListError(msg);
-      setItems([]);
-      setTotal(0);
-    } finally {
-      setListLoading(false);
-    }
-  }, [currentFilters]);
+  // `background=true` is what the 5s poll passes — behave like TanStack
+  // Query's revalidation: do NOT flip the skeleton state, do NOT wipe
+  // existing items on a transient error. Previous data stays on screen
+  // until a fresh response replaces it.
+  const loadList = useCallback(
+    async (opts: { background?: boolean } = {}) => {
+      const background = opts.background === true;
+      if (!background) {
+        setListLoading(true);
+        setListError(null);
+      }
+      try {
+        const res = await listSubmissions(currentFilters);
+        setItems(res.items);
+        setTotal(res.total);
+        // Clear a previous error once a good response arrives, even in
+        // background mode.
+        setListError(null);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to load";
+        if (background) {
+          // Silent poll failure — keep the current list on screen.
+          console.warn("[LeadgenSubmissions] background poll failed:", msg);
+        } else {
+          setListError(msg);
+          setItems([]);
+          setTotal(0);
+        }
+      } finally {
+        if (!background) setListLoading(false);
+      }
+    },
+    [currentFilters]
+  );
 
   const loadFunnel = useCallback(async () => {
     setFunnelLoading(true);
@@ -149,7 +167,8 @@ export default function LeadgenSubmissions() {
       if (cancelled) return;
       if (typeof document !== "undefined" && document.visibilityState !== "visible")
         return;
-      loadList();
+      // Background mode = no skeleton flash, no wipe on transient failure.
+      loadList({ background: true });
     };
 
     const intervalId = window.setInterval(tick, LIST_POLL_MS);
