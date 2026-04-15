@@ -7,7 +7,7 @@
  * event timeline, and a compact audit snapshot.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -44,6 +44,12 @@ interface Props {
   submissionId: string | null;
   onClose: () => void;
   onDeleted?: () => void;
+  /**
+   * Fires every time the drawer's live-polling loop receives a fresh detail
+   * snapshot. Parent uses this to update the matching row in the list so
+   * final_stage / last_seen_at stay in sync while the drawer is open.
+   */
+  onDetailUpdate?: (detail: SubmissionDetail) => void;
 }
 
 const EVENT_ICONS: Partial<Record<LeadgenEventName, typeof Mail>> = {
@@ -130,16 +136,53 @@ function StagePillInline({ stage }: { stage: FinalStage }) {
   );
 }
 
+/**
+ * Pulsing green dot + "LIVE TRACKING" label shown in the drawer header
+ * while the detail drawer is open. Dot is static green between poll ticks
+ * and pulses brighter during the in-flight request so the admin can see
+ * that new data is actively being pulled (not just stale).
+ */
+function LiveIndicator({ fetching }: { fetching: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-50 border border-green-100 shrink-0">
+      <span className="relative flex h-2 w-2">
+        {fetching && (
+          <motion.span
+            className="absolute inline-flex h-full w-full rounded-full bg-green-500"
+            initial={{ opacity: 0.7, scale: 1 }}
+            animate={{ opacity: 0, scale: 2.6 }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: "easeOut" }}
+          />
+        )}
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+      </span>
+      <span className="text-[10px] font-bold uppercase tracking-wider text-green-700">
+        Live Tracking
+      </span>
+    </div>
+  );
+}
+
 export default function LeadgenSubmissionDetail({
   submissionId,
   onClose,
   onDeleted,
+  onDetailUpdate,
 }: Props) {
   const [detail, setDetail] = useState<SubmissionDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // `fetching` is true during the in-flight request of a live-poll tick;
+  // drives the LIVE indicator's pulse. Distinct from `loading`, which only
+  // gates the initial skeleton state.
+  const [fetching, setFetching] = useState(false);
   const confirm = useConfirm();
+
+  // Keep the latest onDetailUpdate in a ref so the polling loop's closure
+  // always calls the current parent callback without needing to restart.
+  const onDetailUpdateRef = useRef(onDetailUpdate);
+  onDetailUpdateRef.current = onDetailUpdate;
 
   const handleDelete = async () => {
     if (!submissionId) return;
@@ -164,30 +207,84 @@ export default function LeadgenSubmissionDetail({
     }
   };
 
-  // Fetch when opened
+  // Live polling — request-after-response with a 500ms delay between ticks.
+  // Runs for the lifetime of the drawer (same submissionId). Pauses while the
+  // tab is hidden so a backgrounded admin doesn't hammer the API. Stops
+  // cleanly when submissionId changes or the component unmounts.
   useEffect(() => {
     if (!submissionId) {
       setDetail(null);
       setError(null);
       return;
     }
+
     let cancelled = false;
+    const POLL_GAP_MS = 500;
+
     setLoading(true);
     setError(null);
-    getSubmission(submissionId)
-      .then((d) => {
-        if (!cancelled) setDetail(d);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
+
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const t = window.setTimeout(resolve, ms);
+        // If cancelled mid-wait, still let the timer clear naturally — the
+        // cancelled flag gates the next iteration so no fetch actually fires.
+        void t;
+      });
+
+    const waitForVisible = async () => {
+      if (typeof document === "undefined") return;
+      while (!cancelled && document.visibilityState === "hidden") {
+        await new Promise<void>((resolve) => {
+          const handler = () => {
+            document.removeEventListener("visibilitychange", handler);
+            resolve();
+          };
+          document.addEventListener("visibilitychange", handler);
+        });
+      }
+    };
+
+    (async () => {
+      let isFirst = true;
+      while (!cancelled) {
+        await waitForVisible();
+        if (cancelled) break;
+
+        setFetching(true);
+        try {
+          const d = await getSubmission(submissionId);
+          if (cancelled) break;
+          setDetail(d);
+          onDetailUpdateRef.current?.(d);
+          setError(null);
+          if (isFirst) {
+            setLoading(false);
+            isFirst = false;
+          }
+        } catch (err: unknown) {
+          if (cancelled) break;
           const msg =
             err instanceof Error ? err.message : "Failed to load submission";
-          setError(msg);
+          // Only surface the error on the INITIAL fetch — polling glitches
+          // shouldn't replace a rendered drawer with a red banner. Log and
+          // try again next tick.
+          if (isFirst) {
+            setError(msg);
+            setLoading(false);
+            isFirst = false;
+          } else {
+            console.warn("[LeadgenDetail] poll tick failed:", msg);
+          }
+        } finally {
+          if (!cancelled) setFetching(false);
         }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+
+        if (cancelled) break;
+        await wait(POLL_GAP_MS);
+      }
+    })();
+
     return () => {
       cancelled = true;
     };
@@ -226,11 +323,14 @@ export default function LeadgenSubmissionDetail({
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white/95 backdrop-blur px-6 py-4">
-              <h2 className="text-base font-bold text-alloro-navy">
-                Submission detail
-              </h2>
-              <div className="flex items-center gap-1">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white/95 backdrop-blur px-6 py-4 gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <h2 className="text-base font-bold text-alloro-navy shrink-0">
+                  Submission detail
+                </h2>
+                <LiveIndicator fetching={fetching} />
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={handleDelete}
                   disabled={deleting || !detail}
@@ -308,7 +408,18 @@ function SummaryCard({ detail }: { detail: SubmissionDetail }) {
           )}
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <StagePillInline stage={s.final_stage} />
+          {/* Keyed on stage so any time the live poll flips final_stage the
+              pill remounts and the initial scale/flash plays — visible
+              signal that the funnel advanced. */}
+          <motion.div
+            key={s.final_stage}
+            initial={{ scale: 1.18, boxShadow: "0 0 0 6px rgba(34,197,94,0.25)" }}
+            animate={{ scale: 1, boxShadow: "0 0 0 0 rgba(34,197,94,0)" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="rounded-md"
+          >
+            <StagePillInline stage={s.final_stage} />
+          </motion.div>
           {s.completed && (
             <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
               <CheckCircle2 className="h-3 w-3" /> completed
@@ -456,40 +567,50 @@ function EventTimeline({
         </div>
       ) : (
         <ol className="relative border-l border-gray-200 pl-5 space-y-4">
-          {events.map((ev) => {
-            const Icon = EVENT_ICONS[ev.event_name] ?? Activity;
-            // CTA events have no funnel tone — fall back to gray.
-            const tone =
-              (STAGE_TONE as Record<string, "green" | "blue" | "red" | "amber" | "gray">)[
-                ev.event_name
-              ] ?? "gray";
-            const toneClass = STAGE_CLASSES[tone];
-            return (
-              <li key={ev.id} className="relative">
-                <span
-                  className={`absolute -left-[30px] top-0.5 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white ${toneClass}`}
+          <AnimatePresence initial={false}>
+            {events.map((ev) => {
+              const Icon = EVENT_ICONS[ev.event_name] ?? Activity;
+              // CTA events have no funnel tone — fall back to gray.
+              const tone =
+                (STAGE_TONE as Record<string, "green" | "blue" | "red" | "amber" | "gray">)[
+                  ev.event_name
+                ] ?? "gray";
+              const toneClass = STAGE_CLASSES[tone];
+              return (
+                <motion.li
+                  key={ev.id}
+                  layout
+                  initial={{ opacity: 0, x: -12, scale: 0.98 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 26 }}
+                  className="relative"
                 >
-                  <Icon className="h-3 w-3" />
-                </span>
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-sm font-medium text-gray-800">
-                    {eventLabel(ev.event_name)}
-                  </p>
                   <span
-                    className="text-xs text-gray-400 shrink-0"
-                    title={formatAbsolute(ev.created_at)}
+                    className={`absolute -left-[30px] top-0.5 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white ${toneClass}`}
                   >
-                    {formatRelative(ev.created_at, anchorIso)}
+                    <Icon className="h-3 w-3" />
                   </span>
-                </div>
-                {ev.event_data && Object.keys(ev.event_data).length > 0 && (
-                  <pre className="mt-1.5 overflow-x-auto rounded-md bg-gray-50 p-2 text-[11px] text-gray-600 border border-gray-100">
-                    {JSON.stringify(ev.event_data, null, 2)}
-                  </pre>
-                )}
-              </li>
-            );
-          })}
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-sm font-medium text-gray-800">
+                      {eventLabel(ev.event_name)}
+                    </p>
+                    <span
+                      className="text-xs text-gray-400 shrink-0"
+                      title={formatAbsolute(ev.created_at)}
+                    >
+                      {formatRelative(ev.created_at, anchorIso)}
+                    </span>
+                  </div>
+                  {ev.event_data && Object.keys(ev.event_data).length > 0 && (
+                    <pre className="mt-1.5 overflow-x-auto rounded-md bg-gray-50 p-2 text-[11px] text-gray-600 border border-gray-100">
+                      {JSON.stringify(ev.event_data, null, 2)}
+                    </pre>
+                  )}
+                </motion.li>
+              );
+            })}
+          </AnimatePresence>
         </ol>
       )}
     </section>

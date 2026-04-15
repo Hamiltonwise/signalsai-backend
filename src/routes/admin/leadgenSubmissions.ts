@@ -56,6 +56,15 @@ router.get(
   controller.getSubmissionDetail
 );
 
+// POST (not DELETE) so we can carry a JSON body of ids. apiDelete on the
+// client side doesn't support bodies; POST is the portable choice.
+router.post(
+  "/bulk-delete",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.bulkDeleteSubmissions
+);
+
 router.delete(
   "/:id",
   authenticateToken,

@@ -5,7 +5,7 @@
  * header is preserved, then triggered via an anchor download.
  */
 
-import { apiDelete, apiGet } from "./index";
+import { apiDelete, apiGet, apiPost } from "./index";
 import { getPriorityItem } from "../hooks/useLocalStorage";
 import type {
   ListFilters,
@@ -150,6 +150,24 @@ export async function deleteSubmission(
     return { deleted: true, id: data.id ?? id };
   }
   throw new Error(data?.errorMessage || "Failed to delete submission");
+}
+
+/**
+ * POST /admin/leadgen-submissions/bulk-delete — cascade-delete many sessions.
+ * Returns the actual count of rows deleted (may be less than requested if
+ * some were already gone).
+ */
+export async function bulkDeleteSubmissions(
+  ids: string[]
+): Promise<{ deleted: number }> {
+  const data = await apiPost({
+    path: `/admin/leadgen-submissions/bulk-delete`,
+    passedData: { ids },
+  });
+  if (data && typeof data.deleted === "number") {
+    return { deleted: data.deleted };
+  }
+  throw new Error(data?.errorMessage || "Failed to bulk delete");
 }
 
 /**

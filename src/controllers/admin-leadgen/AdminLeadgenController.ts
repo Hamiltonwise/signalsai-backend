@@ -468,3 +468,68 @@ export async function deleteSubmission(
       .json({ error: "internal_error", message: "Failed to delete submission" });
   }
 }
+
+// ---------------------------------------------------------------------------
+// DELETE /admin/leadgen-submissions/bulk — cascade-delete many sessions at once
+// ---------------------------------------------------------------------------
+
+const MAX_BULK_DELETE = 500;
+
+/**
+ * Bulk-delete leadgen sessions by id.
+ *
+ * Body: { ids: string[] } — every id UUID-validated; invalid ids rejected
+ * without partial execution. Cascade on `leadgen_events` /
+ * `leadgen_email_notifications` FK handles the downstream cleanup.
+ *
+ * Capped at MAX_BULK_DELETE per call so a typo in admin UI can't nuke
+ * the whole table in one go.
+ */
+export async function bulkDeleteSubmissions(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const ids = req.body?.ids;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "invalid_ids", message: "ids must be a non-empty array" });
+    }
+
+    if (ids.length > MAX_BULK_DELETE) {
+      return res.status(400).json({
+        error: "too_many",
+        message: `Cannot delete more than ${MAX_BULK_DELETE} at once`,
+      });
+    }
+
+    const allValid = ids.every(
+      (id) => typeof id === "string" && UUID_REGEX.test(id)
+    );
+    if (!allValid) {
+      return res.status(400).json({
+        error: "invalid_ids",
+        message: "Every id must be a valid UUID",
+      });
+    }
+
+    const deleted = await db("leadgen_sessions").whereIn("id", ids).del();
+
+    console.log("[AdminLeadgen] bulkDeleteSubmissions", {
+      requested: ids.length,
+      deleted,
+      admin_user_id: req.user?.userId ?? null,
+      admin_email: req.user?.email ?? null,
+    });
+
+    return res.json({ deleted });
+  } catch (error) {
+    console.error("[AdminLeadgen] bulkDeleteSubmissions error:", error);
+    return res.status(500).json({
+      error: "internal_error",
+      message: "Failed to bulk delete",
+    });
+  }
+}
