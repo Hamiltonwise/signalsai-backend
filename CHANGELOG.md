@@ -2,6 +2,43 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.16] - April 2026
+
+### Leadgen "Email Me When Ready" FAB — Server-Driven Send-on-Complete
+
+Adds the backend half of the floating "Email me when ready" button that
+appears in the leadgen tool when an audit takes longer than 1:20 (or
+errors). The leadgen-tool client posts the email to a new public endpoint
+which queues it; when the audit worker finishes (or fails), the queue is
+drained and the report email goes out via the existing n8n webhook —
+durable, server-driven, doesn't depend on the user's tab staying open.
+
+**Key Changes:**
+- New `leadgen_email_notifications` queue table with cascade FKs to
+  `leadgen_sessions` and `audit_processes`. Unique on
+  `(session_id, audit_id)` so re-submissions upsert (latest email wins,
+  but never overwrites a row already marked `sent`).
+- New `POST /api/leadgen/email-notify` — UUID-validated, gated by the
+  existing `X-Leadgen-Key`. Server-authoritatively writes
+  `email_gate_shown` + `email_submitted` events to `leadgen_events` so
+  the funnel reflects FAB submissions even when the JS `trackEvent` call
+  doesn't land. Patches `leadgen_sessions.email` (write-once) and
+  promotes `final_stage`.
+- `enqueueEmailNotification` checks `audit_processes.status` — if the
+  audit is already complete or failed, the report email is sent inline
+  (closes the race where the FAB submit and audit completion land
+  within the same second).
+- Audit worker now drains the queue at `realtime_status=5` AND inside
+  the failure catch block, so users who tapped the FAB still get their
+  report whether the pipeline succeeds or errors out.
+- Backend mirrors the leadgen-tool's email HTML in
+  `service.n8n-email-sender.ts` so the worker can POST the same body
+  shape as the client. New `N8N_EMAIL_URL` env var (same value as the
+  leadgen-tool's `VITE_N8N_EMAIL_URL`).
+
+**Commits:**
+- `feat: leadgen email-notify FAB queue + audit-complete worker drain`
+
 ## [0.0.15] - April 2026
 
 ### Identifier Migrated to SDK; Copy Companion, Guardian, Governance Disabled

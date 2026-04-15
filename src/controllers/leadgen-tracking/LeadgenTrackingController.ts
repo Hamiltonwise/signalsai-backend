@@ -31,6 +31,7 @@ import {
   shouldSetAbandoned,
 } from "./feature-utils/util.event-ordering";
 import { parseUserAgent } from "../../lib/userAgent";
+import { enqueueEmailNotification } from "./feature-services/service.email-notification-queue";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -436,4 +437,110 @@ export async function recordBeacon(
     console.error("[LeadgenTracking] recordBeacon error:", error);
   }
   return res.status(204).end();
+}
+
+// ---------------------------------------------------------------------------
+// POST /leadgen/email-notify
+// ---------------------------------------------------------------------------
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function recordServerSideEvent(
+  session_id: string,
+  event_name: FinalStage
+): Promise<void> {
+  // Idempotent insert: skip if a row with this (session_id, event_name)
+  // already exists. Mirrors service.audit-milestone-events.ts.
+  const existing = await db("leadgen_events")
+    .select("id")
+    .where({ session_id, event_name })
+    .first();
+  if (!existing) {
+    await db("leadgen_events").insert({
+      session_id,
+      event_name,
+      event_data: { source: "fab-email-notify" },
+    });
+  }
+}
+
+/**
+ * POST /api/leadgen/email-notify — FAB "Email me when ready" submission.
+ *
+ * Behavior:
+ *   1. Validate session_id, audit_id (UUIDs) and email.
+ *   2. Confirm the session row exists.
+ *   3. Patch session.email (write-once) and bump final_stage to
+ *      email_submitted via isLaterStage (server-authoritative — does not
+ *      depend on a separate trackEvent landing).
+ *   4. Idempotently write `email_gate_shown` + `email_submitted` to
+ *      leadgen_events so the funnel reflects this regardless of JS.
+ *   5. Enqueue the notification (which sends inline if the audit is
+ *      already done).
+ *
+ * Auth: same X-Leadgen-Key gate as /event (NOT silent — we want a real
+ * 401 if the key is missing/wrong since this is a fetch, not a beacon).
+ */
+export async function submitEmailNotify(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const body = req.body ?? {};
+    const session_id = body.session_id;
+    const audit_id = body.audit_id;
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+
+    if (!isValidUuid(session_id)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "invalid_session_id" });
+    }
+    if (!isValidUuid(audit_id)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "invalid_audit_id" });
+    }
+    if (!email || !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ ok: false, error: "invalid_email" });
+    }
+
+    const session = await db<ILeadgenSession>("leadgen_sessions")
+      .where({ id: session_id })
+      .first();
+    if (!session) {
+      return res.status(404).json({ ok: false, error: "session_not_found" });
+    }
+
+    // Patch session: email (write-once), audit_id (write-once), advance
+    // final_stage to email_submitted if that's a forward step.
+    const patch: Partial<ILeadgenSession> = {};
+    if (!session.email) patch.email = email;
+    if (!session.audit_id) patch.audit_id = audit_id;
+    if (isLaterStage("email_submitted", session.final_stage)) {
+      patch.final_stage = "email_submitted";
+    }
+    if (Object.keys(patch).length > 0) {
+      await db("leadgen_sessions").where({ id: session_id }).update(patch);
+    }
+
+    // Server-authoritative funnel events. The FAB displaying = an email
+    // gate was shown, regardless of whether the JS trackEvent landed.
+    await recordServerSideEvent(session_id, "email_gate_shown");
+    await recordServerSideEvent(session_id, "email_submitted");
+
+    // Fire-and-forget: enqueue handles inline-send if audit is already
+    // complete. Don't block the FAB response on n8n.
+    enqueueEmailNotification({ session_id, audit_id, email }).catch(
+      (err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[LeadgenTracking] enqueueEmailNotification error:", msg);
+      }
+    );
+
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error("[LeadgenTracking] submitEmailNotify error:", error);
+    return res.status(500).json({ ok: false, error: "internal_error" });
+  }
 }
