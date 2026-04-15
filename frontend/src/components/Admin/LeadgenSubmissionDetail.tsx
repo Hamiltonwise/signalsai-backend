@@ -110,27 +110,6 @@ function formatAbsolute(iso: string): string {
 }
 
 /**
- * Time-since-first-event label for timeline rows. The first event shows
- * `0s`; each subsequent event shows its elapsed delta from event[0].
- * This is a more useful signal than "X ago" for a funnel trace —
- * reveals how long into the session each step happened.
- */
-function formatElapsedFromStart(
-  eventIso: string,
-  firstIso: string | undefined
-): string {
-  if (!firstIso) return "0s";
-  try {
-    const ms =
-      new Date(eventIso).getTime() - new Date(firstIso).getTime();
-    if (!Number.isFinite(ms) || ms <= 0) return "0s";
-    return formatGapShort(ms);
-  } catch {
-    return "0s";
-  }
-}
-
-/**
  * Compact duration label for the "time gap" pill that sits on the
  * connector between two consecutive events.
  *   < 1s   -> "<1s"
@@ -402,7 +381,7 @@ export default function LeadgenSubmissionDetail({
                     events={detail.events}
                     anchorIso={detail.session.last_seen_at}
                   />
-                  {detail.audit && (
+                  {detail.audit && !payloadOpen && (
                     <AuditPayloadBar
                       audit={detail.audit}
                       onOpen={() => setPayloadOpen(true)}
@@ -596,9 +575,22 @@ function EventTimeline({
   events: LeadgenEvent[];
   anchorIso?: string;
 }) {
-  // Anchor for elapsed-from-start labels. If there are no events this
-  // value is irrelevant (the empty-state renders instead).
-  const firstIso = events.length > 0 ? events[0].created_at : undefined;
+  // For every event we compute "time spent on this step" = gap from THIS
+  // event to the NEXT event. The last event has no next, so we show
+  // "current" there (latest known pipeline state). Pre-computed into an
+  // array so the map below stays readable.
+  const stepDurations: string[] = events.map((ev, i) => {
+    const next = i < events.length - 1 ? events[i + 1] : null;
+    if (!next) return "current";
+    try {
+      const ms =
+        new Date(next.created_at).getTime() -
+        new Date(ev.created_at).getTime();
+      return formatGapShort(ms);
+    } catch {
+      return "—";
+    }
+  });
 
   return (
     <section>
@@ -655,7 +647,11 @@ function EventTimeline({
                   {gapMs !== null && (
                     <motion.span
                       layout
-                      className="absolute -left-[46px] -top-5 inline-flex items-center rounded-full bg-white text-[10px] font-medium text-gray-500 px-1.5 py-0.5 border border-gray-200 shadow-sm"
+                      // Center on the connector line both axes:
+                      //  - left -20px = the ol's border-l position (pl-5 padding)
+                      //  - top -14px = halfway into the 28px gap (space-y-7)
+                      //  - translate -50/-50 centers the pill on that point
+                      className="absolute -top-[14px] -left-[20px] -translate-x-1/2 -translate-y-1/2 inline-flex items-center rounded-full bg-white text-[10px] font-medium text-gray-500 px-1.5 py-0.5 border border-gray-200 shadow-sm whitespace-nowrap"
                       title={`${Math.round(gapMs / 1000)}s between events`}
                     >
                       {formatGapShort(gapMs)}
@@ -672,10 +668,18 @@ function EventTimeline({
                     </p>
                     <div className="flex flex-col items-end shrink-0 leading-tight">
                       <span
-                        className="text-xs font-semibold text-gray-700"
-                        title="Elapsed since first event in this session"
+                        className={`text-xs font-semibold ${
+                          stepDurations[i] === "current"
+                            ? "text-emerald-600"
+                            : "text-gray-700"
+                        }`}
+                        title={
+                          stepDurations[i] === "current"
+                            ? "This is the latest event — still in progress"
+                            : "Time spent on this step (until the next event)"
+                        }
                       >
-                        {formatElapsedFromStart(ev.created_at, firstIso)}
+                        {stepDurations[i]}
                       </span>
                       <span className="text-[10px] text-gray-400 font-mono">
                         {formatAbsolute(ev.created_at)}
