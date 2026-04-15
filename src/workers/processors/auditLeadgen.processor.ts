@@ -512,10 +512,16 @@ export async function processAuditLeadgen(
       status: "completed",
     });
     // Audit fully complete — report is ready. Record both stage_viewed_5
-    // (Report Viewed) and results_viewed (More Results Viewed) so the
-    // funnel reflects pipeline completion even if the user's tab closed.
+    // stage_viewed_5 (Report Viewed) = pipeline finished and UI will
+    // render the report. This is the objective "data is ready" signal
+    // so it stays server-authoritative.
+    //
+    // results_viewed (More Results Viewed) used to ALSO fire here, but
+    // that conflated "pipeline done" with "user actually viewed the
+    // unblurred report". The client now owns results_viewed — it fires
+    // only after the paywall email is submitted, giving the funnel an
+    // honest engagement signal.
     await recordAuditMilestone(auditId, "stage_viewed_5");
-    await recordAuditMilestone(auditId, "results_viewed");
 
     // FAB email-notify queue: send report to anyone who tapped "Email me
     // when ready" while waiting. Fire-and-forget — never block job exit.

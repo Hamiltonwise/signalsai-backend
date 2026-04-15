@@ -14,6 +14,75 @@
 import { STAGE_ORDER, FinalStage } from "../../../models/LeadgenSessionModel";
 
 /**
+ * Non-stage interaction events that enrich the timeline but are NOT part
+ * of the linear progression. These fire as many times as they happen —
+ * click a CTA 5 times, the timeline records 5 events. Dedup / ordering
+ * rules DO NOT apply to these names.
+ *
+ * Keep in sync with the LeadgenEventName union in the leadgen-tool's
+ * tracking lib.
+ */
+const NON_STAGE_EVENTS = new Set<string>([
+  "cta_clicked_strategy_call",
+  "cta_clicked_create_account",
+  "email_field_focused",
+  "email_field_blurred_empty",
+]);
+
+/**
+ * Is `event` a progression-stage event (eligible for dedup + ordering
+ * enforcement)? Abandoned is treated as non-stage here because it's a
+ * terminal boolean flag — its own server-side guard (`shouldSetAbandoned`)
+ * handles it separately.
+ */
+export function isProgressionStage(event: string): boolean {
+  if (NON_STAGE_EVENTS.has(event)) return false;
+  if (event === "abandoned") return false;
+  return event in STAGE_ORDER;
+}
+
+export type StageEventDecision =
+  | { allow: true }
+  | { allow: false; reason: "duplicate" | "regression" | "not_a_stage" };
+
+/**
+ * Gate applied before inserting a stage-progression event row in
+ * `leadgen_events`. Rejects duplicates (exact match on session's current
+ * `final_stage`) and regressions (ordinal < current). Always allows CTA
+ * events and forward progression.
+ *
+ * Called from ingestEvent AFTER the session has been located but BEFORE
+ * the insert. Returning allow=false → controller logs the suppression
+ * and returns `{ok: true}` without writing.
+ */
+export function shouldRecordStageEvent(
+  incoming: FinalStage,
+  session: { final_stage: FinalStage }
+): StageEventDecision {
+  if (!isProgressionStage(incoming)) {
+    return { allow: false, reason: "not_a_stage" };
+  }
+  const incomingOrd = STAGE_ORDER[incoming];
+  const currentOrd = STAGE_ORDER[session.final_stage];
+
+  // Abandoned at 99 shouldn't cause every real stage to look like a
+  // "regression" — if the session is stuck at `abandoned`, allow forward
+  // progress (the controller will also clear the abandoned flag via its
+  // existing recovery path).
+  if (session.final_stage === "abandoned") {
+    return { allow: true };
+  }
+
+  if (incoming === session.final_stage) {
+    return { allow: false, reason: "duplicate" };
+  }
+  if (incomingOrd < currentOrd) {
+    return { allow: false, reason: "regression" };
+  }
+  return { allow: true };
+}
+
+/**
  * Returns true when `incoming` is later in the funnel than `current`.
  * Used to decide whether to update `leadgen_sessions.final_stage`.
  */
