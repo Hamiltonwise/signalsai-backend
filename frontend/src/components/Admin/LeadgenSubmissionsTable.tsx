@@ -7,8 +7,8 @@
  */
 
 import { useState } from "react";
-import { Inbox, Trash2 } from "lucide-react";
-import type { FinalStage, SubmissionSummary } from "../../types/leadgen";
+import { Inbox, Trash2, Link2 } from "lucide-react";
+import type { FinalStage, LinkedVia, SubmissionSummary } from "../../types/leadgen";
 import { deleteSubmission } from "../../api/leadgenSubmissions";
 import { useConfirm } from "../ui/ConfirmModal";
 
@@ -34,6 +34,7 @@ const STAGE_TONE: Record<FinalStage, StageTone> = {
   results_viewed: "green",
   report_engaged_1min: "green",
   account_created: "green",
+  account_linked: "green",
   email_submitted: "blue",
   abandoned: "red",
   input_submitted: "amber",
@@ -76,9 +77,38 @@ export const STAGE_LABEL: Record<FinalStage, string> = {
   report_engaged_1min: "Spent 1+ Min on Report",
   email_gate_shown: "Email Gate Shown",
   email_submitted: "Email Submitted",
-  account_created: "New Account Created",
+  // Same label on both event names — `account_created` is the legacy
+  // value that existing rows carry; `account_linked` is what new
+  // derivation/persistence writes. Semantically identical for rendering.
+  account_created: "Account Linked",
+  account_linked: "Account Linked",
   abandoned: "Abandoned",
 };
+
+/**
+ * Tiny pill rendered next to the stage when the admin list endpoint
+ * reconciliation job derived a link to a user account that hasn't been
+ * persisted yet. `linked_via === 'persisted'` hides the badge — the
+ * stage pill alone is enough when the row already carries user_id.
+ */
+function LinkedViaBadge({ via }: { via: LinkedVia }) {
+  if (!via || via === "persisted") return null;
+  const label =
+    via === "email"
+      ? "via email"
+      : via === "domain"
+        ? "via domain"
+        : `via ${via}`;
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 rounded-md bg-gray-100 text-gray-600 px-1.5 py-0.5 text-[10px] font-medium"
+      title={`Linked ${label} — derived from matching data, not yet persisted to the session row.`}
+    >
+      <Link2 className="h-2.5 w-2.5" />
+      {label}
+    </span>
+  );
+}
 
 function StagePill({ stage }: { stage: FinalStage }) {
   const tone = STAGE_TONE[stage] ?? "gray";
@@ -318,7 +348,20 @@ export default function LeadgenSubmissionsTable({
                 {s.practice_search_string || "—"}
               </td>
               <td className="px-4 py-3">
-                <StagePill stage={s.final_stage} />
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Upgrade the pill to "Account Linked" when reconciliation
+                      found a match, even if the session row's final_stage is
+                      still stuck at an earlier stage. `persisted` already has
+                      the right final_stage so no override needed. */}
+                  <StagePill
+                    stage={
+                      s.linked_via && s.linked_via !== "persisted"
+                        ? "account_linked"
+                        : s.final_stage
+                    }
+                  />
+                  <LinkedViaBadge via={s.linked_via ?? null} />
+                </div>
               </td>
               <td className="px-4 py-3">
                 <AuditStatusPill status={s.audit_status} />

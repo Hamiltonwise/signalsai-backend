@@ -153,12 +153,55 @@ export async function listSubmissions(
     const totalRow = await countQuery;
     const total = parseInt((totalRow?.count as string) ?? "0", 10) || 0;
 
+    // Account-linked reconciliation join.
+    //   - users: exact case-insensitive email match against the session's email
+    //   - organizations: exact domain match against a normalised version of
+    //     audit_processes.domain (strip protocol/www/trailing slash; lower-case)
+    //     EXCLUDING well-known platform domains that would collapse unrelated
+    //     practices onto the same org (facebook.com, wixsite.com, etc.)
+    //
+    // The derived `linked_via` column is what the admin UI reads to decide
+    // whether to render the row as "Account Linked" (and which badge to show).
+    //   'persisted' — session already has user_id set (real conversion happened
+    //                 at OTP verify time)
+    //   'email'    — a users row matches this session's email
+    //   'domain'   — an organizations row matches the audit's normalised domain
+    //   null       — not linked
+    const PLATFORM_DOMAINS_EXCLUDED = [
+      "facebook.com",
+      "instagram.com",
+      "wixsite.com",
+      "squarespace.com",
+      "weebly.com",
+      "wordpress.com",
+      "godaddysites.com",
+      "sites.google.com",
+    ];
+
     const rowsQuery = applyListFilters(
       db("leadgen_sessions")
         .leftJoin(
           "audit_processes",
           "leadgen_sessions.audit_id",
           "audit_processes.id"
+        )
+        // Raw JOIN clauses — knex's JoinClause.on() types want plain strings;
+        // raw-SQL comparisons go through joinRaw instead. Same semantic:
+        //   users: case-insensitive email match
+        //   organizations: normalised-domain exact match, excluding
+        //     well-known platform domains that would collapse unrelated
+        //     practices. Normalisation strips protocol/www/trailing slash
+        //     and lowercases.
+        .joinRaw(
+          "LEFT JOIN users AS u ON LOWER(u.email) = LOWER(leadgen_sessions.email)"
+        )
+        .joinRaw(
+          `LEFT JOIN organizations AS org_by_domain ON
+             LOWER(regexp_replace(regexp_replace(COALESCE(audit_processes.domain, ''), '^https?://(www\\.)?', ''), '/\$', ''))
+               = LOWER(regexp_replace(regexp_replace(COALESCE(org_by_domain.domain, ''), '^https?://(www\\.)?', ''), '/\$', ''))
+             AND COALESCE(audit_processes.domain, '') <> ''
+             AND LOWER(regexp_replace(regexp_replace(COALESCE(audit_processes.domain, ''), '^https?://(www\\.)?', ''), '/\$', '')) NOT IN (${PLATFORM_DOMAINS_EXCLUDED.map(() => "?").join(",")})`,
+          PLATFORM_DOMAINS_EXCLUDED
         )
         .select(
           "leadgen_sessions.id as id",
@@ -172,7 +215,15 @@ export async function listSubmissions(
           "leadgen_sessions.completed as completed",
           "leadgen_sessions.abandoned as abandoned",
           "leadgen_sessions.first_seen_at as first_seen_at",
-          "leadgen_sessions.last_seen_at as last_seen_at"
+          "leadgen_sessions.last_seen_at as last_seen_at",
+          db.raw(`
+            CASE
+              WHEN leadgen_sessions.user_id IS NOT NULL THEN 'persisted'
+              WHEN u.id IS NOT NULL THEN 'email'
+              WHEN org_by_domain.id IS NOT NULL THEN 'domain'
+              ELSE NULL
+            END AS linked_via
+          `)
         ),
       filters
     )

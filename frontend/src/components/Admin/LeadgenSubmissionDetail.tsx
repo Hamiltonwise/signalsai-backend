@@ -67,6 +67,7 @@ const EVENT_ICONS: Partial<Record<LeadgenEventName, typeof Mail>> = {
   email_submitted: Mail,
   results_viewed: CheckCircle2,
   account_created: UserPlus,
+  account_linked: UserPlus,
   abandoned: AlertOctagon,
   // CTA / interaction events — do not advance final_stage, enrich timeline only.
   cta_clicked_strategy_call: Calendar,
