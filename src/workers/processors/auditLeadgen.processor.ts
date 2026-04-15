@@ -31,6 +31,7 @@ import sharp from "sharp";
 import { AuditProcessModel } from "../../models/AuditProcessModel";
 import { updateAuditFields } from "../../controllers/audit/audit-services/auditUpdateService";
 import { recordAuditMilestone } from "../../controllers/leadgen-tracking/feature-services/service.audit-milestone-events";
+import { drainNotificationsForAudit } from "../../controllers/leadgen-tracking/feature-services/service.email-notification-queue";
 import { scrapeHomepage } from "../../controllers/scraper/feature-services/service.scraping-orchestrator";
 import { uploadAuditScreenshot } from "../../controllers/audit/audit-services/service.audit-s3";
 import {
@@ -516,6 +517,10 @@ export async function processAuditLeadgen(
     await recordAuditMilestone(auditId, "stage_viewed_5");
     await recordAuditMilestone(auditId, "results_viewed");
 
+    // FAB email-notify queue: send report to anyone who tapped "Email me
+    // when ready" while waiting. Fire-and-forget — never block job exit.
+    await drainNotificationsForAudit(auditId);
+
     await job.updateProgress(100);
     timings["GBPAnalysis (5 pillars + agg)"] = tGbp();
     log(
@@ -544,6 +549,14 @@ export async function processAuditLeadgen(
       });
     } catch (updateErr: any) {
       logErr(`Also failed to mark audit as failed: ${updateErr?.message}`);
+    }
+    // Drain the FAB email-notify queue even on failure — users who asked
+    // to be emailed still get the report link (the report viewer surfaces
+    // the failure state). Cleaner failure-specific email is a follow-up.
+    try {
+      await drainNotificationsForAudit(auditId);
+    } catch (drainErr: any) {
+      logErr(`Notification drain after failure errored: ${drainErr?.message}`);
     }
     throw err;
   }

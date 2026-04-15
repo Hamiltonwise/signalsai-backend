@@ -26,6 +26,7 @@ import rateLimit from "express-rate-limit";
 import {
   recordBeacon,
   recordEvent,
+  submitEmailNotify,
   upsertSession,
 } from "../controllers/leadgen-tracking/LeadgenTrackingController";
 import { validateTrackingKey } from "../controllers/leadgen-tracking/feature-utils/util.tracking-auth";
@@ -80,6 +81,7 @@ router.use(trackingLimiter);
 
 router.post("/session", requireTrackingKey, upsertSession);
 router.post("/event", requireTrackingKey, recordEvent);
+router.post("/email-notify", requireTrackingKey, submitEmailNotify);
 router.post(
   "/beacon",
   beaconBodyParser,
