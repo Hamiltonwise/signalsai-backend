@@ -504,7 +504,7 @@ function SummaryCard({ detail }: { detail: SubmissionDetail }) {
       </div>
 
       {s.audit_id && (
-        <div className="mt-3 text-xs text-gray-500 space-y-1">
+        <div className="mt-3 text-xs text-gray-500 space-y-1.5">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-gray-600">Audit:</span>
             <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-700 break-all">
@@ -519,6 +519,28 @@ function SummaryCard({ detail }: { detail: SubmissionDetail }) {
               Open report ↗
             </a>
           </div>
+          {/* Google Places place_id — lifted out of the audit's
+              step_self_gbp payload so admins can cross-reference against
+              organizations.business_data without opening the raw payload
+              deck. Only renders when the audit actually ran (GBP step
+              populated). */}
+          {(() => {
+            const gbp = detail.audit?.step_self_gbp as
+              | { placeId?: unknown }
+              | null
+              | undefined;
+            const placeId =
+              gbp && typeof gbp.placeId === "string" ? gbp.placeId : null;
+            if (!placeId) return null;
+            return (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-gray-600">Place ID:</span>
+                <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-700 break-all">
+                  {placeId}
+                </code>
+              </div>
+            );
+          })()}
         </div>
       )}
       {(s.user_agent || s.browser || s.os || s.device_type) && (
