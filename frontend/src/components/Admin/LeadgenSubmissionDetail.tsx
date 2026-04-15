@@ -597,7 +597,7 @@ function EventTimeline({
           No events recorded for this session.
         </div>
       ) : (
-        <ol className="relative border-l border-gray-200 pl-5 space-y-4">
+        <ol className="relative border-l border-gray-200 pl-5 space-y-7 pt-2">
           <AnimatePresence initial={false}>
             {events.map((ev, i) => {
               const Icon = EVENT_ICONS[ev.event_name] ?? Activity;
@@ -637,7 +637,7 @@ function EventTimeline({
                   {gapMs !== null && (
                     <motion.span
                       layout
-                      className="absolute -left-[46px] -top-3 inline-flex items-center rounded-full bg-gray-100 text-[10px] font-medium text-gray-500 px-1.5 py-0.5 border border-gray-200"
+                      className="absolute -left-[46px] -top-5 inline-flex items-center rounded-full bg-white text-[10px] font-medium text-gray-500 px-1.5 py-0.5 border border-gray-200 shadow-sm"
                       title={`${Math.round(gapMs / 1000)}s between events`}
                     >
                       {formatGapShort(gapMs)}
