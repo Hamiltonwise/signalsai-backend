@@ -111,6 +111,39 @@ function formatAbsolute(iso: string): string {
 }
 
 /**
+ * Time-only variant used by individual timeline rows. The date is
+ * printed once at the top of the timeline (see TimelineDateHeader) so
+ * we don't repeat "Apr 16, 2026" on every single row.
+ */
+function formatTimeOnly(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+/**
+ * Date-only (no time) — used for the single header above the timeline
+ * so the per-event rows don't have to repeat the date.
+ */
+function formatDateOnly(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+/**
  * Compact duration label for the "time gap" pill that sits on the
  * connector between two consecutive events.
  *   < 1s   -> "<1s"
@@ -471,7 +504,7 @@ function SummaryCard({ detail }: { detail: SubmissionDetail }) {
       </div>
 
       {s.audit_id && (
-        <div className="mt-3 text-xs text-gray-500 space-y-1">
+        <div className="mt-3 text-xs text-gray-500 space-y-1.5">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-gray-600">Audit:</span>
             <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-700 break-all">
@@ -486,6 +519,28 @@ function SummaryCard({ detail }: { detail: SubmissionDetail }) {
               Open report ↗
             </a>
           </div>
+          {/* Google Places place_id — lifted out of the audit's
+              step_self_gbp payload so admins can cross-reference against
+              organizations.business_data without opening the raw payload
+              deck. Only renders when the audit actually ran (GBP step
+              populated). */}
+          {(() => {
+            const gbp = detail.audit?.step_self_gbp as
+              | { placeId?: unknown }
+              | null
+              | undefined;
+            const placeId =
+              gbp && typeof gbp.placeId === "string" ? gbp.placeId : null;
+            if (!placeId) return null;
+            return (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-gray-600">Place ID:</span>
+                <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-700 break-all">
+                  {placeId}
+                </code>
+              </div>
+            );
+          })()}
         </div>
       )}
       {(s.user_agent || s.browser || s.os || s.device_type) && (
@@ -601,6 +656,14 @@ function EventTimeline({
         <span className="ml-1 text-xs text-gray-400">
           {events.length} event{events.length === 1 ? "" : "s"}
         </span>
+        {events.length > 0 && (
+          <span
+            className="ml-auto text-[10px] text-gray-400 font-mono whitespace-nowrap"
+            title="Date of the first event in this session — per-row labels show time only"
+          >
+            {formatDateOnly(events[0].created_at)}
+          </span>
+        )}
       </div>
 
       {events.length === 0 ? (
@@ -682,8 +745,11 @@ function EventTimeline({
                       >
                         {stepDurations[i]}
                       </span>
-                      <span className="text-[10px] text-gray-400 font-mono">
-                        {formatAbsolute(ev.created_at)}
+                      <span
+                        className="text-[10px] text-gray-400 font-mono"
+                        title={formatAbsolute(ev.created_at)}
+                      >
+                        {formatTimeOnly(ev.created_at)}
                       </span>
                     </div>
                   </div>
@@ -766,13 +832,26 @@ function AuditPayloadSheet({
   onClose: () => void;
 }) {
   const tokens = tokenizeJson(audit);
+  // Force the scroll region to the top on mount. Without this, if a
+  // user-agent caches the sheet's previous scrollTop (or if the motion
+  // enter animation somehow lands with scrollTop>0) the JSON would open
+  // scrolled to the middle/bottom.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, []);
   return (
     <motion.div
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", stiffness: 300, damping: 32 }}
-      className="absolute inset-0 z-20 flex flex-col bg-slate-900 text-slate-100"
+      // `fixed` (not `absolute`) so the deck's position is anchored to
+      // the viewport, not to the drawer's scrolled content. Previously
+      // `absolute inset-0` meant the deck scrolled with the aside,
+      // showing the middle of the JSON by default when the user had
+      // scrolled down to click the audit bar.
+      className="fixed top-0 right-0 h-full w-full max-w-xl z-[60] flex flex-col bg-slate-900 text-slate-100"
     >
       <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950">
         <div className="flex items-center gap-3 min-w-0">
@@ -791,7 +870,7 @@ function AuditPayloadSheet({
           <X className="h-5 w-5" />
         </button>
       </div>
-      <div className="flex-1 overflow-auto px-6 py-4">
+      <div ref={scrollRef} className="flex-1 overflow-auto px-6 py-4">
         <pre className="text-[12px] leading-relaxed font-mono whitespace-pre-wrap break-all">
           {tokens.map((t, i) =>
             t.cls ? (

@@ -169,12 +169,19 @@ export function shortSessionId(id: string): string {
   return id.slice(0, 8);
 }
 
+/**
+ * Compact list-cell date. Drops year + seconds so the two columns
+ * (First Seen / Last Seen) fit on one line in the table without wrapping.
+ * Year is reintroduced only if the row is from a different calendar year
+ * than "now" — stale data stays legible.
+ */
 function formatDate(iso: string): string {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
+    const sameYear = d.getFullYear() === new Date().getFullYear();
     return d.toLocaleString(undefined, {
-      year: "numeric",
+      ...(sameYear ? {} : { year: "numeric" }),
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -366,10 +373,10 @@ export default function LeadgenSubmissionsTable({
               <td className="px-4 py-3">
                 <AuditStatusPill status={s.audit_status} />
               </td>
-              <td className="px-4 py-3 text-sm text-gray-600">
+              <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
                 {formatDate(s.first_seen_at)}
               </td>
-              <td className="px-4 py-3 text-sm text-gray-600">
+              <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
                 {formatDate(s.last_seen_at)}
               </td>
               <td className="px-4 py-3">
