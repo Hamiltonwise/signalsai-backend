@@ -108,10 +108,10 @@ function formatAbsolute(iso: string): string {
   }
 }
 
-function formatRelative(iso: string, referenceIso?: string): string {
+function formatRelative(iso: string, referenceMs?: number): string {
   try {
     const then = new Date(iso).getTime();
-    const now = referenceIso ? new Date(referenceIso).getTime() : Date.now();
+    const now = typeof referenceMs === "number" ? referenceMs : Date.now();
     const diffSec = Math.max(0, Math.round((now - then) / 1000));
     if (diffSec < 60) return `${diffSec}s ago`;
     const diffMin = Math.round(diffSec / 60);
@@ -123,6 +123,27 @@ function formatRelative(iso: string, referenceIso?: string): string {
   } catch {
     return "";
   }
+}
+
+/**
+ * Compact duration label for the "time gap" pill that sits on the
+ * connector between two consecutive events.
+ *   < 1s   -> "<1s"
+ *   < 1m   -> "Ns"
+ *   < 1h   -> "Xm Ys"  (Ys dropped when 0)
+ *   else   -> "Xh Ym"  (Ym dropped when 0)
+ */
+function formatGapShort(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "";
+  const sec = Math.floor(ms / 1000);
+  if (sec < 1) return "<1s";
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  const remSec = sec % 60;
+  if (min < 60) return remSec > 0 ? `${min}m ${remSec}s` : `${min}m`;
+  const hr = Math.floor(min / 60);
+  const remMin = min % 60;
+  return remMin > 0 ? `${hr}h ${remMin}m` : `${hr}h`;
 }
 
 function StagePillInline({ stage }: { stage: FinalStage }) {
@@ -546,11 +567,21 @@ function SourceBlock({ session: s }: { session: SubmissionDetail["session"] }) {
 
 function EventTimeline({
   events,
-  anchorIso,
 }: {
   events: LeadgenEvent[];
-  anchorIso: string;
+  // anchorIso kept in the type for back-compat but ignored — we always
+  // compute relative against actual now so "0s ago" doesn't lie when the
+  // session has been sitting idle for minutes.
+  anchorIso?: string;
 }) {
+  // Tick every second so the "Xs/Xm ago" label stays fresh between the
+  // drawer's 500ms data polls. One light interval, cleared on unmount.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   return (
     <section>
       <div className="flex items-center gap-2 mb-3">
@@ -568,7 +599,7 @@ function EventTimeline({
       ) : (
         <ol className="relative border-l border-gray-200 pl-5 space-y-4">
           <AnimatePresence initial={false}>
-            {events.map((ev) => {
+            {events.map((ev, i) => {
               const Icon = EVENT_ICONS[ev.event_name] ?? Activity;
               // CTA events have no funnel tone — fall back to gray.
               const tone =
@@ -576,6 +607,23 @@ function EventTimeline({
                   ev.event_name
                 ] ?? "gray";
               const toneClass = STAGE_CLASSES[tone];
+
+              // Gap pill sits on the connector line ABOVE this item, showing
+              // how long it took for the user/pipeline to advance from the
+              // previous event to this one. Skipped for the first event.
+              const prev = i > 0 ? events[i - 1] : null;
+              let gapMs: number | null = null;
+              if (prev) {
+                try {
+                  gapMs =
+                    new Date(ev.created_at).getTime() -
+                    new Date(prev.created_at).getTime();
+                  if (!Number.isFinite(gapMs) || gapMs < 0) gapMs = null;
+                } catch {
+                  gapMs = null;
+                }
+              }
+
               return (
                 <motion.li
                   key={ev.id}
@@ -586,21 +634,32 @@ function EventTimeline({
                   transition={{ type: "spring", stiffness: 260, damping: 26 }}
                   className="relative"
                 >
+                  {gapMs !== null && (
+                    <motion.span
+                      layout
+                      className="absolute -left-[46px] -top-3 inline-flex items-center rounded-full bg-gray-100 text-[10px] font-medium text-gray-500 px-1.5 py-0.5 border border-gray-200"
+                      title={`${Math.round(gapMs / 1000)}s between events`}
+                    >
+                      {formatGapShort(gapMs)}
+                    </motion.span>
+                  )}
                   <span
                     className={`absolute -left-[30px] top-0.5 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white ${toneClass}`}
                   >
                     <Icon className="h-3 w-3" />
                   </span>
-                  <div className="flex items-baseline justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-medium text-gray-800">
                       {eventLabel(ev.event_name)}
                     </p>
-                    <span
-                      className="text-xs text-gray-400 shrink-0"
-                      title={formatAbsolute(ev.created_at)}
-                    >
-                      {formatRelative(ev.created_at, anchorIso)}
-                    </span>
+                    <div className="flex flex-col items-end shrink-0 leading-tight">
+                      <span className="text-xs text-gray-500">
+                        {formatRelative(ev.created_at, nowMs)}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-mono">
+                        {formatAbsolute(ev.created_at)}
+                      </span>
+                    </div>
                   </div>
                   {ev.event_data && Object.keys(ev.event_data).length > 0 && (
                     <pre className="mt-1.5 overflow-x-auto rounded-md bg-gray-50 p-2 text-[11px] text-gray-600 border border-gray-100">
