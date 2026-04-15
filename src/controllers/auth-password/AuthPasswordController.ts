@@ -20,9 +20,12 @@ import { generateToken } from "../auth-otp/feature-services/service.jwt-manageme
 import { generateSixDigitCode } from "../auth-otp/feature-services/service.otp-generation";
 import { buildAuthCookieOptions } from "../auth-otp/feature-utils/util.cookie-config";
 import { sendEmail } from "../../emails/emailService";
+import { linkAccountCreation } from "../leadgen-tracking/feature-services/service.account-linking";
 
 const BCRYPT_SALT_ROUNDS = 12;
 const VERIFICATION_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+const LEADGEN_UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PASSWORD_RESET_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 const PASSWORD_MIN_LENGTH = 8;
 
@@ -127,13 +130,22 @@ export async function register(req: Request, res: Response) {
  */
 export async function verifyEmail(req: Request, res: Response) {
   try {
-    const { email, code } = req.body;
+    const { email, code, leadgen_session_id } = req.body;
 
     if (!email || !code) {
       return res.status(400).json({ error: "Email and code are required" });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Optional leadgen tracking id forwarded from the signup URL (?ls=<uuid>).
+    // Bad value silently dropped so a malformed tracking id never breaks
+    // email verification.
+    const leadgenSessionId =
+      typeof leadgen_session_id === "string" &&
+      LEADGEN_UUID_REGEX.test(leadgen_session_id)
+        ? leadgen_session_id
+        : undefined;
 
     // Find user by email + valid code
     const user = await UserModel.findByVerificationCode(normalizedEmail, code);
@@ -144,6 +156,18 @@ export async function verifyEmail(req: Request, res: Response) {
 
     // Mark email as verified
     await UserModel.setEmailVerified(user.id);
+
+    // Fire-and-forget: link this newly-verified account back to any
+    // pre-signup leadgen session(s) so the admin funnel can count this
+    // signup as a conversion. Idempotent on the service side; safe even
+    // if a re-verify ever races in.
+    linkAccountCreation({
+      email: normalizedEmail,
+      userId: user.id,
+      sessionId: leadgenSessionId,
+    }).catch((err) => {
+      console.error("[AUTH] linkAccountCreation post-verify failed:", err);
+    });
 
     // Accept pending invitation if one exists (invited user joins existing org)
     let orgUser = await OrganizationUserModel.findByUserId(user.id);
