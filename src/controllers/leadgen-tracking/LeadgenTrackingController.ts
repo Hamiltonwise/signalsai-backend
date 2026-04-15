@@ -547,6 +547,49 @@ export async function submitEmailNotify(
 }
 
 // ---------------------------------------------------------------------------
+// GET /leadgen/session-by-audit/:auditId — phantom-session prevention
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the ORIGINAL `leadgen_sessions.id` that owns the given audit,
+ * so the leadgen tool can "adopt" that id on mount when a user opens a
+ * report link (`audit.getalloro.com?audit_id=<id>`) instead of spinning
+ * up a fresh session and bloating the admin with phantom rows.
+ *
+ * Gated by the same `X-Leadgen-Key` as the other public endpoints. If
+ * no session owns this audit (e.g. audit was created outside the
+ * leadgen flow), returns `{ session_id: null }` — the client falls
+ * through to normal localStorage behavior.
+ */
+export async function getSessionByAudit(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const auditId = req.params.auditId;
+    if (!isValidUuid(auditId)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "invalid_audit_id" });
+    }
+
+    // Pick the OLDEST matching session — if somehow more than one row
+    // got stamped with this audit_id (e.g. an earlier phantom case
+    // before this fix landed), treat the first as canonical.
+    const row = await db<ILeadgenSession>("leadgen_sessions")
+      .select("id")
+      .where({ audit_id: auditId })
+      .orderBy("first_seen_at", "asc")
+      .first();
+
+    return res.json({ ok: true, session_id: row?.id ?? null });
+  } catch (error) {
+    console.error("[LeadgenTracking] getSessionByAudit error:", error);
+    return res.status(500).json({ ok: false, error: "internal_error" });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // POST /leadgen/email-paywall
 // ---------------------------------------------------------------------------
 
