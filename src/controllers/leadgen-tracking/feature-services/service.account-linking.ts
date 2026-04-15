@@ -26,7 +26,13 @@ import type { ILeadgenSession } from "../../../models/LeadgenSessionModel";
 
 export interface LinkAccountCreationOptions {
   email: string;
-  userId: number;
+  /**
+   * Accepts `number` OR numeric `string` because `users.id` is `bigint` in
+   * Postgres and the `pg` driver returns bigints as strings by default
+   * (avoids JS number precision loss). Coerced internally to a safe
+   * integer before writing.
+   */
+  userId: number | string;
   sessionId?: string;
 }
 
@@ -87,9 +93,29 @@ export async function linkAccountCreation(
 ): Promise<void> {
   try {
     if (!opts.email || typeof opts.email !== "string") {
+      console.log("[LeadgenAccountLinking] invalid email arg", {
+        email: opts.email,
+      });
       return;
     }
-    if (typeof opts.userId !== "number" || !Number.isFinite(opts.userId)) {
+
+    // users.id is `bigint` in Postgres → pg driver returns it as a string
+    // by default. Accept both number and numeric-string forms here, coerce
+    // once, then work with the number everywhere. Previous strict
+    // `typeof === "number"` guard silently rejected every valid signup —
+    // causing the account_created event to never fire in production.
+    const rawUserId = opts.userId;
+    const userIdNum: number =
+      typeof rawUserId === "number"
+        ? rawUserId
+        : typeof rawUserId === "string" && /^\d+$/.test(rawUserId)
+          ? Number(rawUserId)
+          : NaN;
+    if (!Number.isFinite(userIdNum) || !Number.isSafeInteger(userIdNum)) {
+      console.log("[LeadgenAccountLinking] invalid userId arg", {
+        userId: rawUserId,
+        typeofUserId: typeof rawUserId,
+      });
       return;
     }
 
@@ -105,7 +131,7 @@ export async function linkAccountCreation(
       console.log("[LeadgenAccountLinking] no candidate sessions", {
         email: opts.email,
         sessionId: opts.sessionId ?? null,
-        userId: opts.userId,
+        userId: userIdNum,
       });
       return;
     }
@@ -130,7 +156,7 @@ export async function linkAccountCreation(
             session_id: candidate.id,
             event_name: "account_created",
             event_data: JSON.stringify({
-              user_id: opts.userId,
+              user_id: userIdNum,
               linked_via: candidate.matchedVia,
             }),
             created_at: now,
@@ -141,7 +167,7 @@ export async function linkAccountCreation(
             .update({
               final_stage: "account_created",
               completed: true,
-              user_id: opts.userId,
+              user_id: userIdNum,
               converted_at: now,
               last_seen_at: now,
               updated_at: now,
@@ -152,7 +178,7 @@ export async function linkAccountCreation(
           "[LeadgenAccountLinking] linked session",
           {
             session_id: candidate.id,
-            user_id: opts.userId,
+            user_id: userIdNum,
             matched_via: candidate.matchedVia,
           }
         );
@@ -163,7 +189,7 @@ export async function linkAccountCreation(
           "[LeadgenAccountLinking] failed to link session",
           {
             session_id: candidate.id,
-            user_id: opts.userId,
+            user_id: userIdNum,
             error: innerErr,
           }
         );
