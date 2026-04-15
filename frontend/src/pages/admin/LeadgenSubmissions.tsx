@@ -29,6 +29,7 @@ import {
 import type {
   FunnelStage,
   ListFilters,
+  SubmissionDetail,
   SubmissionSummary,
 } from "../../types/leadgen";
 
@@ -200,29 +201,28 @@ export default function LeadgenSubmissions() {
 
   // Merge a freshly-polled detail snapshot into the list row so final_stage
   // and timestamps stay in sync while the drawer is open.
-  const handleDetailUpdate = useCallback((detail: {
-    session: SubmissionSummary & Record<string, unknown>;
-  }) => {
+  const handleDetailUpdate = useCallback((detail: SubmissionDetail) => {
     const { session } = detail;
     setItems((prev) => {
       const idx = prev.findIndex((s) => s.id === session.id);
       if (idx === -1) return prev;
       const existing = prev[idx];
       // Shallow-merge only the fields SubmissionSummary cares about — the
-      // detail endpoint returns a richer shape, we ignore extras.
+      // detail endpoint returns the richer LeadgenSession shape; we keep
+      // just the columns the table actually renders.
       const merged: SubmissionSummary = {
         ...existing,
-        email: session.email as string | null,
-        domain: session.domain as string | null,
-        practice_search_string: session.practice_search_string as string | null,
-        audit_id: session.audit_id as string | null,
-        audit_status: (session.audit_status as string | null) ?? existing.audit_status,
-        user_agent: (session.user_agent as string | null) ?? existing.user_agent,
-        final_stage: session.final_stage as SubmissionSummary["final_stage"],
+        email: session.email,
+        domain: session.domain,
+        practice_search_string: session.practice_search_string,
+        audit_id: session.audit_id,
+        audit_status: session.audit_status ?? existing.audit_status,
+        user_agent: session.user_agent ?? existing.user_agent,
+        final_stage: session.final_stage,
         completed: !!session.completed,
         abandoned: !!session.abandoned,
         first_seen_at: existing.first_seen_at,
-        last_seen_at: (session.last_seen_at as string) ?? existing.last_seen_at,
+        last_seen_at: session.last_seen_at ?? existing.last_seen_at,
       };
       const copy = prev.slice();
       copy[idx] = merged;
