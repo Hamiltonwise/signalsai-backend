@@ -24,6 +24,7 @@ import express, {
 } from "express";
 import rateLimit from "express-rate-limit";
 import {
+  getSessionByAudit,
   recordBeacon,
   recordEvent,
   submitEmailNotify,
@@ -84,6 +85,11 @@ router.post("/session", requireTrackingKey, upsertSession);
 router.post("/event", requireTrackingKey, recordEvent);
 router.post("/email-notify", requireTrackingKey, submitEmailNotify);
 router.post("/email-paywall", requireTrackingKey, submitEmailPaywall);
+router.get(
+  "/session-by-audit/:auditId",
+  requireTrackingKey,
+  getSessionByAudit
+);
 router.post(
   "/beacon",
   beaconBodyParser,

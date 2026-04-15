@@ -23,6 +23,7 @@ export type FinalStage =
   | "email_gate_shown"
   | "email_submitted"
   | "account_created"
+  | "account_linked"
   | "abandoned";
 
 /**
@@ -48,7 +49,11 @@ export const STAGE_ORDER: Record<FinalStage, number> = {
   report_engaged_1min: 10,
   email_gate_shown: 11,
   email_submitted: 12,
+  // `account_linked` (new label) and `account_created` (legacy label that
+  // historic rows still carry) share the same ordinal so both render into
+  // the same funnel bucket and neither "downgrades" the other.
   account_created: 13,
+  account_linked: 13,
   abandoned: 99,
 };
 

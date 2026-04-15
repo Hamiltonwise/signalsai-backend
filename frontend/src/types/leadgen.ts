@@ -21,7 +21,17 @@ export type FinalStage =
   | "email_gate_shown"
   | "email_submitted"
   | "account_created"
+  | "account_linked"
   | "abandoned";
+
+/**
+ * Why a session is considered "linked" to a user account.
+ *   - persisted: leadgen_sessions.user_id is set (real at OTP verify time)
+ *   - email:     derived by admin list join — users.email matches
+ *   - domain:    derived — audit_processes.domain matches organizations.domain
+ *   - null:      not linked
+ */
+export type LinkedVia = "persisted" | "email" | "domain" | null;
 
 export interface SubmissionSummary {
   id: string;
@@ -36,6 +46,8 @@ export interface SubmissionSummary {
   abandoned: boolean;
   first_seen_at: string;
   last_seen_at: string;
+  /** Derived at list-render time — see `LinkedVia` comment. */
+  linked_via?: LinkedVia;
 }
 
 /**
