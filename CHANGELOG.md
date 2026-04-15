@@ -2,6 +2,81 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.18] - April 2026
+
+### Mobile Responsive Refactor — Client-Facing Pages
+
+Standardized the Tailwind class vocabulary across the post-login client
+app so onboarding, settings, billing, and the new-account-setup flow
+render cleanly on iPhone 16 (393px) instead of overflowing horizontally
+with desktop-sized headlines and padding. Establishes a canonical
+responsive doc that future devs (and DesignSystem additions) must follow.
+
+**Key Changes:**
+- New `frontend/docs/responsive-vocabulary.md` — the canonical class-ladder
+  table for typography, padding, card max-widths, and layout direction.
+  Linked from the top of `DesignSystem.tsx`. Acts as the convention
+  enforced at PR review time.
+- `DesignSystem.tsx` — `MetricCard` now uses `p-4 sm:p-5 lg:p-6` and
+  `text-2xl sm:text-3xl` value scaling; `PageHeader` has responsive
+  padding ladder and shrinks the avatar/icon on narrow screens. Header
+  comment enforces responsive-by-default for all primitives.
+- Onboarding wizard (`OnboardingContainer`, `Step0`–`Step3` files):
+  card padding ladders, `text-xl sm:text-2xl lg:text-3xl` headlines,
+  `w-full max-w-md` ordering rule applied to all card-like containers.
+- `Step3_PlanChooser`: plan card now scales `w-full max-w-md sm:max-w-lg`
+  and price uses `text-2xl sm:text-3xl lg:text-4xl` ladder.
+- `NewAccountOnboarding`: headline `text-2xl sm:text-3xl lg:text-4xl`;
+  all four step cards use the standard padding ladder; title + REQUIRED
+  badge container stacks `flex-col sm:flex-row` so the badge wraps
+  below the title on narrow screens.
+- `Settings.tsx`: page padding `px-4 sm:px-6 md:px-8 lg:px-10`; tab bar
+  gains `overflow-x-auto` so 4 tabs scroll horizontally at 393px instead
+  of clipping; headline scales smoothly through every breakpoint.
+- `BillingTab.tsx`: card padding ladders applied to every state
+  (skeleton / locked / cancelled / active / subscribe-CTA / invoice
+  history); plan card matches `Step3_PlanChooser` aesthetic; feature
+  grid stacks `grid-cols-1 sm:grid-cols-2` on mobile.
+
+**Commits:**
+- `feat(frontend): mobile responsive refactor — client-facing pages + standardized vocabulary`
+
+## [0.0.17] - April 2026
+
+### Account-Link Gap Fix + LocalStorage Session Persistence
+
+Fixes the silent failure of the `account_created` funnel step. Two
+compounding bugs were preventing every prod signup from being credited
+as a conversion in the leadgen funnel.
+
+**Key Changes:**
+- **`linkAccountCreation` now wired into `AuthPasswordController.verifyEmail`** —
+  the actual prod signup path. Was previously only in `AuthOtpController`,
+  which the public signup flow doesn't go through. Reads optional
+  `leadgen_session_id` from request body, validates UUID, fires
+  fire-and-forget after `setEmailVerified`.
+- **Diagnostic log when `linkAccountCreation` finds zero candidates** —
+  `[LeadgenAccountLinking] no candidate sessions { email, sessionId, userId }`.
+  No more silent failures masking real bugs.
+- **New `POST /api/leadgen/email-paywall` endpoint** — server-authoritative
+  event recording for the in-tab paywall submit. Patches `session.email`,
+  advances `final_stage`, idempotently writes `email_gate_shown` +
+  `email_submitted` events. No queue, no n8n send (paywall flow already
+  sends client-side).
+- `recordServerSideEvent` helper now accepts a `source` param so paywall
+  vs FAB events are distinguishable in `event_data.source` for admin.
+- `Signup.tsx` captures `?ls=<uuid>` from the URL on mount and persists
+  to localStorage so the value survives the redirect to `/verify-email`
+  AND the time the user spends checking their inbox for the OTP code.
+- `VerifyEmail.tsx` reads the persisted leadgen session id (URL fallback)
+  and forwards it to `verifyEmail()`. Cleared on success — single-use,
+  doesn't leak into a different account later.
+- `api/auth-password.ts:verifyEmail` accepts an optional `leadgenSessionId`
+  arg, includes it in the POST body when provided.
+
+**Commits:**
+- `fix: account-link hook + ?ls= forwarding + paywall server-authoritative endpoint`
+
 ## [0.0.16] - April 2026
 
 ### Leadgen "Email Me When Ready" FAB — Server-Driven Send-on-Complete

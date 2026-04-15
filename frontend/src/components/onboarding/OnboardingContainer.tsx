@@ -41,9 +41,27 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
     previousStep,
     initiateCheckout,
     isCheckoutProcessing,
+    completeOnboarding,
   } = useOnboarding(initialStep);
 
   const [autoOpenGbp, setAutoOpenGbp] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
+  const [skipError, setSkipError] = useState<string | null>(null);
+
+  // Mark onboarding complete and drop the user into the app without paying.
+  // Hard-redirects so AuthContext refetches with the new onboarding + billing state.
+  const handleSkipToApp = async () => {
+    setSkipError(null);
+    setIsSkipping(true);
+    const ok = await completeOnboarding();
+    if (ok) {
+      localStorage.setItem("onboardingCompleted", "true");
+      window.location.href = "/dashboard";
+    } else {
+      setSkipError("Something went wrong. Please try again.");
+      setIsSkipping(false);
+    }
+  };
 
   // Called when Google OAuth popup succeeds — refresh auth state then auto-open GBP selector
   const handleGoogleConnected = async () => {
@@ -84,7 +102,7 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
           background: "radial-gradient(ellipse at top, rgba(214, 104, 83, 0.08) 0%, transparent 50%), radial-gradient(ellipse at bottom right, rgba(214, 104, 83, 0.05) 0%, transparent 40%), #F3F4F6"
         }}
       >
-        <div className="max-w-md w-full p-8 rounded-2xl bg-white/80 backdrop-blur-sm border border-alloro-orange/10 shadow-[0_8px_32px_rgba(214,104,83,0.12)]">
+        <div className="w-full max-w-md p-4 sm:p-6 lg:p-8 rounded-2xl bg-white/80 backdrop-blur-sm border border-alloro-orange/10 shadow-[0_8px_32px_rgba(214,104,83,0.12)]">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 mx-auto rounded-full bg-red-50 flex items-center justify-center">
               <svg
@@ -129,7 +147,7 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
 
       <div className={`w-full relative z-10 ${currentStep === 4 ? "max-w-2xl" : "max-w-xl"}`}>
         {/* Main Card */}
-        <div className="p-8 rounded-2xl bg-white/80 backdrop-blur-sm border border-alloro-orange/10 shadow-[0_8px_32px_rgba(214,104,83,0.12)]">
+        <div className="p-4 sm:p-6 lg:p-8 rounded-2xl bg-white/80 backdrop-blur-sm border border-alloro-orange/10 shadow-[0_8px_32px_rgba(214,104,83,0.12)]">
           {/* Progress Indicator */}
           <ProgressIndicator
             currentStep={currentStep}
@@ -193,8 +211,11 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
               {currentStep === 4 && (
                 <Step3PlanChooser
                   onSubscribe={initiateCheckout}
+                  onSkip={handleSkipToApp}
                   onBack={previousStep}
                   isProcessing={isCheckoutProcessing}
+                  isSkipping={isSkipping}
+                  skipError={skipError}
                 />
               )}
             </motion.div>

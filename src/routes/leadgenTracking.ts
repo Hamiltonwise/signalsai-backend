@@ -27,6 +27,7 @@ import {
   recordBeacon,
   recordEvent,
   submitEmailNotify,
+  submitEmailPaywall,
   upsertSession,
 } from "../controllers/leadgen-tracking/LeadgenTrackingController";
 import { validateTrackingKey } from "../controllers/leadgen-tracking/feature-utils/util.tracking-auth";
@@ -82,6 +83,7 @@ router.use(trackingLimiter);
 router.post("/session", requireTrackingKey, upsertSession);
 router.post("/event", requireTrackingKey, recordEvent);
 router.post("/email-notify", requireTrackingKey, submitEmailNotify);
+router.post("/email-paywall", requireTrackingKey, submitEmailPaywall);
 router.post(
   "/beacon",
   beaconBodyParser,

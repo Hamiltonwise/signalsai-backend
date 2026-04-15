@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
@@ -9,6 +9,24 @@ export default function Signup() {
   const [searchParams] = useSearchParams();
 
   const [email, setEmail] = useState(searchParams.get("email") || "");
+
+  // Capture leadgen tracking id from `?ls=<uuid>` (passed through by the
+  // leadgen tool's "Create Free Account" CTA). Persist to localStorage so it
+  // survives the redirect to /verify-email AND the time the user spends
+  // checking their inbox for the OTP code. Cleared on successful verify.
+  useEffect(() => {
+    const ls = searchParams.get("ls");
+    if (
+      ls &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ls)
+    ) {
+      try {
+        window.localStorage.setItem("leadgen_session_id", ls);
+      } catch {
+        // localStorage may be blocked in private mode — silently degrade.
+      }
+    }
+  }, [searchParams]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

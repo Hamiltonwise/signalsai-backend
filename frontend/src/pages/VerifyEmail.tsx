@@ -43,12 +43,49 @@ export default function VerifyEmail() {
     setMessage("");
 
     try {
-      const response = await authPassword.verifyEmail(email, code);
+      // Pull leadgen tracking id (set on /signup if user came from leadgen
+      // tool's "Create Free Account" CTA). Fall back to URL `?ls=` if for
+      // any reason it wasn't persisted on Signup mount. Used by the backend
+      // to link this new account back to the pre-signup leadgen session.
+      let leadgenSessionId: string | undefined;
+      try {
+        const stored = window.localStorage.getItem("leadgen_session_id");
+        if (
+          stored &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            stored,
+          )
+        ) {
+          leadgenSessionId = stored;
+        }
+      } catch {
+        // localStorage may be blocked — silently degrade.
+      }
+      if (!leadgenSessionId) {
+        const fromUrl = searchParams.get("ls");
+        if (
+          fromUrl &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            fromUrl,
+          )
+        ) {
+          leadgenSessionId = fromUrl;
+        }
+      }
+
+      const response = await authPassword.verifyEmail(
+        email,
+        code,
+        leadgenSessionId,
+      );
 
       if (response.success) {
         // Clear stale onboarding state from any previous session
         localStorage.removeItem("onboardingCompleted");
         localStorage.removeItem("hasProperties");
+        // Single-use credential — drop after consume so it can't bleed into
+        // a different account/session later.
+        localStorage.removeItem("leadgen_session_id");
 
         localStorage.setItem("auth_token", response.token);
         if (response.user?.role) {

@@ -45,7 +45,7 @@ export const Step0UserInfo: React.FC<Step0UserInfoProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-2xl font-bold font-heading text-alloro-navy mb-2 tracking-tight">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-heading text-alloro-navy mb-2 tracking-tight">
           Welcome to Alloro!
         </h2>
         <p className="text-slate-500 text-sm">

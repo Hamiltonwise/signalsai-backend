@@ -149,7 +149,7 @@ export const BillingTab: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="bg-white rounded-[2rem] border border-black/5 p-8 shadow-premium animate-pulse">
+        <div className="bg-white rounded-[2rem] border border-black/5 p-4 sm:p-6 lg:p-8 shadow-premium animate-pulse">
           <div className="h-6 w-48 bg-slate-100 rounded mb-4" />
           <div className="h-4 w-72 bg-slate-100 rounded mb-8" />
           <div className="h-48 bg-slate-100 rounded-2xl" />
@@ -172,7 +172,7 @@ export const BillingTab: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4"
+          className="bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-6 flex items-start gap-4"
         >
           <div className="p-2 bg-red-100 rounded-xl shrink-0">
             <Lock size={20} className="text-red-600" />
@@ -194,7 +194,7 @@ export const BillingTab: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex items-start gap-4"
+          className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-6 flex items-start gap-4"
         >
           <div className="p-2 bg-amber-100 rounded-xl shrink-0">
             <AlertTriangle size={20} className="text-amber-600" />
@@ -215,7 +215,7 @@ export const BillingTab: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4"
+          className="bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-6 flex items-start gap-4"
         >
           <div className="p-2 bg-red-100 rounded-xl shrink-0">
             <XCircle size={20} className="text-red-500" />
@@ -256,7 +256,7 @@ export const BillingTab: React.FC = () => {
           className="rounded-[2rem] border border-black/5 shadow-premium relative overflow-hidden"
         >
           {/* Orange header strip */}
-          <div className="bg-alloro-orange px-6 lg:px-8 pt-6 lg:pt-8 pb-10 relative overflow-hidden">
+          <div className="bg-alloro-orange px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-10 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-72 h-72 bg-white/[0.08] rounded-full blur-3xl -mr-36 -mt-36 pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/[0.04] rounded-full blur-2xl -ml-24 -mb-24 pointer-events-none" />
 
@@ -282,7 +282,7 @@ export const BillingTab: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <h3 className="text-xl font-black text-white tracking-tight mb-0.5">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-white tracking-tight mb-0.5">
                   {PLAN.name}
                 </h3>
                 <p className="text-white/60 text-sm font-medium">
@@ -305,7 +305,7 @@ export const BillingTab: React.FC = () => {
           </div>
 
           {/* White body with details */}
-          <div className="bg-white px-6 lg:px-8 pb-6 lg:pb-8 pt-6 relative space-y-6">
+          <div className="bg-white px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 pt-4 sm:pt-6 relative space-y-6">
             {/* Payment method + coupon row */}
             {(details?.paymentMethod || details?.discount) && (
               <div className="flex flex-wrap items-center gap-4">
@@ -337,7 +337,7 @@ export const BillingTab: React.FC = () => {
             )}
 
             {/* Features grid */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
               {PLAN.features.map((feature, i) => (
                 <motion.div
                   key={i}
@@ -380,13 +380,13 @@ export const BillingTab: React.FC = () => {
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-slate-200/30 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
 
-          <div className="relative z-10 p-6 lg:p-8">
+          <div className="relative z-10 p-4 sm:p-6 lg:p-8">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center shrink-0">
                 <XCircle size={22} className="text-red-500" />
               </div>
               <div>
-                <h3 className="text-xl font-black text-alloro-navy tracking-tight mb-0.5">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-alloro-navy tracking-tight mb-0.5">
                   Subscription Cancelled
                 </h3>
                 <p className="text-slate-400 text-sm font-medium">
@@ -422,13 +422,13 @@ export const BillingTab: React.FC = () => {
           <div className="absolute top-0 right-0 w-72 h-72 bg-alloro-orange/[0.04] rounded-full blur-3xl -mr-36 -mt-36 pointer-events-none group-hover:bg-alloro-orange/[0.08] transition-all duration-700" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-alloro-orange/[0.02] rounded-full blur-2xl -ml-24 -mb-24 pointer-events-none group-hover:bg-alloro-orange/[0.05] transition-all duration-700" />
 
-          <div className="relative z-10 p-6 lg:p-8">
+          <div className="relative z-10 p-4 sm:p-6 lg:p-8">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-alloro-orange to-[#c45a47] flex items-center justify-center shadow-lg shadow-alloro-orange/20 shrink-0">
                 <Zap size={22} className="text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-black text-alloro-navy tracking-tight mb-0.5">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-alloro-navy tracking-tight mb-0.5">
                   Get Started with Alloro
                 </h3>
                 <p className="text-slate-400 text-sm font-medium">
@@ -443,7 +443,7 @@ export const BillingTab: React.FC = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mb-8">
               {PLAN.features.map((feature, i) => (
                 <motion.div
                   key={i}
@@ -483,7 +483,7 @@ export const BillingTab: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-[2rem] border border-black/5 p-6 lg:p-8 shadow-premium"
+          className="bg-white rounded-[2rem] border border-black/5 p-4 sm:p-6 lg:p-8 shadow-premium"
         >
           <div className="flex items-center gap-2.5 mb-5">
             <Receipt size={18} className="text-alloro-navy/40" />

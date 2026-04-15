@@ -447,7 +447,8 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function recordServerSideEvent(
   session_id: string,
-  event_name: FinalStage
+  event_name: FinalStage,
+  source: string = "server"
 ): Promise<void> {
   // Idempotent insert: skip if a row with this (session_id, event_name)
   // already exists. Mirrors service.audit-milestone-events.ts.
@@ -459,7 +460,7 @@ async function recordServerSideEvent(
     await db("leadgen_events").insert({
       session_id,
       event_name,
-      event_data: { source: "fab-email-notify" },
+      event_data: { source },
     });
   }
 }
@@ -526,8 +527,8 @@ export async function submitEmailNotify(
 
     // Server-authoritative funnel events. The FAB displaying = an email
     // gate was shown, regardless of whether the JS trackEvent landed.
-    await recordServerSideEvent(session_id, "email_gate_shown");
-    await recordServerSideEvent(session_id, "email_submitted");
+    await recordServerSideEvent(session_id, "email_gate_shown", "fab-email-notify");
+    await recordServerSideEvent(session_id, "email_submitted", "fab-email-notify");
 
     // Fire-and-forget: enqueue handles inline-send if audit is already
     // complete. Don't block the FAB response on n8n.
@@ -541,6 +542,78 @@ export async function submitEmailNotify(
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error("[LeadgenTracking] submitEmailNotify error:", error);
+    return res.status(500).json({ ok: false, error: "internal_error" });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /leadgen/email-paywall
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/leadgen/email-paywall — paywall email submission, server-
+ * authoritative version of the previous JS-only `trackEvent("email_submitted")`
+ * call.
+ *
+ * Why this exists separately from /email-notify:
+ *   - /email-notify enqueues a server-driven send-on-complete (used by the
+ *     FAB when the audit isn't done yet).
+ *   - /email-paywall is fired AFTER the user submits via the in-tab paywall,
+ *     where the email send already happens client-side via n8n. We just
+ *     need durable event recording + session.email patch — no enqueue, no
+ *     duplicate send.
+ *
+ * Idempotent. Same X-Leadgen-Key gate.
+ */
+export async function submitEmailPaywall(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const body = req.body ?? {};
+    const session_id = body.session_id;
+    const audit_id = body.audit_id;
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+
+    if (!isValidUuid(session_id)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "invalid_session_id" });
+    }
+    if (!isValidUuid(audit_id)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "invalid_audit_id" });
+    }
+    if (!email || !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ ok: false, error: "invalid_email" });
+    }
+
+    const session = await db<ILeadgenSession>("leadgen_sessions")
+      .where({ id: session_id })
+      .first();
+    if (!session) {
+      return res.status(404).json({ ok: false, error: "session_not_found" });
+    }
+
+    const patch: Partial<ILeadgenSession> = {};
+    if (!session.email) patch.email = email;
+    if (!session.audit_id) patch.audit_id = audit_id;
+    if (isLaterStage("email_submitted", session.final_stage)) {
+      patch.final_stage = "email_submitted";
+    }
+    if (Object.keys(patch).length > 0) {
+      await db("leadgen_sessions").where({ id: session_id }).update(patch);
+    }
+
+    // Server-authoritative funnel events. Idempotent — won't double-write
+    // if the JS trackEvent already landed first.
+    await recordServerSideEvent(session_id, "email_gate_shown", "paywall");
+    await recordServerSideEvent(session_id, "email_submitted", "paywall");
+
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error("[LeadgenTracking] submitEmailPaywall error:", error);
     return res.status(500).json({ ok: false, error: "internal_error" });
   }
 }

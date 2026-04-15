@@ -56,7 +56,7 @@ export const Step3GBPSelection: React.FC<Step3GBPSelectionProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-3xl font-light text-gray-800 mb-2">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-light text-gray-800 mb-2">
           Google Business Profile
         </h2>
         <p className="text-gray-600 font-light">

@@ -9,10 +9,22 @@ async function register(email: string, password: string, confirmPassword: string
   });
 }
 
-async function verifyEmail(email: string, code: string) {
+async function verifyEmail(
+  email: string,
+  code: string,
+  leadgenSessionId?: string,
+) {
+  // Optional leadgen tracking id forwarded from the original /signup URL
+  // (?ls=<uuid>). The backend uses it to link the new account back to the
+  // pre-signup leadgen session even if email-matching fails (e.g. the
+  // client's email_submitted patch never landed).
+  const passedData: Record<string, string> = { email, code };
+  if (leadgenSessionId) {
+    passedData.leadgen_session_id = leadgenSessionId;
+  }
   return apiPost({
     path: `${baseurl}/verify-email`,
-    passedData: { email, code },
+    passedData,
   });
 }
 

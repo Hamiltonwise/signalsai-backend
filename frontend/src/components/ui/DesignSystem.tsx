@@ -1,3 +1,11 @@
+/**
+ * DesignSystem — shared UI primitives.
+ *
+ * Responsive-by-default. Every primitive must scale cleanly from 320px to
+ * 1920px without horizontal scroll. Fixed font/padding values in this file
+ * are reviewed at PR time. See `frontend/docs/responsive-vocabulary.md` for
+ * the standardized class ladders this codebase uses.
+ */
 import type { ReactNode } from "react";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -51,17 +59,17 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
   return (
     <div
-      className={`flex flex-col p-6 rounded-2xl border transition-all duration-500 ${
+      className={`flex flex-col p-4 sm:p-5 lg:p-6 rounded-2xl border transition-all duration-500 ${
         isHighlighted
           ? "bg-white border-alloro-orange/20 shadow-premium"
           : "bg-white border-black/5 hover:border-alloro-orange/20 hover:shadow-premium"
       }`}
     >
-      <span className="text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.2em] mb-4 leading-none text-left">
+      <span className="text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.2em] mb-3 sm:mb-4 leading-none text-left">
         {label}
       </span>
       <div className="flex items-center justify-between">
-        <span className="text-3xl font-black font-heading tracking-tighter leading-none text-alloro-textDark">
+        <span className="text-2xl sm:text-3xl font-black font-heading tracking-tighter leading-none text-alloro-textDark">
           {value}
         </span>
         {trend && (
@@ -155,9 +163,9 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   actionButton,
 }) => (
   <header className="glass-header border-b border-black/5 lg:sticky lg:top-0 z-40">
-    <div className="max-w-[1100px] mx-auto px-6 lg:px-10 py-6 flex items-center justify-between">
-      <div className="flex items-center gap-5">
-        <div className="w-10 h-10 bg-alloro-navy text-white rounded-xl flex items-center justify-center shadow-lg">
+    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-4 sm:py-6 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-alloro-navy text-white rounded-xl flex items-center justify-center shadow-lg shrink-0">
           {icon}
         </div>
         <div className="flex flex-col text-left">

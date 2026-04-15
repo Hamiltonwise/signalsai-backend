@@ -33,16 +33,16 @@ export const Settings: React.FC = () => {
       <div className="max-w-[1400px] mx-auto relative flex flex-col">
         {/* Header */}
         <header className="glass-header border-b border-black/5 lg:sticky lg:top-0 z-40">
-          <div className="max-w-[1100px] mx-auto px-6 lg:px-10 py-8 lg:py-12 flex items-center justify-between">
+          <div className="max-w-[1100px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8 lg:py-12 flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-3xl bg-alloro-navy text-white flex items-center justify-center text-4xl font-black font-heading shadow-premium shrink-0 relative group cursor-pointer overflow-hidden">
+              <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-3xl bg-alloro-navy text-white flex items-center justify-center text-2xl sm:text-3xl lg:text-4xl font-black font-heading shadow-premium shrink-0 relative group cursor-pointer overflow-hidden">
                 <div className="absolute inset-0 bg-alloro-orange opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <span className="relative z-10">
                   {userProfile?.practiceName?.charAt(0).toUpperCase() || "A"}
                 </span>
               </div>
               <div className="text-left">
-                <h1 className="text-3xl lg:text-5xl font-black font-heading text-alloro-navy tracking-tighter leading-none mb-2">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black font-heading text-alloro-navy tracking-tighter leading-none mb-2">
                   {userProfile?.practiceName || "Your Practice"}
                 </h1>
                 <p className="text-slate-500 text-sm font-medium">
@@ -55,13 +55,13 @@ export const Settings: React.FC = () => {
         </header>
 
         {/* Main Content */}
-        <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-12 lg:space-y-12">
+        <main className="w-full max-w-[1100px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 lg:py-16 space-y-12 lg:space-y-12">
           {/* Tabs */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="flex p-1.5 bg-white border border-black/5 rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit"
+            className="flex p-1.5 bg-white border border-black/5 rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit max-w-full overflow-x-auto"
           >
             <NavLink
               to="/settings/integrations"

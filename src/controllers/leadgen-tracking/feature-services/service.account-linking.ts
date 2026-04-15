@@ -99,6 +99,14 @@ export async function linkAccountCreation(
     });
 
     if (candidates.length === 0) {
+      // Diagnostic — silent return masked the real cause of "account_created
+      // never fires" for ages. Now we always log when no candidate session
+      // matches so future-us can see it in pm2 logs immediately.
+      console.log("[LeadgenAccountLinking] no candidate sessions", {
+        email: opts.email,
+        sessionId: opts.sessionId ?? null,
+        userId: opts.userId,
+      });
       return;
     }
 
