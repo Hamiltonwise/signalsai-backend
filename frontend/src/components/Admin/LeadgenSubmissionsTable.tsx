@@ -17,6 +17,15 @@ interface Props {
   loading: boolean;
   onRowClick: (id: string) => void;
   onDeleted?: (id: string) => void;
+  /** Id of the row that's currently open in the detail drawer — highlighted
+      so the admin can tell what they're inspecting while polling animates
+      stage pills in-place. */
+  activeId?: string | null;
+  /** Multi-select: controlled set of selected ids. Toggled via the checkbox
+      column. Parent owns state so the floating action bar can read it too. */
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: (selectAll: boolean) => void;
 }
 
 type StageTone = "green" | "blue" | "red" | "amber" | "gray";
@@ -151,7 +160,18 @@ export default function LeadgenSubmissionsTable({
   loading,
   onRowClick,
   onDeleted,
+  activeId,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
 }: Props) {
+  const selectionEnabled = !!selectedIds && !!onToggleSelect;
+  const allSelected =
+    selectionEnabled &&
+    items.length > 0 &&
+    items.every((s) => selectedIds!.has(s.id));
+  const someSelected =
+    selectionEnabled && !allSelected && items.some((s) => selectedIds!.has(s.id));
   const confirm = useConfirm();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -205,6 +225,20 @@ export default function LeadgenSubmissionsTable({
       <table className="w-full">
         <thead>
           <tr className="border-b border-gray-100 bg-gray-50/50">
+            {selectionEnabled && (
+              <th className="pl-4 pr-2 py-3 w-10">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-alloro-orange focus:ring-alloro-orange/40 cursor-pointer"
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someSelected;
+                  }}
+                  onChange={(e) => onToggleSelectAll?.(e.target.checked)}
+                  aria-label="Select all on this page"
+                />
+              </th>
+            )}
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               Email
             </th>
@@ -232,12 +266,35 @@ export default function LeadgenSubmissionsTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
-          {items.map((s) => (
+          {items.map((s) => {
+            const isActive = activeId === s.id;
+            const isSelected = selectionEnabled && selectedIds!.has(s.id);
+            return (
             <tr
               key={s.id}
-              className="cursor-pointer hover:bg-gray-50/80 transition-colors"
+              className={`cursor-pointer transition-colors ${
+                isActive
+                  ? "bg-alloro-orange/5 hover:bg-alloro-orange/10"
+                  : isSelected
+                    ? "bg-blue-50/60 hover:bg-blue-50"
+                    : "hover:bg-gray-50/80"
+              }`}
               onClick={() => onRowClick(s.id)}
             >
+              {selectionEnabled && (
+                <td
+                  className="pl-4 pr-2 py-3 w-10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-alloro-orange focus:ring-alloro-orange/40 cursor-pointer"
+                    checked={isSelected}
+                    onChange={() => onToggleSelect?.(s.id)}
+                    aria-label={`Select session ${shortSessionId(s.id)}`}
+                  />
+                </td>
+              )}
               <td className="px-4 py-3">
                 {s.email ? (
                   <span className="text-sm font-medium text-gray-800">
@@ -289,7 +346,8 @@ export default function LeadgenSubmissionsTable({
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

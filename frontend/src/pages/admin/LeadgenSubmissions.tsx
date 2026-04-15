@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { Inbox, Search, Download, Activity, RefreshCw } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { AdminPageHeader, TabBar } from "../../components/ui/DesignSystem";
@@ -19,6 +20,7 @@ import LeadgenSubmissionsTable from "../../components/Admin/LeadgenSubmissionsTa
 import LeadgenFunnelChart from "../../components/Admin/LeadgenFunnelChart";
 import LeadgenSubmissionDetail from "../../components/Admin/LeadgenSubmissionDetail";
 import LeadgenStatsStrip from "../../components/Admin/LeadgenStatsStrip";
+import LeadgenBulkActionBar from "../../components/Admin/LeadgenBulkActionBar";
 import {
   exportSubmissionsCsv,
   getFunnel,
@@ -60,6 +62,10 @@ export default function LeadgenSubmissions() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [statsRefreshKey, setStatsRefreshKey] = useState(0);
+  // Multi-select state for the bulk-delete floating action bar.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set<string>()
+  );
 
   // Debounce search input → applied `search`
   const searchDebounce = useRef<number | null>(null);
@@ -128,6 +134,101 @@ export default function LeadgenSubmissions() {
   useEffect(() => {
     if (activeTab === "submissions") loadList();
   }, [activeTab, loadList]);
+
+  // Live list polling every 5s while the submissions tab is active and the
+  // browser tab is visible. Pauses when user switches tabs so backgrounded
+  // admins don't hammer the API. Coexists with the drawer's detail polling
+  // (different endpoints, no conflict).
+  useEffect(() => {
+    if (activeTab !== "submissions") return;
+    const LIST_POLL_MS = 5000;
+    let cancelled = false;
+
+    const tick = () => {
+      if (cancelled) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible")
+        return;
+      loadList();
+    };
+
+    const intervalId = window.setInterval(tick, LIST_POLL_MS);
+    const visHandler = () => {
+      // Refresh immediately when the tab becomes visible again so the admin
+      // doesn't have to wait for the next interval tick after switching back.
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible"
+      ) {
+        tick();
+      }
+    };
+    document.addEventListener("visibilitychange", visHandler);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", visHandler);
+    };
+  }, [activeTab, loadList]);
+
+  // Selection helpers — stable callbacks so the table doesn't re-render on
+  // every parent render.
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleToggleSelectAll = useCallback(
+    (selectAll: boolean) => {
+      setSelectedIds((prev) => {
+        if (!selectAll) return new Set();
+        const next = new Set(prev);
+        for (const s of items) next.add(s.id);
+        return next;
+      });
+    },
+    [items]
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // Merge a freshly-polled detail snapshot into the list row so final_stage
+  // and timestamps stay in sync while the drawer is open.
+  const handleDetailUpdate = useCallback((detail: {
+    session: SubmissionSummary & Record<string, unknown>;
+  }) => {
+    const { session } = detail;
+    setItems((prev) => {
+      const idx = prev.findIndex((s) => s.id === session.id);
+      if (idx === -1) return prev;
+      const existing = prev[idx];
+      // Shallow-merge only the fields SubmissionSummary cares about — the
+      // detail endpoint returns a richer shape, we ignore extras.
+      const merged: SubmissionSummary = {
+        ...existing,
+        email: session.email as string | null,
+        domain: session.domain as string | null,
+        practice_search_string: session.practice_search_string as string | null,
+        audit_id: session.audit_id as string | null,
+        audit_status: (session.audit_status as string | null) ?? existing.audit_status,
+        user_agent: (session.user_agent as string | null) ?? existing.user_agent,
+        final_stage: session.final_stage as SubmissionSummary["final_stage"],
+        completed: !!session.completed,
+        abandoned: !!session.abandoned,
+        first_seen_at: existing.first_seen_at,
+        last_seen_at: (session.last_seen_at as string) ?? existing.last_seen_at,
+      };
+      const copy = prev.slice();
+      copy[idx] = merged;
+      return copy;
+    });
+  }, []);
 
   useEffect(() => {
     if (activeTab === "funnel") loadFunnel();
@@ -246,10 +347,20 @@ export default function LeadgenSubmissions() {
           <LeadgenSubmissionsTable
             items={items}
             loading={listLoading}
+            activeId={openId}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
             onRowClick={(id) => setOpenId(id)}
             onDeleted={(id) => {
               setItems((prev) => prev.filter((s) => s.id !== id));
               setTotal((prev) => Math.max(0, prev - 1));
+              setSelectedIds((prev) => {
+                if (!prev.has(id)) return prev;
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+              });
               if (openId === id) setOpenId(null);
               toast.success("Session deleted");
               loadList();
@@ -288,6 +399,7 @@ export default function LeadgenSubmissions() {
       <LeadgenSubmissionDetail
         submissionId={openId}
         onClose={() => setOpenId(null)}
+        onDetailUpdate={handleDetailUpdate}
         onDeleted={() => {
           const deletedId = openId;
           setOpenId(null);
@@ -299,6 +411,28 @@ export default function LeadgenSubmissions() {
           loadList();
         }}
       />
+
+      {/* Floating bulk-action bar — slides up when 1+ rows are selected. */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && activeTab === "submissions" && (
+          <LeadgenBulkActionBar
+            selectedIds={selectedIds}
+            onClear={handleClearSelection}
+            onDeleted={(ids) => {
+              const idSet = new Set(ids);
+              setItems((prev) => prev.filter((s) => !idSet.has(s.id)));
+              setTotal((prev) => Math.max(0, prev - ids.length));
+              setSelectedIds(new Set());
+              if (openId && idSet.has(openId)) setOpenId(null);
+              toast.success(
+                `Deleted ${ids.length} session${ids.length === 1 ? "" : "s"}`
+              );
+              loadList();
+              setStatsRefreshKey((k) => k + 1);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

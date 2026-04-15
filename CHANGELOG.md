@@ -2,6 +2,45 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.19] - April 2026
+
+### Live Admin Leadgen — Polling + Multi-Select Bulk Delete
+
+Makes the admin leadgen submissions page feel live: detail drawer polls
+for updates while open, list refreshes every 5s, pulsing indicator shows
+active fetches, and admins can now multi-select rows for bulk delete
+without clicking the row delete button one at a time.
+
+**Key Changes:**
+- Detail drawer — **request-after-response polling** with a 500ms gap
+  between ticks. Pauses when the browser tab is hidden (admin switches
+  away), resumes seamlessly on visible. Initial fetch surfaces errors;
+  subsequent tick failures log and retry next tick (no flashing red
+  banner over a rendered drawer).
+- **`LiveIndicator`** in drawer header — static green dot between ticks,
+  pulses (expanding ring animation) during the in-flight request.
+  Label: "LIVE TRACKING".
+- **`onDetailUpdate` callback** — every fresh detail snapshot merges
+  back into the matching list row, so `final_stage` / `last_seen_at`
+  stay in sync on the list without a full re-fetch.
+- **Animated event timeline** — `AnimatePresence` + `layout` on event
+  items so new events fade/slide in; stage pill remounts on
+  `final_stage` change and plays a scale + green ring flash.
+- Table — multi-select: header checkbox (indeterminate when partial),
+  per-row checkbox with click-propagation stopped. Active-drawer row
+  highlighted in brand orange tint; selected rows in blue tint.
+- New `LeadgenBulkActionBar` — floating bottom card with count badge,
+  Clear, and "Delete N sessions" CTA. Confirm modal reuses the existing
+  `useConfirm` pattern. Slides up/down via framer-motion.
+- Page — **5s list polling** while the Submissions tab is visible;
+  pauses on hidden, refreshes immediately on visible.
+- Backend — new `POST /api/admin/leadgen-submissions/bulk-delete` with
+  `{ ids: [] }`. Caps at 500 ids/request, UUID-validates every id, cascades
+  via existing FK `ON DELETE CASCADE`. Returns `{ deleted: number }`.
+
+**Commits:**
+- `feat(admin): live leadgen polling + multi-select bulk delete`
+
 ## [0.0.18] - April 2026
 
 ### Mobile Responsive Refactor — Client-Facing Pages
