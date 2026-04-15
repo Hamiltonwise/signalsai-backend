@@ -29,6 +29,7 @@ import {
   AlertCircle,
   MousePointer,
   Link2,
+  ChevronUp,
 } from "lucide-react";
 import { deleteSubmission, getSubmission } from "../../api/leadgenSubmissions";
 import { useConfirm } from "../ui/ConfirmModal";
@@ -108,20 +109,24 @@ function formatAbsolute(iso: string): string {
   }
 }
 
-function formatRelative(iso: string, referenceMs?: number): string {
+/**
+ * Time-since-first-event label for timeline rows. The first event shows
+ * `0s`; each subsequent event shows its elapsed delta from event[0].
+ * This is a more useful signal than "X ago" for a funnel trace —
+ * reveals how long into the session each step happened.
+ */
+function formatElapsedFromStart(
+  eventIso: string,
+  firstIso: string | undefined
+): string {
+  if (!firstIso) return "0s";
   try {
-    const then = new Date(iso).getTime();
-    const now = typeof referenceMs === "number" ? referenceMs : Date.now();
-    const diffSec = Math.max(0, Math.round((now - then) / 1000));
-    if (diffSec < 60) return `${diffSec}s ago`;
-    const diffMin = Math.round(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHr = Math.round(diffMin / 60);
-    if (diffHr < 48) return `${diffHr}h ago`;
-    const diffDay = Math.round(diffHr / 24);
-    return `${diffDay}d ago`;
+    const ms =
+      new Date(eventIso).getTime() - new Date(firstIso).getTime();
+    if (!Number.isFinite(ms) || ms <= 0) return "0s";
+    return formatGapShort(ms);
   } catch {
-    return "";
+    return "0s";
   }
 }
 
@@ -194,6 +199,7 @@ export default function LeadgenSubmissionDetail({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [payloadOpen, setPayloadOpen] = useState(false);
   // `fetching` is true during the in-flight request of a live-poll tick;
   // drives the LIVE indicator's pulse. Distinct from `loading`, which only
   // gates the initial skeleton state.
@@ -236,8 +242,12 @@ export default function LeadgenSubmissionDetail({
     if (!submissionId) {
       setDetail(null);
       setError(null);
+      setPayloadOpen(false);
       return;
     }
+    // Different session opened — reset the payload sheet so it doesn't
+    // carry over visible state from the previous row.
+    setPayloadOpen(false);
 
     let cancelled = false;
     const POLL_GAP_MS = 500;
@@ -392,10 +402,25 @@ export default function LeadgenSubmissionDetail({
                     events={detail.events}
                     anchorIso={detail.session.last_seen_at}
                   />
-                  {detail.audit && <AuditSnapshot audit={detail.audit} />}
+                  {detail.audit && (
+                    <AuditPayloadBar
+                      audit={detail.audit}
+                      onOpen={() => setPayloadOpen(true)}
+                    />
+                  )}
                 </>
               )}
             </div>
+            {/* Slide-up dark payload deck — only mounts when opened so
+                the motion enter animation plays each time. */}
+            <AnimatePresence>
+              {payloadOpen && detail?.audit && (
+                <AuditPayloadSheet
+                  audit={detail.audit}
+                  onClose={() => setPayloadOpen(false)}
+                />
+              )}
+            </AnimatePresence>
           </motion.aside>
         </>
       )}
@@ -569,18 +594,11 @@ function EventTimeline({
   events,
 }: {
   events: LeadgenEvent[];
-  // anchorIso kept in the type for back-compat but ignored — we always
-  // compute relative against actual now so "0s ago" doesn't lie when the
-  // session has been sitting idle for minutes.
   anchorIso?: string;
 }) {
-  // Tick every second so the "Xs/Xm ago" label stays fresh between the
-  // drawer's 500ms data polls. One light interval, cleared on unmount.
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
+  // Anchor for elapsed-from-start labels. If there are no events this
+  // value is irrelevant (the empty-state renders instead).
+  const firstIso = events.length > 0 ? events[0].created_at : undefined;
 
   return (
     <section>
@@ -597,7 +615,7 @@ function EventTimeline({
           No events recorded for this session.
         </div>
       ) : (
-        <ol className="relative border-l border-gray-200 pl-5 space-y-4">
+        <ol className="relative border-l border-gray-200 pl-5 space-y-7 pt-2">
           <AnimatePresence initial={false}>
             {events.map((ev, i) => {
               const Icon = EVENT_ICONS[ev.event_name] ?? Activity;
@@ -637,7 +655,7 @@ function EventTimeline({
                   {gapMs !== null && (
                     <motion.span
                       layout
-                      className="absolute -left-[46px] -top-3 inline-flex items-center rounded-full bg-gray-100 text-[10px] font-medium text-gray-500 px-1.5 py-0.5 border border-gray-200"
+                      className="absolute -left-[46px] -top-5 inline-flex items-center rounded-full bg-white text-[10px] font-medium text-gray-500 px-1.5 py-0.5 border border-gray-200 shadow-sm"
                       title={`${Math.round(gapMs / 1000)}s between events`}
                     >
                       {formatGapShort(gapMs)}
@@ -653,8 +671,11 @@ function EventTimeline({
                       {eventLabel(ev.event_name)}
                     </p>
                     <div className="flex flex-col items-end shrink-0 leading-tight">
-                      <span className="text-xs text-gray-500">
-                        {formatRelative(ev.created_at, nowMs)}
+                      <span
+                        className="text-xs font-semibold text-gray-700"
+                        title="Elapsed since first event in this session"
+                      >
+                        {formatElapsedFromStart(ev.created_at, firstIso)}
                       </span>
                       <span className="text-[10px] text-gray-400 font-mono">
                         {formatAbsolute(ev.created_at)}
@@ -676,73 +697,145 @@ function EventTimeline({
   );
 }
 
-function AuditSnapshot({
+/**
+ * Dark sticky bottom bar — one-line tag for the audit payload. Click flips
+ * a slide-up deck (`AuditPayloadSheet`) that renders the raw JSON in a
+ * dark-mode viewer with light syntax highlighting. Replaces the old
+ * cluttered score-pluck snapshot — power users want the raw data, casual
+ * admins don't need a dashboard here.
+ */
+function AuditPayloadBar({
   audit,
+  onOpen,
 }: {
   audit: NonNullable<SubmissionDetail["audit"]>;
+  onOpen: () => void;
 }) {
-  // Compact snapshot — show status + any scalar scores we can surface from
-  // known step objects. Fall back to a read-only JSON viewer for anything
-  // else so power users can still inspect.
-  const websiteScore = pickScore(audit.step_website_analysis, [
-    "overall_score",
-    "score",
-  ]);
-  const gbpScore = pickScore(audit.step_gbp_analysis, [
-    "gbp_readiness_score",
-    "overall_score",
-    "score",
-  ]);
-
+  const status = audit.status || "unknown";
+  const statusColor =
+    status === "completed"
+      ? "text-emerald-300"
+      : status === "failed"
+        ? "text-red-300"
+        : "text-amber-300";
   return (
-    <section>
-      <div className="flex items-center gap-2 mb-3">
-        <FileText className="h-4 w-4 text-gray-500" />
-        <h3 className="text-sm font-semibold text-gray-900">Audit result</h3>
-      </div>
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">Status</span>
-          <span className="font-medium text-gray-800">
-            {audit.status || "—"}
-          </span>
+    <button
+      type="button"
+      onClick={onOpen}
+      className="sticky bottom-0 -mx-6 mt-6 block w-[calc(100%+3rem)] bg-slate-900 text-white px-6 py-4 text-left shadow-[0_-8px_24px_rgba(15,23,42,0.2)] hover:bg-slate-800 active:bg-slate-900 transition-colors border-t border-slate-800"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <FileText className="h-4 w-4 text-slate-400 shrink-0" />
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Audit payload
+            </span>
+            <span className="text-sm text-white truncate">
+              Status:{" "}
+              <span className={`font-semibold ${statusColor}`}>{status}</span>
+              <span className="text-slate-500 ml-2">— tap to view raw JSON</span>
+            </span>
+          </div>
         </div>
-        {audit.error_message && (
-          <div className="rounded-md bg-red-50 border border-red-200 p-2 text-xs text-red-700">
-            {audit.error_message}
-          </div>
-        )}
-        {websiteScore !== null && (
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">Website score</span>
-            <span className="font-semibold text-gray-900">{websiteScore}</span>
-          </div>
-        )}
-        {gbpScore !== null && (
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">GBP readiness</span>
-            <span className="font-semibold text-gray-900">{gbpScore}</span>
-          </div>
-        )}
-        <details className="pt-2">
-          <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
-            Raw payload
-          </summary>
-          <pre className="mt-2 max-h-96 overflow-auto rounded-md bg-gray-50 p-2 text-[11px] text-gray-600 border border-gray-100">
-            {JSON.stringify(audit, null, 2)}
-          </pre>
-        </details>
+        <ChevronUp className="h-4 w-4 text-slate-400 shrink-0" />
       </div>
-    </section>
+    </button>
   );
 }
 
-function pickScore(source: unknown, keys: string[]): number | string | null {
-  if (!source || typeof source !== "object") return null;
-  const obj = source as Record<string, unknown>;
-  for (const k of keys) {
-    const v = obj[k];
-    if (typeof v === "number" || typeof v === "string") return v;
+/**
+ * Dark slide-up deck for the raw audit payload. Positioned absolutely
+ * inside the drawer aside so it covers only the drawer (not the whole
+ * viewport). Framer-motion handles the slide-up animation.
+ *
+ * JSON is colorized by tokenizing the string and rendering each token as
+ * its own <span>. No dangerouslySetInnerHTML, no new dependency, no XSS
+ * surface even if a step payload contains raw HTML-looking text.
+ */
+function AuditPayloadSheet({
+  audit,
+  onClose,
+}: {
+  audit: NonNullable<SubmissionDetail["audit"]>;
+  onClose: () => void;
+}) {
+  const tokens = tokenizeJson(audit);
+  return (
+    <motion.div
+      initial={{ y: "100%" }}
+      animate={{ y: 0 }}
+      exit={{ y: "100%" }}
+      transition={{ type: "spring", stiffness: 300, damping: 32 }}
+      className="absolute inset-0 z-20 flex flex-col bg-slate-900 text-slate-100"
+    >
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950">
+        <div className="flex items-center gap-3 min-w-0">
+          <FileText className="h-4 w-4 text-slate-400 shrink-0" />
+          <h3 className="text-sm font-semibold text-white">Audit payload</h3>
+          <span className="text-[10px] font-mono text-slate-500 truncate">
+            {audit.id}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-2 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          aria-label="Close payload"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-auto px-6 py-4">
+        <pre className="text-[12px] leading-relaxed font-mono whitespace-pre-wrap break-all">
+          {tokens.map((t, i) =>
+            t.cls ? (
+              <span key={i} className={t.cls}>
+                {t.text}
+              </span>
+            ) : (
+              <span key={i}>{t.text}</span>
+            )
+          )}
+        </pre>
+      </div>
+    </motion.div>
+  );
+}
+
+type JsonToken = { text: string; cls: string | null };
+
+/**
+ * Tokenize a JSON.stringify output into colored spans without resorting
+ * to dangerouslySetInnerHTML. Uses `String.matchAll` so whitespace,
+ * braces, brackets, and commas survive verbatim between matches.
+ */
+function tokenizeJson(obj: unknown): JsonToken[] {
+  let text: string;
+  try {
+    text = JSON.stringify(obj, null, 2) ?? "null";
+  } catch {
+    text = String(obj);
   }
-  return null;
+  const re =
+    /("(?:\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(?:\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
+  const out: JsonToken[] = [];
+  let last = 0;
+  for (const m of text.matchAll(re)) {
+    const idx = m.index ?? 0;
+    if (idx > last) out.push({ text: text.slice(last, idx), cls: null });
+    const match = m[0];
+    let cls = "text-orange-300";
+    if (/^"/.test(match)) {
+      cls = /:\s*$/.test(match) ? "text-sky-300" : "text-emerald-300";
+    } else if (match === "true" || match === "false") {
+      cls = "text-purple-300";
+    } else if (match === "null") {
+      cls = "text-slate-500";
+    }
+    out.push({ text: match, cls });
+    last = idx + match.length;
+  }
+  if (last < text.length) out.push({ text: text.slice(last), cls: null });
+  return out;
 }
