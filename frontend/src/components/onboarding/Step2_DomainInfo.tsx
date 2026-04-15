@@ -134,7 +134,7 @@ export const Step2DomainInfo: React.FC<Step2GbpConnectProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-2xl font-bold font-heading text-alloro-navy mb-2 tracking-tight">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-heading text-alloro-navy mb-2 tracking-tight">
           Connect Google Business Profile
         </h2>
         <p className="text-slate-500 text-sm">

@@ -54,7 +54,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h2 className="text-2xl md:text-3xl font-bold font-heading text-alloro-navy tracking-tight">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-heading text-alloro-navy tracking-tight">
           Subscribe to Alloro
         </h2>
         <p className="text-slate-500 text-sm">
@@ -64,7 +64,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
 
       {/* Single Plan Card */}
       <motion.div
-        className="relative rounded-2xl border border-alloro-orange/40 bg-alloro-orange/[0.03] shadow-lg shadow-alloro-orange/10 p-6 max-w-md mx-auto"
+        className="relative rounded-2xl border border-alloro-orange/40 bg-alloro-orange/[0.03] shadow-lg shadow-alloro-orange/10 p-4 sm:p-6 lg:p-8 w-full max-w-md sm:max-w-lg mx-auto"
         whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(214,104,83,0.15)" }}
       >
         {/* Plan Name */}
@@ -77,7 +77,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
 
         {/* Price */}
         <div className="flex items-baseline gap-1 mb-5">
-          <span className="text-3xl font-black text-alloro-navy tracking-tighter">
+          <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-alloro-navy tracking-tighter">
             $2,000
           </span>
           <span className="text-slate-400 font-bold text-sm">/month</span>

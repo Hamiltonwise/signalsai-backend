@@ -102,7 +102,7 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
           background: "radial-gradient(ellipse at top, rgba(214, 104, 83, 0.08) 0%, transparent 50%), radial-gradient(ellipse at bottom right, rgba(214, 104, 83, 0.05) 0%, transparent 40%), #F3F4F6"
         }}
       >
-        <div className="max-w-md w-full p-8 rounded-2xl bg-white/80 backdrop-blur-sm border border-alloro-orange/10 shadow-[0_8px_32px_rgba(214,104,83,0.12)]">
+        <div className="w-full max-w-md p-4 sm:p-6 lg:p-8 rounded-2xl bg-white/80 backdrop-blur-sm border border-alloro-orange/10 shadow-[0_8px_32px_rgba(214,104,83,0.12)]">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 mx-auto rounded-full bg-red-50 flex items-center justify-center">
               <svg
@@ -147,7 +147,7 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
 
       <div className={`w-full relative z-10 ${currentStep === 4 ? "max-w-2xl" : "max-w-xl"}`}>
         {/* Main Card */}
-        <div className="p-8 rounded-2xl bg-white/80 backdrop-blur-sm border border-alloro-orange/10 shadow-[0_8px_32px_rgba(214,104,83,0.12)]">
+        <div className="p-4 sm:p-6 lg:p-8 rounded-2xl bg-white/80 backdrop-blur-sm border border-alloro-orange/10 shadow-[0_8px_32px_rgba(214,104,83,0.12)]">
           {/* Progress Indicator */}
           <ProgressIndicator
             currentStep={currentStep}

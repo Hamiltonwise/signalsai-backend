@@ -37,10 +37,10 @@ export default function NewAccountOnboarding() {
               New Account Setup
             </span>
           </div>
-          <h1 className="text-4xl font-black text-alloro-navy font-heading tracking-tight mb-3">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-alloro-navy font-heading tracking-tight mb-3">
             Connect Your Practice
           </h1>
-          <p className="text-lg text-slate-500 font-medium">
+          <p className="text-base sm:text-lg text-slate-500 font-medium">
             Link your Google Business Profile to unlock practice insights
           </p>
         </div>
@@ -56,7 +56,7 @@ export default function NewAccountOnboarding() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 onClick={() => setShowTermsModal(true)}
-                className="group relative bg-white rounded-3xl border-2 border-alloro-orange shadow-xl shadow-alloro-orange/10 p-8 cursor-pointer hover:shadow-2xl hover:shadow-alloro-orange/20 transition-all duration-300 hover:-translate-y-1"
+                className="group relative bg-white rounded-3xl border-2 border-alloro-orange shadow-xl shadow-alloro-orange/10 p-4 sm:p-6 lg:p-8 cursor-pointer hover:shadow-2xl hover:shadow-alloro-orange/20 transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="flex items-start gap-6">
                   {/* Step number */}
@@ -67,11 +67,11 @@ export default function NewAccountOnboarding() {
                   </div>
                   {/* Content */}
                   <div className="flex-1 text-left">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-black text-alloro-navy tracking-tight">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                      <h3 className="text-lg sm:text-xl font-black text-alloro-navy tracking-tight">
                         Read Our Google API Terms
                       </h3>
-                      <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg">
+                      <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg self-start sm:self-auto">
                         Required
                       </span>
                     </div>
@@ -95,7 +95,7 @@ export default function NewAccountOnboarding() {
                 key="step1-completed"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative bg-green-50 rounded-3xl border-2 border-green-200 p-8"
+                className="relative bg-green-50 rounded-3xl border-2 border-green-200 p-4 sm:p-6 lg:p-8"
               >
                 <div className="flex items-start gap-6">
                   {/* Step number */}
@@ -106,11 +106,11 @@ export default function NewAccountOnboarding() {
                   </div>
                   {/* Content */}
                   <div className="flex-1 text-left">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-black text-green-700 tracking-tight">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                      <h3 className="text-lg sm:text-xl font-black text-green-700 tracking-tight">
                         Google API Terms Reviewed
                       </h3>
-                      <span className="px-2 py-1 bg-green-100 text-green-600 text-[10px] font-black uppercase tracking-wider rounded-lg">
+                      <span className="px-2 py-1 bg-green-100 text-green-600 text-[10px] font-black uppercase tracking-wider rounded-lg self-start sm:self-auto">
                         Completed
                       </span>
                     </div>
@@ -134,7 +134,7 @@ export default function NewAccountOnboarding() {
                 key="step2-active"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="group relative bg-white rounded-3xl border-2 border-alloro-orange shadow-xl shadow-alloro-orange/10 p-8"
+                className="group relative bg-white rounded-3xl border-2 border-alloro-orange shadow-xl shadow-alloro-orange/10 p-4 sm:p-6 lg:p-8"
               >
                 <div className="flex items-start gap-6">
                   {/* Step number */}
@@ -145,11 +145,11 @@ export default function NewAccountOnboarding() {
                   </div>
                   {/* Content */}
                   <div className="flex-1 text-left">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-black text-alloro-navy tracking-tight">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                      <h3 className="text-lg sm:text-xl font-black text-alloro-navy tracking-tight">
                         Connect Google Business Profile
                       </h3>
-                      <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg">
+                      <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg self-start sm:self-auto">
                         Required
                       </span>
                     </div>
@@ -181,7 +181,7 @@ export default function NewAccountOnboarding() {
                 key="step2-locked"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 p-8 opacity-60"
+                className="relative bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 p-4 sm:p-6 lg:p-8 opacity-60"
               >
                 <div className="flex items-start gap-6">
                   {/* Step number */}
@@ -194,11 +194,11 @@ export default function NewAccountOnboarding() {
                   </div>
                   {/* Content */}
                   <div className="flex-1 text-left">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-black text-slate-400 tracking-tight">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                      <h3 className="text-lg sm:text-xl font-black text-slate-400 tracking-tight">
                         Connect Google Business Profile
                       </h3>
-                      <span className="px-2 py-1 bg-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider rounded-lg">
+                      <span className="px-2 py-1 bg-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider rounded-lg self-start sm:self-auto">
                         Next
                       </span>
                     </div>
