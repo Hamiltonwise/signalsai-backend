@@ -20,11 +20,15 @@ import {
   generateToken,
   verifyToken,
 } from "./feature-services/service.jwt-management";
+import { linkAccountCreation } from "../leadgen-tracking/feature-services/service.account-linking";
 
 import { UserModel } from "../../models/UserModel";
 import { InvitationModel } from "../../models/InvitationModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { GoogleConnectionModel } from "../../models/GoogleConnectionModel";
+
+const LEADGEN_UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * POST /api/auth/otp/request
@@ -90,11 +94,20 @@ export async function requestOtp(req: Request, res: Response) {
  */
 export async function verifyOtp(req: Request, res: Response) {
   try {
-    const { email, code, isAdminLogin } = req.body;
+    const { email, code, isAdminLogin, leadgen_session_id } = req.body;
 
     if (!email || !code) {
       return res.status(400).json({ error: "Email and code are required" });
     }
+
+    // Optional leadgen tracking id carried through the signup URL (`?ls=<uuid>`).
+    // If present but malformed, silently drop — a bad tracking id must never
+    // fail OTP verify.
+    const leadgenSessionId =
+      typeof leadgen_session_id === "string" &&
+      LEADGEN_UUID_REGEX.test(leadgen_session_id)
+        ? leadgen_session_id
+        : undefined;
 
     const normalizedEmail = normalizeEmail(email);
     const testAccount = isTestAccount(normalizedEmail);
@@ -136,6 +149,23 @@ export async function verifyOtp(req: Request, res: Response) {
       const result = await onboardUser(normalizedEmail, invitation ?? undefined);
       user = result.user;
       isNewUser = result.isNewUser;
+
+      // Fire-and-forget: link this new user back to any pre-signup leadgen
+      // session(s) so the admin funnel can count them as converted. Never
+      // awaited in a way that delays the OTP response — the service catches
+      // its own errors but we defensively `.catch` the promise here too.
+      if (isNewUser) {
+        linkAccountCreation({
+          email: normalizedEmail,
+          userId: user.id,
+          sessionId: leadgenSessionId,
+        }).catch((err) => {
+          console.error(
+            "[AUTH] linkAccountCreation post-onboard failed:",
+            err
+          );
+        });
+      }
     }
 
     // Generate JWT

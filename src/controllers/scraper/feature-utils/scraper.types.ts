@@ -58,7 +58,7 @@ export interface PerformanceMetrics {
 /** Aggregated result from the scraping orchestrator */
 export interface ScrapingResult {
   desktopScreenshot: ScreenshotResult;
-  mobileScreenshot: ScreenshotResult;
+  mobileScreenshot: ScreenshotResult | null;
   homepageMarkup: string;
   metrics: PerformanceMetrics;
   brokenLinks: BrokenLink[];

@@ -20,10 +20,9 @@ import {
   navigateWithRetry,
   closeBrowser,
 } from "./service.puppeteer-manager";
-import { captureDesktop, captureMobile } from "./service.screenshot-capture";
+import { captureDesktop } from "./service.screenshot-capture";
 import { collectMetrics } from "./service.performance-metrics";
 import { findBrokenLinks } from "./service.link-checker";
-import { extractNAPDetails } from "./service.nap-extractor";
 
 /**
  * Scrape a homepage and return aggregated results.
@@ -70,7 +69,8 @@ export async function scrapeHomepage(
       return null;
     }
 
-    // Desktop screenshot
+    // Desktop screenshot (mobile capture intentionally dropped — single
+    // viewport is enough for the leadgen audit and saves ~2-3s of scrape time)
     const desktopScreenshot = await captureDesktop(page);
 
     // Extract HTML markup
@@ -81,35 +81,29 @@ export async function scrapeHomepage(
     // Performance metrics (load time, HTTPS)
     const metrics = await collectMetrics(page);
 
-    // Start broken links check in background
-    log("INFO", "Starting broken links check (max 3) in background");
-    const brokenLinksPromise = findBrokenLinks(page, page.url(), 3);
-
-    // NAP extraction
-    log("INFO", "Extracting NAP (Name, Address, Phone) details");
-    const napDetails = await extractNAPDetails(page);
-
-    // Mobile screenshot
-    const mobileScreenshot = await captureMobile(page);
-
-    // Close browser before awaiting broken links
-    await closeBrowser(browser);
-    browser = null;
-
-    // Await broken links result
-    log("DEBUG", "Waiting for broken links check to complete");
-    const brokenLinks = await brokenLinksPromise;
+    // Broken links check (capped at 1 — just a health signal). The audit
+    // pipeline uses only the COUNT for Technical Reliability scoring.
+    // Must finish before browser close: link-checker evaluates JS on the
+    // live page; closing the target mid-call throws TargetCloseError.
+    // NAP extraction intentionally skipped — audit pipeline derives NAP
+    // from the raw markup via the LLM, not from this scraper.
+    log("INFO", "Starting broken links check (max 1)");
+    const brokenLinks = await findBrokenLinks(page, page.url(), 1);
     log("INFO", "Broken links check completed", {
       brokenCount: brokenLinks.length,
     });
 
+    // Close browser
+    await closeBrowser(browser);
+    browser = null;
+
     return {
       desktopScreenshot,
-      mobileScreenshot,
+      mobileScreenshot: null,
       homepageMarkup,
       metrics,
       brokenLinks,
-      napDetails,
+      napDetails: { businessName: null, addresses: [], phoneNumbers: [], emails: [] },
     };
   } catch (error: any) {
     // Always close browser on error

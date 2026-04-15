@@ -78,7 +78,7 @@ export async function captureHomepage(
 
     log("INFO", "Returning response", {
       desktopSizeKB: result.desktopScreenshot.sizeKB,
-      mobileSizeKB: result.mobileScreenshot.sizeKB,
+      mobileSizeKB: result.mobileScreenshot?.sizeKB ?? null,
       markupSizeKB: Math.round(result.homepageMarkup.length / 1024),
       totalDurationMs: durationMs,
       brokenLinksCount: result.brokenLinks.length,
@@ -87,7 +87,9 @@ export async function captureHomepage(
     res.json({
       success: true,
       desktop_screenshot: `data:image/jpeg;base64,${result.desktopScreenshot.base64}`,
-      mobile_screenshot: `data:image/jpeg;base64,${result.mobileScreenshot.base64}`,
+      mobile_screenshot: result.mobileScreenshot
+        ? `data:image/jpeg;base64,${result.mobileScreenshot.base64}`
+        : null,
       homepage_markup: result.homepageMarkup,
       isSecure: result.metrics.isSecure,
       loadTime: result.metrics.loadTime,

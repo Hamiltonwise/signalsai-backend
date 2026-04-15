@@ -22,8 +22,8 @@ export async function autoScrollPage(page: Page): Promise<void> {
   await page.evaluate(async () => {
     await new Promise<void>((resolve) => {
       let totalHeight = 0;
-      const distance = 400;
-      const delay = 80;
+      const distance = 600; // larger steps cover the page faster
+      const delay = 30; // tighter loop — most lazy-loaders react in <30ms
 
       const timer = setInterval(() => {
         const scrollHeight = document.body.scrollHeight;

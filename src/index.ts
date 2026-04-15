@@ -42,11 +42,12 @@ import adminWebsitesRoutes from "./routes/admin/websites";
 import adminMediaRoutes from "./routes/admin/media";
 import adminSettingsRoutes from "./routes/admin/settings";
 import adminSchedulesRoutes from "./routes/admin/schedules";
+import adminLeadgenRoutes from "./routes/admin/leadgenSubmissions";
+import leadgenTrackingRoutes from "./routes/leadgenTracking";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
 import placesRoutes from "./routes/places";
-import checkupRoutes from "./routes/checkup";
 import auditRoutes from "./routes/audit";
 import importsRoutes from "./routes/imports";
 import websiteContactRoutes from "./routes/websiteContact";
@@ -57,7 +58,6 @@ import mindsPublicApiRoutes from "./routes/mindsPublicApi";
 import skillsPublicApiRoutes from "./routes/skillsPublicApi";
 import internalApiRoutes from "./routes/internalApi";
 import billingRoutes from "./routes/billing";
-import pmRoutes from "./routes/pm";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -65,7 +65,6 @@ import {
 } from "./middleware/corsCustomDomains";
 
 const app = express();
-app.set("trust proxy", 1);
 const port = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === "production";
 const router = Router();
@@ -115,7 +114,7 @@ app.use((req, res, next) => {
   );
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With, x-scraper-key",
+    "Content-Type, Authorization, X-Requested-With, x-scraper-key, x-leadgen-key",
   );
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
@@ -170,13 +169,14 @@ app.use("/api/admin/websites", adminWebsitesRoutes);
 app.use("/api/admin/websites/:projectId/media", adminMediaRoutes);
 app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin/schedules", adminSchedulesRoutes);
+app.use("/api/admin/leadgen-submissions", adminLeadgenRoutes);
+app.use("/api/leadgen", leadgenTrackingRoutes);
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest
 app.use("/api/admin", adminAuthRoutes);
 app.use("/api/support", supportRoutes); // Help form / support inquiries
 app.use("/api/scraper", scraperRoutes); // Website scraper for n8n webhooks
 app.use("/api/places", placesRoutes); // Google Places API for GBP search
-app.use("/api/checkup", checkupRoutes); // Public checkup flow for audit.getalloro.com
 app.use("/api/audit", auditRoutes); // Audit process tracking for leadgen tool
 app.use("/api/imports", importsRoutes); // Public file serving for self-hosted imports
 app.use("/api/websites", websiteContactRoutes); // Public contact form for rendered sites
@@ -187,7 +187,6 @@ app.use("/api/minds", mindsPublicApiRoutes); // Public skill/portal API
 app.use("/api/skills", skillsPublicApiRoutes); // Public skill portal API
 app.use("/api/internal", internalApiRoutes); // Internal API for n8n workers
 app.use("/api/billing", billingRoutes); // Stripe billing & subscription management
-app.use("/api/pm", pmRoutes); // Alloro Projects — internal project management module
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);
