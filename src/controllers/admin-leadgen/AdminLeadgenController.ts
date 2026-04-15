@@ -167,16 +167,14 @@ export async function listSubmissions(
     //   'email'    — a users row matches this session's email
     //   'domain'   — an organizations row matches the audit's normalised domain
     //   null       — not linked
-    const PLATFORM_DOMAINS_EXCLUDED = [
-      "facebook.com",
-      "instagram.com",
-      "wixsite.com",
-      "squarespace.com",
-      "weebly.com",
-      "wordpress.com",
-      "godaddysites.com",
-      "sites.google.com",
-    ];
+    // Embedded directly in the SQL below rather than passed as bindings —
+    // knex would otherwise treat the `?` characters in the regex patterns
+    // (https?, (www\.)?) as binding placeholders and mis-count them.
+    // These values are constants, not user input — no injection risk.
+    //
+    // Keep in sync with the NOT IN list inside the joinRaw block:
+    //   facebook.com / instagram.com / wixsite.com / squarespace.com /
+    //   weebly.com / wordpress.com / godaddysites.com / sites.google.com
 
     const rowsQuery = applyListFilters(
       db("leadgen_sessions")
@@ -190,18 +188,51 @@ export async function listSubmissions(
         //   users: case-insensitive email match
         //   organizations: normalised-domain exact match, excluding
         //     well-known platform domains that would collapse unrelated
-        //     practices. Normalisation strips protocol/www/trailing slash
-        //     and lowercases.
+        //     practices.
+        //
+        // Normalisation uses three non-`?` regex_replace calls:
+        //   1. strip leading http:// or https://   (alternation, not https?)
+        //   2. strip leading www.
+        //   3. strip trailing slashes (/+$)
+        // This avoids `?` characters that knex would otherwise interpret
+        // as binding placeholders.
         .joinRaw(
           "LEFT JOIN users AS u ON LOWER(u.email) = LOWER(leadgen_sessions.email)"
         )
         .joinRaw(
           `LEFT JOIN organizations AS org_by_domain ON
-             LOWER(regexp_replace(regexp_replace(COALESCE(audit_processes.domain, ''), '^https?://(www\\.)?', ''), '/\$', ''))
-               = LOWER(regexp_replace(regexp_replace(COALESCE(org_by_domain.domain, ''), '^https?://(www\\.)?', ''), '/\$', ''))
+             LOWER(
+               regexp_replace(
+                 regexp_replace(
+                   regexp_replace(COALESCE(audit_processes.domain, ''), '^(http|https)://', ''),
+                   '^www\\.', ''
+                 ),
+                 '/+$', ''
+               )
+             )
+             = LOWER(
+               regexp_replace(
+                 regexp_replace(
+                   regexp_replace(COALESCE(org_by_domain.domain, ''), '^(http|https)://', ''),
+                   '^www\\.', ''
+                 ),
+                 '/+$', ''
+               )
+             )
              AND COALESCE(audit_processes.domain, '') <> ''
-             AND LOWER(regexp_replace(regexp_replace(COALESCE(audit_processes.domain, ''), '^https?://(www\\.)?', ''), '/\$', '')) NOT IN (${PLATFORM_DOMAINS_EXCLUDED.map(() => "?").join(",")})`,
-          PLATFORM_DOMAINS_EXCLUDED
+             AND LOWER(
+               regexp_replace(
+                 regexp_replace(
+                   regexp_replace(COALESCE(audit_processes.domain, ''), '^(http|https)://', ''),
+                   '^www\\.', ''
+                 ),
+                 '/+$', ''
+               )
+             ) NOT IN (
+               'facebook.com', 'instagram.com', 'wixsite.com',
+               'squarespace.com', 'weebly.com', 'wordpress.com',
+               'godaddysites.com', 'sites.google.com'
+             )`
         )
         .select(
           "leadgen_sessions.id as id",
