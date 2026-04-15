@@ -238,6 +238,11 @@ export async function getStats(
     // percentile_cont(0.5) over the epoch-millisecond delta for converted
     // sessions (NULL rows are excluded by the WITHIN GROUP, so the median
     // naturally scopes to converted sessions only).
+    // Cast the bindings to timestamptz BOTH in the IS NULL test and the
+    // range comparison so the pg driver can infer the type when the
+    // binding itself is NULL. The previous shape `(? IS NULL OR ...)` with
+    // an untyped NULL produced `could not determine data type of
+    // parameter $1` on every call from the admin UI.
     const rowRaw = await db.raw(
       `
       SELECT
@@ -251,8 +256,8 @@ export async function getStats(
           ORDER BY EXTRACT(EPOCH FROM (converted_at - first_seen_at)) * 1000
         ) AS median_time_to_convert_ms
       FROM leadgen_sessions
-      WHERE (? IS NULL OR first_seen_at >= ?::timestamptz)
-        AND (? IS NULL OR first_seen_at <= ?::timestamptz)
+      WHERE (?::timestamptz IS NULL OR first_seen_at >= ?::timestamptz)
+        AND (?::timestamptz IS NULL OR first_seen_at <= ?::timestamptz)
       `,
       [from ?? null, from ?? null, to ?? null, to ?? null]
     );
