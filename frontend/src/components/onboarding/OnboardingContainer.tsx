@@ -41,9 +41,27 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
     previousStep,
     initiateCheckout,
     isCheckoutProcessing,
+    completeOnboarding,
   } = useOnboarding(initialStep);
 
   const [autoOpenGbp, setAutoOpenGbp] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
+  const [skipError, setSkipError] = useState<string | null>(null);
+
+  // Mark onboarding complete and drop the user into the app without paying.
+  // Hard-redirects so AuthContext refetches with the new onboarding + billing state.
+  const handleSkipToApp = async () => {
+    setSkipError(null);
+    setIsSkipping(true);
+    const ok = await completeOnboarding();
+    if (ok) {
+      localStorage.setItem("onboardingCompleted", "true");
+      window.location.href = "/dashboard";
+    } else {
+      setSkipError("Something went wrong. Please try again.");
+      setIsSkipping(false);
+    }
+  };
 
   // Called when Google OAuth popup succeeds — refresh auth state then auto-open GBP selector
   const handleGoogleConnected = async () => {
@@ -193,8 +211,11 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
               {currentStep === 4 && (
                 <Step3PlanChooser
                   onSubscribe={initiateCheckout}
+                  onSkip={handleSkipToApp}
                   onBack={previousStep}
                   isProcessing={isCheckoutProcessing}
+                  isSkipping={isSkipping}
+                  skipError={skipError}
                 />
               )}
             </motion.div>

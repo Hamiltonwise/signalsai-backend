@@ -2,7 +2,9 @@
  * Step3_PlanChooser — Onboarding Step 4
  *
  * Single-product model: displays one subscription card for Alloro
- * and proceeds to Stripe Checkout. No plan selection needed.
+ * and proceeds to Stripe Checkout. Users may also skip payment and
+ * enter the app directly — the dashboard's top-bar banner nudges
+ * them to subscribe later.
  */
 
 import React from "react";
@@ -22,8 +24,11 @@ import {
 
 interface Step3PlanChooserProps {
   onSubscribe: () => void;
+  onSkip: () => void;
   onBack: () => void;
   isProcessing: boolean;
+  isSkipping: boolean;
+  skipError?: string | null;
 }
 
 const FEATURES = [
@@ -37,9 +42,14 @@ const FEATURES = [
 
 export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
   onSubscribe,
+  onSkip,
   onBack,
   isProcessing,
+  isSkipping,
+  skipError,
 }) => {
+  const isBusy = isProcessing || isSkipping;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -91,7 +101,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
         {/* Subscribe Button */}
         <button
           onClick={onSubscribe}
-          disabled={isProcessing}
+          disabled={isBusy}
           className="w-full px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-gradient-to-r from-alloro-orange to-[#c45a47] text-white hover:shadow-lg hover:shadow-alloro-orange/30 hover:-translate-y-0.5"
         >
           {isProcessing ? (
@@ -114,11 +124,25 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
         <span>Secure payment via Stripe. Cancel anytime.</span>
       </div>
 
+      {/* Skip option */}
+      <div className="flex flex-col items-center gap-2">
+        <button
+          onClick={onSkip}
+          disabled={isBusy}
+          className="text-sm text-alloro-orange hover:text-alloro-orange/80 transition-colors disabled:opacity-50"
+        >
+          {isSkipping ? "Finishing..." : "I'll link my card later"}
+        </button>
+        {skipError && (
+          <p className="text-sm text-red-600">{skipError}</p>
+        )}
+      </div>
+
       {/* Back button */}
       <div className="flex justify-start pt-2">
         <button
           onClick={onBack}
-          disabled={isProcessing}
+          disabled={isBusy}
           className="flex items-center gap-2 text-slate-400 hover:text-slate-600 text-sm font-medium transition-colors disabled:opacity-50"
         >
           <ArrowLeft size={16} />
