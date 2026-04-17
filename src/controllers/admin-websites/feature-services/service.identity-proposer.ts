@@ -356,7 +356,16 @@ function validateProposedValue(path: string, value: unknown): void {
     }
   }
   if (path === "brand.gradient_preset" && value !== null) {
-    const valid = ["balanced", "wider-from", "wider-to", "centered", "hard-edge"];
+    const valid = [
+      "smooth",
+      "lean-primary",
+      "lean-accent",
+      "soft-lean-primary",
+      "soft-lean-accent",
+      "warm-middle",
+      "quick-transition",
+      "long-transition",
+    ];
     if (typeof value !== "string" || !valid.includes(value)) {
       throw new Error(
         `Invalid gradient_preset: ${value} (must be one of ${valid.join(", ")})`,

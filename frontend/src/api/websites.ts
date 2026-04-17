@@ -32,13 +32,16 @@ export interface ProjectIdentityBrand {
   gradient_direction: string;
   /** Preferred text color when rendering content on top of bg-gradient-brand ("white" | "dark") */
   gradient_text_color?: "white" | "dark" | null;
-  /** Named preset controlling stop distribution (balanced/wider-from/wider-to/centered/hard-edge) */
+  /** Named preset controlling stop distribution — all presets are subtle (no hard edges). */
   gradient_preset?:
-    | "balanced"
-    | "wider-from"
-    | "wider-to"
-    | "centered"
-    | "hard-edge"
+    | "smooth"
+    | "lean-primary"
+    | "lean-accent"
+    | "soft-lean-primary"
+    | "soft-lean-accent"
+    | "warm-middle"
+    | "quick-transition"
+    | "long-transition"
     | null;
   logo_s3_url: string | null;
   logo_alt_text: string | null;

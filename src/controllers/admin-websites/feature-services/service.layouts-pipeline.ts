@@ -366,7 +366,7 @@ function buildLayoutComponentMessage(
     if (br.gradient_enabled) {
       const textColor = br.gradient_text_color || "white";
       const textHex = textColor === "dark" ? "#111827" : "#FFFFFF";
-      const preset = br.gradient_preset || "balanced";
+      const preset = br.gradient_preset || "smooth";
       const stopsCss = buildGradientStopsCss(
         br.gradient_from || "#1E40AF",
         br.gradient_to || "#F59E0B",

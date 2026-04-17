@@ -15,7 +15,7 @@ Given the user's instruction and a snapshot of the current identity, call the `p
 Dot notation into the identity. Examples:
 - `brand.accent_color` (scalar UPDATE)
 - `brand.gradient_text_color` (scalar UPDATE; value must be "white" or "dark" — controls contrast of text on gradient backgrounds)
-- `brand.gradient_preset` (scalar UPDATE; value must be one of "balanced" | "wider-from" | "wider-to" | "centered" | "hard-edge" — controls how the gradient stops are distributed)
+- `brand.gradient_preset` (scalar UPDATE; value must be one of "smooth" | "lean-primary" | "lean-accent" | "soft-lean-primary" | "soft-lean-accent" | "warm-middle" | "quick-transition" | "long-transition" — controls how the gradient stops are distributed; all are subtle with no hard edges)
 - `content_essentials.certifications` (NEW to append, UPDATE to replace the whole array, DELETE to remove one item — specify the item in `proposed_value` for DELETE with an array_item: true)
 - `content_essentials.social_links.facebook` (scalar UPDATE/DELETE)
 - `voice_and_tone.archetype` (enum UPDATE)

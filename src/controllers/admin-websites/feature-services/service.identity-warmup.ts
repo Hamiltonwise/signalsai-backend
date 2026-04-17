@@ -80,11 +80,14 @@ export interface WarmupInputs {
 }
 
 export type GradientPreset =
-  | "balanced"
-  | "wider-from"
-  | "wider-to"
-  | "centered"
-  | "hard-edge";
+  | "smooth"
+  | "lean-primary"
+  | "lean-accent"
+  | "soft-lean-primary"
+  | "soft-lean-accent"
+  | "warm-middle"
+  | "quick-transition"
+  | "long-transition";
 
 interface IdentityBusiness {
   name: string | null;
@@ -429,7 +432,7 @@ function buildBrand(
       ? inputs.gradient?.text_color || "white"
       : null,
     gradient_preset: inputs.gradient?.enabled
-      ? inputs.gradient?.preset || "balanced"
+      ? inputs.gradient?.preset || "smooth"
       : null,
     logo_s3_url: logoS3Url,
     logo_alt_text: businessName ? `${businessName} Logo` : null,

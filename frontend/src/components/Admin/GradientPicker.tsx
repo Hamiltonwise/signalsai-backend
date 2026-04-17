@@ -4,11 +4,14 @@ import ColorPicker from "./ColorPicker";
 export type GradientDirection = "to-r" | "to-br" | "to-b" | "to-tr";
 export type GradientTextColor = "white" | "dark";
 export type GradientPresetId =
-  | "balanced"
-  | "wider-from"
-  | "wider-to"
-  | "centered"
-  | "hard-edge";
+  | "smooth"
+  | "lean-primary"
+  | "lean-accent"
+  | "soft-lean-primary"
+  | "soft-lean-accent"
+  | "warm-middle"
+  | "quick-transition"
+  | "long-transition";
 
 export interface GradientValue {
   enabled: boolean;
@@ -16,77 +19,167 @@ export interface GradientValue {
   to: string;
   direction: GradientDirection;
   text_color: GradientTextColor;
-  /** Named preset that controls the stop distribution (intensity / stretch). */
+  /** Named preset that controls the stop distribution. All presets are subtle — no hard edges. */
   preset: GradientPresetId;
 }
 
 /**
- * Preset → CSS stops. `role` picks which color to use. `position` is percent
- * along the gradient axis. Both the frontend picker and the backend layouts
- * pipeline expand preset IDs into CSS this way.
+ * Stop definition — `role: "from"` uses the primary color, `role: "to"` uses
+ * the accent, `role: "mix"` uses a blended color (mix_ratio = 0 → pure from,
+ * 1 → pure to, 0.5 → 50/50 mix).
+ */
+type StopDef = {
+  role: "from" | "to" | "mix";
+  position: number;
+  mix_ratio?: number;
+};
+
+/**
+ * Preset → CSS stops. All presets use smooth transitions; none have solid
+ * single-color blocks or hard edges. Subtle variations are achieved by
+ * shifting a blended-color midpoint or using multi-band gradients.
+ *
+ * The frontend picker and backend layouts pipeline both expand presets
+ * via buildGradientStopsCss() below.
  */
 export const GRADIENT_PRESETS: Record<
   GradientPresetId,
   {
     label: string;
     title: string;
-    stops: Array<{ role: "from" | "to"; position: number }>;
+    stops: StopDef[];
   }
 > = {
-  balanced: {
+  smooth: {
     label: "1",
-    title: "Balanced — smooth 0% to 100%",
+    title: "Smooth — classic 0% to 100% blend",
     stops: [
       { role: "from", position: 0 },
       { role: "to", position: 100 },
     ],
   },
-  "wider-from": {
+  "lean-primary": {
     label: "2",
-    title: "Wider from — primary color dominates up to 70%",
+    title: "Lean primary — primary color occupies more visual space",
     stops: [
       { role: "from", position: 0 },
-      { role: "from", position: 70 },
+      { role: "mix", mix_ratio: 0.5, position: 65 },
       { role: "to", position: 100 },
     ],
   },
-  "wider-to": {
+  "lean-accent": {
     label: "3",
-    title: "Wider to — accent color dominates from 30%",
+    title: "Lean accent — accent color occupies more visual space",
     stops: [
       { role: "from", position: 0 },
-      { role: "to", position: 30 },
+      { role: "mix", mix_ratio: 0.5, position: 35 },
       { role: "to", position: 100 },
     ],
   },
-  centered: {
+  "soft-lean-primary": {
     label: "4",
-    title: "Centered — gradient compressed to the middle",
-    stops: [
-      { role: "from", position: 25 },
-      { role: "to", position: 75 },
-    ],
-  },
-  "hard-edge": {
-    label: "5",
-    title: "Hard edge — sharp split at the midpoint",
+    title: "Soft lean primary — very gentle shift toward primary",
     stops: [
       { role: "from", position: 0 },
-      { role: "from", position: 49 },
-      { role: "to", position: 51 },
+      { role: "mix", mix_ratio: 0.5, position: 58 },
+      { role: "to", position: 100 },
+    ],
+  },
+  "soft-lean-accent": {
+    label: "5",
+    title: "Soft lean accent — very gentle shift toward accent",
+    stops: [
+      { role: "from", position: 0 },
+      { role: "mix", mix_ratio: 0.5, position: 42 },
+      { role: "to", position: 100 },
+    ],
+  },
+  "warm-middle": {
+    label: "6",
+    title: "Warm middle — extended mix band through the center",
+    stops: [
+      { role: "from", position: 0 },
+      { role: "mix", mix_ratio: 0.35, position: 30 },
+      { role: "mix", mix_ratio: 0.65, position: 70 },
+      { role: "to", position: 100 },
+    ],
+  },
+  "quick-transition": {
+    label: "7",
+    title: "Quick transition — colors exchange faster near the midpoint",
+    stops: [
+      { role: "from", position: 0 },
+      { role: "mix", mix_ratio: 0.25, position: 40 },
+      { role: "mix", mix_ratio: 0.75, position: 60 },
+      { role: "to", position: 100 },
+    ],
+  },
+  "long-transition": {
+    label: "8",
+    title: "Long transition — gradient spread out over a broader band",
+    stops: [
+      { role: "from", position: 0 },
+      { role: "mix", mix_ratio: 0.35, position: 20 },
+      { role: "mix", mix_ratio: 0.65, position: 80 },
       { role: "to", position: 100 },
     ],
   },
 };
+
+// ---------------------------------------------------------------------------
+// Color mixer — shared between gradient preview and backend CSS injection.
+// ---------------------------------------------------------------------------
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const clean = hex.replace(/^#/, "");
+  const v =
+    clean.length === 3
+      ? clean
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : clean;
+  const n = parseInt(v, 16);
+  if (Number.isNaN(n) || v.length !== 6) return { r: 0, g: 0, b: 0 };
+  return { r: (n >> 16) & 0xff, g: (n >> 8) & 0xff, b: n & 0xff };
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const h = (n: number) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`.toUpperCase();
+}
+
+export function mixHex(from: string, to: string, ratio: number): string {
+  const a = hexToRgb(from);
+  const b = hexToRgb(to);
+  const r = clamp(ratio, 0, 1);
+  return rgbToHex(
+    a.r + (b.r - a.r) * r,
+    a.g + (b.g - a.g) * r,
+    a.b + (b.b - a.b) * r,
+  );
+}
 
 export function buildGradientStopsCss(
   from: string,
   to: string,
   presetId: GradientPresetId,
 ): string {
-  const preset = GRADIENT_PRESETS[presetId] || GRADIENT_PRESETS.balanced;
+  const preset = GRADIENT_PRESETS[presetId] || GRADIENT_PRESETS.smooth;
   return preset.stops
-    .map((s) => `${s.role === "from" ? from : to} ${s.position}%`)
+    .map((s) => {
+      const color =
+        s.role === "from"
+          ? from
+          : s.role === "to"
+            ? to
+            : mixHex(from, to, s.mix_ratio ?? 0.5);
+      return `${color} ${s.position}%`;
+    })
     .join(", ");
 }
 
@@ -129,11 +222,11 @@ export default function GradientPicker({
       from: value.from || defaultFrom || "#1E40AF",
       to: value.to || defaultTo || "#F59E0B",
       text_color: value.text_color || "white",
-      preset: value.preset || "balanced",
+      preset: value.preset || "smooth",
     });
   };
 
-  const activePreset = value.preset || "balanced";
+  const activePreset = value.preset || "smooth";
   const stopsCss = buildGradientStopsCss(value.from, value.to, activePreset);
   const previewCss = `linear-gradient(${cssDirection(value.direction)}, ${stopsCss})`;
   const textColor = value.text_color === "dark" ? DARK_TEXT : "#FFFFFF";
