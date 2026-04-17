@@ -32,6 +32,14 @@ export interface ProjectIdentityBrand {
   gradient_direction: string;
   /** Preferred text color when rendering content on top of bg-gradient-brand ("white" | "dark") */
   gradient_text_color?: "white" | "dark" | null;
+  /** Named preset controlling stop distribution (balanced/wider-from/wider-to/centered/hard-edge) */
+  gradient_preset?:
+    | "balanced"
+    | "wider-from"
+    | "wider-to"
+    | "centered"
+    | "hard-edge"
+    | null;
   logo_s3_url: string | null;
   logo_alt_text: string | null;
   fonts?: { heading: string; body: string };

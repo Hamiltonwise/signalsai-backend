@@ -20,6 +20,7 @@ import {
 } from "../../admin-media/feature-utils/util.s3-helpers";
 import {
   buildStableIdentityContext,
+  buildGradientStopsCss,
   resolveImageUrl,
   type ProjectIdentity,
 } from "../feature-utils/util.identity-context";
@@ -365,8 +366,18 @@ function buildLayoutComponentMessage(
     if (br.gradient_enabled) {
       const textColor = br.gradient_text_color || "white";
       const textHex = textColor === "dark" ? "#111827" : "#FFFFFF";
+      const preset = br.gradient_preset || "balanced";
+      const stopsCss = buildGradientStopsCss(
+        br.gradient_from || "#1E40AF",
+        br.gradient_to || "#F59E0B",
+        preset,
+      );
       colorLines.push(
         `gradient_from: ${br.gradient_from}, gradient_to: ${br.gradient_to}, direction: ${br.gradient_direction || "to-br"}`,
+      );
+      colorLines.push(`gradient_preset: ${preset}`);
+      colorLines.push(
+        `gradient_stops_css: "${stopsCss}" — use this as the content inside linear-gradient(direction, ...) for .bg-gradient-brand`,
       );
       colorLines.push(
         `gradient_text_color: ${textColor} (hex: ${textHex}) — use this for the color property on .bg-gradient-brand`,

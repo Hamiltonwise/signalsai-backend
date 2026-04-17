@@ -79,6 +79,7 @@ export default function CreatePageModal({
     to: defaultAccentColor,
     direction: "to-br",
     text_color: "white",
+    preset: "balanced",
   });
 
   // Dynamic slots for the selected template page (Plan B)

@@ -75,8 +75,16 @@ export interface WarmupInputs {
     to?: string;
     direction?: string;
     text_color?: "white" | "dark";
+    preset?: GradientPreset;
   };
 }
+
+export type GradientPreset =
+  | "balanced"
+  | "wider-from"
+  | "wider-to"
+  | "centered"
+  | "hard-edge";
 
 interface IdentityBusiness {
   name: string | null;
@@ -101,6 +109,7 @@ interface IdentityBrand {
   gradient_to: string | null;
   gradient_direction: string;
   gradient_text_color: "white" | "dark" | null;
+  gradient_preset: GradientPreset | null;
   logo_s3_url: string | null;
   logo_alt_text: string | null;
   fonts: { heading: string; body: string };
@@ -418,6 +427,9 @@ function buildBrand(
     gradient_direction: inputs.gradient?.direction || "to-br",
     gradient_text_color: inputs.gradient?.enabled
       ? inputs.gradient?.text_color || "white"
+      : null,
+    gradient_preset: inputs.gradient?.enabled
+      ? inputs.gradient?.preset || "balanced"
       : null,
     logo_s3_url: logoS3Url,
     logo_alt_text: businessName ? `${businessName} Logo` : null,

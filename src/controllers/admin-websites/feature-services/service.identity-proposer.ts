@@ -355,6 +355,14 @@ function validateProposedValue(path: string, value: unknown): void {
       );
     }
   }
+  if (path === "brand.gradient_preset" && value !== null) {
+    const valid = ["balanced", "wider-from", "wider-to", "centered", "hard-edge"];
+    if (typeof value !== "string" || !valid.includes(value)) {
+      throw new Error(
+        `Invalid gradient_preset: ${value} (must be one of ${valid.join(", ")})`,
+      );
+    }
+  }
   if (
     (path === "brand.primary_color" ||
       path === "brand.accent_color" ||

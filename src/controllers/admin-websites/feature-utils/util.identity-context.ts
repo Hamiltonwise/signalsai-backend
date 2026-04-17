@@ -5,6 +5,58 @@
  * variable per-component payload. Pure function — no LLM, no DB.
  */
 
+export type GradientPresetId =
+  | "balanced"
+  | "wider-from"
+  | "wider-to"
+  | "centered"
+  | "hard-edge";
+
+/**
+ * Expand a preset ID into CSS stops. Mirrors the frontend definition in
+ * GradientPicker.tsx — kept in sync by convention (both sides are small).
+ */
+export function buildGradientStopsCss(
+  from: string,
+  to: string,
+  preset: GradientPresetId | null | undefined,
+): string {
+  const active: GradientPresetId = preset || "balanced";
+  const stops: Array<{ role: "from" | "to"; position: number }> =
+    active === "balanced"
+      ? [
+          { role: "from", position: 0 },
+          { role: "to", position: 100 },
+        ]
+      : active === "wider-from"
+        ? [
+            { role: "from", position: 0 },
+            { role: "from", position: 70 },
+            { role: "to", position: 100 },
+          ]
+        : active === "wider-to"
+          ? [
+              { role: "from", position: 0 },
+              { role: "to", position: 30 },
+              { role: "to", position: 100 },
+            ]
+          : active === "centered"
+            ? [
+                { role: "from", position: 25 },
+                { role: "to", position: 75 },
+              ]
+            : /* hard-edge */ [
+                { role: "from", position: 0 },
+                { role: "from", position: 49 },
+                { role: "to", position: 51 },
+                { role: "to", position: 100 },
+              ];
+
+  return stops
+    .map((s) => `${s.role === "from" ? from : to} ${s.position}%`)
+    .join(", ");
+}
+
 export interface ProjectIdentity {
   version?: number;
   business?: {
@@ -29,6 +81,7 @@ export interface ProjectIdentity {
     gradient_to?: string | null;
     gradient_direction?: string | null;
     gradient_text_color?: "white" | "dark" | null;
+    gradient_preset?: GradientPresetId | null;
     logo_s3_url?: string | null;
     logo_alt_text?: string | null;
   };
@@ -112,6 +165,7 @@ export function buildStableIdentityContext(identity: ProjectIdentity): string {
   };
   if (br.gradient_enabled) {
     brandLines["Gradient"] = `${br.gradient_from} to ${br.gradient_to} (${br.gradient_direction})`;
+    brandLines["Gradient preset"] = br.gradient_preset || "balanced";
     brandLines["Gradient text color"] = br.gradient_text_color || "white";
   }
   if (br.logo_s3_url) {

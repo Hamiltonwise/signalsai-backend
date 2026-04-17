@@ -52,22 +52,24 @@ Never remove them. Never rewrite them. They are resolved at render time by the e
 ```html
 <style>
   .bg-gradient-brand {
-    background: linear-gradient({direction_full}, {gradient_from}, {gradient_to}) !important;
+    background: linear-gradient({direction_full}, {gradient_stops_css}) !important;
     color: {gradient_text_color_hex};
   }
   .bg-gradient-brand * {
     color: inherit;
   }
   .text-gradient-brand {
-    background: linear-gradient({direction_full}, {gradient_from}, {gradient_to});
+    background: linear-gradient({direction_full}, {gradient_stops_css});
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 </style>
 ```
+
 Where:
 - `{direction_full}` is "to right" for "to-r", "to bottom right" for "to-br", "to bottom" for "to-b", "to top right" for "to-tr".
-- `{gradient_text_color_hex}` is `#FFFFFF` when `gradient_text_color: "white"` and `#111827` when `gradient_text_color: "dark"`. If not provided, default to `#FFFFFF`.
+- `{gradient_stops_css}` is the `gradient_stops_css` value passed in the BRAND COLORS section of the user message — it already includes colors and percentages (e.g., `"#064B9E 0%, #064B9E 70%, #8DC740 100%"`). Use it verbatim. Do NOT just inline the `from` and `to` colors — that would ignore the preset the admin selected.
+- `{gradient_text_color_hex}` is `#FFFFFF` when `gradient_text_color: "white"` and `#111827` when `gradient_text_color: "dark"`. Default to `#FFFFFF` if not provided.
 
 The `.bg-gradient-brand *` rule forces descendants to inherit the chosen text color, so headings, body copy, and button labels inside gradient sections automatically render with proper contrast.
 

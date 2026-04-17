@@ -3,14 +3,91 @@ import ColorPicker from "./ColorPicker";
 
 export type GradientDirection = "to-r" | "to-br" | "to-b" | "to-tr";
 export type GradientTextColor = "white" | "dark";
+export type GradientPresetId =
+  | "balanced"
+  | "wider-from"
+  | "wider-to"
+  | "centered"
+  | "hard-edge";
 
 export interface GradientValue {
   enabled: boolean;
   from: string;
   to: string;
   direction: GradientDirection;
-  /** Preferred text color when rendering content on top of this gradient. */
   text_color: GradientTextColor;
+  /** Named preset that controls the stop distribution (intensity / stretch). */
+  preset: GradientPresetId;
+}
+
+/**
+ * Preset → CSS stops. `role` picks which color to use. `position` is percent
+ * along the gradient axis. Both the frontend picker and the backend layouts
+ * pipeline expand preset IDs into CSS this way.
+ */
+export const GRADIENT_PRESETS: Record<
+  GradientPresetId,
+  {
+    label: string;
+    title: string;
+    stops: Array<{ role: "from" | "to"; position: number }>;
+  }
+> = {
+  balanced: {
+    label: "1",
+    title: "Balanced — smooth 0% to 100%",
+    stops: [
+      { role: "from", position: 0 },
+      { role: "to", position: 100 },
+    ],
+  },
+  "wider-from": {
+    label: "2",
+    title: "Wider from — primary color dominates up to 70%",
+    stops: [
+      { role: "from", position: 0 },
+      { role: "from", position: 70 },
+      { role: "to", position: 100 },
+    ],
+  },
+  "wider-to": {
+    label: "3",
+    title: "Wider to — accent color dominates from 30%",
+    stops: [
+      { role: "from", position: 0 },
+      { role: "to", position: 30 },
+      { role: "to", position: 100 },
+    ],
+  },
+  centered: {
+    label: "4",
+    title: "Centered — gradient compressed to the middle",
+    stops: [
+      { role: "from", position: 25 },
+      { role: "to", position: 75 },
+    ],
+  },
+  "hard-edge": {
+    label: "5",
+    title: "Hard edge — sharp split at the midpoint",
+    stops: [
+      { role: "from", position: 0 },
+      { role: "from", position: 49 },
+      { role: "to", position: 51 },
+      { role: "to", position: 100 },
+    ],
+  },
+};
+
+export function buildGradientStopsCss(
+  from: string,
+  to: string,
+  presetId: GradientPresetId,
+): string {
+  const preset = GRADIENT_PRESETS[presetId] || GRADIENT_PRESETS.balanced;
+  return preset.stops
+    .map((s) => `${s.role === "from" ? from : to} ${s.position}%`)
+    .join(", ");
 }
 
 interface GradientPickerProps {
@@ -52,10 +129,13 @@ export default function GradientPicker({
       from: value.from || defaultFrom || "#1E40AF",
       to: value.to || defaultTo || "#F59E0B",
       text_color: value.text_color || "white",
+      preset: value.preset || "balanced",
     });
   };
 
-  const previewCss = `linear-gradient(${cssDirection(value.direction)}, ${value.from}, ${value.to})`;
+  const activePreset = value.preset || "balanced";
+  const stopsCss = buildGradientStopsCss(value.from, value.to, activePreset);
+  const previewCss = `linear-gradient(${cssDirection(value.direction)}, ${stopsCss})`;
   const textColor = value.text_color === "dark" ? DARK_TEXT : "#FFFFFF";
 
   return (
@@ -125,6 +205,46 @@ export default function GradientPicker({
                 swatchColor={DARK_TEXT}
                 onClick={() => onChange({ ...value, text_color: "dark" })}
               />
+            </div>
+          </div>
+
+          {/* Effect presets */}
+          <div>
+            <div className="text-[11px] font-medium text-gray-500 mb-1.5">
+              Effect preset
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(Object.keys(GRADIENT_PRESETS) as GradientPresetId[]).map(
+                (id) => {
+                  const preset = GRADIENT_PRESETS[id];
+                  const css = `linear-gradient(${cssDirection(value.direction)}, ${buildGradientStopsCss(value.from, value.to, id)})`;
+                  const active = activePreset === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => onChange({ ...value, preset: id })}
+                      title={preset.title}
+                      className={`relative h-10 w-14 overflow-hidden rounded-lg border transition ${
+                        active
+                          ? "border-alloro-orange ring-2 ring-alloro-orange/30"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                      style={{ background: css }}
+                    >
+                      <span
+                        className={`absolute bottom-0.5 right-1 rounded-full px-1.5 text-[10px] font-bold ${
+                          value.text_color === "dark"
+                            ? "bg-white/80 text-gray-900"
+                            : "bg-black/40 text-white"
+                        }`}
+                      >
+                        {preset.label}
+                      </span>
+                    </button>
+                  );
+                },
+              )}
             </div>
           </div>
 
