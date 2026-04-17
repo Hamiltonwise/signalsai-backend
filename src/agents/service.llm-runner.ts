@@ -167,6 +167,136 @@ function stripDataUrlPrefix(data: string): string {
 }
 
 // =====================================================================
+// TOOL CALLING
+// =====================================================================
+
+export interface ToolSchema {
+  name: string;
+  description: string;
+  input_schema: {
+    type: "object";
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+export interface RunWithToolsOptions {
+  systemPrompt: string;
+  userMessage: string;
+  tools: ToolSchema[];
+  model?: string;
+  maxTokens?: number;
+  temperature?: number;
+  /**
+   * Optional tool choice — "auto" (default), "any" (must call a tool),
+   * or a specific tool name.
+   */
+  toolChoice?: "auto" | "any" | { type: "tool"; name: string };
+}
+
+export interface RunWithToolsResult {
+  toolCalls: ToolCall[];
+  textResponse: string | null;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  stopReason: string | null;
+}
+
+/**
+ * Call Claude with a set of tools available. Returns structured tool calls
+ * (Claude may call multiple in a single turn) and/or a text response.
+ * Used for structured output scenarios (identity chat updates, critique,
+ * image selection) where the LLM must pick a structured action.
+ */
+export async function runWithTools(
+  options: RunWithToolsOptions,
+): Promise<RunWithToolsResult> {
+  const {
+    systemPrompt,
+    userMessage,
+    tools,
+    model = DEFAULT_MODEL,
+    maxTokens = 4096,
+    temperature = 0,
+    toolChoice,
+  } = options;
+
+  console.log(
+    `[LLM-TOOLS] → ${model} system=${systemPrompt.length}ch user=${userMessage.length}ch ` +
+      `tools=${tools.length} maxTokens=${maxTokens}`,
+  );
+
+  // Use the beta tools API (this SDK version exposes tools under client.beta.tools.messages)
+  const requestBody: any = {
+    model,
+    max_tokens: maxTokens,
+    temperature,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userMessage }],
+    tools,
+  };
+
+  if (toolChoice === "auto") {
+    requestBody.tool_choice = { type: "auto" };
+  } else if (toolChoice === "any") {
+    requestBody.tool_choice = { type: "any" };
+  } else if (toolChoice && typeof toolChoice === "object") {
+    requestBody.tool_choice = toolChoice;
+  }
+
+  const callStart = Date.now();
+  let response: any;
+  try {
+    response = await (getClient() as any).beta.tools.messages.create(requestBody);
+  } catch (err: any) {
+    const status = err?.status ?? err?.response?.status ?? "?";
+    console.error(
+      `[LLM-TOOLS] ✗ API error (${Date.now() - callStart}ms) status=${status} message="${err?.message}"`,
+    );
+    throw err;
+  }
+
+  const toolCalls: ToolCall[] = [];
+  const textParts: string[] = [];
+
+  for (const block of response.content as Array<any>) {
+    if (block.type === "tool_use") {
+      toolCalls.push({
+        id: block.id,
+        name: block.name,
+        input: block.input as Record<string, unknown>,
+      });
+    } else if (block.type === "text") {
+      textParts.push(block.text);
+    }
+  }
+
+  const textResponse = textParts.length > 0 ? textParts.join("\n") : null;
+
+  console.log(
+    `[LLM-TOOLS] ✓ ${response.model} (${Date.now() - callStart}ms) ` +
+      `tokens=${response.usage.input_tokens}/${response.usage.output_tokens} ` +
+      `toolCalls=${toolCalls.length} stop=${response.stop_reason}`,
+  );
+
+  return {
+    toolCalls,
+    textResponse,
+    model: response.model,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+    stopReason: response.stop_reason ?? null,
+  };
+}
+
+// =====================================================================
 // JSON EXTRACTION
 // =====================================================================
 

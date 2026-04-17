@@ -10,17 +10,16 @@
  * All scraping reuses existing services (no HTTP round-trips to own endpoints).
  */
 
-import axios from "axios";
 import { db } from "../../../database/connection";
 import { runAgent } from "../../../agents/service.llm-runner";
 import { loadPrompt } from "../../../agents/service.prompt-loader";
-import { uploadToS3 } from "../../../utils/core/s3";
-import {
-  buildMediaS3Key,
-  buildS3Url,
-} from "../../admin-media/feature-utils/util.s3-helpers";
 import { scrapeWebsite } from "./service.website-scraper";
 import { normalizeSections } from "../feature-utils/util.section-normalizer";
+import { scrapeGbp } from "../feature-utils/util.gbp-scraper";
+import {
+  processImages as processImagesShared,
+  collectImageUrls as collectImageUrlsShared,
+} from "../feature-utils/util.image-processor";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -30,10 +29,6 @@ const PROJECTS_TABLE = "website_builder.projects";
 const PAGES_TABLE = "website_builder.pages";
 const TEMPLATES_TABLE = "website_builder.templates";
 const TEMPLATE_PAGES_TABLE = "website_builder.template_pages";
-
-const APIFY_API_BASE = "https://api.apify.com/v2";
-const APIFY_TOKEN = process.env.APIFY_TOKEN;
-const GOOGLE_MAPS_ACTOR = "compass~crawler-google-places";
 
 const LOG_PREFIX = "[GenPipeline]";
 function log(msg: string, data?: Record<string, unknown>): void {
@@ -131,11 +126,11 @@ export async function scrapeAndCacheProject(
   // --- Step 3: Image Collection, S3 Upload, Analysis ---
   log("Step 3: Image collection + analysis", { projectId });
 
-  const imageUrls = collectImageUrls(gbpData, websiteScrapeData);
+  const imageUrls = collectImageUrlsShared(gbpData, websiteScrapeData);
   let imageAnalysis: any[] = [];
 
   if (imageUrls.length > 0) {
-    imageAnalysis = await processImages(projectId, imageUrls, signal);
+    imageAnalysis = await processImagesShared(projectId, imageUrls, signal);
   }
 
   await db(PROJECTS_TABLE).where("id", projectId).update({
@@ -433,189 +428,9 @@ function safeJsonParse(value: unknown): any {
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// GBP SCRAPE (Apify)
-// ---------------------------------------------------------------------------
-
-async function scrapeGbp(
-  placeId: string,
-  practiceSearchString?: string,
-  signal?: AbortSignal,
-): Promise<any> {
-  if (!APIFY_TOKEN) {
-    throw new Error("APIFY_TOKEN not configured");
-  }
-
-  const input: Record<string, any> = {
-    placeIds: [placeId],
-    scrapePlaceDetailPage: true,
-    maxImages: 15,
-    maxReviews: 10,
-    maxCrawledPlacesPerSearch: 1,
-  };
-  if (practiceSearchString) {
-    input.searchStringsArray = [practiceSearchString];
-  }
-
-  log("Starting Apify GBP scrape", { placeId });
-
-  // Start actor run
-  const runResponse = await axios.post(
-    `${APIFY_API_BASE}/acts/${GOOGLE_MAPS_ACTOR}/runs`,
-    input,
-    {
-      headers: { Authorization: `Bearer ${APIFY_TOKEN}` },
-      params: { memory: 4096 },
-      signal,
-    },
-  );
-
-  const runId = runResponse.data.data.id;
-  log("Apify run started", { runId });
-
-  // Poll for completion
-  const maxWaitMs = 300000; // 5 minutes
-  const pollInterval = 5000;
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < maxWaitMs) {
-    checkCancel(signal);
-
-    const statusResponse = await axios.get(
-      `${APIFY_API_BASE}/actor-runs/${runId}`,
-      { headers: { Authorization: `Bearer ${APIFY_TOKEN}` }, signal },
-    );
-
-    const run = statusResponse.data.data;
-
-    if (run.status === "SUCCEEDED") {
-      const datasetId = run.defaultDatasetId;
-      const dataResponse = await axios.get(
-        `${APIFY_API_BASE}/datasets/${datasetId}/items`,
-        {
-          headers: { Authorization: `Bearer ${APIFY_TOKEN}` },
-          params: { format: "json" },
-          signal,
-        },
-      );
-      return dataResponse.data[0] || null;
-    }
-
-    if (["FAILED", "ABORTED", "TIMED-OUT"].includes(run.status)) {
-      throw new Error(`Apify run ${runId} failed: ${run.status}`);
-    }
-
-    await sleep(pollInterval);
-  }
-
-  throw new Error(`Apify run ${runId} timed out`);
-}
-
-// ---------------------------------------------------------------------------
-// IMAGE PROCESSING
-// ---------------------------------------------------------------------------
-
-function collectImageUrls(gbpData: any, websiteData: any): string[] {
-  const urls: string[] = [];
-
-  if (gbpData?.imageUrls && Array.isArray(gbpData.imageUrls)) {
-    urls.push(...gbpData.imageUrls);
-  }
-
-  if (websiteData?.images && Array.isArray(websiteData.images)) {
-    urls.push(...websiteData.images);
-  }
-
-  // Dedupe and filter nulls
-  return [...new Set(urls.filter((u) => u && typeof u === "string"))];
-}
-
-/**
- * Download images, upload to S3, and analyze with Claude vision.
- * Batches images in groups of 5 to reduce LLM calls.
- */
-async function processImages(
-  projectId: string,
-  imageUrls: string[],
-  signal?: AbortSignal,
-): Promise<any[]> {
-  const analysisResults: any[] = [];
-  const uploadedImages: Array<{ url: string; s3Url: string; buffer: Buffer; mimeType: string }> = [];
-
-  // Download and upload all images to S3
-  for (const imageUrl of imageUrls) {
-    checkCancel(signal);
-
-    try {
-      const response = await axios.get(imageUrl, {
-        responseType: "arraybuffer",
-        timeout: 15000,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          Accept: "image/*",
-        },
-        signal,
-      });
-
-      const buffer = Buffer.from(response.data);
-      const contentType = response.headers["content-type"] || "image/jpeg";
-      const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-      const filename = `gen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const s3Key = buildMediaS3Key(projectId, filename);
-
-      await uploadToS3(s3Key, buffer, contentType);
-      const s3Url = buildS3Url(s3Key);
-
-      uploadedImages.push({
-        url: imageUrl,
-        s3Url,
-        buffer,
-        mimeType: contentType as any,
-      });
-    } catch (err: any) {
-      log(`Image download/upload failed: ${imageUrl}`, { error: err.message });
-    }
-  }
-
-  if (uploadedImages.length === 0) return [];
-
-  // Analyze in batches of 5
-  const imageAnalysisPrompt = loadPrompt("websiteAgents/builder/ImageAnalysis");
-  const batchSize = 5;
-
-  for (let i = 0; i < uploadedImages.length; i += batchSize) {
-    checkCancel(signal);
-
-    const batch = uploadedImages.slice(i, i + batchSize);
-
-    const images = batch.map((img) => ({
-      mediaType: (img.mimeType.startsWith("image/")
-        ? img.mimeType
-        : "image/jpeg") as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
-      base64: img.buffer.toString("base64"),
-    }));
-
-    const userMsg = `Analyze these ${batch.length} image(s). Their S3 URLs are:\n${batch.map((img, idx) => `${idx + 1}. ${img.s3Url}`).join("\n")}`;
-
-    try {
-      const result = await runAgent({
-        systemPrompt: imageAnalysisPrompt,
-        userMessage: userMsg,
-        images,
-        prefill: "{",
-        maxTokens: 4096,
-      });
-
-      if (result.parsed?.images && Array.isArray(result.parsed.images)) {
-        analysisResults.push(...result.parsed.images);
-      }
-    } catch (err: any) {
-      log(`Image analysis batch failed`, { error: err.message, batch: i });
-    }
-  }
-
-  return analysisResults;
-}
+// GBP scrape, image collection, and image analysis live in shared utils
+// (util.gbp-scraper.ts + util.image-processor.ts) so both this pipeline
+// and the identity warmup pipeline can reuse them.
 
 // ---------------------------------------------------------------------------
 // COMPONENT BUILDING
@@ -729,8 +544,4 @@ function buildComponentMessage(
   }
 
   return parts.join("\n\n");
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

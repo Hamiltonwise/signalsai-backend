@@ -273,6 +273,25 @@ router.post("/:id/create-all-from-template", controller.createAllFromTemplate);
 // POST /:id/cancel-generation — Cancel all in-progress page generation
 router.post("/:id/cancel-generation", controller.cancelGeneration);
 
+// =====================================================================
+// PROJECT IDENTITY
+// =====================================================================
+
+// POST /:id/identity/warmup — Enqueue identity warmup job
+router.post("/:id/identity/warmup", controller.startIdentityWarmup);
+
+// GET  /:id/identity — Full project identity JSON
+router.get("/:id/identity", controller.getIdentity);
+
+// GET  /:id/identity/status — Lightweight warmup status polling
+router.get("/:id/identity/status", controller.getIdentityStatus);
+
+// PUT  /:id/identity — Replace identity with admin-edited JSON
+router.put("/:id/identity", controller.updateIdentity);
+
+// POST /:id/identity/chat — Update identity via natural-language instruction
+router.post("/:id/identity/chat", controller.chatUpdateIdentity);
+
 // PATCH /:id/link-organization — Link/unlink org
 router.patch("/:id/link-organization", controller.linkOrganization);
 

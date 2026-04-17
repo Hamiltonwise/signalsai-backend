@@ -4,6 +4,95 @@
 
 import type { Section } from "./templates";
 
+// ---------------------------------------------------------------------------
+// Project Identity (new consolidated source of truth)
+// ---------------------------------------------------------------------------
+
+export interface ProjectIdentityBusiness {
+  name: string | null;
+  category: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  hours: unknown | null;
+  rating: number | null;
+  review_count: number | null;
+  website_url: string | null;
+  place_id: string | null;
+}
+
+export interface ProjectIdentityBrand {
+  primary_color: string | null;
+  accent_color: string | null;
+  gradient_enabled: boolean;
+  gradient_from: string | null;
+  gradient_to: string | null;
+  gradient_direction: string;
+  logo_s3_url: string | null;
+  logo_alt_text: string | null;
+  fonts?: { heading: string; body: string };
+}
+
+export interface ProjectIdentity {
+  version: number;
+  warmed_up_at?: string | null;
+  last_updated_at?: string | null;
+  sources_used?: {
+    gbp?: { place_id: string; scraped_at: string } | null;
+    urls?: Array<{ url: string; scraped_at: string; char_length: number | null }>;
+    text_inputs?: Array<{ label: string; char_length: number }>;
+  };
+  business?: ProjectIdentityBusiness;
+  brand?: ProjectIdentityBrand;
+  voice_and_tone?: {
+    archetype: string | null;
+    tone_descriptor: string | null;
+    voice_samples: string[];
+  };
+  content_essentials?: {
+    unique_value_proposition: string | null;
+    founding_story: string | null;
+    core_values: string[];
+    certifications: string[];
+    service_areas: string[];
+    social_links: Record<string, string | null>;
+    review_themes: string[];
+    featured_testimonials: Array<{
+      author: string | null;
+      rating: number | null;
+      text: string | null;
+    }>;
+  };
+  extracted_assets?: {
+    images: Array<{
+      source_url: string | null;
+      s3_url: string | null;
+      description: string | null;
+      use_case: string | null;
+      resolution: string | null;
+      is_logo: boolean;
+      usability_rank: number | null;
+    }>;
+    discovered_pages: Array<{
+      url: string | null;
+      title: string | null;
+      content_excerpt: string | null;
+    }>;
+  };
+  raw_inputs?: {
+    gbp_raw?: unknown;
+    scraped_pages_raw?: Record<string, string>;
+    user_text_inputs?: Array<{ label: string; text: string }>;
+  };
+  meta?: {
+    warmup_status?: "queued" | "running" | "ready" | "failed" | null;
+  };
+}
+
+export type WarmupStatus = "queued" | "running" | "ready" | "failed" | null;
+
 export interface WebsiteProject {
   id: string;
   user_id: string;
@@ -20,6 +109,7 @@ export interface WebsiteProject {
   primary_color: string | null;
   accent_color: string | null;
   step_gbp_scrape: Record<string, unknown> | null;
+  project_identity?: ProjectIdentity | null;
   created_at: string;
   updated_at: string;
   organization?: {
@@ -345,6 +435,97 @@ export const cancelGeneration = async (
   if (!response.ok) {
     throw new Error(`Failed to cancel generation: ${response.statusText}`);
   }
+  return response.json();
+};
+
+// =====================================================================
+// PROJECT IDENTITY
+// =====================================================================
+
+export interface WarmupInputs {
+  placeId?: string;
+  practiceSearchString?: string;
+  urls?: string[];
+  texts?: Array<{ label?: string; text: string }>;
+  logoUrl?: string;
+  primaryColor?: string;
+  accentColor?: string;
+  gradient?: {
+    enabled: boolean;
+    from?: string;
+    to?: string;
+    direction?: string;
+  };
+}
+
+/** Start the identity warmup for a project. */
+export const startIdentityWarmup = async (
+  projectId: string,
+  inputs: WarmupInputs,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/identity/warmup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(inputs),
+  });
+  if (!response.ok) throw new Error(`Failed to start warmup: ${response.statusText}`);
+  return response.json();
+};
+
+/** Fetch the full project identity. */
+export const fetchIdentity = async (
+  projectId: string,
+): Promise<{ success: boolean; data: ProjectIdentity | null }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/identity`);
+  if (!response.ok) throw new Error(`Failed to fetch identity: ${response.statusText}`);
+  return response.json();
+};
+
+/** Poll warmup status (lightweight). */
+export const fetchIdentityStatus = async (
+  projectId: string,
+): Promise<{
+  success: boolean;
+  data: { warmup_status: WarmupStatus; warmed_up_at: string | null };
+}> => {
+  const response = await fetch(`${API_BASE}/${projectId}/identity/status`);
+  if (!response.ok) throw new Error(`Failed to fetch identity status: ${response.statusText}`);
+  return response.json();
+};
+
+/** Replace identity with admin-edited JSON. */
+export const updateIdentity = async (
+  projectId: string,
+  identity: ProjectIdentity,
+): Promise<{ success: boolean; data: ProjectIdentity }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/identity`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identity }),
+  });
+  if (!response.ok) throw new Error(`Failed to update identity: ${response.statusText}`);
+  return response.json();
+};
+
+/** Update identity via natural-language instruction (tool calling). */
+export const chatUpdateIdentity = async (
+  projectId: string,
+  instruction: string,
+): Promise<{
+  success: boolean;
+  data: {
+    message: string;
+    applied: Array<{ name: string; input: Record<string, unknown>; message: string }>;
+    clarification_needed: string | null;
+    identity: ProjectIdentity;
+  };
+}> => {
+  const response = await fetch(`${API_BASE}/${projectId}/identity/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ instruction }),
+  });
+  if (!response.ok) throw new Error(`Failed to chat-update identity: ${response.statusText}`);
   return response.json();
 };
 

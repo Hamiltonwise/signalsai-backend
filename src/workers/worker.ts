@@ -21,6 +21,7 @@ import {
   processProjectScrape,
   processPageGenerate,
 } from "./processors/websiteGeneration.processor";
+import { processIdentityWarmup } from "./processors/identityWarmup.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -224,6 +225,22 @@ const wbRestoreWorker = new Worker(
   }
 );
 
+// Website Builder — Identity Warmup worker (admin-triggered)
+const wbIdentityWarmupWorker = new Worker(
+  "wb-identity-warmup",
+  async (job) => {
+    await processIdentityWarmup(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000, // 10 min — Apify + Claude calls can take a while
+    prefix: '{wb}',
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 25 },
+  }
+);
+
 // Website Builder — Project Scrape worker (Apify + website scrape + image analysis)
 const wbProjectScrapeWorker = new Worker(
   "wb-project-scrape",
@@ -273,7 +290,7 @@ const auditLeadgenWorker = new Worker(
 );
 
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbProjectScrapeWorker, wbPageGenerateWorker, auditLeadgenWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbIdentityWarmupWorker, wbProjectScrapeWorker, wbPageGenerateWorker, auditLeadgenWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -300,6 +317,7 @@ async function shutdown(): Promise<void> {
   await schedulerWorker.close();
   await wbBackupWorker.close();
   await wbRestoreWorker.close();
+  await wbIdentityWarmupWorker.close();
   await wbProjectScrapeWorker.close();
   await wbPageGenerateWorker.close();
   await auditLeadgenWorker.close();

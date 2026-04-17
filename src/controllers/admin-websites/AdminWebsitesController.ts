@@ -35,9 +35,11 @@ import * as aiCommand from "./feature-services/service.ai-command";
 import * as redirectsService from "./feature-services/service.redirects";
 import * as artifactUpload from "./feature-services/service.artifact-upload";
 import * as generationPipeline from "./feature-services/service.generation-pipeline";
+import * as identityUpdate from "./feature-services/service.identity-update";
 import { db } from "../../database/connection";
 import { getWbQueue } from "../../workers/wb-queues";
 import type { ProjectScrapeJobData } from "../../workers/processors/websiteGeneration.processor";
+import type { IdentityWarmupJobData } from "../../workers/processors/identityWarmup.processor";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { generatePresignedUrl } from "../../utils/core/s3";
@@ -527,6 +529,233 @@ export async function startPipeline(
       success: false, error: "PIPELINE_ERROR", message: error?.message || "Failed to start pipeline",
     });
   }
+}
+
+// =====================================================================
+// PROJECT IDENTITY
+// =====================================================================
+
+/** POST /:id/identity/warmup — Enqueue identity warmup job */
+export async function startIdentityWarmup(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const {
+      placeId,
+      practiceSearchString,
+      urls,
+      texts,
+      logoUrl,
+      primaryColor,
+      accentColor,
+      gradient,
+    } = req.body;
+
+    // Reset cancel flag before starting
+    await db("website_builder.projects").where("id", id).update({
+      generation_cancel_requested: false,
+      updated_at: db.fn.now(),
+    });
+
+    const jobData: IdentityWarmupJobData = {
+      projectId: id,
+      inputs: {
+        placeId,
+        practiceSearchString,
+        urls,
+        texts,
+        logoUrl,
+        primaryColor,
+        accentColor,
+        gradient,
+      },
+    };
+
+    const queue = getWbQueue("identity-warmup");
+    await queue.add("warmup", jobData, {
+      removeOnComplete: { count: 50 },
+      removeOnFail: { count: 25 },
+    });
+
+    // Set immediate status so polling reflects queued state
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("project_identity")
+      .first();
+    const identity = parseIdentityJson(project?.project_identity) || { version: 1 };
+    identity.meta = { ...(identity.meta || {}), warmup_status: "queued" };
+    await db("website_builder.projects").where("id", id).update({
+      project_identity: JSON.stringify(identity),
+      updated_at: db.fn.now(),
+    });
+
+    console.log(`[Admin Websites] Enqueued wb-identity-warmup for project ${id}`);
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error starting identity warmup:", error);
+    return res.status(500).json({
+      success: false,
+      error: "WARMUP_ERROR",
+      message: error?.message || "Failed to start warmup",
+    });
+  }
+}
+
+/** GET /:id/identity — Get full project identity JSON */
+export async function getIdentity(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("project_identity")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    return res.json({
+      success: true,
+      data: parseIdentityJson(project.project_identity),
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching identity:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message,
+    });
+  }
+}
+
+/** GET /:id/identity/status — Lightweight polling for warmup progress */
+export async function getIdentityStatus(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("project_identity")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    const identity = parseIdentityJson(project.project_identity);
+
+    return res.json({
+      success: true,
+      data: {
+        warmup_status: identity?.meta?.warmup_status || null,
+        warmed_up_at: identity?.warmed_up_at || null,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching identity status:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR" });
+  }
+}
+
+/** PUT /:id/identity — Replace identity with admin-edited JSON */
+export async function updateIdentity(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { identity } = req.body;
+
+    if (!identity || typeof identity !== "object") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "identity object required",
+      });
+    }
+
+    if (!identity.version) identity.version = 1;
+    identity.last_updated_at = new Date().toISOString();
+
+    // Mirror brand colors to legacy columns
+    const primaryColor = identity.brand?.primary_color || null;
+    const accentColor = identity.brand?.accent_color || null;
+
+    await db("website_builder.projects").where("id", id).update({
+      project_identity: JSON.stringify(identity),
+      primary_color: primaryColor,
+      accent_color: accentColor,
+      updated_at: db.fn.now(),
+    });
+
+    return res.json({ success: true, data: identity });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating identity:", error);
+    return res.status(500).json({
+      success: false,
+      error: "UPDATE_ERROR",
+      message: error?.message,
+    });
+  }
+}
+
+/** POST /:id/identity/chat — Update identity via natural-language instruction */
+export async function chatUpdateIdentity(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { instruction } = req.body;
+
+    if (!instruction || typeof instruction !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "instruction string required",
+      });
+    }
+
+    const result = await identityUpdate.updateIdentityViaChat(id, instruction);
+
+    return res.json({
+      success: true,
+      data: {
+        message: result.message,
+        applied: result.appliedTools,
+        clarification_needed: result.clarificationNeeded || null,
+        identity: result.identity,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error in chat identity update:", error);
+    return res.status(500).json({
+      success: false,
+      error: "CHAT_ERROR",
+      message: error?.message || "Failed to apply update",
+    });
+  }
+}
+
+function parseIdentityJson(value: unknown): any {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 /** POST /:id/cancel-generation — Cancel all in-progress page generation */

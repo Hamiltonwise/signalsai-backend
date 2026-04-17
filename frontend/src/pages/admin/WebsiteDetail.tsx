@@ -34,6 +34,8 @@ import {
   ArrowRight,
   Archive,
   Wrench,
+  Fingerprint,
+  Lock,
 } from "lucide-react";
 import {
   fetchWebsiteDetail,
@@ -68,6 +70,7 @@ import {
   BulkActionBar,
 } from "../../components/ui/DesignSystem";
 import CreatePageModal from "../../components/Admin/CreatePageModal";
+import IdentityModal from "../../components/Admin/IdentityModal";
 import MediaTab from "../../components/Admin/MediaTab";
 import CodeManagerTab from "../../components/Admin/CodeManagerTab";
 import ColorPicker from "../../components/Admin/ColorPicker";
@@ -252,6 +255,7 @@ export default function WebsiteDetail() {
 
   // Create page modal state
   const [showCreatePageModal, setShowCreatePageModal] = useState(false);
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [isGeneratingPage, setIsGeneratingPage] = useState(false);
 
   // Bulk SEO generation state
@@ -981,6 +985,25 @@ export default function WebsiteDetail() {
     status === "IN_PROGRESS";
 
   const getGbpData = () => {
+    // Prefer project_identity.business (new source of truth)
+    const identity = website?.project_identity as Record<string, unknown> | null | undefined;
+    if (identity && typeof identity === "object") {
+      const business = (identity as { business?: Record<string, unknown> }).business;
+      if (business && typeof business === "object") {
+        // Map identity.business shape to the Record<string, string|number|null> consumers expect
+        return {
+          name: (business.name as string | null) || null,
+          formattedAddress: (business.address as string | null) || null,
+          phone: (business.phone as string | null) || null,
+          rating: (business.rating as number | null) ?? null,
+          reviewCount: (business.review_count as number | null) ?? null,
+          category: (business.category as string | null) || null,
+          city: (business.city as string | null) || null,
+          state: (business.state as string | null) || null,
+        } as Record<string, string | number | null>;
+      }
+    }
+    // Legacy fallback
     if (website?.step_gbp_scrape && typeof website.step_gbp_scrape === "object")
       return website.step_gbp_scrape as Record<string, string | number | null>;
     return null;
@@ -1155,6 +1178,23 @@ export default function WebsiteDetail() {
         }
         actionButtons={
           <div className="flex items-center gap-2">
+            {/* Project Identity button */}
+            <button
+              onClick={() => setShowIdentityModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              title="Project Identity — business data, brand, voice, and content context for the AI"
+            >
+              <Fingerprint className="h-4 w-4" />
+              Identity
+              {website?.project_identity?.meta?.warmup_status === "ready" && (
+                <span className="ml-1 h-1.5 w-1.5 rounded-full bg-green-500" />
+              )}
+              {(website?.project_identity?.meta?.warmup_status === "running" ||
+                website?.project_identity?.meta?.warmup_status === "queued") && (
+                <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
+              )}
+            </button>
+
             {/* Organization Dropdown */}
             <div className="relative" ref={orgDropdownRef}>
               <button
@@ -1317,460 +1357,12 @@ export default function WebsiteDetail() {
         >
           <div className="p-5">
             {isCreatedStatus ? (
-              // GBP Selector for CREATED status
-              <div className="space-y-4">
-                <AnimatePresence mode="wait">
-                  {isLoadingDetails && (
-                    <motion.div
-                      key="loading"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="flex flex-col items-center justify-center py-8"
-                    >
-                      <Loader2 className="w-8 h-8 text-alloro-orange animate-spin mb-4" />
-                      <p className="text-gray-600">
-                        Loading business details...
-                      </p>
-                    </motion.div>
-                  )}
-
-                  {selectedPlace && !isLoadingDetails && (
-                    <motion.div
-                      key="confirmation"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="rounded-2xl border-2 border-alloro-orange/30 overflow-visible"
-                    >
-                      <div className="bg-gradient-to-br from-alloro-orange to-orange-500 p-4 text-white">
-                        <h3 className="text-lg font-bold">
-                          {selectedPlace.name}
-                        </h3>
-                        {selectedPlace.category && (
-                          <p className="text-orange-100 text-sm">
-                            {selectedPlace.category}
-                          </p>
-                        )}
-                      </div>
-                      <div className="p-4 space-y-3">
-                        <div className="flex items-start gap-3">
-                          <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
-                          <p className="text-sm text-gray-700">
-                            {selectedPlace.formattedAddress}
-                          </p>
-                        </div>
-                        {selectedPlace.rating && (
-                          <div className="flex items-center gap-3">
-                            <Star className="w-4 h-4 text-yellow-500" />
-                            <p className="text-sm text-gray-700">
-                              <span className="font-semibold">
-                                {selectedPlace.rating}
-                              </span>
-                              <span className="text-gray-500">
-                                {" "}
-                                ({selectedPlace.reviewCount} reviews)
-                              </span>
-                            </p>
-                          </div>
-                        )}
-                        {selectedPlace.phone && (
-                          <div className="flex items-center gap-3">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <p className="text-sm text-gray-700">
-                              {selectedPlace.phone}
-                            </p>
-                          </div>
-                        )}
-                        {/* Data source toggle */}
-                        <div className="pt-2 border-t border-gray-100">
-                          <label className="block text-xs font-medium text-gray-500 mb-2">
-                            Content Source
-                          </label>
-                          <div className="flex rounded-lg border border-gray-200 overflow-hidden mb-3">
-                            <button
-                              type="button"
-                              onClick={() => setDataSource("website")}
-                              className={`flex-1 px-3 py-2 text-xs font-medium transition ${
-                                dataSource === "website"
-                                  ? "bg-alloro-orange text-white"
-                                  : "bg-white text-gray-600 hover:bg-gray-50"
-                              }`}
-                            >
-                              Scrape Website
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setDataSource("pasted")}
-                              className={`flex-1 px-3 py-2 text-xs font-medium transition ${
-                                dataSource === "pasted"
-                                  ? "bg-alloro-orange text-white"
-                                  : "bg-white text-gray-600 hover:bg-gray-50"
-                              }`}
-                            >
-                              Paste Data
-                            </button>
-                          </div>
-                          {dataSource === "website" ? (
-                            <>
-                              <div className="flex items-center gap-2">
-                                <Globe className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                <input
-                                  type="url"
-                                  value={websiteUrl}
-                                  onChange={(e) => setWebsiteUrl(e.target.value)}
-                                  placeholder="https://example.com"
-                                  className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none"
-                                />
-                              </div>
-                              {!websiteUrl && (
-                                <p className="text-xs text-gray-400 mt-1">
-                                  Leave empty if there's no existing website
-                                </p>
-                              )}
-                            </>
-                          ) : (
-                            <textarea
-                              value={scrapedData}
-                              onChange={(e) => setScrapedData(e.target.value)}
-                              placeholder="Paste scraped content, service lists, bios, or any extra info you want the AI to use..."
-                              rows={5}
-                              className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none resize-none"
-                            />
-                          )}
-                        </div>
-                        {/* Template selector */}
-                        <div className="pt-2 border-t border-gray-100">
-                          <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                            Template
-                          </label>
-                          {loadingTemplates ? (
-                            <div className="flex items-center gap-2 text-sm text-gray-400">
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            </div>
-                          ) : templates.length === 0 ? (
-                            <p className="text-sm text-red-500">
-                              No published templates available. Please create
-                              and publish a template first.
-                            </p>
-                          ) : (
-                            <select
-                              value={selectedTemplateId || ""}
-                              onChange={(e) =>
-                                handleTemplateChange(e.target.value)
-                              }
-                              className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none"
-                            >
-                              {templates.map((t) => (
-                                <option key={t.id} value={t.id}>
-                                  {t.name}
-                                  {t.is_active ? " (Active)" : ""}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                          {selectedTemplatePages.length === 0 &&
-                            selectedTemplateId &&
-                            !loadingTemplates && (
-                              <p className="text-xs text-amber-500 mt-1">
-                                This template has no pages. Add pages to the
-                                template first.
-                              </p>
-                            )}
-                          {selectedTemplatePages.length > 0 && (
-                            <p className="text-xs text-gray-400 mt-1">
-                              {selectedTemplatePages.length} page
-                              {selectedTemplatePages.length !== 1 ? "s" : ""} in
-                              this template
-                            </p>
-                          )}
-                        </div>
-                        {/* Brand colors */}
-                        <div className="pt-2 border-t border-gray-100">
-                          <label className="block text-xs font-medium text-gray-500 mb-2">
-                            Brand Colors
-                          </label>
-                          <div className="flex items-start gap-4">
-                            <ColorPicker
-                              label="Primary"
-                              value={primaryColor}
-                              onChange={setPrimaryColor}
-                            />
-                            <ColorPicker
-                              label="Accent"
-                              value={accentColor}
-                              onChange={setAccentColor}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      {/* Per-page path + URL inputs (merged, side by side) */}
-                      {selectedTemplatePages.length > 0 && (
-                        <div className="px-4 pt-3 pb-2 border-t border-gray-100">
-                          <div className={`grid gap-x-2 mb-1.5 ${dataSource === "website" ? "grid-cols-[5rem_1fr_1fr]" : "grid-cols-[5rem_1fr]"}`}>
-                            <span className="text-xs font-medium text-gray-400">Page</span>
-                            <span className="text-xs font-medium text-gray-400">Path <span className="text-red-400">*</span></span>
-                            {dataSource === "website" && (
-                              <span className="text-xs font-medium text-gray-400">Scrape URL (optional)</span>
-                            )}
-                          </div>
-                          <div className="space-y-1.5">
-                            {selectedTemplatePages.map((tp) => (
-                              <div key={tp.id} className={`grid gap-x-2 items-center ${dataSource === "website" ? "grid-cols-[5rem_1fr_1fr]" : "grid-cols-[5rem_1fr]"}`}>
-                                <span className="text-xs text-gray-500 truncate">{tp.name}</span>
-                                <input
-                                  type="text"
-                                  value={pagePathInputs[tp.id] ?? ""}
-                                  onChange={(e) =>
-                                    setPagePathInputs((prev) => ({ ...prev, [tp.id]: e.target.value }))
-                                  }
-                                  placeholder="/your-path"
-                                  className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-1 focus:ring-alloro-orange/20 outline-none font-mono w-full"
-                                />
-                                {dataSource === "website" && (
-                                  <input
-                                    type="url"
-                                    value={pageWebsiteUrls[tp.id] ?? ""}
-                                    onChange={(e) =>
-                                      setPageWebsiteUrls((prev) => ({ ...prev, [tp.id]: e.target.value }))
-                                    }
-                                    placeholder={websiteUrl || "Same as global"}
-                                    className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-1 focus:ring-alloro-orange/20 outline-none w-full"
-                                  />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
-                        <button
-                          onClick={handleClearSelection}
-                          disabled={isConfirming}
-                          className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors disabled:opacity-50"
-                        >
-                          Search Again
-                        </button>
-                        <button
-                          onClick={handleConfirmSelection}
-                          disabled={
-                            isConfirming ||
-                            !selectedTemplateId ||
-                            selectedTemplatePages.length === 0 ||
-                            selectedTemplatePages.some((tp) => !pagePathInputs[tp.id]?.trim())
-                          }
-                          className="inline-flex items-center gap-2 bg-alloro-orange hover:bg-alloro-orange/90 disabled:bg-alloro-orange/50 text-white rounded-xl px-4 py-2 text-sm font-semibold transition-all disabled:cursor-not-allowed"
-                        >
-                          {isConfirming ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Creating {selectedTemplatePages.length} pages...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-4 h-4" />
-                              Create All {selectedTemplatePages.length} Pages
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {!selectedPlace && !isLoadingDetails && (
-                    <motion.div
-                      key="search"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="relative"
-                    >
-                      <div className="flex items-start gap-2 mb-4">
-                        <AlertCircle className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-gray-600">
-                          Search for a Google Business Profile to generate the
-                          website.
-                        </p>
-                      </div>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
-                          {searching ? (
-                            <Loader2 className="h-5 w-5 text-alloro-orange animate-spin" />
-                          ) : (
-                            <Search className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
-                        <input
-                          ref={inputRef}
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => {
-                            handleSearchChange(e.target.value);
-                            if (e.target.value.length >= 2)
-                              setIsDropdownOpen(true);
-                          }}
-                          onFocus={() => {
-                            if (suggestions.length > 0) setIsDropdownOpen(true);
-                          }}
-                          onKeyDown={handleKeyDown}
-                          placeholder="Search for your business..."
-                          autoComplete="off"
-                          className="block w-full pl-12 pr-10 py-4 text-base rounded-2xl border-2 border-gray-200 bg-white focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/20 transition-all outline-none font-medium placeholder:text-gray-400"
-                        />
-                        {searchQuery && (
-                          <button
-                            onClick={() => {
-                              setSearchQuery("");
-                              setSuggestions([]);
-                              setIsDropdownOpen(false);
-                              inputRef.current?.focus();
-                            }}
-                            className="absolute inset-y-0 right-4 flex items-center"
-                          >
-                            <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                          </button>
-                        )}
-                      </div>
-                      <AnimatePresence>
-                        {isDropdownOpen && suggestions.length > 0 && (
-                          <motion.div
-                            ref={dropdownRef}
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
-                          >
-                            <ul className="max-h-64 overflow-y-auto py-2">
-                              {suggestions.map((suggestion, index) => (
-                                <li key={suggestion.placeId}>
-                                  <button
-                                    onClick={() =>
-                                      handleSelectPlace(suggestion)
-                                    }
-                                    onMouseEnter={() =>
-                                      setHighlightedIndex(index)
-                                    }
-                                    className={`w-full px-4 py-3 flex items-start gap-3 text-left transition-colors ${highlightedIndex === index ? "bg-orange-50" : "hover:bg-gray-50"}`}
-                                    disabled={isLoadingDetails}
-                                  >
-                                    <div
-                                      className={`p-2 rounded-lg flex-shrink-0 ${highlightedIndex === index ? "bg-orange-100" : "bg-gray-100"}`}
-                                    >
-                                      <MapPin
-                                        className={`w-4 h-4 ${highlightedIndex === index ? "text-alloro-orange" : "text-gray-500"}`}
-                                      />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p
-                                        className={`font-semibold truncate ${highlightedIndex === index ? "text-alloro-orange" : "text-gray-900"}`}
-                                      >
-                                        {suggestion.mainText}
-                                      </p>
-                                      <p className="text-sm text-gray-500 truncate">
-                                        {suggestion.secondaryText}
-                                      </p>
-                                    </div>
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                      {searchError && (
-                        <motion.p
-                          initial={{ opacity: 0, y: -5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mt-3 text-sm text-red-500 flex items-center gap-1.5"
-                        >
-                          <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                          {searchError}
-                        </motion.p>
-                      )}
-                      {!isDropdownOpen &&
-                        searchQuery.length > 0 &&
-                        searchQuery.length < 2 && (
-                          <p className="mt-3 text-sm text-gray-400">
-                            Type at least 2 characters to search...
-                          </p>
-                        )}
-                      {searchQuery.length >= 2 &&
-                        !searching &&
-                        !isDropdownOpen &&
-                        suggestions.length === 0 &&
-                        !searchError && (
-                          <p className="mt-3 text-sm text-gray-500">
-                            No businesses found. Try a different search.
-                          </p>
-                        )}
-
-                      {/* Manual setup — skip GBP */}
-                      <div className="mt-6">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="flex-1 h-px bg-gray-200" />
-                          <span className="text-xs text-gray-400 font-medium">or</span>
-                          <div className="flex-1 h-px bg-gray-200" />
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          Already have your page data? Select a template and set up manually.
-                        </p>
-                        <div className="space-y-3">
-                          {loadingTemplates ? (
-                            <div className="flex items-center gap-2 text-sm text-gray-400 py-1">
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Loading templates...
-                            </div>
-                          ) : (
-                            <select
-                              value={selectedTemplateId || ""}
-                              onChange={(e) => handleTemplateChange(e.target.value)}
-                              className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none"
-                            >
-                              <option value="" disabled>Select a template...</option>
-                              {templates.map((t) => (
-                                <option key={t.id} value={t.id}>
-                                  {t.name}{t.is_active ? " (Active)" : ""}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                          <button
-                            disabled={!selectedTemplateId || isSkipping}
-                            onClick={async () => {
-                              if (!id || !selectedTemplateId || isSkipping) return;
-                              try {
-                                setIsSkipping(true);
-                                await updateWebsite(id, { template_id: selectedTemplateId, status: "LIVE" } as any);
-                                await loadWebsite();
-                                toast.success("Website ready. Create your first page.");
-                              } catch (err) {
-                                console.error("Failed to skip GBP setup:", err);
-                                toast.error("Something went wrong. Please try again.");
-                              } finally {
-                                setIsSkipping(false);
-                              }
-                            }}
-                            className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition-all"
-                          >
-                            {isSkipping ? (
-                              <>
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                Setting up...
-                              </>
-                            ) : (
-                              <>
-                                Skip to manual setup
-                                <ArrowRight className="w-3.5 h-3.5" />
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              // 3-step onboarding card
+              <ThreeStepOnboarding
+                website={website}
+                onOpenIdentity={() => setShowIdentityModal(true)}
+                onOpenFirstPage={() => setShowCreatePageModal(true)}
+              />
             ) : (
               // IN_PROGRESS — per-page generation status list
               <div className="space-y-3">
@@ -2556,6 +2148,18 @@ export default function WebsiteDetail() {
         </motion.div>
       )}
 
+      {/* Identity Modal */}
+      {showIdentityModal && website && (
+        <IdentityModal
+          projectId={website.id}
+          onClose={() => setShowIdentityModal(false)}
+          onIdentityChanged={async () => {
+            const res = await fetchWebsiteDetail(website.id);
+            if (res.success) setWebsite(res.data);
+          }}
+        />
+      )}
+
       {/* Create Page Modal */}
       {showCreatePageModal && (
         <CreatePageModal
@@ -2605,6 +2209,169 @@ export default function WebsiteDetail() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ThreeStepOnboarding — shown on CREATED projects as a visual progress guide
+// ---------------------------------------------------------------------------
+
+function ThreeStepOnboarding({
+  website,
+  onOpenIdentity,
+  onOpenFirstPage,
+}: {
+  website: WebsiteProjectWithPages;
+  onOpenIdentity: () => void;
+  onOpenFirstPage: () => void;
+}) {
+  const identityStatus = website.project_identity?.meta?.warmup_status || null;
+  const identityReady = identityStatus === "ready";
+  const identityRunning = identityStatus === "running" || identityStatus === "queued";
+  const layoutsReady = !!website.wrapper && website.wrapper.length > 100;
+  const hasPages = (website.pages?.length || 0) > 0;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-base font-bold text-gray-900">
+          Get your website live in 3 steps
+        </h3>
+        <p className="text-xs text-gray-500 mt-0.5">
+          Complete each step in order. Your inputs build up context for the AI.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <StepRow
+          index={1}
+          title="Project Identity"
+          description="Tell us about the practice — GBP, page URLs, brand colors."
+          state={identityReady ? "ready" : identityRunning ? "running" : "active"}
+          onStart={onOpenIdentity}
+          startLabel={identityReady ? "Edit" : identityRunning ? "Warming up..." : "Start"}
+        />
+        <StepRow
+          index={2}
+          title="Generate Layouts"
+          description="Header, footer, and page shell — generated once and reused across pages."
+          state={
+            layoutsReady
+              ? "ready"
+              : identityReady
+                ? "active-soon"
+                : "locked"
+          }
+          onStart={() => {}}
+          startLabel={layoutsReady ? "Regenerate" : "Coming soon"}
+          disabled={!layoutsReady}
+        />
+        <StepRow
+          index={3}
+          title="Generate First Page"
+          description="Create your homepage. More pages can be added from the Pages tab."
+          state={
+            hasPages
+              ? "ready"
+              : layoutsReady
+                ? "active"
+                : "locked"
+          }
+          onStart={onOpenFirstPage}
+          startLabel={hasPages ? "View pages" : "Start"}
+          disabled={!layoutsReady && !hasPages}
+        />
+      </div>
+    </div>
+  );
+}
+
+type StepState = "active" | "active-soon" | "running" | "ready" | "locked";
+
+function StepRow({
+  index,
+  title,
+  description,
+  state,
+  onStart,
+  startLabel,
+  disabled,
+}: {
+  index: number;
+  title: string;
+  description: string;
+  state: StepState;
+  onStart: () => void;
+  startLabel: string;
+  disabled?: boolean;
+}) {
+  const isReady = state === "ready";
+  const isRunning = state === "running";
+  const isLocked = state === "locked";
+
+  return (
+    <div
+      className={`flex items-center gap-4 rounded-xl border p-4 transition ${
+        isReady
+          ? "border-green-200 bg-green-50/50"
+          : isLocked
+            ? "border-gray-100 bg-gray-50/50 opacity-60"
+            : "border-gray-200 bg-white"
+      }`}
+    >
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+          isReady
+            ? "bg-green-500 text-white"
+            : isRunning
+              ? "bg-amber-500 text-white"
+              : isLocked
+                ? "bg-gray-200 text-gray-400"
+                : "bg-alloro-orange text-white"
+        }`}
+      >
+        {isReady ? (
+          <Check className="h-4 w-4" />
+        ) : isRunning ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isLocked ? (
+          <Lock className="h-3.5 w-3.5" />
+        ) : (
+          index
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
+          {isReady && (
+            <span className="text-[10px] font-semibold text-green-600 uppercase tracking-wide">
+              Complete
+            </span>
+          )}
+          {isRunning && (
+            <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide">
+              In progress
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+      </div>
+      <button
+        onClick={onStart}
+        disabled={disabled || isRunning}
+        className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+          isReady
+            ? "text-green-700 hover:bg-green-100"
+            : disabled
+              ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+              : isRunning
+                ? "text-amber-700 bg-amber-50 cursor-default"
+                : "bg-alloro-orange text-white hover:bg-orange-600"
+        }`}
+      >
+        {startLabel}
+        {!isReady && !isRunning && !disabled && <ArrowRight className="h-3 w-3" />}
+      </button>
     </div>
   );
 }
