@@ -1,54 +1,64 @@
 # Page Creation Enhancements
 
+> **Depends on:** `plans/04172026-no-ticket-project-identity-architecture` must be executed first. This plan reads project data from `project_identity` JSONB (which Plan A introduces). Warmup, archetype classification, and slot extraction all live in Plan A.
+
 ## Why
-The manual page creation modal is missing key inputs (gradient support, GBP selection, page-specific dynamic slots). More structurally: the page pipeline currently generates wrapper/header/footer alongside every page, which is both wasteful (3 extra Claude calls per non-homepage page) and architecturally wrong — layouts are site-wide, not per-page. They deserve their own pipeline with their own prompts, own slots (logo URL, social links, etc.), and own tracking/preview.
+The current page pipeline is sound but could be significantly improved: layouts are per-page instead of site-wide (architecturally wrong and wasteful), the create-page modal lacks gradient support and first-class GBP selection, there are no template-page-specific context slots, generated output quality could jump with a self-critique pass, iteration is painful (rebuilding whole pages to fix one section), and token spend per page is ~145k when it could be ~32k with tool calling + prompt caching.
 
 ## What
-Nine changes, organized around two separate pipelines plus quality/autonomy enhancements:
+Eight enhancements on top of the Project Identity foundation:
 
-**Page Creation Enhancements:**
-1. **Gradient picker** — Gradient (from + to + direction) alongside solid brand colors.
-2. **GBP profile picker** — Promoted from hidden "Advanced" to first-class.
-3. **Dynamic slots per template page** — Page-level context slots bound by template page ID.
-4. **Remove wrapper/header/footer from page pipeline** — Page generation only produces sections.
+**Page Creation:**
+1. **Gradient picker** — gradient (from + to + direction) alongside solid brand colors. Written to project_identity.brand + mirrored to legacy columns.
+2. **GBP profile picker (shared component)** — promoted from hidden "Advanced" to first-class in both the single-page modal and the build-all flow.
+3. **Dynamic slots per template page** — page-level context slots (certifications, UVP, gallery URL, etc.) bound by template page ID. Pre-filled from `project_identity.content_essentials` and `project_identity.extracted_assets` where keys match.
+4. **Remove wrapper/header/footer from page pipeline** — page generation produces only sections. Layouts owned by the new Layouts pipeline.
 
-**New Layouts Pipeline (separate):**
-5. **Layouts tab + dedicated generation pipeline** — Own BullMQ job, own prompts, own slots (logo URL, social links, etc.), live preview, shortcodes preserved byte-exact.
+**New Layouts Pipeline (separate from page pipeline):**
+5. **Layouts tab + dedicated BullMQ job** — own prompts, own slots (logo URL, social links, etc.), live preview with progress bar, shortcodes preserved byte-exact. Pre-fills from project_identity.
 
-**Quality + Autonomy Enhancements:**
-6. **Project warmup on creation** — When a project is created with a GBP, automatically fire `wb-project-scrape` in the background. Caches GBP/website/images/archetype/extracted slot hints so by the time admin opens Create Page, everything is ready.
-7. **Smart slot pre-fill** — Modal pre-populates slot inputs from `project.extracted_slot_hints` (logo, socials, founding story excerpt, gallery URL, certifications mentioned). Admin reviews and tweaks, doesn't fill from scratch.
-8. **Practice archetype classification** — One Claude call during warmup classifies the practice (`family-friendly`, `pediatric`, `luxury-cosmetic`, `specialist-clinical`, `budget-accessible`). Cached on `project.archetype`. All component generation prompts receive the archetype as a tone/style directive.
-9. **Self-critique pass on each component** — After generating a section, a second Claude call reviews it (CTA clarity, headline benefit, archetype match, shortcode preservation). Regenerates once if issues found.
-10. **Per-component regenerate** — Editor shows a regenerate icon on each section. Admin types a small instruction ("make CTA more urgent") → regenerates that single component in ~15s without rebuilding the page.
+**Quality + Token Efficiency:**
+6. **Self-critique pass** — after each generated component, a second Claude call (using `report_critique` tool) checks CTA clarity, headline benefit, archetype match, shortcode preservation. Regenerates once if issues found.
+7. **Per-component regenerate** — editor shows a regenerate icon on each section. Admin types a small instruction ("make CTA more urgent") → only that component regenerates in ~15s.
+8. **Tool-call image selection + prompt caching** — component generator calls `select_image` tool instead of receiving all images inline (eliminates URL hallucination, reduces tokens). System prompt + stable identity context cached across all component calls in a page via Anthropic's 5-min prompt cache (~60% input cost reduction).
 
-Done when: a fresh project auto-warms up on creation. Layouts tab is generate-able with smart-defaulted slots. Page modal opens with most slots pre-filled. Page pipeline runs sections-only with archetype-aware prompts and self-critique. Editor supports per-component regeneration.
+Done when: generation pipelines read from `project_identity` (not `step_*`). Page pipeline never generates wrapper/header/footer. Layouts tab generates site-wide layouts with live preview. Modal shows gradient + GBP picker + template-specific slots pre-filled from identity. Every component goes through critique. Per-component regenerate works. Token spend per homepage drops from ~145k to ~32k effective tokens.
 
 ## Context
 
 **Relevant files (backend):**
-- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` — `buildComponentList` and `buildComponentMessage` need gradient + dynamic slot support
-- `src/controllers/admin-websites/AdminWebsitesController.ts` — `startPipeline` handler passes params to pipeline
-- `src/models/website-builder/TemplatePageModel.ts` — needs `dynamic_slots` field
-- `src/agents/websiteAgents/builder/ComponentGenerator.md` — prompt needs gradient instructions
-- `src/database/migrations/` — new migration for schema changes
+- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` — refactor to read from `project_identity`; remove wrapper/header/footer branches; add tool calling for image selection; add prompt caching
+- `src/controllers/admin-websites/feature-services/service.layouts-pipeline.ts` (new) — reads from `project_identity.brand` + passed layout slot values
+- `src/agents/service.llm-runner.ts` — already extended with `runWithTools()` in Plan A; this plan adds prompt caching support (`cachedSystemBlocks`, `cachedUserPrefix` params)
+- `src/controllers/admin-websites/feature-utils/util.identity-context.ts` (new) — builds per-component context subsets from full identity; pure function, no LLM
+- `src/agents/websiteAgents/builder/ComponentGenerator.md` — update: gradient rules, strip wrapper rules, archetype directive
+- `src/agents/websiteAgents/builder/LayoutGenerator.md` (new)
+- `src/agents/websiteAgents/builder/ComponentCritic.md` (new)
 
 **Relevant files (frontend):**
-- `frontend/src/components/Admin/CreatePageModal.tsx` — single-page creation modal (primary target)
-- `frontend/src/pages/admin/WebsiteDetail.tsx` — build-all modal (lines 1338-1577)
-- `frontend/src/components/Admin/ColorPicker.tsx` — existing hex color picker
-- `frontend/src/api/websites.ts` — API types for pipeline params
-- `frontend/src/api/templates.ts` — `TemplatePage` type
+- `frontend/src/components/Admin/CreatePageModal.tsx` — slots pre-filled from `project_identity`, add gradient picker, promote GBP picker
+- `frontend/src/pages/admin/WebsiteDetail.tsx` — add Layouts tab UI; keep 3-step onboarding card from Plan A
+- `frontend/src/components/Admin/GbpSearchPicker.tsx` (new, shared) — may already exist from Plan A (inside IdentityModal); extract to shared if so
+- `frontend/src/components/Admin/ColorPicker.tsx` — reference for GradientPicker
+- `frontend/src/components/Admin/DynamicSlotInputs.tsx` (new) — shared slot renderer for page modal + layouts tab
+- `frontend/src/api/websites.ts` — add gradient, dynamic slot values, layout generation, regenerate component APIs
 
 **Patterns to follow:**
 - ColorPicker component pattern for gradient picker
-- `searchPlaces` / `getPlaceDetails` API already used in CreatePageModal (line 22-23) for GBP search
+- BullMQ processor pattern: `websiteGeneration.processor.ts`
+- Polling hook pattern: reusable for both page live preview (exists) and layouts live preview
+- Tool calling: `runWithTools()` from Plan A's llm-runner extensions
 
-**Reference file:** `frontend/src/components/Admin/ColorPicker.tsx` — closest analog for gradient picker component
+**Reference file:** `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` (as refactored after Plan A) — closest analog for new layouts pipeline structure
 
 ## Constraints
 
 **Must:**
+- Project Identity (Plan A) must be executed before this plan — all generation reads from `project_identity`
+- Page and layout pipelines derive a per-component context from identity (never pass the full identity JSON to a generation call)
+- Use Anthropic prompt caching (`cache_control: {type: "ephemeral"}`) for the stable system prompt + identity context across all component calls in a single page generation
+- Component generator uses `select_image` tool — images are requested by `use_case`, not inlined in the prompt. Eliminates URL hallucination.
+- Critique pass uses `report_critique` tool for structured output
 - Gradient picker is optional — solid colors remain the default
 - Dynamic slots and layout slots are all optional — skipped when empty
 - GBP picker works in both single-page and build-all modals (shared component)
@@ -60,6 +70,8 @@ Done when: a fresh project auto-warms up on creation. Layouts tab is generate-ab
 - Gradient CSS must work with CDN Tailwind — injected via wrapper `<style>` block, not Tailwind classes
 
 **Must not:**
+- Read from `step_*_scrape` columns in new code (read from `project_identity` instead)
+- Pass the full `project_identity` JSON to component generation calls (derive per-component context)
 - Generate layouts implicitly as a side effect of page generation — Layouts pipeline is explicitly triggered
 - Break existing projects that already have wrappers (backfill `layouts_generated_at`)
 - Require gradients — they're an enhancement, not a mandate
@@ -70,27 +82,33 @@ Done when: a fresh project auto-warms up on creation. Layouts tab is generate-ab
 - Individual layout component editors (admin regenerates the whole layout if changes are needed)
 - Radial gradients, multiple gradient stops, gradient overlays
 - Changing the color system architecture
+- Project identity creation / warmup (handled by Plan A)
+- Removing `step_*_scrape` columns (Phase 2 follow-up)
 
 ## Risk
 
-**Level:** 3 (Structural Risk — introduces a new pipeline and shifts ownership of wrapper/header/footer)
+**Level:** 3 (Structural Risk — introduces a new pipeline, refactors the page pipeline data source, and adds prompt caching + tool calling complexity)
 
 **Risks identified:**
-- Page pipeline now refuses to run without layouts. Existing automation that expects single-shot generation will break. → **Mitigation:** Backfill `layouts_generated_at` for projects with existing non-empty wrappers so they behave as "layouts already generated." New projects must go through the Layouts tab first.
-- Shortcodes could be mangled by Claude despite explicit prompt instructions. Losing `{{slot}}` breaks every page on the site. → **Mitigation:** Post-generation validation — after each layout component generates, assert required tokens exist in the output. If `{{slot}}` is missing from the generated wrapper, reject and retry once; on second failure mark `layouts_generation_status = 'failed'` and preserve the previous good wrapper.
-- Gradient CSS injection may conflict with CDN Tailwind's opacity modifiers → **Mitigation:** Inject `background` via custom CSS classes, not Tailwind gradient utilities. Same pattern as existing color injection.
-- Two separate live-preview polling systems (pages + layouts) increase frontend complexity → **Mitigation:** Extract the polling hook into a reusable hook used by both surfaces.
+- Plan A must be executed first. If this plan runs on stale code (pre-identity), the generation pipelines break. → **Mitigation:** Hard sequencing — do not merge this plan's PRs until Plan A is live. T1 of this plan depends on T1 of Plan A.
+- Page pipeline refuses to run without layouts. → **Mitigation:** Backfill `layouts_generated_at` for projects with existing non-empty wrappers. New projects go through Layouts tab first.
+- Shortcodes mangled by Claude. Losing `{{slot}}` breaks every page. → **Mitigation:** Post-generation validation asserts required tokens exist. If `{{slot}}` missing from generated wrapper, reject and retry once; on second failure mark status `failed` and preserve previous good wrapper.
+- Prompt caching TTL is 5 minutes. If page generation takes longer than 5 minutes, cache hits degrade. → **Mitigation:** Concurrency limit of 2 on `wb-page-generate` and the critique call immediately follows component generation — all calls stay within the window for any single page.
+- Tool calling for `select_image` could loop if Claude keeps requesting images. → **Mitigation:** Cap tool calls per component at 3. After 3, force Claude to finalize without additional tool use.
+- Gradient CSS injection conflicts with CDN Tailwind opacity. → **Mitigation:** Inject `background` via custom CSS classes in the wrapper `<style>`, not Tailwind gradient utilities.
 
 **Blast radius:**
-- `service.generation-pipeline.ts` — modified (layouts branches removed from buildComponentList)
-- `CreatePageModal.tsx` and `WebsiteDetail.tsx` — modified (slot inputs, gradient picker, layouts tab)
-- `worker.ts` — modified (new worker registration)
-- New backend files: `service.layouts-pipeline.ts`, `LayoutGenerator.md`, `websiteLayouts.processor.ts`
-- New frontend files: `DynamicSlotInputs.tsx`, `GradientPicker.tsx`, `GbpSearchPicker.tsx`
+- `service.generation-pipeline.ts` — significant refactor (read from identity, per-component context, tool calling, caching, critique pass)
+- `service.llm-runner.ts` — extended (prompt caching params)
+- `CreatePageModal.tsx`, `WebsiteDetail.tsx` — modified (gradient picker, slot pre-fill from identity, Layouts tab)
+- `worker.ts` — modified (new Layouts worker)
+- New backend files: `service.layouts-pipeline.ts`, `LayoutGenerator.md`, `ComponentCritic.md`, `websiteLayouts.processor.ts`, `util.identity-context.ts`
+- New frontend files: `DynamicSlotInputs.tsx`, `GradientPicker.tsx`, `GbpSearchPicker.tsx` (if not already extracted in Plan A)
 
 **Pushback:**
-- Full gradient picker (arbitrary stops, angles, radial) is overengineered. A 2-color linear gradient with 4 direction presets covers 95% of the use case.
-- Giving each layout component its own editable version history is premature. For now, regeneration overwrites — versioning is a follow-up if clients start asking for layout A/B tests.
+- Full gradient picker (arbitrary stops, angles, radial) is overengineered. 2-color linear + 4 direction presets covers the use case.
+- Giving each layout component its own editable version history is premature. Regeneration overwrites for now.
+- Multi-turn agentic loops for component generation (Claude requests data, gets it, generates, etc.) would improve quality but kills live-preview latency. Keep single-turn per component with tool-call image selection as the only multi-step feature.
 
 ## Recommendations
 
@@ -324,7 +342,7 @@ Stored on `templates.layout_slots` (JSONB). One set per template since a templat
 **Do:**
 1. Add `dynamic_slots JSONB DEFAULT NULL` to `website_builder.template_pages`
 2. Add `layout_slots JSONB DEFAULT NULL` to `website_builder.templates`
-3. Add gradient columns to `website_builder.projects`:
+3. Add gradient columns to `website_builder.projects` (mirrored to `project_identity.brand`):
    - `gradient_enabled BOOLEAN DEFAULT FALSE`
    - `gradient_from VARCHAR(255) DEFAULT NULL`
    - `gradient_to VARCHAR(255) DEFAULT NULL`
@@ -332,291 +350,329 @@ Stored on `templates.layout_slots` (JSONB). One set per template since a templat
 4. Add layout generation tracking to `website_builder.projects`:
    - `layouts_generated_at TIMESTAMPTZ DEFAULT NULL`
    - `layouts_generation_progress JSONB DEFAULT NULL` (shape: `{total, completed, current_component}`)
-   - `layouts_generation_status VARCHAR(20) DEFAULT NULL` (values: 'queued' | 'generating' | 'ready' | 'failed' | 'cancelled')
+   - `layouts_generation_status VARCHAR(20) DEFAULT NULL` ('queued' | 'generating' | 'ready' | 'failed' | 'cancelled')
    - `layout_slot_values JSONB DEFAULT NULL` (persisted slot inputs from last generation run)
-   - `logo_s3_url VARCHAR(500) DEFAULT NULL` (the hosted logo after download)
-5. Add warmup + quality columns to `website_builder.projects`:
-   - `warmup_status VARCHAR(20) DEFAULT NULL` ('queued' | 'running' | 'ready' | 'failed')
-   - `warmup_completed_at TIMESTAMPTZ DEFAULT NULL`
-   - `archetype VARCHAR(50) DEFAULT NULL` (e.g., 'family-friendly', 'pediatric', 'luxury-cosmetic', 'specialist-clinical', 'budget-accessible')
-   - `archetype_metadata JSONB DEFAULT NULL` (tone descriptor, color palette recommendation, voice samples)
-   - `extracted_slot_hints JSONB DEFAULT NULL` (parsed logo/socials/excerpts/etc. for slot pre-fill)
-6. Backfill: For existing projects with non-empty `wrapper` column, set `layouts_generated_at = updated_at`.
-7. Seed `template_pages.dynamic_slots` for dental SEO template pages directly by ID with the slot JSONB defined in the spec.
-8. Seed `templates.layout_slots` for the dental SEO template with the layout slot JSONB defined in the spec.
+5. Backfill: For existing projects with non-empty `wrapper`, set `layouts_generated_at = updated_at`.
+6. Seed `template_pages.dynamic_slots` for dental SEO template pages by direct ID lookup with the slot JSONB defined in the spec.
+7. Seed `templates.layout_slots` for the dental SEO template with the layout slot JSONB defined in the spec.
+
+Note: warmup/archetype/extracted_slot_hints/logo_s3_url are NOT added here — they live in `project_identity` (introduced by Plan A).
 
 **Files:**
 - `src/database/migrations/{timestamp}_page_creation_enhancements.ts`
-**Depends on:** none
-**Verify:** `npm run db:migrate` clean. All new columns present. Slots seeded on dental SEO template_pages and template. Existing projects backfilled.
+**Depends on:** Plan A T1 (project_identity column must exist)
+**Verify:** `npm run db:migrate` clean. New columns + seeded slots present. Existing projects backfilled with `layouts_generated_at`.
 
-### T2: Backend — page pipeline (sections-only) + gradient + dynamic slots
+### T2: Backend — Extend service.llm-runner.ts for prompt caching
 **Do:**
-1. Modify `buildComponentList` in `service.generation-pipeline.ts`: **remove wrapper/header/footer entirely** — page pipeline now only generates sections. Delete those branches from the function.
-2. Modify `generatePageComponents`:
-   - Remove the homepage-specific project-write logic for wrapper/header/footer (no longer applicable)
-   - If project has no generated layouts (`layouts_generated_at IS NULL`), return an error immediately: `"LAYOUTS_NOT_GENERATED"` — refuse to generate sections for a project without layouts
-   - Accept `gradientEnabled`, `gradientFrom`, `gradientTo`, `gradientDirection`, and `dynamicSlotValues` params
-3. Modify `buildComponentMessage`:
-   - Include gradient info in the color/style section (tells Claude the site uses gradient and which classes to use)
-   - Include dynamic slot values under "Page-Specific Content" section — only non-empty values
-4. Update `ComponentGenerator.md` prompt:
-   - Add gradient instructions: when to use `bg-gradient-brand` for backgrounds, `text-gradient-brand` for accent headings
-   - Remove wrapper-specific rules (wrapper is no longer generated here)
+1. Add parameters to `runAgent` (and `runWithTools` from Plan A T2):
+   - `cachedSystem?: Array<{ type: 'text', text: string, cache_control?: { type: 'ephemeral' } }>` — allows splitting the system prompt into cached and variable blocks
+   - `cachedUserPrefix?: string` — optional cached prefix prepended to the user message
+2. Construct the Anthropic API call with the system blocks array when `cachedSystem` is provided (passes `cache_control: { type: 'ephemeral' }` on the appropriate blocks)
+3. Log cache hit/miss metrics from the response (`cache_creation_input_tokens`, `cache_read_input_tokens`) so we can monitor savings
+4. Keep the existing `systemPrompt: string` param for backward compatibility — when `cachedSystem` is omitted, behavior unchanged
 
 **Files:**
-- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` (modify — sections-only)
-- `src/agents/websiteAgents/builder/ComponentGenerator.md` (modify — gradient instructions, strip wrapper rules)
-**Depends on:** T1
-**Verify:** Page pipeline generates only sections. Never calls Claude for wrapper/header/footer. Refuses to run if layouts not generated yet. Gradient + slot values appear in prompt output.
+- `src/agents/service.llm-runner.ts` (modify — add cached variants)
+**Depends on:** Plan A T2
+**Verify:** Call `runAgent` with `cachedSystem` twice within 5 minutes. Second call logs show `cache_read_input_tokens > 0`.
 
-### T3: Backend — API param extensions
+### T3: Backend — Per-component context builder + page pipeline refactor
 **Do:**
-1. Extend `startPipeline` handler to accept `gradient` object and `dynamicSlotValues` record
-2. Extend `createAllFromTemplate` handler to accept gradient and pass through
-3. Extend `ProjectScrapeJobData` and `PageGenerateJobData` types with gradient + dynamic slot fields
-4. Add `GET /templates/:templateId/pages/:pageId/slots` endpoint (returns dynamic_slots for a template page)
-5. Add `PATCH /templates/:templateId/pages/:pageId` to allow updating dynamic_slots (admin tool)
+1. Create `src/controllers/admin-websites/feature-utils/util.identity-context.ts`:
+   - Exports `buildStableIdentityContext(identity): string` — returns the per-page cached context (business basics, brand colors + gradient, archetype + voice) as a formatted text block used in cached system for ALL component calls of a single page
+   - Exports `buildComponentContext(identity, componentName, slotValues, imageManifest): ComponentContext` — returns the per-component variable payload (filtered content_essentials + filtered images + slot values + template markup + any component-specific directives)
+   - Image filtering rules per component encoded here (see "For Very Good Outputs" recommendations — hero gets 2 high-res, gallery gets 6, etc.)
+   - Image manifest contains ONLY `{ id, description, use_case, resolution }` — no URLs. URLs retrieved via the `select_image` tool call
+2. Refactor `generatePageComponents` in `service.generation-pipeline.ts`:
+   - Read `project_identity` from the project row (fall back to reading step_* for defensive compat, though backfill should cover this)
+   - Remove the distillation step (identity is already distilled during warmup)
+   - Remove wrapper/header/footer branches from `buildComponentList` — sections only
+   - If project has no layouts (`layouts_generated_at IS NULL`), return `LAYOUTS_NOT_GENERATED` error
+   - For each component:
+     - Build cached stable context + variable component context
+     - Call `runAgent` with `cachedSystem` (ComponentGenerator prompt + stable identity context) and user message (variable component context)
+     - Handle `select_image` tool calls (see T13) — loop at most 3 times
+     - Parse HTML from response
+     - Write to page.sections JSONB
+     - (Critique pass added in T12)
+3. Update `ComponentGenerator.md` prompt:
+   - Add gradient rules: use `bg-gradient-brand` for CTAs and hero backgrounds, `text-gradient-brand` for accent headings
+   - Remove wrapper-specific rules (layouts own those now)
+   - Add archetype directive: "This practice's archetype is {archetype}. Match the tone: {tone_descriptor}."
+   - Describe the `select_image` tool and when to use it
+4. Delete the old distillation user-message builder (`buildDataAnalysisMessage`) — no longer called
 
 **Files:**
-- `src/controllers/admin-websites/AdminWebsitesController.ts` (modify)
-- `src/workers/processors/websiteGeneration.processor.ts` (modify — pass new params)
-- `src/routes/admin/websites.ts` (modify — add slots endpoint)
-- `frontend/src/api/websites.ts` (modify — extend request types)
-- `frontend/src/api/templates.ts` (modify — extend TemplatePage type, add slots fetch)
-**Depends on:** T2
-**Verify:** API accepts gradient and dynamicSlotValues params. Template page slots are fetchable.
+- `src/controllers/admin-websites/feature-utils/util.identity-context.ts` (new)
+- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` (significant refactor)
+- `src/agents/websiteAgents/builder/ComponentGenerator.md` (modify)
+**Depends on:** T1, T2, Plan A T3 (identity warmup must populate `project_identity`)
+**Verify:** Page pipeline generates sections only. Never calls wrapper/header/footer. Reads from `project_identity`. Cached tokens appear in logs. Per-component context stays ~1-3kb.
 
-### T4: Frontend — GbpSearchPicker component
+### T4: Backend — API param extensions
 **Do:**
-Extract GBP search logic from CreatePageModal into a shared component:
-- Shows current selection (name, address, rating)
-- Search input with debounced Places API autocomplete
+1. Extend `startPipeline` handler to accept `gradient: { enabled, from, to, direction }` and `dynamicSlotValues: Record<string, string>` — both optional
+2. Extend `createAllFromTemplate` handler similarly
+3. Extend `ProjectScrapeJobData` + `PageGenerateJobData` types
+4. Add `GET /templates/:templateId/pages/:pageId/slots` — returns `dynamic_slots` for a template page
+5. Add `PATCH /templates/:templateId/pages/:pageId` — allow admin to update `dynamic_slots` (admin tool; no UI in this plan)
+
+**Files:**
+- `src/controllers/admin-websites/AdminWebsitesController.ts`
+- `src/workers/processors/websiteGeneration.processor.ts`
+- `src/routes/admin/websites.ts`
+- `frontend/src/api/websites.ts`
+- `frontend/src/api/templates.ts`
+**Depends on:** T3
+**Verify:** API accepts new params. `GET /slots` returns seeded slot definitions.
+
+### T5: Frontend — GbpSearchPicker component
+**Do:**
+Extract the GBP search/pick UI from Plan A's IdentityModal into a reusable component (if Plan A already did this, this task becomes "verify and polish"):
+- Shows current selection with name, address, rating
+- Search input with debounced Places autocomplete
 - Suggestion dropdown
 - Selecting a suggestion calls `getPlaceDetails` and returns full GBP data
-- "Clear" to reset to project default
+- "Clear" to reset
 
 **Files:**
-- `frontend/src/components/Admin/GbpSearchPicker.tsx` (new)
-**Depends on:** none
-**Verify:** Component renders, search works, selection returns GBP data.
+- `frontend/src/components/Admin/GbpSearchPicker.tsx` (new or polish)
+**Depends on:** none (can start in parallel with backend)
+**Verify:** Component renders; search + select flow works.
 
-### T5: Frontend — GradientPicker component
+### T6: Frontend — GradientPicker component
 **Do:**
-Create a gradient picker component:
-- Toggle: "Use gradient" checkbox
-- When enabled: shows direction presets (→ ↘ ↓ ↗) as clickable icons
-- Two color inputs: "From" and "To" (pre-filled from primary/accent)
-- Live preview strip showing the gradient
-- Emits: `{ enabled: boolean, from: string, to: string, direction: string }`
+Gradient picker with:
+- "Use gradient" toggle
+- When enabled: direction presets (→ ↘ ↓ ↗) as clickable icons
+- Two color inputs (From, To) pre-filled from primary/accent
+- Live preview strip rendering the gradient
+- Emits `{ enabled, from, to, direction }`
 
 **Files:**
 - `frontend/src/components/Admin/GradientPicker.tsx` (new)
 **Depends on:** none
-**Verify:** Component renders, toggle works, direction changes, colors editable, preview updates.
+**Verify:** Toggle works, colors + direction update preview.
 
-### T6: Frontend — CreatePageModal enhancements
+### T7: Frontend — CreatePageModal enhancements (slot pre-fill from identity)
 **Do:**
-1. Replace "Advanced: Override Business Data" GBP section with `GbpSearchPicker` as a top-level field
-2. Add `GradientPicker` below Brand Colors
-3. When a template page is selected, fetch its `dynamic_slots` and render input fields:
-   - Each slot: label, description, type toggle (text/URL), textarea or URL input
-   - All optional (skip if empty)
-4. Pass gradient, GBP data, and dynamic slot values to `startPipeline` call
-5. Update the build-all modal in WebsiteDetail.tsx: add `GradientPicker`, use shared `GbpSearchPicker`
+1. Replace "Advanced: Override Business Data" GBP section with `GbpSearchPicker` as a top-level field. Default selection comes from `project_identity.business.place_id`.
+2. Add `GradientPicker` below Brand Colors. Default values from `project_identity.brand.gradient_*`.
+3. When a template page is selected, fetch its `dynamic_slots` + call `GET /:id/slot-prefill?templatePageId=X` (see T11) to get pre-filled values from identity. Render slot inputs with initial values.
+4. Each slot: label, description, type toggle (text/URL), textarea or URL input. All optional (empty skipped).
+5. On submit: pass gradient, selected GBP, dynamic slot values to `startPipeline` call.
+6. Same treatment for build-all modal in WebsiteDetail.tsx.
 
 **Files:**
 - `frontend/src/components/Admin/CreatePageModal.tsx` (modify)
 - `frontend/src/pages/admin/WebsiteDetail.tsx` (modify — build-all modal)
-**Depends on:** T3, T4, T5
-**Verify:** Manual: open create page modal, see GBP picker + gradient picker + dynamic slots for selected template page.
+**Depends on:** T4, T5, T6, T11
+**Verify:** Open modal → see GBP + gradient + slots pre-filled from identity. Dynamic slot inputs reflect template page selection.
 
-### T7: Backend — Layouts Pipeline service + prompt
+### T8: Backend — Layouts Pipeline service + LayoutGenerator prompt
 **Do:**
-1. Create `LayoutGenerator.md` prompt in `src/agents/websiteAgents/builder/`:
-   - System prompt covering the Critical Rules in the spec (template as starting point, shortcodes preserved byte-exact, wrapper/header/footer specific rules)
-   - Takes component type as part of user message (wrapper/header/footer)
-2. Create `service.layouts-pipeline.ts` in `src/controllers/admin-websites/feature-services/`:
-   - Exports `generateLayouts(projectId: string, slotValues: Record<string, string>, signal?: AbortSignal): Promise<void>`
-   - Reads project (requires cached scrape data — returns error if missing)
-   - Reads active template's wrapper/header/footer markup + layout_slots definitions
-   - If `logo_url` provided: download → upload to S3 (reuse `processImages` pattern from generation-pipeline.ts) → store on `project.logo_s3_url`
-   - Initializes `layouts_generation_progress = {total: 3, completed: 0, current_component: 'wrapper'}`, `layouts_generation_status = 'generating'`
+1. Create `src/agents/websiteAgents/builder/LayoutGenerator.md`:
+   - System prompt with the Critical Rules from the spec (template as starting point, shortcodes byte-exact, wrapper/header/footer specific rules, color/gradient injection)
+   - Component type passed in user message
+2. Create `src/controllers/admin-websites/feature-services/service.layouts-pipeline.ts`:
+   - Exports `generateLayouts(projectId, slotValues, signal?): Promise<void>`
+   - Reads `project_identity` (requires warmup completed — returns `IDENTITY_NOT_READY` if not)
+   - Reads active template's wrapper/header/footer markup + `layout_slots` definitions
+   - If `logo_url` slot value differs from `project_identity.brand.logo_s3_url`: download → upload to S3 → update identity
+   - Initializes `layouts_generation_progress` + sets `layouts_generation_status = 'generating'`
+   - Persists `layout_slot_values` on the project row
    - For each component [wrapper, header, footer]:
      - Check cancel flag + abort signal
-     - Call Claude via `runAgent({systemPrompt: LayoutGenerator, userMessage: componentMarkup + slots + gbp + colors, prefill: "{"})`
+     - Build stable identity context (cached) + variable component context
+     - Call `runAgent` with cached system (LayoutGenerator + stable context) and variable user message
+     - **Shortcode validation**: assert tokens from the template exist in the output. If `{{slot}}` missing from wrapper, retry once with "the previous attempt removed {{slot}} — this is required". On second failure mark `'failed'` and preserve previous good layout.
      - Write to `project.wrapper/header/footer` immediately
-     - Increment progress, update current_component
-   - On complete: `layouts_generated_at = now()`, `layouts_generation_status = 'ready'`, clear progress
-   - On failure: `layouts_generation_status = 'failed'`, preserve partial layouts
-3. Persist `layout_slot_values` on the project row before generation so reruns keep the last inputs as defaults
+     - Increment progress
+   - On complete: `layouts_generated_at = now()`, status `'ready'`, clear progress
+3. Also mirror generated `logo_s3_url` to `project_identity.brand.logo_s3_url` on update
 
 **Files:**
 - `src/agents/websiteAgents/builder/LayoutGenerator.md` (new)
 - `src/controllers/admin-websites/feature-services/service.layouts-pipeline.ts` (new)
-**Depends on:** T1
-**Verify:** Function can be called directly, produces 3 Claude calls, writes wrapper/header/footer to project, preserves `{{slot}}` and any `[...]` shortcodes from the template.
+**Depends on:** T1, T2, Plan A T3
+**Verify:** Given a warmed-up project, function produces 3 Claude calls, writes wrapper/header/footer. All shortcodes preserved byte-exact. Retry kicks in if wrapper loses `{{slot}}`.
 
-### T8: Backend — Layouts BullMQ processor + API endpoints
+### T9: Backend — Layouts BullMQ processor + API endpoints
 **Do:**
-1. Create `websiteLayouts.processor.ts` in `src/workers/processors/`:
-   - Exports `processLayoutGenerate(job)` handling `wb-layout-generate` jobs
-   - Wraps `generateLayouts()` with cancel polling + AbortController (same pattern as websiteGeneration.processor.ts)
+1. Create `src/workers/processors/websiteLayouts.processor.ts`:
+   - `processLayoutGenerate(job)` wraps `generateLayouts()` with cancel polling + AbortController
 2. Register `wb-layout-generate` worker in `worker.ts` (concurrency 1, lockDuration 600000)
-3. Add endpoints in `AdminWebsitesController.ts`:
-   - `POST /:id/generate-layouts` — accepts `slotValues: Record<string,string>`, enqueues the BullMQ job
-   - `GET /:id/layouts-status` — returns `{ status, progress, generated_at, wrapper, header, footer, logo_s3_url }` for polling
-4. Add routes in `routes/admin/websites.ts`
-5. Ensure the existing `cancelGeneration` endpoint also handles layout jobs (it already sets the project flag, which the layout processor polls)
+3. Endpoints in `AdminWebsitesController.ts`:
+   - `POST /:id/generate-layouts` — body: `{ slotValues }` → enqueues job
+   - `GET /:id/layouts-status` — returns `{ status, progress, generated_at, wrapper, header, footer }`
+4. Routes in `routes/admin/websites.ts`
+5. Existing `cancelGeneration` endpoint handles layout jobs too (shared `generation_cancel_requested` flag)
 
 **Files:**
 - `src/workers/processors/websiteLayouts.processor.ts` (new)
-- `src/workers/worker.ts` (modify — register new worker)
-- `src/controllers/admin-websites/AdminWebsitesController.ts` (modify — add handlers)
-- `src/routes/admin/websites.ts` (modify — add routes)
-**Depends on:** T7
-**Verify:** POST `/generate-layouts` enqueues job, worker runs, polling endpoint reflects progress, cancel works.
+- `src/workers/worker.ts` (modify)
+- `src/controllers/admin-websites/AdminWebsitesController.ts` (modify)
+- `src/routes/admin/websites.ts` (modify)
+**Depends on:** T8
+**Verify:** POST enqueues, worker runs, polling reflects progress, cancel works.
 
-### T9: Frontend — Layouts tab UI with live preview
+### T10: Frontend — Layouts tab UI with live preview
 **Do:**
-1. Identify the existing Layouts tab in `WebsiteDetail.tsx` and restructure its content:
-   - **Empty state** (`layouts_generated_at IS NULL`): show a "Generate Layouts" panel with:
-     - Heading + intro explaining what layouts are
-     - Fetched `layout_slots` for the project's template rendered as input fields (logo URL, social links, etc.), same slot renderer as the dynamic slots on pages
-     - **Pre-fill from `project.extracted_slot_hints`** (T11) — logo URL, social links, etc. populated automatically; admin reviews and tweaks
-     - "Generate Layouts" button → calls `POST /:id/generate-layouts` with slot values
-   - **Generating state** (`layouts_generation_status === 'generating'`): show live preview + progress bar:
-     - Progress bar with `completed/total` and `current_component` label
-     - Iframe rendering the partial layout (wrapper + header + footer assembled with an empty sections array)
-     - Cancel button → calls existing cancel endpoint
-     - Poll `/:id/layouts-status` every 2s (same pattern as page live preview in PageEditor.tsx)
-   - **Ready state**: show the generated layouts preview, the slot values that produced them (editable), and a "Regenerate Layouts" button
-2. Add API calls in `frontend/src/api/websites.ts`:
-   - `generateLayouts(projectId, slotValues)` → POST `/:id/generate-layouts`
-   - `fetchLayoutsStatus(projectId)` → GET `/:id/layouts-status`
-3. Extract the slot renderer into a reusable component `<DynamicSlotInputs>` used by both the page modal (T6) and the Layouts tab (T9).
+1. Restructure the Layouts tab in `WebsiteDetail.tsx`:
+   - **Empty state** (`layouts_generated_at IS NULL`): "Generate Layouts" panel with:
+     - Intro explaining layouts
+     - `layout_slots` rendered as inputs, pre-filled via `GET /:id/slot-prefill?layout=true` (T11)
+     - "Generate Layouts" button
+   - **Generating state** (`layouts_generation_status === 'generating'`): progress bar with current_component label; iframe rendering partial layout; cancel button; 2s polling
+   - **Ready state**: preview + slot values that produced this generation (editable) + "Regenerate Layouts" button
+2. Add API calls: `generateLayouts(projectId, slotValues)`, `fetchLayoutsStatus(projectId)`
+3. Extract shared `<DynamicSlotInputs>` component used by page modal (T7) and Layouts tab (here)
 
 **Files:**
-- `frontend/src/pages/admin/WebsiteDetail.tsx` (modify — Layouts tab content)
-- `frontend/src/api/websites.ts` (modify — add layouts endpoints)
+- `frontend/src/pages/admin/WebsiteDetail.tsx` (modify — Layouts tab)
+- `frontend/src/api/websites.ts` (modify)
 - `frontend/src/components/Admin/DynamicSlotInputs.tsx` (new — shared slot renderer)
-**Depends on:** T8, T11
-**Verify:** Manual: open Layouts tab on a warmup-completed project, see Generate Layouts form with logo URL / social links pre-filled from extraction. Click Generate, watch progress bar + live preview. Cancel works. After completion, "Regenerate" option appears.
-
-### T10: Backend — Project warmup + smart slot extraction + archetype
-**Do:**
-1. Trigger `wb-project-scrape` automatically when a project is created with a `selected_place_id`. Modify the project creation handler in `AdminWebsitesController.ts` to enqueue the warmup job after the project is inserted. Set `warmup_status = 'queued'`.
-2. Extend `scrapeAndCacheProject` in `service.generation-pipeline.ts` (or wrap it) to:
-   - Set `warmup_status = 'running'` at start
-   - After GBP + website + image analysis steps, run two new steps:
-     - **Smart slot extraction** — parse the cached HTML for `logo_url` (from `<link rel="icon">`, `og:image`, `<img alt*="logo">`), `social_links` (regex for facebook/instagram/linkedin URLs), `founding_story_excerpt` (scan for an /about page in scraped pages, take first 2 paragraphs), `gallery_url` (look for /gallery, /portfolio, /smile-gallery), `certifications_mentioned` (regex for ADA, Invisalign, board certified, AAO, Diamond Provider), `service_areas_mentioned` (parse from footer/contact pages), `team_member_names` (look for "Dr. " patterns)
-     - **Practice archetype classification** — one Claude call with `ArchetypeClassifier.md` system prompt. Input: GBP category + top 5 reviews + business description. Output: `{ archetype, tone_descriptor, color_palette_recommendation, voice_samples }`
-   - Persist results to `extracted_slot_hints` and `archetype` / `archetype_metadata` columns
-   - Set `warmup_status = 'ready'`, `warmup_completed_at = now()`
-3. Create new prompt: `src/agents/websiteAgents/builder/ArchetypeClassifier.md`
-4. Create new utility: `src/controllers/admin-websites/feature-utils/util.slot-extractor.ts` — pure HTML parsing functions, no DB or LLM
-5. Add `GET /:id/warmup-status` endpoint for the frontend to poll warmup progress (returns `warmup_status`, `extracted_slot_hints`, `archetype`)
-
-**Files:**
-- `src/controllers/admin-websites/AdminWebsitesController.ts` (modify — auto-enqueue warmup on project create, add status endpoint)
-- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` (modify — add extraction + archetype steps)
-- `src/controllers/admin-websites/feature-utils/util.slot-extractor.ts` (new)
-- `src/agents/websiteAgents/builder/ArchetypeClassifier.md` (new)
-- `src/routes/admin/websites.ts` (modify — add warmup-status route)
-**Depends on:** T1
-**Verify:** Create a new project with a place_id. Within 1-2 minutes, project row has `warmup_status='ready'`, `extracted_slot_hints` populated with parsed values, `archetype` set.
+**Depends on:** T9, T11
+**Verify:** Manual flow: open tab → pre-filled form → Generate → live preview → completion → Regenerate option.
 
 ### T11: Backend — Slot pre-fill mapper + endpoint
 **Do:**
 1. Create `src/controllers/admin-websites/feature-services/service.slot-prefill.ts`:
    - Exports `getPrefilledSlotValues(projectId, slotDefinitions): Record<string, string>`
-   - Reads `project.extracted_slot_hints` and the slot definitions
-   - Maps hints to slots by key (deterministic table — `certifications_credentials` ← `certifications_mentioned.join(", ")`, `gallery_source_url` ← `gallery_url`, `practice_founding_story` ← `founding_story_excerpt`, etc.)
-   - Returns `{ slotKey: extractedValue }` for any slots with matching hints
-2. Add `GET /:id/slot-prefill?templatePageId=X` and `GET /:id/slot-prefill?layout=true` endpoints — return pre-filled slot values for the page or layout slots respectively
-3. Use the pre-filled values in `T6` (page modal) and `T9` (Layouts tab) — modal renders slots with these as initial values, admin edits if needed
+   - Reads `project_identity` (not `extracted_slot_hints` — that was a Plan B design artifact that got consolidated into identity)
+   - Deterministic mapping:
+     - `certifications_credentials` ← `identity.content_essentials.certifications.join(", ")`
+     - `unique_value_proposition` ← `identity.content_essentials.unique_value_proposition`
+     - `gallery_source_url` ← find an image with `use_case: "gallery"` from `identity.extracted_assets.images` → return its `source_url`
+     - `faq_focus_topics` ← `identity.content_essentials.review_themes.join(", ")`
+     - `practice_founding_story` ← `identity.content_essentials.founding_story`
+     - `practice_values` ← `identity.content_essentials.core_values.join(", ")`
+     - `logo_url` (layout slot) ← `identity.brand.logo_s3_url` (already hosted — use S3 URL directly)
+     - `social_links` (layout slot) ← format `identity.content_essentials.social_links` as one-per-line
+     - `footer_service_areas` (layout slot) ← `identity.content_essentials.service_areas.join(", ")`
+     - etc. for all other slot keys
+2. Endpoints:
+   - `GET /:id/slot-prefill?templatePageId=X` — page slots
+   - `GET /:id/slot-prefill?layout=true` — layout slots
+3. Frontend API `fetchSlotPrefill`
 
 **Files:**
 - `src/controllers/admin-websites/feature-services/service.slot-prefill.ts` (new)
-- `src/controllers/admin-websites/AdminWebsitesController.ts` (modify — add prefill endpoint)
+- `src/controllers/admin-websites/AdminWebsitesController.ts` (modify)
 - `src/routes/admin/websites.ts` (modify)
-- `frontend/src/api/websites.ts` (modify — add `fetchSlotPrefill`)
-**Depends on:** T10
-**Verify:** Hit the prefill endpoint for a warmup-completed project — returns slot values matching the extracted hints.
+- `frontend/src/api/websites.ts` (modify)
+**Depends on:** T1, Plan A T3
+**Verify:** Hit endpoint for a warmed-up project → returns slot values populated from identity.
 
-### T12: Backend — Self-critique pass on component generation
+### T12: Backend — Self-critique pass with report_critique tool + prompt caching
 **Do:**
-1. Create new prompt `src/agents/websiteAgents/builder/ComponentCritic.md`:
-   - System prompt: "Review this generated HTML section. Check: (1) Is the CTA actionable and clear? (2) Is the headline benefit-driven, not feature-listed? (3) Does the tone match the practice archetype? (4) Are all shortcodes preserved (`{{slot}}`, `[post_block]`, `[review_block]`)? (5) Are there any obvious issues (broken markup, invented URLs, orphan elements)?"
-   - Output: `{ pass: boolean, issues: string[], suggested_improvements: string }`
-2. Modify `generatePageComponents` in `service.generation-pipeline.ts`:
-   - After generating a section, call critic with the generated HTML + archetype
-   - If `pass: false`, regenerate ONCE with the critique appended to the user message ("Previous attempt had these issues: [issues]. Please regenerate addressing them.")
-   - If second attempt also fails critique, accept the output anyway (don't block) — log the failure for observability
-3. Pass `archetype` from project row into the prompt context (both for ComponentGenerator and ComponentCritic)
-4. Same pattern in `service.layouts-pipeline.ts` for layout components
+1. Create `src/agents/websiteAgents/builder/ComponentCritic.md`:
+   - System prompt: check CTA clarity, benefit-driven headline, archetype tone match, shortcode preservation, obvious issues (broken markup, invented URLs, orphan elements)
+   - Instructs to call the `report_critique` tool with structured output
+2. Define `report_critique` tool schema: `{ pass: boolean, issues: string[], suggested_improvements: string }`
+3. Modify `generatePageComponents` + `generateLayouts`:
+   - After generating a component, call `runWithTools` with:
+     - Cached system: `ComponentCritic.md` + archetype + business_name
+     - Variable user message: the generated HTML
+     - Tools: `[report_critique]`
+   - Extract the tool call result
+   - If `pass: false`, regenerate the component once, appending critique to the user message. If second attempt also fails, accept and log.
+4. Component + critique calls share the 5-min cache window — critique runs immediately after each component
 
 **Files:**
 - `src/agents/websiteAgents/builder/ComponentCritic.md` (new)
 - `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` (modify — critique pass)
 - `src/controllers/admin-websites/feature-services/service.layouts-pipeline.ts` (modify — critique pass for layouts)
-- `src/agents/websiteAgents/builder/ComponentGenerator.md` (modify — accept archetype directive)
-- `src/agents/websiteAgents/builder/LayoutGenerator.md` (modify — accept archetype directive)
-**Depends on:** T2, T7, T10
-**Verify:** Generate a page, log shows critic ran for each component, regenerate fired only when critique failed. Output quality measurably better.
+- `src/agents/websiteAgents/builder/ComponentGenerator.md` (modify — note that critique may request regeneration)
+- `src/agents/websiteAgents/builder/LayoutGenerator.md` (modify — same)
+**Depends on:** T3, T8, Plan A T2
+**Verify:** Logs show critique tool call for each component. Regenerate fires when `pass: false`. Output quality measurably better.
 
-### T13: Per-component regenerate (backend + frontend)
+### T13: Backend + Frontend — Image selection via `select_image` tool
 **Do:**
-1. **Backend**:
-   - Add endpoint `POST /:id/pages/:pageId/regenerate-component` accepting `{ componentName: string, instruction?: string }`
-   - Enqueue a `wb-page-generate` job with a `singleComponent` flag — processor regenerates only that one component (calls Claude once + critique once, writes only that section to the `sections` array by index/name match)
-2. **Frontend (PageEditor.tsx)**:
-   - When in `ready` state, render a small regenerate icon overlay on each section in the iframe (via the existing iframe selector hook)
-   - Click → modal: "What should change?" textarea + Regenerate button
-   - On submit → POST to regenerate endpoint → switch back to live preview mode briefly while just that component regenerates → animate the swap when ready
-   - Same polling/animation pattern as full live preview, but scoped to one section
+1. Define `select_image` tool schema for the component generator:
+   - Input: `{ use_case: string, required_resolution?: "high"|"mid"|"low", description_match?: string }`
+   - Output: `{ image_url: string, description: string }` (or null if no match)
+2. Backend tool handler in `service.generation-pipeline.ts`:
+   - Given the current identity, filter images matching `use_case` (and optional filters)
+   - Return the top match (highest `usability_rank`)
+   - If no match, return null — generator proceeds with a placeholder div
+3. Modify `generatePageComponents` to use `runWithTools` for component generation (replacing current `runAgent` call):
+   - Tools: `[select_image]`
+   - Max 3 tool calls per component
+   - After each tool call, loop back to Claude with the tool result and let it finalize the HTML
+4. Update `ComponentGenerator.md` prompt: describe the tool, give examples of good `use_case` values ("hero", "about-doctor", "team-group", "office-interior", "before-after"), forbid inventing image URLs
 
 **Files:**
-- `src/controllers/admin-websites/AdminWebsitesController.ts` (modify — regenerate endpoint)
-- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` (modify — accept singleComponent param)
-- `src/workers/processors/websiteGeneration.processor.ts` (modify — pass singleComponent through)
+- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` (modify — tool calling loop)
+- `src/controllers/admin-websites/feature-services/service.layouts-pipeline.ts` (modify — tool calling loop for logo selection in header)
+- `src/agents/websiteAgents/builder/ComponentGenerator.md` (modify)
+- `src/agents/websiteAgents/builder/LayoutGenerator.md` (modify)
+**Depends on:** T3, T8, Plan A T2 (`runWithTools`)
+**Verify:** Generate a hero section — logs show `select_image` tool called with `use_case: "hero"`, generator uses the returned S3 URL. No invented image URLs in output.
+
+### T14: Per-component regenerate (backend + frontend)
+**Do:**
+1. **Backend:**
+   - Endpoint `POST /:id/pages/:pageId/regenerate-component` — body: `{ componentName, instruction? }`
+   - Enqueue `wb-page-generate` with `singleComponent: componentName` flag
+   - Processor: regenerates only that one component (generator + critique), writes only that section into `sections` JSONB (match by name/index)
+   - Goes through full tool-calling + caching pipeline
+2. **Frontend (PageEditor.tsx):**
+   - In `ready` state, render a small regenerate icon overlay on each section in the iframe (via existing iframe selector hook)
+   - Click → modal with "What should change?" textarea + Regenerate button
+   - On submit → POST → brief live-preview mode for that single component → animate swap when ready
+   - Polling pattern reused from existing live preview, scoped to one section
+
+**Files:**
+- `src/controllers/admin-websites/AdminWebsitesController.ts` (modify)
+- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` (modify — accept singleComponent)
+- `src/workers/processors/websiteGeneration.processor.ts` (modify)
 - `src/routes/admin/websites.ts` (modify)
-- `frontend/src/pages/admin/PageEditor.tsx` (modify — regenerate icons, modal, swap animation)
-- `frontend/src/api/websites.ts` (modify — `regenerateComponent` API call)
-**Depends on:** T12
-**Verify:** Open a generated page, hover over a section, click regenerate icon, type "make CTA more urgent", click Regenerate. Section regenerates in ~15s, swaps in with animation. Other sections unchanged.
+- `frontend/src/pages/admin/PageEditor.tsx` (modify)
+- `frontend/src/api/websites.ts` (modify)
+**Depends on:** T12, T13
+**Verify:** Hover section → click regenerate → type instruction → section regenerates in ~15s with animation. Other sections untouched.
 
 ## Done
 - [ ] `npx tsc --noEmit` — zero errors (backend)
 - [ ] `cd frontend && npx tsc --noEmit` — zero errors (frontend)
+- [ ] **Foundation alignment**
+  - [ ] All generation pipelines read from `project_identity` (not `step_*`)
+  - [ ] Per-component context derived from identity (full identity never passed to component call)
+  - [ ] Prompt caching active — cache hit tokens visible in logs for pages with 2+ component calls
 - [ ] **Pipeline architecture**
   - [ ] Page pipeline generates sections only — never calls Claude for wrapper/header/footer
-  - [ ] Page generation refuses to run if project has no layouts (error: LAYOUTS_NOT_GENERATED)
+  - [ ] Page generation refuses with `LAYOUTS_NOT_GENERATED` error if project has no layouts
+  - [ ] Page generation refuses with `IDENTITY_NOT_READY` error if warmup hasn't completed
 - [ ] **Layouts pipeline**
-  - [ ] Layouts tab shows Generate Layouts form when empty, with layout slot inputs
-  - [ ] Layout slot inputs are pre-filled from `extracted_slot_hints` (logo, socials, etc.)
-  - [ ] Generate Layouts triggers BullMQ job, live preview shows progress, components appear as generated
-  - [ ] Logo URL slot: image downloaded, uploaded to S3, used in generated header
-  - [ ] All shortcodes (`{{slot}}`, `[post_block]`, etc.) preserved byte-exact in generated layouts
-  - [ ] Template wrapper/header/footer markup used as starting point — structure not invented
-  - [ ] Cancel button stops layout generation, marks status 'cancelled'
-- [ ] **Project warmup + smart pre-fill**
-  - [ ] Creating a project auto-enqueues `wb-project-scrape` warmup job
-  - [ ] Warmup populates `extracted_slot_hints`, `archetype`, `archetype_metadata`
-  - [ ] Page modal opens with slots pre-filled from `extracted_slot_hints`
-  - [ ] Layouts tab opens with slots pre-filled from `extracted_slot_hints`
-- [ ] **Archetype-aware generation + critique**
-  - [ ] All Claude generation calls receive the project archetype as a tone directive
-  - [ ] Each generated component runs through ComponentCritic; if `pass: false`, regenerates once
+  - [ ] Layouts tab shows Generate form when empty, pre-filled from identity
+  - [ ] Generate triggers BullMQ job, live preview renders components as they land
+  - [ ] Logo used in header comes from `identity.brand.logo_s3_url`
+  - [ ] All shortcodes preserved byte-exact (validated post-generation)
+  - [ ] Cancel stops layout generation
+- [ ] **Tool calling**
+  - [ ] Component generator uses `select_image` tool — no inline image URLs in prompts
+  - [ ] Zero invented image URLs in generated output
+  - [ ] Critique pass uses `report_critique` tool for structured output
+- [ ] **Self-critique**
+  - [ ] Each generated component runs through critique
+  - [ ] Failed critique triggers regenerate-once with critique attached
+  - [ ] Critique + component stay within cache window (5 min)
 - [ ] **Per-component regenerate**
   - [ ] Editor shows regenerate icons on each section
-  - [ ] Click regenerate, type instruction, single component regenerates in ~15s with animation
+  - [ ] Single component regenerates in ~15s with animation
 - [ ] **Page modal enhancements**
-  - [ ] Gradient picker renders with direction presets and color inputs
-  - [ ] Gradient CSS classes injected in wrapper `<style>` when enabled
-  - [ ] GBP search picker is top-level (not hidden in Advanced) in both modals
-  - [ ] Dynamic slots render for selected template page, values pass to generator prompt
-  - [ ] Empty slots are skipped (no noise in prompt)
+  - [ ] Gradient picker renders with direction presets + color inputs
+  - [ ] Gradient CSS classes injected in wrapper `<style>`
+  - [ ] GBP picker is top-level in both modals
+  - [ ] Dynamic slots render per template page, pre-filled from identity
+  - [ ] Empty slots skipped (no prompt noise)
+- [ ] **Token efficiency**
+  - [ ] Homepage generation: ~32k effective tokens (75%+ reduction from baseline)
+  - [ ] Build-all (8 pages): cache stays hot across pages — cumulative savings
 - [ ] **Backward compat**
-  - [ ] Existing projects with wrappers are backfilled (`layouts_generated_at` set), no regression
-  - [ ] No regressions in page editor, page list, or template system
+  - [ ] Existing projects with wrappers are backfilled (`layouts_generated_at` set)
+  - [ ] Projects without `project_identity` return a clear "identity required" error; don't silently break
+  - [ ] No regressions in page editor, page list, template system
