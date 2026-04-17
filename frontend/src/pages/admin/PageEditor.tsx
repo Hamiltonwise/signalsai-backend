@@ -339,6 +339,16 @@ function PageEditorInner() {
   const { selectedInfo, setSelectedInfo, clearSelection, setupListeners, toggleHidden } =
     useIframeSelector(iframeRef, handleIframeQuickAction);
 
+  // Live preview mode — active when page is being generated
+  const [isLivePreview, setIsLivePreview] = useState(false);
+  const [livePreviewProgress, setLivePreviewProgress] = useState<{
+    total: number;
+    completed: number;
+    current_component: string;
+  } | null>(null);
+  const livePreviewPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevSectionCountRef = useRef(0);
+
   // Debounced auto-save ref
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatMapRef = useRef(chatMap);
@@ -446,6 +456,96 @@ function PageEditorInner() {
 
     loadPage();
   }, [projectId, pageId]);
+
+  // --- Live preview mode: detect generating status and poll for updates ---
+  useEffect(() => {
+    if (!page || !projectId || !pageId || !project) return;
+
+    const isGenerating =
+      page.generation_status === "generating" || page.generation_status === "queued";
+
+    if (!isGenerating) {
+      setIsLivePreview(false);
+      setLivePreviewProgress(null);
+      return;
+    }
+
+    setIsLivePreview(true);
+    if (page.generation_progress) {
+      setLivePreviewProgress(page.generation_progress);
+    }
+    prevSectionCountRef.current = normalizeSections(page.sections).length;
+
+    const pollLivePreview = async () => {
+      try {
+        const response = await fetchPage(projectId, pageId);
+        const updatedPage = response.data;
+        const updatedSections = normalizeSections(updatedPage.sections);
+
+        // Update sections and re-render preview
+        setSections(updatedSections);
+        const assembled = renderPage(
+          project.wrapper || "{{slot}}",
+          project.header || "",
+          project.footer || "",
+          updatedSections,
+          undefined,
+          undefined,
+          undefined,
+          projectId,
+        );
+        setHtmlContent(assembled);
+        setPage(updatedPage);
+
+        if (updatedPage.generation_progress) {
+          setLivePreviewProgress(updatedPage.generation_progress);
+        }
+
+        prevSectionCountRef.current = updatedSections.length;
+
+        // Check if generation is done
+        if (
+          updatedPage.generation_status === "ready" ||
+          updatedPage.generation_status === "failed" ||
+          updatedPage.generation_status === "cancelled"
+        ) {
+          setIsLivePreview(false);
+          setLivePreviewProgress(null);
+          // Reload full page data for edit mode
+          const [freshProject, freshPage] = await Promise.all([
+            fetchWebsiteDetail(projectId),
+            fetchPage(projectId, pageId),
+          ]);
+          setProject(freshProject.data);
+          const finalSections = normalizeSections(freshPage.data.sections);
+          setSections(finalSections);
+          setPage(freshPage.data);
+          const finalHtml = renderPage(
+            freshProject.data.wrapper || "{{slot}}",
+            freshProject.data.header || "",
+            freshProject.data.footer || "",
+            finalSections,
+            undefined,
+            undefined,
+            undefined,
+            projectId,
+          );
+          setHtmlContent(finalHtml);
+        } else {
+          livePreviewPollRef.current = setTimeout(pollLivePreview, 2000);
+        }
+      } catch (err) {
+        console.error("Live preview poll error:", err);
+        livePreviewPollRef.current = setTimeout(pollLivePreview, 2000);
+      }
+    };
+
+    livePreviewPollRef.current = setTimeout(pollLivePreview, 2000);
+
+    return () => {
+      if (livePreviewPollRef.current) clearTimeout(livePreviewPollRef.current);
+    };
+  }, [page?.generation_status, projectId, pageId]);
 
   // --- Fetch system prompt for debug tab preview ---
   useEffect(() => {
@@ -1039,13 +1139,45 @@ function PageEditorInner() {
                   onLoad={handleIframeLoad}
                   className="w-full h-full border-0 bg-white"
                 />
+
+                {/* Live preview overlay — shown while page is being generated */}
+                {isLivePreview && (
+                  <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
+                    <div className="bg-gradient-to-t from-amber-50/90 to-transparent pt-12 pb-4 px-6 pointer-events-auto">
+                      <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg border border-amber-200 px-5 py-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+                          <span className="text-sm font-semibold text-gray-900">
+                            Building page...
+                          </span>
+                          {livePreviewProgress && (
+                            <span className="text-xs text-gray-500 ml-auto">
+                              {livePreviewProgress.current_component} ({livePreviewProgress.completed}/{livePreviewProgress.total})
+                            </span>
+                          )}
+                        </div>
+                        {livePreviewProgress && livePreviewProgress.total > 0 && (
+                          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-amber-500 rounded-full transition-all duration-700 ease-out"
+                              style={{ width: `${Math.round((livePreviewProgress.completed / livePreviewProgress.total) * 100)}%` }}
+                            />
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-400">
+                          Components appear as they are generated. Editing will be available when complete.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </>
         )}
 
-        {/* Editor sidebar — shown only in visual view */}
-        {activeView === "visual" && (
+        {/* Editor sidebar — shown only in visual view, hidden during live preview */}
+        {activeView === "visual" && !isLivePreview && (
           <EditorSidebar
             selectedInfo={selectedInfo}
             chatMessages={currentChatMessages}

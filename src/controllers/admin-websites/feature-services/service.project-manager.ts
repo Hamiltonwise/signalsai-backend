@@ -440,6 +440,7 @@ export async function getPagesGenerationStatus(projectId: string): Promise<any[]
       `${PAGES_TABLE}.path`,
       `${PAGES_TABLE}.status`,
       `${PAGES_TABLE}.generation_status`,
+      `${PAGES_TABLE}.generation_progress`,
       `${PAGES_TABLE}.updated_at`,
       db.raw(`website_builder.template_pages.name as template_page_name`),
     )

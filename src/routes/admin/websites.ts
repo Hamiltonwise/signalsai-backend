@@ -270,6 +270,9 @@ router.get("/:id/pages/generation-status", controller.getPagesGenerationStatus);
 // POST /:id/create-all-from-template — Bulk create all pages from template
 router.post("/:id/create-all-from-template", controller.createAllFromTemplate);
 
+// POST /:id/cancel-generation — Cancel all in-progress page generation
+router.post("/:id/cancel-generation", controller.cancelGeneration);
+
 // PATCH /:id/link-organization — Link/unlink org
 router.patch("/:id/link-organization", controller.linkOrganization);
 

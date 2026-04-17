@@ -23,7 +23,6 @@ import * as templateManager from "./feature-services/service.template-manager";
 import * as pageEditor from "./feature-services/service.page-editor";
 import * as hfcmManager from "./feature-services/service.hfcm-manager";
 import * as websiteScraper from "./feature-services/service.website-scraper";
-import * as deploymentPipeline from "./feature-services/service.deployment-pipeline";
 import * as customDomain from "./feature-services/service.custom-domain";
 import * as postTypeManager from "./feature-services/service.post-type-manager";
 import * as postBlockManager from "./feature-services/service.post-block-manager";
@@ -35,7 +34,10 @@ import * as reviewBlockManager from "./feature-services/service.review-block-man
 import * as aiCommand from "./feature-services/service.ai-command";
 import * as redirectsService from "./feature-services/service.redirects";
 import * as artifactUpload from "./feature-services/service.artifact-upload";
+import * as generationPipeline from "./feature-services/service.generation-pipeline";
 import { db } from "../../database/connection";
+import { getWbQueue } from "../../workers/wb-queues";
+import type { ProjectScrapeJobData } from "../../workers/processors/websiteGeneration.processor";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { generatePresignedUrl } from "../../utils/core/s3";
@@ -277,35 +279,38 @@ export async function createAllFromTemplate(
       });
     }
 
-    // Fire N8N webhook per page (fire-and-forget — don't await all)
-    // Pass existingPageId so startPipeline skips pre-creating another row.
     const createdPages = createResult.pages!;
-    for (let i = 0; i < createdPages.length; i++) {
-      const createdPage = createdPages[i];
-      const pageConfig = pages[i];
-      deploymentPipeline.startPipeline({
-        projectId: id,
-        templateId,
-        templatePageId: createdPage.templatePageId,
-        path: createdPage.path,
-        placeId,
-        websiteUrl: pageConfig?.websiteUrl ?? undefined,
-        businessName,
-        formattedAddress,
-        city,
-        state,
-        phone,
-        category,
-        primaryColor,
-        accentColor,
-        practiceSearchString,
-        rating,
-        reviewCount,
-        existingPageId: createdPage.id,
-      }).catch((err: any) => {
-        console.error(`[Admin Websites] Pipeline fire failed for page ${createdPage.id}:`, err);
-      });
-    }
+
+    // Enqueue single BullMQ job for project scrape — fans out to per-page generation jobs
+    const jobData: ProjectScrapeJobData = {
+      projectId: id,
+      placeId,
+      practiceSearchString,
+      websiteUrl: pages[0]?.websiteUrl ?? undefined,
+      templateId,
+      pages: createdPages.map((cp: any) => ({
+        pageId: cp.id,
+        templatePageId: cp.templatePageId,
+        path: cp.path,
+      })),
+      primaryColor,
+      accentColor,
+      businessName,
+      formattedAddress,
+      city,
+      state,
+      phone,
+      category,
+      rating,
+      reviewCount,
+    };
+
+    const queue = getWbQueue("project-scrape");
+    await queue.add("scrape-project", jobData, {
+      removeOnComplete: { count: 50 },
+      removeOnFail: { count: 25 },
+    });
+    console.log(`[Admin Websites] Enqueued wb-project-scrape for project ${id}`);
 
     return res.status(201).json({ success: true, data: createdPages });
   } catch (error: any) {
@@ -451,32 +456,94 @@ export async function deleteProject(
   }
 }
 
-/** POST /start-pipeline — Trigger N8N webhook */
+/** POST /start-pipeline — Enqueue BullMQ generation job for a single page */
 export async function startPipeline(
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<Response> {
   try {
-    const { error } = await deploymentPipeline.startPipeline(req.body);
+    const {
+      projectId, templateId, templatePageId, path: pagePath, placeId,
+      websiteUrl, pageContext, practiceSearchString, businessName,
+      formattedAddress, city, state, phone, category, rating, reviewCount,
+      primaryColor, accentColor, scrapedData, existingPageId,
+    } = req.body;
 
-    if (error) {
-      return res.status(error.status).json({
-        success: false,
-        error: error.code,
-        message: error.message,
+    if (!projectId || !placeId) {
+      return res.status(400).json({
+        success: false, error: "INVALID_INPUT", message: "projectId and placeId are required",
       });
     }
 
-    return res.json({
-      success: true,
-      message: "Pipeline started successfully",
-    });
+    // Pre-create page row if not provided
+    let pageId = existingPageId;
+    if (!pageId) {
+      const [page] = await db("website_builder.pages")
+        .insert({
+          project_id: projectId,
+          path: pagePath || "/",
+          version: 1,
+          status: "draft",
+          generation_status: "queued",
+          template_page_id: templatePageId || null,
+        })
+        .returning("id");
+      pageId = page.id;
+
+      await db("website_builder.projects")
+        .where("id", projectId)
+        .where("status", "CREATED")
+        .update({ status: "IN_PROGRESS", updated_at: db.fn.now() });
+    }
+
+    // Check if project already has cached scrape data
+    const project = await db("website_builder.projects").where("id", projectId).first();
+    const hasCachedScrape = project?.step_gbp_scrape != null;
+
+    if (hasCachedScrape) {
+      // Skip scrape, go straight to page generation
+      const pageQueue = getWbQueue("page-generate");
+      await pageQueue.add("generate-page", {
+        pageId, projectId, primaryColor, accentColor, pageContext,
+        businessName, formattedAddress, city, state, phone, category, rating, reviewCount,
+      }, { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } });
+      console.log(`[Admin Websites] Enqueued wb-page-generate for page ${pageId} (cached scrape)`);
+    } else {
+      // Need to scrape first
+      const scrapeQueue = getWbQueue("project-scrape");
+      await scrapeQueue.add("scrape-project", {
+        projectId, placeId, practiceSearchString, websiteUrl, scrapedData, templateId,
+        pages: [{ pageId, templatePageId, path: pagePath || "/" }],
+        primaryColor, accentColor, pageContext, businessName,
+        formattedAddress, city, state, phone, category, rating, reviewCount,
+      } satisfies ProjectScrapeJobData, { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } });
+      console.log(`[Admin Websites] Enqueued wb-project-scrape for project ${projectId} (single page)`);
+    }
+
+    return res.json({ success: true, pageId, message: "Pipeline started successfully" });
   } catch (error: any) {
     console.error("[Admin Websites] Error starting pipeline:", error);
     return res.status(500).json({
+      success: false, error: "PIPELINE_ERROR", message: error?.message || "Failed to start pipeline",
+    });
+  }
+}
+
+/** POST /:id/cancel-generation — Cancel all in-progress page generation */
+export async function cancelGeneration(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const result = await generationPipeline.cancelProjectGeneration(id);
+    return res.json({ success: true, cancelledPages: result.cancelledPages });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error cancelling generation:", error);
+    return res.status(500).json({
       success: false,
-      error: "PIPELINE_ERROR",
-      message: error?.message || "Failed to start pipeline",
+      error: "CANCEL_ERROR",
+      message: error?.message || "Failed to cancel generation",
     });
   }
 }

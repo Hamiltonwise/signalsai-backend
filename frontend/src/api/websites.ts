@@ -61,6 +61,7 @@ export interface WebsitePage {
   version: number;
   status: string;
   generation_status?: PageGenerationStatus | null;
+  generation_progress?: GenerationProgress | null;
   page_type?: "sections" | "artifact";
   artifact_s3_prefix?: string | null;
   sections: Section[];
@@ -300,13 +301,20 @@ export const pollWebsiteStatus = async (
 // PAGE GENERATION STATUS
 // =====================================================================
 
-export type PageGenerationStatus = 'queued' | 'generating' | 'ready' | 'failed';
+export type PageGenerationStatus = 'queued' | 'generating' | 'ready' | 'failed' | 'cancelled';
+
+export interface GenerationProgress {
+  total: number;
+  completed: number;
+  current_component: string;
+}
 
 export interface PageGenerationStatusItem {
   id: string;
   path: string;
   status: string;
   generation_status: PageGenerationStatus;
+  generation_progress: GenerationProgress | null;
   template_page_name: string | null;
   updated_at: string;
 }
@@ -320,6 +328,22 @@ export const fetchPagesGenerationStatus = async (
   const response = await fetch(`${API_BASE}/${projectId}/pages/generation-status`);
   if (!response.ok) {
     throw new Error(`Failed to fetch page generation status: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+/**
+ * Cancel all in-progress page generation for a project
+ */
+export const cancelGeneration = async (
+  projectId: string,
+): Promise<{ success: boolean; cancelledPages: number }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/cancel-generation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to cancel generation: ${response.statusText}`);
   }
   return response.json();
 };

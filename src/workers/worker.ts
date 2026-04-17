@@ -17,6 +17,10 @@ import { processSchedulerTick } from "./processors/scheduler.processor";
 import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
 import { processAuditLeadgen } from "./processors/auditLeadgen.processor";
+import {
+  processProjectScrape,
+  processPageGenerate,
+} from "./processors/websiteGeneration.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -220,6 +224,38 @@ const wbRestoreWorker = new Worker(
   }
 );
 
+// Website Builder — Project Scrape worker (Apify + website scrape + image analysis)
+const wbProjectScrapeWorker = new Worker(
+  "wb-project-scrape",
+  async (job) => {
+    await processProjectScrape(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000, // 10 min — Apify polling can be slow
+    prefix: '{wb}',
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 25 },
+  }
+);
+
+// Website Builder — Page Generate worker (component-by-component HTML generation)
+const wbPageGenerateWorker = new Worker(
+  "wb-page-generate",
+  async (job) => {
+    await processPageGenerate(job);
+  },
+  {
+    connection,
+    concurrency: 2,
+    lockDuration: 300000, // 5 min per page
+    prefix: '{wb}',
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 25 },
+  }
+);
+
 // Audit Leadgen worker — long-running (3–5 min); higher lock duration.
 const auditLeadgenWorker = new Worker(
   "audit-leadgen",
@@ -237,7 +273,7 @@ const auditLeadgenWorker = new Worker(
 );
 
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, auditLeadgenWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbProjectScrapeWorker, wbPageGenerateWorker, auditLeadgenWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -264,6 +300,8 @@ async function shutdown(): Promise<void> {
   await schedulerWorker.close();
   await wbBackupWorker.close();
   await wbRestoreWorker.close();
+  await wbProjectScrapeWorker.close();
+  await wbPageGenerateWorker.close();
   await auditLeadgenWorker.close();
   await closeWbQueues();
   await connection.quit();
