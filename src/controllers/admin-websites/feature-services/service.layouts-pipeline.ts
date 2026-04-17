@@ -363,8 +363,13 @@ function buildLayoutComponentMessage(
       `gradient_enabled: ${!!br.gradient_enabled}`,
     ];
     if (br.gradient_enabled) {
+      const textColor = br.gradient_text_color || "white";
+      const textHex = textColor === "dark" ? "#111827" : "#FFFFFF";
       colorLines.push(
         `gradient_from: ${br.gradient_from}, gradient_to: ${br.gradient_to}, direction: ${br.gradient_direction || "to-br"}`,
+      );
+      colorLines.push(
+        `gradient_text_color: ${textColor} (hex: ${textHex}) — use this for the color property on .bg-gradient-brand`,
       );
     }
     parts.push(`\n## BRAND COLORS (for style injection)\n${colorLines.join("\n")}`);

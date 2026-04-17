@@ -30,6 +30,8 @@ export interface ProjectIdentityBrand {
   gradient_from: string | null;
   gradient_to: string | null;
   gradient_direction: string;
+  /** Preferred text color when rendering content on top of bg-gradient-brand ("white" | "dark") */
+  gradient_text_color?: "white" | "dark" | null;
   logo_s3_url: string | null;
   logo_alt_text: string | null;
   fonts?: { heading: string; body: string };

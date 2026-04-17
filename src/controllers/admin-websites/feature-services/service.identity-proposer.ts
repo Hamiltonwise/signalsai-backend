@@ -348,6 +348,13 @@ function validateProposedValue(path: string, value: unknown): void {
       throw new Error(`Invalid archetype: ${value}`);
     }
   }
+  if (path === "brand.gradient_text_color" && value !== null) {
+    if (value !== "white" && value !== "dark") {
+      throw new Error(
+        `Invalid gradient_text_color: ${value} (must be "white" or "dark")`,
+      );
+    }
+  }
   if (
     (path === "brand.primary_color" ||
       path === "brand.accent_color" ||

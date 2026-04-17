@@ -28,6 +28,7 @@ export interface ProjectIdentity {
     gradient_from?: string | null;
     gradient_to?: string | null;
     gradient_direction?: string | null;
+    gradient_text_color?: "white" | "dark" | null;
     logo_s3_url?: string | null;
     logo_alt_text?: string | null;
   };
@@ -111,6 +112,7 @@ export function buildStableIdentityContext(identity: ProjectIdentity): string {
   };
   if (br.gradient_enabled) {
     brandLines["Gradient"] = `${br.gradient_from} to ${br.gradient_to} (${br.gradient_direction})`;
+    brandLines["Gradient text color"] = br.gradient_text_color || "white";
   }
   if (br.logo_s3_url) {
     brandLines["Logo URL"] = br.logo_s3_url;

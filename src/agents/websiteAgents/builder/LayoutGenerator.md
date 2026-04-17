@@ -53,6 +53,10 @@ Never remove them. Never rewrite them. They are resolved at render time by the e
 <style>
   .bg-gradient-brand {
     background: linear-gradient({direction_full}, {gradient_from}, {gradient_to}) !important;
+    color: {gradient_text_color_hex};
+  }
+  .bg-gradient-brand * {
+    color: inherit;
   }
   .text-gradient-brand {
     background: linear-gradient({direction_full}, {gradient_from}, {gradient_to});
@@ -61,7 +65,11 @@ Never remove them. Never rewrite them. They are resolved at render time by the e
   }
 </style>
 ```
-Where `{direction_full}` is "to right" for "to-r", "to bottom right" for "to-br", "to bottom" for "to-b", "to top right" for "to-tr".
+Where:
+- `{direction_full}` is "to right" for "to-r", "to bottom right" for "to-br", "to bottom" for "to-b", "to top right" for "to-tr".
+- `{gradient_text_color_hex}` is `#FFFFFF` when `gradient_text_color: "white"` and `#111827` when `gradient_text_color: "dark"`. If not provided, default to `#FFFFFF`.
+
+The `.bg-gradient-brand *` rule forces descendants to inherit the chosen text color, so headings, body copy, and button labels inside gradient sections automatically render with proper contrast.
 
 4. Keep fonts, meta tags, analytics scripts, Tailwind CDN link from the template exactly as-is.
 

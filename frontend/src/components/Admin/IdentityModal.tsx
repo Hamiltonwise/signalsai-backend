@@ -1131,6 +1131,7 @@ function BrandEditableSection({
     to: brand?.gradient_to || brand?.accent_color || "#F59E0B",
     direction:
       (brand?.gradient_direction as GradientValue["direction"]) || "to-br",
+    text_color: (brand?.gradient_text_color as "white" | "dark") || "white",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1146,6 +1147,7 @@ function BrandEditableSection({
       to: brand?.gradient_to || brand?.accent_color || "#F59E0B",
       direction:
         (brand?.gradient_direction as GradientValue["direction"]) || "to-br",
+      text_color: (brand?.gradient_text_color as "white" | "dark") || "white",
     });
     setError(null);
   }, [editing, brand]);
@@ -1162,6 +1164,7 @@ function BrandEditableSection({
         gradient_from: gradient.enabled ? gradient.from : null,
         gradient_to: gradient.enabled ? gradient.to : null,
         gradient_direction: gradient.direction,
+        gradient_text_color: gradient.enabled ? gradient.text_color : null,
       });
       setEditing(false);
     } catch (err: any) {

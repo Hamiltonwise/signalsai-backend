@@ -2,26 +2,30 @@ import { ArrowRight, ArrowDownRight, ArrowDown, ArrowUpRight } from "lucide-reac
 import ColorPicker from "./ColorPicker";
 
 export type GradientDirection = "to-r" | "to-br" | "to-b" | "to-tr";
+export type GradientTextColor = "white" | "dark";
 
 export interface GradientValue {
   enabled: boolean;
   from: string;
   to: string;
   direction: GradientDirection;
+  /** Preferred text color when rendering content on top of this gradient. */
+  text_color: GradientTextColor;
 }
 
 interface GradientPickerProps {
   value: GradientValue;
   onChange: (value: GradientValue) => void;
-  /**
-   * When the user toggles gradient on for the first time, we default from/to
-   * to the primary/accent colors provided here.
-   */
   defaultFrom?: string;
   defaultTo?: string;
 }
 
-const DIRECTIONS: Array<{ value: GradientDirection; label: string; icon: React.ReactNode; css: string }> = [
+const DIRECTIONS: Array<{
+  value: GradientDirection;
+  label: string;
+  icon: React.ReactNode;
+  css: string;
+}> = [
   { value: "to-r", label: "Right", icon: <ArrowRight className="h-3.5 w-3.5" />, css: "to right" },
   { value: "to-br", label: "Bottom right", icon: <ArrowDownRight className="h-3.5 w-3.5" />, css: "to bottom right" },
   { value: "to-b", label: "Bottom", icon: <ArrowDown className="h-3.5 w-3.5" />, css: "to bottom" },
@@ -32,6 +36,8 @@ function cssDirection(dir: GradientDirection): string {
   const match = DIRECTIONS.find((d) => d.value === dir);
   return match?.css || "to bottom right";
 }
+
+const DARK_TEXT = "#111827"; // gray-900
 
 export default function GradientPicker({
   value,
@@ -45,10 +51,12 @@ export default function GradientPicker({
       enabled,
       from: value.from || defaultFrom || "#1E40AF",
       to: value.to || defaultTo || "#F59E0B",
+      text_color: value.text_color || "white",
     });
   };
 
   const previewCss = `linear-gradient(${cssDirection(value.direction)}, ${value.from}, ${value.to})`;
+  const textColor = value.text_color === "dark" ? DARK_TEXT : "#FFFFFF";
 
   return (
     <div className="space-y-3">
@@ -99,16 +107,88 @@ export default function GradientPicker({
             />
           </div>
 
-          {/* Live preview */}
+          {/* Text color on gradient */}
           <div>
-            <div className="text-[11px] font-medium text-gray-500 mb-1.5">Preview</div>
+            <div className="text-[11px] font-medium text-gray-500 mb-1.5">
+              Text color on gradient
+            </div>
+            <div className="flex items-center gap-1.5">
+              <TextColorButton
+                active={value.text_color === "white"}
+                label="White"
+                swatchColor="#FFFFFF"
+                onClick={() => onChange({ ...value, text_color: "white" })}
+              />
+              <TextColorButton
+                active={value.text_color === "dark"}
+                label="Dark"
+                swatchColor={DARK_TEXT}
+                onClick={() => onChange({ ...value, text_color: "dark" })}
+              />
+            </div>
+          </div>
+
+          {/* Section preview with sample text */}
+          <div>
+            <div className="text-[11px] font-medium text-gray-500 mb-1.5">Section preview</div>
             <div
-              className="h-10 w-full rounded-lg border border-gray-200"
-              style={{ background: previewCss }}
-            />
+              className="rounded-lg border border-gray-200 px-6 py-8"
+              style={{ background: previewCss, color: textColor }}
+            >
+              <div className="text-xs uppercase tracking-wider opacity-80">
+                Sample hero section
+              </div>
+              <div className="text-2xl font-bold mt-1">
+                Your smile, reimagined
+              </div>
+              <div className="text-sm opacity-90 mt-1">
+                Body copy shows how text reads against the gradient.
+              </div>
+              <button
+                type="button"
+                onClick={(e) => e.preventDefault()}
+                className="mt-3 inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold"
+                style={{
+                  borderColor: textColor,
+                  color: textColor,
+                }}
+              >
+                Book an appointment
+              </button>
+            </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function TextColorButton({
+  active,
+  label,
+  swatchColor,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  swatchColor: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition ${
+        active
+          ? "border-alloro-orange bg-alloro-orange/10 text-alloro-orange"
+          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+      }`}
+    >
+      <span
+        className="inline-block h-3 w-3 rounded-full border border-gray-300"
+        style={{ backgroundColor: swatchColor }}
+      />
+      {label}
+    </button>
   );
 }
