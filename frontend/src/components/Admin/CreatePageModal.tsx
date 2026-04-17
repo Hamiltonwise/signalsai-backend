@@ -17,11 +17,16 @@ import {
   startPipeline,
   createBlankPage,
   uploadArtifactPage,
+  fetchSlotPrefill,
 } from "../../api/websites";
 import type { TemplatePage } from "../../api/templates";
+import type { DynamicSlotDef } from "../../api/websites";
 import { searchPlaces, getPlaceDetails } from "../../api/places";
 import type { PlaceSuggestion } from "../../api/places";
 import ColorPicker from "./ColorPicker";
+import GradientPicker from "./GradientPicker";
+import type { GradientValue } from "./GradientPicker";
+import DynamicSlotInputs from "./DynamicSlotInputs";
 
 export interface CreatePageModalProps {
   projectId: string;
@@ -66,6 +71,19 @@ export default function CreatePageModal({
   // Color picker state (pre-loaded from project defaults, customizable per page)
   const [pagePrimaryColor, setPagePrimaryColor] = useState(defaultPrimaryColor);
   const [pageAccentColor, setPageAccentColor] = useState(defaultAccentColor);
+
+  // Gradient state (Plan B)
+  const [gradient, setGradient] = useState<GradientValue>({
+    enabled: false,
+    from: defaultPrimaryColor,
+    to: defaultAccentColor,
+    direction: "to-br",
+  });
+
+  // Dynamic slots for the selected template page (Plan B)
+  const [dynamicSlots, setDynamicSlots] = useState<DynamicSlotDef[]>([]);
+  const [dynamicSlotValues, setDynamicSlotValues] = useState<Record<string, string>>({});
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Override state
   const [showOverrides, setShowOverrides] = useState(false);
@@ -112,6 +130,34 @@ export default function CreatePageModal({
     };
     load();
   }, [templateId]);
+
+  // Fetch dynamic slots + pre-fill values when template page selection changes
+  useEffect(() => {
+    if (!selectedPageId || !projectId) {
+      setDynamicSlots([]);
+      setDynamicSlotValues({});
+      return;
+    }
+    const load = async () => {
+      try {
+        setLoadingSlots(true);
+        const res = await fetchSlotPrefill(projectId, { templatePageId: selectedPageId });
+        setDynamicSlots(res.data.slots || []);
+        setDynamicSlotValues(res.data.values || {});
+      } catch {
+        // If prefill fails (e.g., project has no identity yet), show empty slots
+        setDynamicSlots([]);
+        setDynamicSlotValues({});
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+    load();
+  }, [selectedPageId, projectId]);
+
+  const updateSlotValue = (key: string, value: string) => {
+    setDynamicSlotValues((prev) => ({ ...prev, [key]: value }));
+  };
 
   const validateSlug = (value: string): boolean => {
     if (!value.startsWith("/")) {
@@ -229,7 +275,9 @@ export default function CreatePageModal({
         accentColor: pageAccentColor,
         scrapedData:
           dataSource === "pasted" ? scrapedData.trim() || null : null,
-      });
+        gradient: gradient.enabled ? gradient : undefined,
+        dynamicSlotValues: Object.keys(dynamicSlotValues).length > 0 ? dynamicSlotValues : undefined,
+      } as any);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create page");
@@ -522,6 +570,37 @@ export default function CreatePageModal({
                     Pre-loaded from the project. Adjust per-page if needed.
                   </p>
                 </div>
+
+                {/* Gradient (Plan B) */}
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold text-gray-700">Gradient</label>
+                  <GradientPicker
+                    value={gradient}
+                    onChange={setGradient}
+                    defaultFrom={pagePrimaryColor}
+                    defaultTo={pageAccentColor}
+                  />
+                </div>
+
+                {/* Dynamic slots for this template page (Plan B) */}
+                {(dynamicSlots.length > 0 || loadingSlots) && (
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Page-Specific Context
+                      {loadingSlots && (
+                        <Loader2 className="inline-block ml-2 h-3 w-3 animate-spin text-gray-400" />
+                      )}
+                    </label>
+                    <p className="text-xs text-gray-500">
+                      Extra context the AI will use for this specific page. Pre-filled from your project identity — edit if needed.
+                    </p>
+                    <DynamicSlotInputs
+                      slots={dynamicSlots}
+                      values={dynamicSlotValues}
+                      onChange={updateSlotValue}
+                    />
+                  </div>
+                )}
 
                 {/* Overrides section */}
                 <div className="border border-gray-200 rounded-lg overflow-hidden">

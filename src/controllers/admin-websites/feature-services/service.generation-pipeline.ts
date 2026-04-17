@@ -11,7 +11,12 @@
  */
 
 import { db } from "../../../database/connection";
-import { runAgent } from "../../../agents/service.llm-runner";
+import {
+  runAgent,
+  runWithTools,
+  type ToolSchema,
+  type ToolCall,
+} from "../../../agents/service.llm-runner";
 import { loadPrompt } from "../../../agents/service.prompt-loader";
 import { scrapeWebsite } from "./service.website-scraper";
 import { normalizeSections } from "../feature-utils/util.section-normalizer";
@@ -20,6 +25,12 @@ import {
   processImages as processImagesShared,
   collectImageUrls as collectImageUrlsShared,
 } from "../feature-utils/util.image-processor";
+import {
+  buildStableIdentityContext,
+  buildComponentContext,
+  resolveImageUrl,
+  type ProjectIdentity,
+} from "../feature-utils/util.identity-context";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -58,6 +69,12 @@ export interface GenerateParams {
   category?: string;
   rating?: number;
   reviewCount?: number;
+  // Page Creation Enhancements (Plan B)
+  gradientEnabled?: boolean;
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientDirection?: string;
+  dynamicSlotValues?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,41 +169,62 @@ export async function scrapeAndCacheProject(
 // ---------------------------------------------------------------------------
 
 /**
- * Generate HTML for a single page, component by component.
- * Reads cached project data, calls Claude per component, writes to DB incrementally.
+ * Generate HTML for a single page, section by section.
+ *
+ * Architecture:
+ *  - Reads project_identity (not step_* columns — those are for legacy compat)
+ *  - Gates on layouts being generated (refuses if project has no wrapper yet)
+ *  - Sections only — wrapper/header/footer are owned by the Layouts pipeline
+ *  - Per-component context derivation (~1-3kb per call instead of full identity)
+ *  - Prompt caching on stable system prompt + identity context
+ *  - `select_image` tool calling (eliminates image URL hallucination)
+ *  - `report_critique` second pass per component (regenerates once if fails)
+ *
+ * On the singleComponent option — used by per-component regenerate from the editor.
  */
 export async function generatePageComponents(
   pageId: string,
   projectId: string,
-  generateParams: GenerateParams,
+  generateParams: GenerateParams & {
+    singleComponent?: string;
+    regenerateInstruction?: string;
+  },
   signal?: AbortSignal,
 ): Promise<void> {
-  // Mark page as generating
   await db(PAGES_TABLE).where("id", pageId).update({
     generation_status: "generating",
     updated_at: db.fn.now(),
   });
 
-  // Read cached project data
   const project = await db(PROJECTS_TABLE).where("id", projectId).first();
   if (!project) throw new Error(`Project ${projectId} not found`);
 
   const page = await db(PAGES_TABLE).where("id", pageId).first();
   if (!page) throw new Error(`Page ${pageId} not found`);
 
-  const gbpData = safeJsonParse(project.step_gbp_scrape);
-  const websiteData = safeJsonParse(project.step_website_scrape);
-  const imageAnalysis = safeJsonParse(project.step_image_analysis);
+  // Gate: refuse if layouts haven't been generated yet
+  const hasLayouts =
+    !!project.layouts_generated_at ||
+    (project.wrapper && project.wrapper.length > 100);
+  if (!hasLayouts) {
+    await markPageFailed(pageId, "LAYOUTS_NOT_GENERATED");
+    throw new Error("LAYOUTS_NOT_GENERATED");
+  }
 
-  // Resolve template data
-  const templateId = project.template_id;
-  const templatePageId = page.template_page_id;
+  // Prefer project_identity; fall back to step_* if a project wasn't backfilled
+  const identity = (safeJsonParse(project.project_identity) ||
+    buildLegacyIdentityShim(project)) as ProjectIdentity;
 
-  const template = templateId
-    ? await db(TEMPLATES_TABLE).where("id", templateId).first()
+  if (!identity?.business) {
+    await markPageFailed(pageId, "IDENTITY_NOT_READY");
+    throw new Error("IDENTITY_NOT_READY");
+  }
+
+  const template = project.template_id
+    ? await db(TEMPLATES_TABLE).where("id", project.template_id).first()
     : null;
-  const templatePage = templatePageId
-    ? await db(TEMPLATE_PAGES_TABLE).where("id", templatePageId).first()
+  const templatePage = page.template_page_id
+    ? await db(TEMPLATE_PAGES_TABLE).where("id", page.template_page_id).first()
     : null;
 
   if (!template) {
@@ -194,47 +232,44 @@ export async function generatePageComponents(
     return;
   }
 
-  // --- Step 1: Distill data with Claude ---
-  log("Distilling data", { pageId });
-  checkCancel(signal);
-
-  let distilledData: any = {};
-  try {
-    const dataAnalysisPrompt = loadPrompt("websiteAgents/builder/DataAnalysis");
-    const userMsg = buildDataAnalysisMessage(gbpData, websiteData);
-    const result = await runAgent({
-      systemPrompt: dataAnalysisPrompt,
-      userMessage: userMsg,
-      prefill: "{",
-      maxTokens: 8192,
-    });
-    distilledData = result.parsed || {};
-  } catch (err: any) {
-    log("Data distillation failed, using raw data", { error: err.message });
-  }
-
-  checkCancel(signal);
-
-  // --- Step 2: Build component list ---
-  const components = buildComponentList(template, templatePage);
+  const allComponents = buildComponentList(templatePage);
+  const components = generateParams.singleComponent
+    ? allComponents.filter((c) => c.name === generateParams.singleComponent)
+    : allComponents;
   const totalComponents = components.length;
+
+  if (totalComponents === 0) {
+    log("No components to generate", { pageId, single: generateParams.singleComponent });
+    await db(PAGES_TABLE).where("id", pageId).update({
+      generation_status: "ready",
+      generation_progress: null,
+      updated_at: db.fn.now(),
+    });
+    return;
+  }
 
   log("Generating components", { pageId, total: totalComponents });
 
-  // Initialize progress
-  await db(PAGES_TABLE).where("id", pageId).update({
-    generation_progress: JSON.stringify({
-      total: totalComponents,
-      completed: 0,
-      current_component: components[0]?.name || "unknown",
-    }),
-    updated_at: db.fn.now(),
-  });
+  await db(PAGES_TABLE)
+    .where("id", pageId)
+    .update({
+      generation_progress: JSON.stringify({
+        total: totalComponents,
+        completed: 0,
+        current_component: components[0]?.name || "unknown",
+      }),
+      updated_at: db.fn.now(),
+    });
 
-  // --- Step 3: Generate each component ---
   const generatorPrompt = loadPrompt("websiteAgents/builder/ComponentGenerator");
-  const isHomepage = page.path === "/";
-  const generatedSections: Array<{ name: string; content: string }> = [];
+  const criticPrompt = loadPrompt("websiteAgents/builder/ComponentCritic");
+  const stableContext = buildStableIdentityContext(identity);
+
+  // Keep existing sections for regenerate-single case
+  const existingSections = normalizeSections(page.sections);
+  const generatedSections: Array<{ name: string; content: string }> = generateParams.singleComponent
+    ? existingSections.map((s: any) => ({ name: s.name, content: s.content }))
+    : [];
 
   for (let i = 0; i < components.length; i++) {
     checkCancel(signal);
@@ -242,53 +277,70 @@ export async function generatePageComponents(
     const component = components[i];
     log(`Generating: ${component.name} (${i + 1}/${totalComponents})`, { pageId });
 
-    // Update progress: current component
-    await db(PAGES_TABLE).where("id", pageId).update({
-      generation_progress: JSON.stringify({
-        total: totalComponents,
-        completed: i,
-        current_component: component.name,
-      }),
-      updated_at: db.fn.now(),
-    });
+    await db(PAGES_TABLE)
+      .where("id", pageId)
+      .update({
+        generation_progress: JSON.stringify({
+          total: totalComponents,
+          completed: i,
+          current_component: component.name,
+        }),
+        updated_at: db.fn.now(),
+      });
 
-    const userMsg = buildComponentMessage(
+    const ctx = buildComponentContext(
+      identity,
       component,
-      distilledData,
-      imageAnalysis,
-      generateParams,
+      generateParams.dynamicSlotValues,
+      generateParams.pageContext,
     );
+
+    // Optional regenerate instruction for per-component regen
+    const userMessageWithInstruction = generateParams.regenerateInstruction
+      ? `${ctx.variableUserMessage}\n\n## ADMIN INSTRUCTION FOR REGENERATION\n${generateParams.regenerateInstruction}`
+      : ctx.variableUserMessage;
 
     let html: string | null = null;
     try {
-      const result = await runAgent({
-        systemPrompt: generatorPrompt,
-        userMessage: userMsg,
-        prefill: "{",
-        maxTokens: 16384,
-      });
-
-      const parsed = result.parsed;
-      if (parsed && (parsed.html || parsed.content)) {
-        html = parsed.html || parsed.content;
-      } else {
-        // Fallback: use raw output if it looks like HTML
-        html = result.raw.trim().startsWith("<") ? result.raw : null;
-      }
+      html = await generateSingleComponent(
+        identity,
+        generatorPrompt,
+        stableContext,
+        userMessageWithInstruction,
+        signal,
+      );
     } catch (err: any) {
       log(`Component generation failed: ${component.name}`, { error: err.message });
-      // Try once more
-      try {
-        const retry = await runAgent({
-          systemPrompt: generatorPrompt,
-          userMessage: userMsg + "\n\nIMPORTANT: Your previous attempt failed. Return valid JSON only.",
-          prefill: "{",
-          maxTokens: 16384,
+    }
+
+    // Critique pass
+    if (html) {
+      const critique = await runCritique(
+        identity,
+        criticPrompt,
+        component.name,
+        html,
+      ).catch(() => null);
+
+      if (critique && !critique.pass) {
+        log(`Critique failed for ${component.name}, regenerating once`, {
+          issues: critique.issues,
         });
-        const parsed = retry.parsed;
-        html = parsed?.html || parsed?.content || null;
-      } catch {
-        log(`Component retry also failed: ${component.name}`);
+        try {
+          const retryMessage = `${userMessageWithInstruction}\n\n## PREVIOUS ATTEMPT HAD ISSUES\n${critique.issues.join("\n- ")}\n\nRegenerate addressing each issue.`;
+          const retryHtml = await generateSingleComponent(
+            identity,
+            generatorPrompt,
+            stableContext,
+            retryMessage,
+            signal,
+          );
+          if (retryHtml) html = retryHtml;
+        } catch (err: any) {
+          log(`Regenerate after critique failed: ${component.name}`, {
+            error: err.message,
+          });
+        }
       }
     }
 
@@ -297,37 +349,32 @@ export async function generatePageComponents(
       continue;
     }
 
-    // Write component to DB
-    if (component.type === "wrapper" || component.type === "header" || component.type === "footer") {
-      // Project-level layouts (only for homepage)
-      if (isHomepage) {
-        await db(PROJECTS_TABLE).where("id", projectId).update({
-          [component.type]: html,
-          updated_at: db.fn.now(),
-        });
+    // Merge into sections (replace by name if singleComponent, else append)
+    if (generateParams.singleComponent) {
+      const idx = generatedSections.findIndex((s) => s.name === component.name);
+      if (idx >= 0) {
+        generatedSections[idx] = { name: component.name, content: html };
+      } else {
+        generatedSections.push({ name: component.name, content: html });
       }
     } else {
-      // Section — append to sections array
       generatedSections.push({ name: component.name, content: html });
-      await db(PAGES_TABLE).where("id", pageId).update({
-        sections: JSON.stringify({ sections: generatedSections }),
-        updated_at: db.fn.now(),
-      });
     }
 
-    // Update progress: completed count
-    await db(PAGES_TABLE).where("id", pageId).update({
-      generation_progress: JSON.stringify({
-        total: totalComponents,
-        completed: i + 1,
-        current_component:
-          i + 1 < totalComponents ? components[i + 1].name : "done",
-      }),
-      updated_at: db.fn.now(),
-    });
+    await db(PAGES_TABLE)
+      .where("id", pageId)
+      .update({
+        sections: JSON.stringify({ sections: generatedSections }),
+        generation_progress: JSON.stringify({
+          total: totalComponents,
+          completed: i + 1,
+          current_component:
+            i + 1 < totalComponents ? components[i + 1].name : "done",
+        }),
+        updated_at: db.fn.now(),
+      });
   }
 
-  // --- Step 4: Mark complete ---
   await db(PAGES_TABLE).where("id", pageId).update({
     generation_status: "ready",
     generation_progress: null,
@@ -335,6 +382,7 @@ export async function generatePageComponents(
     updated_at: db.fn.now(),
   });
 
+  const isHomepage = page.path === "/";
   if (isHomepage) {
     await db(PROJECTS_TABLE).where("id", projectId).update({
       status: "LIVE",
@@ -343,6 +391,267 @@ export async function generatePageComponents(
   }
 
   log("Page generation complete", { pageId });
+}
+
+// ---------------------------------------------------------------------------
+// COMPONENT GENERATION (single call with select_image tool loop)
+// ---------------------------------------------------------------------------
+
+const SELECT_IMAGE_TOOL: ToolSchema = {
+  name: "select_image",
+  description:
+    "Retrieve the actual S3 URL for an image by its manifest id (e.g., 'img-0'). Call this when you need an image for the section you're generating. Returns the hosted URL and description.",
+  input_schema: {
+    type: "object",
+    properties: {
+      image_id: {
+        type: "string",
+        description: "The manifest id of the image (e.g., 'img-0') from the Available Images list",
+      },
+    },
+    required: ["image_id"],
+  },
+};
+
+async function generateSingleComponent(
+  identity: ProjectIdentity,
+  generatorPrompt: string,
+  stableContext: string,
+  userMessage: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  // Use runWithTools so Claude can call select_image. Loop up to 3 times
+  // for tool calls, then extract final HTML.
+  const messages: any[] = [{ role: "user", content: userMessage }];
+  let toolIterations = 0;
+  const maxIterations = 3;
+
+  while (toolIterations < maxIterations) {
+    checkCancel(signal);
+
+    const result = await runWithTools({
+      systemPrompt: generatorPrompt,
+      userMessage,
+      messages,
+      tools: [SELECT_IMAGE_TOOL],
+      toolChoice: "auto",
+      maxTokens: 16384,
+      cachedSystemBlocks: [stableContext],
+    });
+
+    if (result.toolCalls.length === 0) {
+      // Claude finished — extract HTML from final text response
+      return extractHtmlFromResponse(result.textResponse);
+    }
+
+    // Append assistant message and tool results to continue the conversation
+    messages.push({ role: "assistant", content: result.assistantContent });
+    const toolResultBlocks = result.toolCalls.map((call: ToolCall) => {
+      if (call.name !== "select_image") {
+        return {
+          type: "tool_result",
+          tool_use_id: call.id,
+          content: JSON.stringify({ error: `Unknown tool: ${call.name}` }),
+          is_error: true,
+        };
+      }
+      const imageId = String(call.input.image_id || "");
+      const resolved = resolveImageUrl(identity, imageId);
+      if (!resolved) {
+        return {
+          type: "tool_result",
+          tool_use_id: call.id,
+          content: JSON.stringify({ error: `Image id not found: ${imageId}` }),
+          is_error: true,
+        };
+      }
+      return {
+        type: "tool_result",
+        tool_use_id: call.id,
+        content: JSON.stringify({
+          image_url: resolved.s3_url,
+          description: resolved.description,
+        }),
+      };
+    });
+    messages.push({ role: "user", content: toolResultBlocks });
+
+    toolIterations++;
+  }
+
+  // Max iterations reached — force a final call without tools
+  log("select_image loop exhausted, finalizing without tools", {});
+  messages.push({
+    role: "user",
+    content:
+      "You've used the maximum image lookups. Now return the final component HTML as a JSON object with `{name, html}`. Do not call any more tools.",
+  });
+  try {
+    const finalResult = await runWithTools({
+      systemPrompt: generatorPrompt,
+      userMessage,
+      messages,
+      tools: [],
+      toolChoice: "auto",
+      maxTokens: 16384,
+      cachedSystemBlocks: [stableContext],
+    });
+    return extractHtmlFromResponse(finalResult.textResponse);
+  } catch {
+    return null;
+  }
+}
+
+function extractHtmlFromResponse(textResponse: string | null): string | null {
+  if (!textResponse) return null;
+  const trimmed = textResponse.trim();
+
+  // Try JSON first
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed.html) return String(parsed.html);
+    if (parsed.content) return String(parsed.content);
+  } catch {
+    // Try to extract JSON from markdown fences or prose
+    const jsonMatch = trimmed.match(/\{[\s\S]*"html"[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.html) return String(parsed.html);
+      } catch {
+        /* fall through */
+      }
+    }
+  }
+
+  // Fallback: raw HTML
+  if (trimmed.startsWith("<") && trimmed.includes("</")) return trimmed;
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// CRITIQUE PASS
+// ---------------------------------------------------------------------------
+
+const REPORT_CRITIQUE_TOOL: ToolSchema = {
+  name: "report_critique",
+  description:
+    "Report the result of reviewing a generated HTML section. Must be called exactly once.",
+  input_schema: {
+    type: "object",
+    properties: {
+      pass: {
+        type: "boolean",
+        description:
+          "true if the section is production-ready; false if it needs regeneration.",
+      },
+      issues: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "List of specific problems found. Empty array if pass=true.",
+      },
+      suggested_improvements: {
+        type: "string",
+        description:
+          "Brief guidance for the regeneration (empty string if pass=true).",
+      },
+    },
+    required: ["pass", "issues", "suggested_improvements"],
+  },
+};
+
+async function runCritique(
+  identity: ProjectIdentity,
+  criticPrompt: string,
+  componentName: string,
+  html: string,
+): Promise<{ pass: boolean; issues: string[]; suggested_improvements: string } | null> {
+  const archetype = identity.voice_and_tone?.archetype || "family-friendly";
+  const tone = identity.voice_and_tone?.tone_descriptor || "professional";
+  const businessName = identity.business?.name || "the practice";
+
+  const stableContext = [
+    `## PRACTICE CONTEXT`,
+    `Business: ${businessName}`,
+    `Archetype: ${archetype}`,
+    `Tone: ${tone}`,
+  ].join("\n");
+
+  const userMessage = `## COMPONENT: ${componentName}\n\n## GENERATED HTML\n\`\`\`html\n${html}\n\`\`\`\n\nReview this HTML and call the report_critique tool with your findings.`;
+
+  try {
+    const result = await runWithTools({
+      systemPrompt: criticPrompt,
+      userMessage,
+      tools: [REPORT_CRITIQUE_TOOL],
+      toolChoice: { type: "tool", name: "report_critique" },
+      maxTokens: 1024,
+      cachedSystemBlocks: [stableContext],
+    });
+    const call = result.toolCalls.find((c) => c.name === "report_critique");
+    if (!call) return null;
+    return {
+      pass: !!call.input.pass,
+      issues: Array.isArray(call.input.issues)
+        ? (call.input.issues as string[])
+        : [],
+      suggested_improvements: String(call.input.suggested_improvements || ""),
+    };
+  } catch (err: any) {
+    log("Critique call failed", { error: err.message });
+    return null;
+  }
+}
+
+// Legacy shim: used only if project_identity is null (shouldn't happen post-backfill)
+function buildLegacyIdentityShim(project: any): ProjectIdentity {
+  const gbp = safeJsonParse(project.step_gbp_scrape) || {};
+  return {
+    version: 0,
+    business: {
+      name: gbp.title || gbp.name || null,
+      category: gbp.categoryName || gbp.category || null,
+      phone: gbp.phone || null,
+      address: gbp.address || null,
+      city: gbp.city || null,
+      state: gbp.state || null,
+      zip: gbp.postalCode || null,
+      rating: gbp.totalScore || gbp.rating || null,
+      review_count: gbp.reviewsCount || gbp.reviewCount || null,
+      website_url: gbp.website || null,
+      place_id: project.selected_place_id || null,
+    },
+    brand: {
+      primary_color: project.primary_color || null,
+      accent_color: project.accent_color || null,
+      gradient_enabled: !!project.gradient_enabled,
+      gradient_from: project.gradient_from || null,
+      gradient_to: project.gradient_to || null,
+      gradient_direction: project.gradient_direction || "to-br",
+      logo_s3_url: null,
+      logo_alt_text: gbp.title || gbp.name || null,
+    },
+    voice_and_tone: {
+      archetype: null,
+      tone_descriptor: null,
+      voice_samples: [],
+    },
+    content_essentials: {
+      unique_value_proposition: null,
+      founding_story: null,
+      core_values: [],
+      certifications: [],
+      service_areas: [],
+      social_links: {},
+      review_themes: [],
+      featured_testimonials: [],
+    },
+    extracted_assets: {
+      images: [],
+      discovered_pages: [],
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -438,110 +747,19 @@ function safeJsonParse(value: unknown): any {
 
 interface ComponentDef {
   name: string;
-  type: "wrapper" | "header" | "footer" | "section";
+  type: "section";
   templateMarkup: string;
 }
 
-function buildComponentList(
-  template: any,
-  templatePage: any,
-): ComponentDef[] {
-  const components: ComponentDef[] = [];
-
-  if (template.wrapper) {
-    components.push({ name: "wrapper", type: "wrapper", templateMarkup: template.wrapper });
-  }
-  if (template.header) {
-    components.push({ name: "header", type: "header", templateMarkup: template.header });
-  }
-
+/**
+ * Page pipeline only generates sections. Wrapper/header/footer are owned by
+ * the Layouts pipeline (service.layouts-pipeline.ts).
+ */
+function buildComponentList(templatePage: any): ComponentDef[] {
   const sections = normalizeSections(templatePage?.sections);
-  for (const section of sections) {
-    components.push({
-      name: section.name || `section-${components.length}`,
-      type: "section",
-      templateMarkup: section.content || "",
-    });
-  }
-
-  if (template.footer) {
-    components.push({ name: "footer", type: "footer", templateMarkup: template.footer });
-  }
-
-  return components;
-}
-
-function buildDataAnalysisMessage(gbpData: any, websiteData: any): string {
-  const parts: string[] = [];
-
-  if (gbpData) {
-    parts.push(`## GBP Data\n\n${JSON.stringify(gbpData)}`);
-  }
-
-  if (websiteData) {
-    if (websiteData.pages && typeof websiteData.pages === "object") {
-      const textParts = Object.entries(websiteData.pages)
-        .map(([key, val]) => {
-          const cleaned = String(val)
-            .replace(/[\n\r\t]/g, " ")
-            .replace(/<script[\s\S]*?<\/script>/gi, " ")
-            .replace(/<style[\s\S]*?<\/style>/gi, " ")
-            .replace(/<[^>]+>/g, " ")
-            .replace(/&[a-zA-Z0-9#]+;/g, " ")
-            .replace(/https?:\/\/\S+/g, " ")
-            .replace(/[^a-zA-Z0-9.,!?'\-\s]/g, " ")
-            .replace(/\s+/g, " ")
-            .trim();
-          return `${key.toUpperCase()}:\n${cleaned}`;
-        })
-        .join("\n\n");
-      parts.push(`## Website Content\n\n${textParts}`);
-    } else if (websiteData.content) {
-      parts.push(`## Website Content\n\n${websiteData.content}`);
-    }
-  }
-
-  if (parts.length === 0) {
-    parts.push("No data available. Generate reasonable defaults for a professional business website.");
-  }
-
-  return parts.join("\n\n");
-}
-
-function buildComponentMessage(
-  component: ComponentDef,
-  distilledData: any,
-  imageAnalysis: any,
-  params: GenerateParams,
-): string {
-  const parts: string[] = [];
-
-  parts.push(`## Template Component\nName: ${component.name}\nType: ${component.type}\n\nMarkup:\n${component.templateMarkup}`);
-
-  if (params.primaryColor) {
-    parts.push(`## Colors\nPrimary Color: ${params.primaryColor}\nAccent Color: ${params.accentColor || ""}`);
-  }
-
-  if (distilledData && Object.keys(distilledData).length > 0) {
-    parts.push(`## Business Data\n${JSON.stringify(distilledData)}`);
-  }
-
-  if (imageAnalysis?.images && Array.isArray(imageAnalysis.images) && imageAnalysis.images.length > 0) {
-    parts.push(`## Available Images\n${JSON.stringify(imageAnalysis.images)}`);
-  }
-
-  if (params.pageContext) {
-    parts.push(`## Additional Context\n${params.pageContext}`);
-  }
-
-  if (params.businessName) {
-    const meta: string[] = [];
-    if (params.businessName) meta.push(`Business: ${params.businessName}`);
-    if (params.formattedAddress) meta.push(`Address: ${params.formattedAddress}`);
-    if (params.phone) meta.push(`Phone: ${params.phone}`);
-    if (params.category) meta.push(`Category: ${params.category}`);
-    parts.push(`## Business Metadata\n${meta.join("\n")}`);
-  }
-
-  return parts.join("\n\n");
+  return sections.map((section: any, idx: number) => ({
+    name: section.name || `section-${idx}`,
+    type: "section" as const,
+    templateMarkup: section.content || "",
+  }));
 }

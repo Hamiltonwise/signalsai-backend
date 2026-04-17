@@ -335,7 +335,65 @@ export interface StartPipelineRequest {
   primaryColor?: string;
   accentColor?: string;
   scrapedData?: string | null;
+  gradient?: GradientInput;
+  dynamicSlotValues?: Record<string, string>;
 }
+
+/** Regenerate a single component on a page. */
+export const regenerateComponent = async (
+  projectId: string,
+  pageId: string,
+  componentName: string,
+  instruction?: string,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/pages/${pageId}/regenerate-component`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ componentName, instruction }),
+    },
+  );
+  if (!response.ok) throw new Error(`Failed to regenerate: ${response.statusText}`);
+  return response.json();
+};
+
+// =====================================================================
+// LAYOUTS PIPELINE
+// =====================================================================
+
+export interface LayoutsStatus {
+  status: "queued" | "generating" | "ready" | "failed" | "cancelled" | null;
+  progress: { total: number; completed: number; current_component: string } | null;
+  generated_at: string | null;
+  slot_values: Record<string, string>;
+  wrapper: string;
+  header: string;
+  footer: string;
+}
+
+/** Enqueue the Layouts generation job. */
+export const startLayoutGeneration = async (
+  projectId: string,
+  slotValues: Record<string, string>,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/generate-layouts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slotValues }),
+  });
+  if (!response.ok) throw new Error(`Failed to start layouts: ${response.statusText}`);
+  return response.json();
+};
+
+/** Poll layouts generation status. */
+export const fetchLayoutsStatus = async (
+  projectId: string,
+): Promise<{ success: boolean; data: LayoutsStatus }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/layouts-status`);
+  if (!response.ok) throw new Error(`Failed to fetch layouts status: ${response.statusText}`);
+  return response.json();
+};
 
 /**
  * Trigger the N8N pipeline to generate a website page
@@ -533,6 +591,21 @@ export const chatUpdateIdentity = async (
 // CREATE ALL FROM TEMPLATE
 // =====================================================================
 
+export interface GradientInput {
+  enabled: boolean;
+  from?: string;
+  to?: string;
+  direction?: "to-r" | "to-br" | "to-b" | "to-tr" | string;
+}
+
+export interface DynamicSlotDef {
+  key: string;
+  label: string;
+  type: "text" | "url";
+  description?: string;
+  placeholder?: string;
+}
+
 export interface CreateAllFromTemplateRequest {
   templateId: string;
   placeId: string;
@@ -552,10 +625,40 @@ export interface CreateAllFromTemplateRequest {
   practiceSearchString?: string;
   rating?: number;
   reviewCount?: number;
+  gradient?: GradientInput;
+  dynamicSlotValues?: Record<string, string>;
 }
 
+/** Fetch the dynamic_slots JSONB for a template page */
+export const fetchTemplatePageSlots = async (
+  templateId: string,
+  pageId: string,
+): Promise<{ success: boolean; data: DynamicSlotDef[] }> => {
+  const response = await fetch(
+    `${API_BASE}/templates/${templateId}/pages/${pageId}/slots`,
+  );
+  if (!response.ok) throw new Error(`Failed to fetch slots: ${response.statusText}`);
+  return response.json();
+};
+
+/** Fetch pre-filled slot values for a specific template page (derived from project_identity) */
+export const fetchSlotPrefill = async (
+  projectId: string,
+  opts: { templatePageId?: string; layout?: boolean },
+): Promise<{
+  success: boolean;
+  data: { slots: DynamicSlotDef[]; values: Record<string, string> };
+}> => {
+  const qs = opts.layout
+    ? "?layout=true"
+    : `?templatePageId=${encodeURIComponent(opts.templatePageId || "")}`;
+  const response = await fetch(`${API_BASE}/${projectId}/slot-prefill${qs}`);
+  if (!response.ok) throw new Error(`Failed to fetch slot prefill: ${response.statusText}`);
+  return response.json();
+};
+
 /**
- * Create all pages from a template and kick off N8N pipeline per page
+ * Create all pages from a template and kick off the generation pipeline per page
  */
 export const createAllFromTemplate = async (
   projectId: string,

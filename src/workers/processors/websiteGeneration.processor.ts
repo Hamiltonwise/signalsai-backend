@@ -54,6 +54,12 @@ export interface ProjectScrapeJobData {
   category?: string;
   rating?: number;
   reviewCount?: number;
+  // Page Creation Enhancements (Plan B)
+  gradientEnabled?: boolean;
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientDirection?: string;
+  dynamicSlotValues?: Record<string, string>;
 }
 
 export interface PageGenerateJobData {
@@ -70,6 +76,15 @@ export interface PageGenerateJobData {
   category?: string;
   rating?: number;
   reviewCount?: number;
+  // Page Creation Enhancements (Plan B)
+  gradientEnabled?: boolean;
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientDirection?: string;
+  dynamicSlotValues?: Record<string, string>;
+  /** Per-component regenerate (Plan B T14) */
+  singleComponent?: string;
+  regenerateInstruction?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +141,11 @@ export async function processProjectScrape(
       category: rest.category,
       rating: rest.rating,
       reviewCount: rest.reviewCount,
+      gradientEnabled: rest.gradientEnabled,
+      gradientFrom: rest.gradientFrom,
+      gradientTo: rest.gradientTo,
+      gradientDirection: rest.gradientDirection,
+      dynamicSlotValues: rest.dynamicSlotValues,
     };
 
     for (const page of pages) {
@@ -203,7 +223,10 @@ export async function processPageGenerate(
   }, 10000); // Check every 10s
 
   try {
-    const generateParams: GenerateParams = {
+    const generateParams: GenerateParams & {
+      singleComponent?: string;
+      regenerateInstruction?: string;
+    } = {
       primaryColor: params.primaryColor,
       accentColor: params.accentColor,
       pageContext: params.pageContext,
@@ -215,6 +238,13 @@ export async function processPageGenerate(
       category: params.category,
       rating: params.rating,
       reviewCount: params.reviewCount,
+      gradientEnabled: params.gradientEnabled,
+      gradientFrom: params.gradientFrom,
+      gradientTo: params.gradientTo,
+      gradientDirection: params.gradientDirection,
+      dynamicSlotValues: params.dynamicSlotValues,
+      singleComponent: params.singleComponent,
+      regenerateInstruction: params.regenerateInstruction,
     };
 
     await generatePageComponents(

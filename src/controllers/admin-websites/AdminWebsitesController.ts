@@ -36,10 +36,12 @@ import * as redirectsService from "./feature-services/service.redirects";
 import * as artifactUpload from "./feature-services/service.artifact-upload";
 import * as generationPipeline from "./feature-services/service.generation-pipeline";
 import * as identityUpdate from "./feature-services/service.identity-update";
+import * as slotPrefill from "./feature-services/service.slot-prefill";
 import { db } from "../../database/connection";
 import { getWbQueue } from "../../workers/wb-queues";
 import type { ProjectScrapeJobData } from "../../workers/processors/websiteGeneration.processor";
 import type { IdentityWarmupJobData } from "../../workers/processors/identityWarmup.processor";
+import type { LayoutGenerateJobData } from "../../workers/processors/websiteLayouts.processor";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { generatePresignedUrl } from "../../utils/core/s3";
@@ -237,6 +239,8 @@ export async function createAllFromTemplate(
       practiceSearchString,
       rating,
       reviewCount,
+      gradient,
+      dynamicSlotValues,
     } = req.body;
 
     if (!placeId) {
@@ -305,6 +309,11 @@ export async function createAllFromTemplate(
       category,
       rating,
       reviewCount,
+      gradientEnabled: gradient?.enabled,
+      gradientFrom: gradient?.from,
+      gradientTo: gradient?.to,
+      gradientDirection: gradient?.direction,
+      dynamicSlotValues,
     };
 
     const queue = getWbQueue("project-scrape");
@@ -469,6 +478,7 @@ export async function startPipeline(
       websiteUrl, pageContext, practiceSearchString, businessName,
       formattedAddress, city, state, phone, category, rating, reviewCount,
       primaryColor, accentColor, scrapedData, existingPageId,
+      gradient, dynamicSlotValues,
     } = req.body;
 
     if (!projectId || !placeId) {
@@ -502,12 +512,21 @@ export async function startPipeline(
     const project = await db("website_builder.projects").where("id", projectId).first();
     const hasCachedScrape = project?.step_gbp_scrape != null;
 
+    const gradientParams = {
+      gradientEnabled: gradient?.enabled,
+      gradientFrom: gradient?.from,
+      gradientTo: gradient?.to,
+      gradientDirection: gradient?.direction,
+    };
+
     if (hasCachedScrape) {
       // Skip scrape, go straight to page generation
       const pageQueue = getWbQueue("page-generate");
       await pageQueue.add("generate-page", {
         pageId, projectId, primaryColor, accentColor, pageContext,
         businessName, formattedAddress, city, state, phone, category, rating, reviewCount,
+        ...gradientParams,
+        dynamicSlotValues,
       }, { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } });
       console.log(`[Admin Websites] Enqueued wb-page-generate for page ${pageId} (cached scrape)`);
     } else {
@@ -518,6 +537,8 @@ export async function startPipeline(
         pages: [{ pageId, templatePageId, path: pagePath || "/" }],
         primaryColor, accentColor, pageContext, businessName,
         formattedAddress, city, state, phone, category, rating, reviewCount,
+        ...gradientParams,
+        dynamicSlotValues,
       } satisfies ProjectScrapeJobData, { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } });
       console.log(`[Admin Websites] Enqueued wb-project-scrape for project ${projectId} (single page)`);
     }
@@ -742,6 +763,252 @@ export async function chatUpdateIdentity(
       error: "CHAT_ERROR",
       message: error?.message || "Failed to apply update",
     });
+  }
+}
+
+// =====================================================================
+// PER-COMPONENT REGENERATE
+// =====================================================================
+
+/** POST /:id/pages/:pageId/regenerate-component — Regenerate a single section */
+export async function regeneratePageComponent(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id: projectId, pageId } = req.params;
+    const { componentName, instruction } = req.body;
+
+    if (!componentName || typeof componentName !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "componentName is required",
+      });
+    }
+
+    // Reset cancel flag
+    await db("website_builder.projects").where("id", projectId).update({
+      generation_cancel_requested: false,
+      updated_at: db.fn.now(),
+    });
+
+    // Mark page as generating so polling kicks in
+    await db("website_builder.pages").where("id", pageId).update({
+      generation_status: "generating",
+      updated_at: db.fn.now(),
+    });
+
+    const pageQueue = getWbQueue("page-generate");
+    await pageQueue.add(
+      "generate-page",
+      {
+        pageId,
+        projectId,
+        singleComponent: componentName,
+        regenerateInstruction: instruction || undefined,
+      },
+      { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } },
+    );
+
+    console.log(
+      `[Admin Websites] Enqueued regenerate for component "${componentName}" (page ${pageId})`,
+    );
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error regenerating component:", error);
+    return res.status(500).json({
+      success: false,
+      error: "REGENERATE_ERROR",
+      message: error?.message || "Failed to regenerate component",
+    });
+  }
+}
+
+// =====================================================================
+// LAYOUTS PIPELINE
+// =====================================================================
+
+/** POST /:id/generate-layouts — Enqueue layouts generation job */
+export async function startLayoutGeneration(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { slotValues } = req.body;
+
+    // Reset cancel flag
+    await db("website_builder.projects").where("id", id).update({
+      generation_cancel_requested: false,
+      updated_at: db.fn.now(),
+    });
+
+    // Set status immediately so polling reflects queued state
+    await db("website_builder.projects").where("id", id).update({
+      layouts_generation_status: "queued",
+      layouts_generation_progress: null,
+      updated_at: db.fn.now(),
+    });
+
+    const jobData: LayoutGenerateJobData = {
+      projectId: id,
+      slotValues: slotValues || {},
+    };
+
+    const queue = getWbQueue("layout-generate");
+    await queue.add("generate", jobData, {
+      removeOnComplete: { count: 50 },
+      removeOnFail: { count: 25 },
+    });
+
+    console.log(`[Admin Websites] Enqueued wb-layout-generate for project ${id}`);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error starting layouts generation:", error);
+    return res.status(500).json({
+      success: false,
+      error: "LAYOUTS_ERROR",
+      message: error?.message || "Failed to start layouts generation",
+    });
+  }
+}
+
+/** GET /:id/layouts-status — Poll layout generation status */
+export async function getLayoutsStatus(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const row = await db("website_builder.projects")
+      .where("id", id)
+      .select(
+        "layouts_generation_status",
+        "layouts_generation_progress",
+        "layouts_generated_at",
+        "layout_slot_values",
+        "wrapper",
+        "header",
+        "footer",
+      )
+      .first();
+
+    if (!row) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        status: row.layouts_generation_status || null,
+        progress: parseIdentityJson(row.layouts_generation_progress),
+        generated_at: row.layouts_generated_at || null,
+        slot_values: parseIdentityJson(row.layout_slot_values) || {},
+        wrapper: row.wrapper || "",
+        header: row.header || "",
+        footer: row.footer || "",
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching layouts status:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR" });
+  }
+}
+
+/** GET /templates/:templateId/pages/:pageId/slots — Return dynamic_slots for a template page */
+export async function getTemplatePageSlots(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { pageId } = req.params;
+    const row = await db("website_builder.template_pages")
+      .where("id", pageId)
+      .select("dynamic_slots")
+      .first();
+
+    if (!row) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    let slots = row.dynamic_slots;
+    if (typeof slots === "string") {
+      try { slots = JSON.parse(slots); } catch { slots = []; }
+    }
+
+    return res.json({ success: true, data: slots || [] });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching template page slots:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR" });
+  }
+}
+
+/** PATCH /templates/:templateId/pages/:pageId/slots — Update dynamic_slots (admin tool) */
+export async function updateTemplatePageSlots(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { pageId } = req.params;
+    const { slots } = req.body;
+
+    if (!Array.isArray(slots)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "slots must be an array",
+      });
+    }
+
+    const updated = await db("website_builder.template_pages")
+      .where("id", pageId)
+      .update({
+        dynamic_slots: JSON.stringify(slots),
+        updated_at: db.fn.now(),
+      });
+
+    if (updated === 0) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    return res.json({ success: true, data: slots });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating template page slots:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR" });
+  }
+}
+
+/** GET /:id/slot-prefill — Fetch pre-filled slot values for a template page OR layout */
+export async function getSlotPrefill(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { templatePageId, layout } = req.query as {
+      templatePageId?: string;
+      layout?: string;
+    };
+
+    if (layout === "true") {
+      const result = await slotPrefill.getLayoutSlotPrefill(id);
+      return res.json({ success: true, data: result });
+    }
+
+    if (!templatePageId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "Pass ?templatePageId=X or ?layout=true",
+      });
+    }
+
+    const result = await slotPrefill.getPageSlotPrefill(id, templatePageId);
+    return res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching slot prefill:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR" });
   }
 }
 

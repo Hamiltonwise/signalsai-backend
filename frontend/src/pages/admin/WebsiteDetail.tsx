@@ -49,6 +49,11 @@ import {
   createAllFromTemplate,
   fetchPagesGenerationStatus,
   cancelGeneration,
+  fetchSlotPrefill,
+  startLayoutGeneration,
+  fetchLayoutsStatus,
+  type LayoutsStatus,
+  type DynamicSlotDef,
   startBulkSeoGenerate,
   getBulkSeoStatus,
   getActiveBulkSeoJob,
@@ -71,6 +76,7 @@ import {
 } from "../../components/ui/DesignSystem";
 import CreatePageModal from "../../components/Admin/CreatePageModal";
 import IdentityModal from "../../components/Admin/IdentityModal";
+import DynamicSlotInputs from "../../components/Admin/DynamicSlotInputs";
 import MediaTab from "../../components/Admin/MediaTab";
 import CodeManagerTab from "../../components/Admin/CodeManagerTab";
 import ColorPicker from "../../components/Admin/ColorPicker";
@@ -256,6 +262,14 @@ export default function WebsiteDetail() {
   // Create page modal state
   const [showCreatePageModal, setShowCreatePageModal] = useState(false);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
+
+  // Layouts tab state (Plan B T10)
+  const [layoutsStatus, setLayoutsStatus] = useState<LayoutsStatus | null>(null);
+  const [layoutSlots, setLayoutSlots] = useState<DynamicSlotDef[]>([]);
+  const [layoutSlotValues, setLayoutSlotValues] = useState<Record<string, string>>({});
+  const [loadingLayoutSlots, setLoadingLayoutSlots] = useState(false);
+  const [startingLayouts, setStartingLayouts] = useState(false);
+  const layoutsPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isGeneratingPage, setIsGeneratingPage] = useState(false);
 
   // Bulk SEO generation state
@@ -592,6 +606,93 @@ export default function WebsiteDetail() {
       if (pageGenPollRef.current) clearTimeout(pageGenPollRef.current);
     };
   }, [website?.status, id, pageGenStatuses.length]);
+
+  // Layouts tab: load initial status + slot definitions + pre-filled values (Plan B T10)
+  useEffect(() => {
+    if (!id || detailTab !== "layouts") return;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        setLoadingLayoutSlots(true);
+        const [statusRes, prefillRes] = await Promise.all([
+          fetchLayoutsStatus(id),
+          fetchSlotPrefill(id, { layout: true }),
+        ]);
+        if (cancelled) return;
+        setLayoutsStatus(statusRes.data);
+        setLayoutSlots(prefillRes.data.slots || []);
+        setLayoutSlotValues((prev) => ({ ...prefillRes.data.values, ...prev }));
+      } catch (err) {
+        console.error("Failed to load layouts:", err);
+      } finally {
+        if (!cancelled) setLoadingLayoutSlots(false);
+      }
+    };
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, detailTab]);
+
+  // Layouts tab: poll status while generating
+  useEffect(() => {
+    if (!id) return;
+    const status = layoutsStatus?.status;
+    if (status !== "generating" && status !== "queued") {
+      if (layoutsPollRef.current) clearTimeout(layoutsPollRef.current);
+      return;
+    }
+
+    const poll = async () => {
+      try {
+        const res = await fetchLayoutsStatus(id);
+        if (!isMountedRef.current) return;
+        setLayoutsStatus(res.data);
+        if (res.data.status === "generating" || res.data.status === "queued") {
+          layoutsPollRef.current = setTimeout(poll, 2000);
+        }
+      } catch {
+        layoutsPollRef.current = setTimeout(poll, 3000);
+      }
+    };
+
+    layoutsPollRef.current = setTimeout(poll, 2000);
+    return () => {
+      if (layoutsPollRef.current) clearTimeout(layoutsPollRef.current);
+    };
+  }, [id, layoutsStatus?.status]);
+
+  const updateLayoutSlotValue = useCallback((key: string, value: string) => {
+    setLayoutSlotValues((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleStartLayouts = async () => {
+    if (!id || startingLayouts) return;
+    try {
+      setStartingLayouts(true);
+      await startLayoutGeneration(id, layoutSlotValues);
+      const res = await fetchLayoutsStatus(id);
+      setLayoutsStatus(res.data);
+    } catch (err) {
+      console.error("Failed to start layouts:", err);
+    } finally {
+      setStartingLayouts(false);
+    }
+  };
+
+  const handleCancelLayouts = async () => {
+    if (!id) return;
+    if (!confirm("Cancel layouts generation?")) return;
+    try {
+      await cancelGeneration(id);
+      const res = await fetchLayoutsStatus(id);
+      setLayoutsStatus(res.data);
+    } catch (err) {
+      console.error("Failed to cancel layouts:", err);
+    }
+  };
 
   // Click outside dropdown
   useEffect(() => {
@@ -1361,6 +1462,7 @@ export default function WebsiteDetail() {
               <ThreeStepOnboarding
                 website={website}
                 onOpenIdentity={() => setShowIdentityModal(true)}
+                onOpenLayouts={() => setDetailTab("layouts")}
                 onOpenFirstPage={() => setShowCreatePageModal(true)}
               />
             ) : (
@@ -1989,15 +2091,129 @@ export default function WebsiteDetail() {
       {/* Layouts Section */}
       {detailTab === "layouts" && (
         <motion.div
-          className="rounded-xl border border-gray-200 bg-white shadow-sm"
+          className="space-y-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
+          {/* Generate Layouts panel (Plan B T10) */}
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Generate Layouts</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Wrapper, header, and footer — generated once, reused across pages.
+                </p>
+              </div>
+              {layoutsStatus?.generated_at && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                  <Check className="h-3 w-3" /> Ready
+                </span>
+              )}
+              {(layoutsStatus?.status === "generating" ||
+                layoutsStatus?.status === "queued") && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Generating
+                </span>
+              )}
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Generating state — progress bar + cancel */}
+              {(layoutsStatus?.status === "generating" ||
+                layoutsStatus?.status === "queued") && (
+                <div className="space-y-3">
+                  {layoutsStatus?.progress && (
+                    <>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>
+                          {layoutsStatus.progress.current_component} (
+                          {layoutsStatus.progress.completed}/
+                          {layoutsStatus.progress.total})
+                        </span>
+                        <span>
+                          {Math.round(
+                            (layoutsStatus.progress.completed /
+                              layoutsStatus.progress.total) *
+                              100,
+                          )}
+                          %
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                          style={{
+                            width: `${(layoutsStatus.progress.completed /
+                              layoutsStatus.progress.total) *
+                              100}%`,
+                          }}
+                        />
+                      </div>
+                    </>
+                  )}
+                  <button
+                    onClick={handleCancelLayouts}
+                    className="text-xs font-medium text-red-600 hover:text-red-800 px-3 py-1.5 rounded border border-red-200 hover:bg-red-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {/* Empty / Ready / Failed state — show slot inputs + generate/regenerate button */}
+              {layoutsStatus?.status !== "generating" &&
+                layoutsStatus?.status !== "queued" && (
+                  <div className="space-y-4">
+                    {loadingLayoutSlots && (
+                      <div className="text-xs text-gray-400 flex items-center gap-2">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Loading layout inputs...
+                      </div>
+                    )}
+                    {!loadingLayoutSlots && (
+                      <DynamicSlotInputs
+                        slots={layoutSlots}
+                        values={layoutSlotValues}
+                        onChange={updateLayoutSlotValue}
+                        emptyMessage="No layout slots defined for this template."
+                      />
+                    )}
+                    <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                      <button
+                        onClick={handleStartLayouts}
+                        disabled={startingLayouts}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+                      >
+                        {startingLayouts ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Starting...
+                          </>
+                        ) : layoutsStatus?.generated_at ? (
+                          <>
+                            <RefreshCw className="h-4 w-4" />
+                            Regenerate Layouts
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4" />
+                            Generate Layouts
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+            </div>
+          </div>
+
+          {/* Existing per-layout editor links */}
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-100 px-5 py-4">
-            <h3 className="text-lg font-semibold text-gray-900">Layouts</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Edit Layouts Directly</h3>
             <p className="text-xs text-gray-500 mt-1">
-              Global wrapper, header, and footer for all pages
+              Fine-tune wrapper, header, and footer manually.
             </p>
           </div>
           <div className="divide-y divide-gray-100">
@@ -2025,6 +2241,7 @@ export default function WebsiteDetail() {
                 <Pencil className="h-4 w-4 text-gray-400" />
               </Link>
             ))}
+          </div>
           </div>
         </motion.div>
       )}
@@ -2220,10 +2437,12 @@ export default function WebsiteDetail() {
 function ThreeStepOnboarding({
   website,
   onOpenIdentity,
+  onOpenLayouts,
   onOpenFirstPage,
 }: {
   website: WebsiteProjectWithPages;
   onOpenIdentity: () => void;
+  onOpenLayouts: () => void;
   onOpenFirstPage: () => void;
 }) {
   const identityStatus = website.project_identity?.meta?.warmup_status || null;
@@ -2259,12 +2478,12 @@ function ThreeStepOnboarding({
             layoutsReady
               ? "ready"
               : identityReady
-                ? "active-soon"
+                ? "active"
                 : "locked"
           }
-          onStart={() => {}}
-          startLabel={layoutsReady ? "Regenerate" : "Coming soon"}
-          disabled={!layoutsReady}
+          onStart={onOpenLayouts}
+          startLabel={layoutsReady ? "Regenerate" : "Start"}
+          disabled={!identityReady && !layoutsReady}
         />
         <StepRow
           index={3}

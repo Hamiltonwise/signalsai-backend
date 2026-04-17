@@ -36,6 +36,13 @@ export interface LlmRunnerOptions {
     mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
     base64: string;
   }>;
+  /**
+   * Optional cached system blocks prepended to the systemPrompt. When present,
+   * the system is structured as an array of blocks with `cache_control: ephemeral`
+   * set on the cached prefix so Claude's prompt cache (5-min TTL) can skip
+   * reprocessing on subsequent calls within the window.
+   */
+  cachedSystemBlocks?: string[];
 }
 
 export interface LlmRunnerResult {
@@ -48,6 +55,9 @@ export interface LlmRunnerResult {
   /** Token usage */
   inputTokens: number;
   outputTokens: number;
+  /** Prompt cache metrics (when cachedSystemBlocks was used) */
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
 }
 
 // =====================================================================
@@ -69,6 +79,7 @@ export async function runAgent(
     temperature = 0,
     prefill,
     images,
+    cachedSystemBlocks,
   } = options;
 
   const messages: Anthropic.MessageParam[] = [];
@@ -108,16 +119,38 @@ export async function runAgent(
       `images=${imgCount}${imgCount ? ` (${imgSizeKB}kB)` : ""} maxTokens=${maxTokens}`
   );
 
+  // Build system param. If cachedSystemBlocks provided, structure system as
+  // an array of blocks with cache_control: ephemeral on the cached prefix.
+  let systemParam: any;
+  if (cachedSystemBlocks && cachedSystemBlocks.length > 0) {
+    systemParam = [
+      ...cachedSystemBlocks.map((text) => ({
+        type: "text",
+        text,
+        cache_control: { type: "ephemeral" },
+      })),
+      // The main systemPrompt is also cached — it's stable per template
+      { type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } },
+    ];
+  } else {
+    systemParam = systemPrompt;
+  }
+
   const callStart = Date.now();
-  let response;
+  let response: any;
   try {
-    response = await getClient().messages.create({
-      model,
-      max_tokens: maxTokens,
-      temperature,
-      system: systemPrompt,
-      messages,
-    });
+    response = await (getClient() as any).messages.create(
+      {
+        model,
+        max_tokens: maxTokens,
+        temperature,
+        system: systemParam,
+        messages,
+      },
+      cachedSystemBlocks && cachedSystemBlocks.length > 0
+        ? { headers: { "anthropic-beta": "prompt-caching-2024-07-31" } }
+        : undefined,
+    );
   } catch (err: any) {
     const status = err?.status ?? err?.response?.status ?? "?";
     const body = err?.error ?? err?.response?.data ?? err?.body;
@@ -133,26 +166,32 @@ export async function runAgent(
   }
 
   const textBlock = response.content.find(
-    (b): b is Anthropic.TextBlock => b.type === "text"
+    (b: any): b is Anthropic.TextBlock => b.type === "text"
   );
 
   let raw = textBlock?.text || "";
 
-  // If we used a prefill, prepend it to reconstruct the full response
   if (prefill) {
     raw = prefill + raw;
   }
 
-  // Attempt JSON parse with multiple extraction strategies
   const parsed = extractJson(raw);
+
+  const cacheCreationTokens = response.usage?.cache_creation_input_tokens ?? 0;
+  const cacheReadTokens = response.usage?.cache_read_input_tokens ?? 0;
+  const cacheSuffix = cacheCreationTokens || cacheReadTokens
+    ? ` cacheWrite=${cacheCreationTokens} cacheRead=${cacheReadTokens}`
+    : "";
 
   console.log(
     `[LLM] ✓ ${response.model} (${Date.now() - callStart}ms) ` +
-      `tokens=${response.usage.input_tokens}/${response.usage.output_tokens} ` +
+      `tokens=${response.usage.input_tokens}/${response.usage.output_tokens}${cacheSuffix} ` +
       `parsed=${parsed ? "ok" : "null"} raw=${raw.length}ch`
   );
 
   return {
+    cacheCreationInputTokens: cacheCreationTokens,
+    cacheReadInputTokens: cacheReadTokens,
     raw,
     parsed,
     model: response.model,
@@ -198,6 +237,14 @@ export interface RunWithToolsOptions {
    * or a specific tool name.
    */
   toolChoice?: "auto" | "any" | { type: "tool"; name: string };
+  /** Optional cached system blocks — see LlmRunnerOptions.cachedSystemBlocks */
+  cachedSystemBlocks?: string[];
+  /**
+   * Conversation continuation — when responding to previous tool calls, pass
+   * the full messages array including assistant tool_use and user tool_result
+   * blocks. If provided, userMessage is ignored.
+   */
+  messages?: any[];
 }
 
 export interface RunWithToolsResult {
@@ -207,6 +254,10 @@ export interface RunWithToolsResult {
   inputTokens: number;
   outputTokens: number;
   stopReason: string | null;
+  /** Raw assistant content array (for feeding back into conversations). */
+  assistantContent: any[];
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
 }
 
 /**
@@ -226,6 +277,8 @@ export async function runWithTools(
     maxTokens = 4096,
     temperature = 0,
     toolChoice,
+    cachedSystemBlocks,
+    messages: conversationMessages,
   } = options;
 
   console.log(
@@ -233,13 +286,29 @@ export async function runWithTools(
       `tools=${tools.length} maxTokens=${maxTokens}`,
   );
 
-  // Use the beta tools API (this SDK version exposes tools under client.beta.tools.messages)
+  // System param with optional cached blocks
+  let systemParam: any;
+  if (cachedSystemBlocks && cachedSystemBlocks.length > 0) {
+    systemParam = [
+      ...cachedSystemBlocks.map((text) => ({
+        type: "text",
+        text,
+        cache_control: { type: "ephemeral" },
+      })),
+      { type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } },
+    ];
+  } else {
+    systemParam = systemPrompt;
+  }
+
   const requestBody: any = {
     model,
     max_tokens: maxTokens,
     temperature,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userMessage }],
+    system: systemParam,
+    messages: conversationMessages && conversationMessages.length > 0
+      ? conversationMessages
+      : [{ role: "user", content: userMessage }],
     tools,
   };
 
@@ -254,7 +323,12 @@ export async function runWithTools(
   const callStart = Date.now();
   let response: any;
   try {
-    response = await (getClient() as any).beta.tools.messages.create(requestBody);
+    response = await (getClient() as any).beta.tools.messages.create(
+      requestBody,
+      cachedSystemBlocks && cachedSystemBlocks.length > 0
+        ? { headers: { "anthropic-beta": "prompt-caching-2024-07-31,tools-2024-04-04" } }
+        : undefined,
+    );
   } catch (err: any) {
     const status = err?.status ?? err?.response?.status ?? "?";
     console.error(
@@ -279,20 +353,28 @@ export async function runWithTools(
   }
 
   const textResponse = textParts.length > 0 ? textParts.join("\n") : null;
+  const cacheCreationTokens = response.usage?.cache_creation_input_tokens ?? 0;
+  const cacheReadTokens = response.usage?.cache_read_input_tokens ?? 0;
+  const cacheSuffix = cacheCreationTokens || cacheReadTokens
+    ? ` cacheWrite=${cacheCreationTokens} cacheRead=${cacheReadTokens}`
+    : "";
 
   console.log(
     `[LLM-TOOLS] ✓ ${response.model} (${Date.now() - callStart}ms) ` +
-      `tokens=${response.usage.input_tokens}/${response.usage.output_tokens} ` +
+      `tokens=${response.usage.input_tokens}/${response.usage.output_tokens}${cacheSuffix} ` +
       `toolCalls=${toolCalls.length} stop=${response.stop_reason}`,
   );
 
   return {
     toolCalls,
     textResponse,
+    assistantContent: response.content,
     model: response.model,
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
     stopReason: response.stop_reason ?? null,
+    cacheCreationInputTokens: cacheCreationTokens,
+    cacheReadInputTokens: cacheReadTokens,
   };
 }
 

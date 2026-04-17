@@ -22,6 +22,7 @@ import {
   processPageGenerate,
 } from "./processors/websiteGeneration.processor";
 import { processIdentityWarmup } from "./processors/identityWarmup.processor";
+import { processLayoutGenerate } from "./processors/websiteLayouts.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -225,6 +226,22 @@ const wbRestoreWorker = new Worker(
   }
 );
 
+// Website Builder — Layouts generation worker (admin-triggered from Layouts tab)
+const wbLayoutsWorker = new Worker(
+  "wb-layout-generate",
+  async (job) => {
+    await processLayoutGenerate(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000, // 10 min — 3 Claude calls with tool loops
+    prefix: '{wb}',
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 25 },
+  }
+);
+
 // Website Builder — Identity Warmup worker (admin-triggered)
 const wbIdentityWarmupWorker = new Worker(
   "wb-identity-warmup",
@@ -290,7 +307,7 @@ const auditLeadgenWorker = new Worker(
 );
 
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbIdentityWarmupWorker, wbProjectScrapeWorker, wbPageGenerateWorker, auditLeadgenWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbIdentityWarmupWorker, wbLayoutsWorker, wbProjectScrapeWorker, wbPageGenerateWorker, auditLeadgenWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -318,6 +335,7 @@ async function shutdown(): Promise<void> {
   await wbBackupWorker.close();
   await wbRestoreWorker.close();
   await wbIdentityWarmupWorker.close();
+  await wbLayoutsWorker.close();
   await wbProjectScrapeWorker.close();
   await wbPageGenerateWorker.close();
   await auditLeadgenWorker.close();

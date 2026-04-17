@@ -101,6 +101,12 @@ router.patch("/templates/:templateId/pages/:pageId", controller.updateTemplatePa
 // DELETE /templates/:templateId/pages/:pageId — Delete template page
 router.delete("/templates/:templateId/pages/:pageId", controller.deleteTemplatePage);
 
+// GET   /templates/:templateId/pages/:pageId/slots — Template page dynamic_slots (Plan B)
+router.get("/templates/:templateId/pages/:pageId/slots", controller.getTemplatePageSlots);
+
+// PATCH /templates/:templateId/pages/:pageId/slots — Update dynamic_slots (admin tool)
+router.patch("/templates/:templateId/pages/:pageId/slots", controller.updateTemplatePageSlots);
+
 // =====================================================================
 // TEMPLATE POST TYPES (must come before /templates/:templateId)
 // =====================================================================
@@ -291,6 +297,21 @@ router.put("/:id/identity", controller.updateIdentity);
 
 // POST /:id/identity/chat — Update identity via natural-language instruction
 router.post("/:id/identity/chat", controller.chatUpdateIdentity);
+
+// GET /:id/slot-prefill — Pre-filled slot values from project_identity
+router.get("/:id/slot-prefill", controller.getSlotPrefill);
+
+// POST /:id/generate-layouts — Enqueue layouts generation
+router.post("/:id/generate-layouts", controller.startLayoutGeneration);
+
+// GET /:id/layouts-status — Layouts generation status polling
+router.get("/:id/layouts-status", controller.getLayoutsStatus);
+
+// POST /:id/pages/:pageId/regenerate-component — Regenerate a single section
+router.post(
+  "/:id/pages/:pageId/regenerate-component",
+  controller.regeneratePageComponent,
+);
 
 // PATCH /:id/link-organization — Link/unlink org
 router.patch("/:id/link-organization", controller.linkOrganization);
