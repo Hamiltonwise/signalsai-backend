@@ -35,8 +35,9 @@ import * as aiCommand from "./feature-services/service.ai-command";
 import * as redirectsService from "./feature-services/service.redirects";
 import * as artifactUpload from "./feature-services/service.artifact-upload";
 import * as generationPipeline from "./feature-services/service.generation-pipeline";
-import * as identityUpdate from "./feature-services/service.identity-update";
+import * as identityProposer from "./feature-services/service.identity-proposer";
 import * as slotPrefill from "./feature-services/service.slot-prefill";
+import { detectBlock } from "./feature-utils/util.url-block-detector";
 import { db } from "../../database/connection";
 import { getWbQueue } from "../../workers/wb-queues";
 import type { ProjectScrapeJobData } from "../../workers/processors/websiteGeneration.processor";
@@ -552,6 +553,32 @@ export async function startPipeline(
   }
 }
 
+/** POST /:id/test-url — Probe a URL for WAF / anti-bot / CAPTCHA blocks */
+export async function testUrl(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { url } = req.body;
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "url string required",
+      });
+    }
+    const result = await detectBlock(url);
+    return res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error testing URL:", error);
+    return res.status(500).json({
+      success: false,
+      error: "TEST_URL_ERROR",
+      message: error?.message || "Failed to test URL",
+    });
+  }
+}
+
 // =====================================================================
 // PROJECT IDENTITY
 // =====================================================================
@@ -728,8 +755,8 @@ export async function updateIdentity(
   }
 }
 
-/** POST /:id/identity/chat — Update identity via natural-language instruction */
-export async function chatUpdateIdentity(
+/** POST /:id/identity/propose-updates — Generate update proposals for admin review */
+export async function proposeIdentityUpdates(
   req: Request,
   res: Response,
 ): Promise<Response> {
@@ -745,23 +772,53 @@ export async function chatUpdateIdentity(
       });
     }
 
-    const result = await identityUpdate.updateIdentityViaChat(id, instruction);
+    const proposals = await identityProposer.generateProposals(id, instruction);
+
+    return res.json({ success: true, data: { proposals } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error generating proposals:", error);
+    return res.status(500).json({
+      success: false,
+      error: "PROPOSE_ERROR",
+      message: error?.message || "Failed to generate proposals",
+    });
+  }
+}
+
+/** POST /:id/identity/apply-proposals — Apply the admin-approved proposals */
+export async function applyIdentityProposals(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { proposals } = req.body;
+
+    if (!Array.isArray(proposals)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "proposals array required",
+      });
+    }
+
+    const result = await identityProposer.applyProposals(id, proposals);
 
     return res.json({
       success: true,
       data: {
-        message: result.message,
-        applied: result.appliedTools,
-        clarification_needed: result.clarificationNeeded || null,
         identity: result.identity,
+        appliedCount: result.appliedCount,
+        skippedCount: result.skippedCount,
+        warnings: result.warnings,
       },
     });
   } catch (error: any) {
-    console.error("[Admin Websites] Error in chat identity update:", error);
+    console.error("[Admin Websites] Error applying proposals:", error);
     return res.status(500).json({
       success: false,
-      error: "CHAT_ERROR",
-      message: error?.message || "Failed to apply update",
+      error: "APPLY_ERROR",
+      message: error?.message || "Failed to apply proposals",
     });
   }
 }

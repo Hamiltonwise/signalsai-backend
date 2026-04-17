@@ -283,6 +283,9 @@ router.post("/:id/cancel-generation", controller.cancelGeneration);
 // PROJECT IDENTITY
 // =====================================================================
 
+// POST /:id/test-url — Probe a URL for block/CAPTCHA signals
+router.post("/:id/test-url", controller.testUrl);
+
 // POST /:id/identity/warmup — Enqueue identity warmup job
 router.post("/:id/identity/warmup", controller.startIdentityWarmup);
 
@@ -295,8 +298,11 @@ router.get("/:id/identity/status", controller.getIdentityStatus);
 // PUT  /:id/identity — Replace identity with admin-edited JSON
 router.put("/:id/identity", controller.updateIdentity);
 
-// POST /:id/identity/chat — Update identity via natural-language instruction
-router.post("/:id/identity/chat", controller.chatUpdateIdentity);
+// POST /:id/identity/propose-updates — Generate update proposals for admin review
+router.post("/:id/identity/propose-updates", controller.proposeIdentityUpdates);
+
+// POST /:id/identity/apply-proposals — Apply admin-approved proposals
+router.post("/:id/identity/apply-proposals", controller.applyIdentityProposals);
 
 // GET /:id/slot-prefill — Pre-filled slot values from project_identity
 router.get("/:id/slot-prefill", controller.getSlotPrefill);

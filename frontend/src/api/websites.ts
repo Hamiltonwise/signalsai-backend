@@ -500,10 +500,18 @@ export const cancelGeneration = async (
 // PROJECT IDENTITY
 // =====================================================================
 
+export type ScrapeStrategy = "fetch" | "browser" | "screenshot";
+
+export interface WarmupUrlInput {
+  url: string;
+  strategy?: ScrapeStrategy;
+}
+
 export interface WarmupInputs {
   placeId?: string;
   practiceSearchString?: string;
-  urls?: string[];
+  /** String or object-with-strategy. Backend accepts both. */
+  urls?: Array<string | WarmupUrlInput>;
   texts?: Array<{ label?: string; text: string }>;
   logoUrl?: string;
   primaryColor?: string;
@@ -565,25 +573,111 @@ export const updateIdentity = async (
   return response.json();
 };
 
-/** Update identity via natural-language instruction (tool calling). */
-export const chatUpdateIdentity = async (
+// =====================================================================
+// IDENTITY PROPOSALS (replaces the old chat-update tool flow)
+// =====================================================================
+
+export type ProposalAction = "NEW" | "UPDATE" | "DELETE";
+
+export interface IdentityProposal {
+  id: string;
+  action: ProposalAction;
+  path: string;
+  current_value: unknown;
+  proposed_value: unknown;
+  summary: string;
+  reason: string;
+  array_item?: boolean;
+  critical: boolean;
+  critical_reason?: string;
+}
+
+/** Ask the LLM to produce a list of proposed identity updates. */
+export const proposeIdentityUpdates = async (
   projectId: string,
   instruction: string,
+): Promise<{ success: boolean; data: { proposals: IdentityProposal[] } }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/identity/propose-updates`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instruction }),
+    },
+  );
+  if (!response.ok) throw new Error(`Failed to propose updates: ${response.statusText}`);
+  return response.json();
+};
+
+/** Apply the admin-approved subset of proposals. */
+export const applyIdentityProposals = async (
+  projectId: string,
+  proposals: IdentityProposal[],
 ): Promise<{
   success: boolean;
   data: {
-    message: string;
-    applied: Array<{ name: string; input: Record<string, unknown>; message: string }>;
-    clarification_needed: string | null;
     identity: ProjectIdentity;
+    appliedCount: number;
+    skippedCount: number;
+    warnings: string[];
   };
 }> => {
-  const response = await fetch(`${API_BASE}/${projectId}/identity/chat`, {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/identity/apply-proposals`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proposals }),
+    },
+  );
+  if (!response.ok) throw new Error(`Failed to apply proposals: ${response.statusText}`);
+  return response.json();
+};
+
+// =====================================================================
+// URL BLOCK DETECTION
+// =====================================================================
+
+export type BlockVendor =
+  | "cloudflare"
+  | "akamai"
+  | "sucuri"
+  | "datadome"
+  | "perimeterx"
+  | "imperva"
+  | "kasada"
+  | "aws_waf"
+  | "f5_bigip"
+  | "fastly"
+  | "generic_waf"
+  | "captcha"
+  | "rate_limit"
+  | "forbidden"
+  | "timeout"
+  | "empty"
+  | "unknown";
+
+export type BlockCheckResult =
+  | { ok: true; status: number; preview_chars: number; preview_text?: string }
+  | {
+      ok: false;
+      block_type: BlockVendor;
+      status: number | null;
+      detail: string;
+      detected_signals: string[];
+    };
+
+/** Probe a URL to check if it is blocked by a WAF / anti-bot / CAPTCHA. */
+export const testUrl = async (
+  projectId: string,
+  url: string,
+): Promise<{ success: boolean; data: BlockCheckResult }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/test-url`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ instruction }),
+    body: JSON.stringify({ url }),
   });
-  if (!response.ok) throw new Error(`Failed to chat-update identity: ${response.statusText}`);
+  if (!response.ok) throw new Error(`Failed to test URL: ${response.statusText}`);
   return response.json();
 };
 

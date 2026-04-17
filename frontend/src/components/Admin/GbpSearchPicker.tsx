@@ -54,8 +54,8 @@ export default function GbpSearchPicker({
     const timer = setTimeout(async () => {
       try {
         setSearching(true);
-        const s = await searchPlaces(query);
-        if (isMountedRef.current) setSuggestions(s);
+        const response = await searchPlaces(query);
+        if (isMountedRef.current) setSuggestions(response.suggestions || []);
       } catch {
         if (isMountedRef.current) setSuggestions([]);
       } finally {
@@ -68,20 +68,21 @@ export default function GbpSearchPicker({
   const handleSelect = async (s: PlaceSuggestion) => {
     try {
       setLoadingDetails(true);
-      const details = await getPlaceDetails(s.place_id);
+      const response = await getPlaceDetails(s.placeId);
+      const details = response.place;
       const place: SelectedPlace = {
-        placeId: s.place_id,
-        name: String(details.name || s.description),
-        address: String(details.formattedAddress || details.address || s.description),
-        rating: (details.rating as number) ?? null,
-        reviewCount: (details.reviewCount as number) ?? null,
-        phone: (details.phone as string) ?? null,
-        category: (details.category as string) ?? null,
-        city: (details.city as string) ?? null,
-        state: (details.state as string) ?? null,
-        zip: (details.zip as string) ?? null,
-        websiteUrl: (details.websiteUri as string) ?? (details.website as string) ?? null,
-        raw: details as Record<string, unknown>,
+        placeId: s.placeId,
+        name: String(details?.name || s.mainText || s.description),
+        address: String(details?.formattedAddress || s.secondaryText || s.description),
+        rating: details?.rating ?? null,
+        reviewCount: details?.reviewCount ?? null,
+        phone: details?.phone ?? null,
+        category: details?.category ?? null,
+        city: details?.city ?? null,
+        state: details?.state ?? null,
+        zip: null,
+        websiteUrl: details?.websiteUri ?? null,
+        raw: (details as unknown) as Record<string, unknown>,
       };
       onChange(place);
       setQuery("");
@@ -145,11 +146,14 @@ export default function GbpSearchPicker({
           <div className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden max-h-64 overflow-y-auto">
             {suggestions.map((s) => (
               <button
-                key={s.place_id}
+                key={s.placeId}
                 onClick={() => handleSelect(s)}
                 className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
               >
-                <div className="font-medium text-gray-900">{s.description}</div>
+                <div className="font-medium text-gray-900">{s.mainText || s.description}</div>
+                {s.secondaryText && (
+                  <div className="text-xs text-gray-500 truncate">{s.secondaryText}</div>
+                )}
               </button>
             ))}
           </div>

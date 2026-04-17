@@ -25,7 +25,7 @@ import {
   buildMediaS3Key,
   buildS3Url,
 } from "../../admin-media/feature-utils/util.s3-helpers";
-import { scrapeWebsite } from "./service.website-scraper";
+import { scrapeUrl, type ScrapeStrategy } from "./service.url-scrape-strategies";
 import { scrapeGbp } from "../feature-utils/util.gbp-scraper";
 import {
   processImages,
@@ -52,10 +52,19 @@ function checkCancel(signal?: AbortSignal): void {
 // Types
 // ---------------------------------------------------------------------------
 
+export interface WarmupUrlInput {
+  url: string;
+  strategy?: ScrapeStrategy;
+}
+
 export interface WarmupInputs {
   placeId?: string;
   practiceSearchString?: string;
-  urls?: string[];
+  /**
+   * Accepts either a plain URL string (defaults to "fetch" strategy) or an
+   * object specifying the per-URL scrape strategy. Backward-compatible.
+   */
+  urls?: Array<string | WarmupUrlInput>;
   texts?: Array<{ label?: string; text: string }>;
   logoUrl?: string;
   primaryColor?: string;
@@ -137,13 +146,18 @@ export async function runIdentityWarmup(
     }> = [];
 
     if (inputs.urls && inputs.urls.length > 0) {
-      for (const url of inputs.urls) {
+      const normalizedUrls: WarmupUrlInput[] = inputs.urls.map((u) =>
+        typeof u === "string" ? { url: u, strategy: "fetch" } : u,
+      );
+      for (let i = 0; i < normalizedUrls.length; i++) {
         checkCancel(signal);
+        const { url, strategy } = normalizedUrls[i];
+        const strat: ScrapeStrategy = strategy || "fetch";
+        log(`Scraping url ${i + 1}/${normalizedUrls.length}`, { url, strategy: strat });
         try {
-          const result = await scrapeWebsite(url, undefined);
-          if (result.result) {
-            const pages = result.result.pages || {};
-            for (const [key, content] of Object.entries(pages)) {
+          const result = await scrapeUrl(url, strat);
+          if (result.pages && Object.keys(result.pages).length > 0) {
+            for (const [key, content] of Object.entries(result.pages)) {
               const cleaned = cleanForClaude(String(content));
               const cappedRaw = capString(String(content));
               scrapedPagesRaw[`${url}#${key}`] = cappedRaw;
@@ -153,9 +167,12 @@ export async function runIdentityWarmup(
                 content_excerpt: cleaned.slice(0, 500),
               });
             }
-            if (Array.isArray(result.result.images)) {
-              scrapedImages.push(...result.result.images);
-            }
+          }
+          if (Array.isArray(result.images)) {
+            scrapedImages.push(...result.images);
+          }
+          if (result.was_blocked) {
+            log("URL was blocked despite strategy fallback", { url, strategy: strat });
           }
         } catch (err: any) {
           log("Website scrape failed", { url, error: err.message });

@@ -22,7 +22,13 @@ import {
   fetchIdentityStatus,
   startIdentityWarmup,
   updateIdentity,
-  chatUpdateIdentity,
+  proposeIdentityUpdates,
+  applyIdentityProposals,
+  testUrl,
+  type IdentityProposal,
+  type BlockCheckResult,
+  type ScrapeStrategy,
+  type WarmupUrlInput,
   cancelGeneration,
   type ProjectIdentity,
   type WarmupInputs,
@@ -31,6 +37,8 @@ import {
 import { searchPlaces, getPlaceDetails } from "../../api/places";
 import type { PlaceSuggestion } from "../../api/places";
 import ColorPicker from "./ColorPicker";
+import GradientPicker from "./GradientPicker";
+import type { GradientValue } from "./GradientPicker";
 
 type IdentityTab = "summary" | "json" | "chat";
 
@@ -43,6 +51,9 @@ interface IdentityModalProps {
 interface UrlInput {
   id: string;
   url: string;
+  testing?: boolean;
+  testResult?: BlockCheckResult | null;
+  strategy?: ScrapeStrategy;
 }
 
 interface TextInput {
@@ -80,17 +91,22 @@ export default function IdentityModal({
 
   // Ready state
   const [activeTab, setActiveTab] = useState<IdentityTab>("summary");
+  const [brandEditing, setBrandEditing] = useState(false);
   const [jsonDraft, setJsonDraft] = useState("");
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [savingJson, setSavingJson] = useState(false);
 
-  // Chat state
+  // Chat / proposals state
   const [chatInstruction, setChatInstruction] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatToast, setChatToast] = useState<{
     type: "success" | "error" | "info";
     text: string;
   } | null>(null);
+  const [proposals, setProposals] = useState<IdentityProposal[]>([]);
+  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
+  const [criticalAcknowledged, setCriticalAcknowledged] = useState(false);
+  const [applyingProposals, setApplyingProposals] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
@@ -171,8 +187,8 @@ export default function IdentityModal({
     const timer = setTimeout(async () => {
       try {
         setSearchingGbp(true);
-        const suggestions = await searchPlaces(gbpQuery);
-        if (isMountedRef.current) setGbpSuggestions(suggestions);
+        const response = await searchPlaces(gbpQuery);
+        if (isMountedRef.current) setGbpSuggestions(response.suggestions || []);
       } finally {
         if (isMountedRef.current) setSearchingGbp(false);
       }
@@ -182,11 +198,12 @@ export default function IdentityModal({
 
   const handleSelectPlace = async (suggestion: PlaceSuggestion) => {
     try {
-      const details = await getPlaceDetails(suggestion.place_id);
+      const response = await getPlaceDetails(suggestion.placeId);
+      const place = response.place;
       setSelectedPlace({
-        placeId: suggestion.place_id,
-        name: String(details.name || suggestion.description),
-        address: String(details.formattedAddress || details.address || suggestion.description),
+        placeId: suggestion.placeId,
+        name: String(place?.name || suggestion.mainText || suggestion.description),
+        address: String(place?.formattedAddress || suggestion.secondaryText || suggestion.description),
       });
       setGbpSuggestions([]);
       setGbpQuery("");
@@ -207,7 +224,61 @@ export default function IdentityModal({
   };
 
   const updateUrlInput = (id: string, url: string) => {
-    setUrlInputs((prev) => prev.map((u) => (u.id === id ? { ...u, url } : u)));
+    setUrlInputs((prev) =>
+      prev.map((u) =>
+        u.id === id ? { ...u, url, testResult: null, strategy: undefined } : u,
+      ),
+    );
+  };
+
+  const setUrlStrategy = (id: string, strategy: ScrapeStrategy) => {
+    setUrlInputs((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, strategy } : u)),
+    );
+  };
+
+  const runUrlTest = async (id: string) => {
+    const target = urlInputs.find((u) => u.id === id);
+    if (!target || !target.url.trim()) return;
+    setUrlInputs((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, testing: true, testResult: null } : u)),
+    );
+    try {
+      const res = await testUrl(projectId, target.url.trim());
+      const result = res.data;
+      setUrlInputs((prev) =>
+        prev.map((u) =>
+          u.id === id
+            ? {
+                ...u,
+                testing: false,
+                testResult: result,
+                strategy: result.ok
+                  ? "fetch"
+                  : u.strategy || "browser",
+              }
+            : u,
+        ),
+      );
+    } catch (err: any) {
+      setUrlInputs((prev) =>
+        prev.map((u) =>
+          u.id === id
+            ? {
+                ...u,
+                testing: false,
+                testResult: {
+                  ok: false,
+                  block_type: "unknown",
+                  status: null,
+                  detail: err?.message || "Test failed",
+                  detected_signals: [],
+                },
+              }
+            : u,
+        ),
+      );
+    }
   };
 
   const addTextInput = () => {
@@ -247,7 +318,15 @@ export default function IdentityModal({
       setSubmitting(true);
       const inputs: WarmupInputs = {
         placeId: selectedPlace?.placeId,
-        urls: urlInputs.map((u) => u.url.trim()).filter(Boolean),
+        urls: urlInputs
+          .filter((u) => u.url.trim())
+          .map((u): WarmupUrlInput | string => {
+            const trimmed = u.url.trim();
+            if (u.strategy && u.strategy !== "fetch") {
+              return { url: trimmed, strategy: u.strategy };
+            }
+            return trimmed;
+          }),
         texts: textInputs
           .filter((t) => t.text.trim())
           .map((t) => ({ label: t.label.trim() || undefined, text: t.text.trim() })),
@@ -306,25 +385,100 @@ export default function IdentityModal({
     }
   };
 
+  const handleSaveBrand = async (nextBrand: ProjectIdentity["brand"]) => {
+    if (!identity) return;
+    const updated: ProjectIdentity = {
+      ...identity,
+      brand: nextBrand,
+      last_updated_at: new Date().toISOString(),
+    };
+    const res = await updateIdentity(projectId, updated);
+    setIdentity(res.data);
+    onIdentityChanged?.(res.data);
+    setChatToast({ type: "success", text: "Brand updated." });
+  };
+
   const handleChatSubmit = async () => {
     const instruction = chatInstruction.trim();
     if (!instruction || chatLoading) return;
-    setChatInstruction("");
     setChatLoading(true);
+    setProposals([]);
+    setApprovedIds(new Set());
+    setCriticalAcknowledged(false);
     try {
-      const res = await chatUpdateIdentity(projectId, instruction);
-      if (res.data.clarification_needed) {
-        setChatToast({ type: "info", text: res.data.clarification_needed });
-      } else {
-        setChatToast({ type: "success", text: res.data.message });
-        setIdentity(res.data.identity);
-        onIdentityChanged?.(res.data.identity);
+      const res = await proposeIdentityUpdates(projectId, instruction);
+      const returned = res.data.proposals || [];
+      setProposals(returned);
+      // Default: approve all non-critical, leave critical unchecked
+      const defaultApproved = new Set<string>(
+        returned.filter((p) => !p.critical).map((p) => p.id),
+      );
+      setApprovedIds(defaultApproved);
+      if (returned.length === 0) {
+        setChatToast({
+          type: "info",
+          text: "No changes proposed. Try a more specific instruction.",
+        });
       }
     } catch (err: any) {
-      setChatToast({ type: "error", text: err?.message || "Update failed" });
+      setChatToast({ type: "error", text: err?.message || "Failed to propose updates" });
     } finally {
       setChatLoading(false);
     }
+  };
+
+  const toggleProposalApproved = (id: string) => {
+    setApprovedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleApplyProposals = async () => {
+    if (applyingProposals) return;
+    const approved = proposals.filter((p) => approvedIds.has(p.id));
+    if (approved.length === 0) {
+      setChatToast({ type: "info", text: "No proposals approved." });
+      return;
+    }
+    // Critical confirmation gate
+    const anyCritical = approved.some((p) => p.critical);
+    if (anyCritical && !criticalAcknowledged) {
+      setChatToast({
+        type: "error",
+        text: "Please confirm you understand the critical changes before applying.",
+      });
+      return;
+    }
+    try {
+      setApplyingProposals(true);
+      const res = await applyIdentityProposals(projectId, approved);
+      setIdentity(res.data.identity);
+      onIdentityChanged?.(res.data.identity);
+      const msg = `Applied ${res.data.appliedCount} of ${approved.length} changes${
+        res.data.skippedCount > 0 ? `. ${res.data.skippedCount} skipped.` : ""
+      }`;
+      setChatToast({ type: "success", text: msg });
+      setProposals([]);
+      setApprovedIds(new Set());
+      setCriticalAcknowledged(false);
+      setChatInstruction("");
+    } catch (err: any) {
+      setChatToast({ type: "error", text: err?.message || "Failed to apply proposals" });
+    } finally {
+      setApplyingProposals(false);
+    }
+  };
+
+  const handleDiscardProposals = () => {
+    setProposals([]);
+    setApprovedIds(new Set());
+    setCriticalAcknowledged(false);
   };
 
   // Auto-dismiss toast after 4s
@@ -389,6 +543,8 @@ export default function IdentityModal({
                 addUrlInput={addUrlInput}
                 removeUrlInput={removeUrlInput}
                 updateUrlInput={updateUrlInput}
+                runUrlTest={runUrlTest}
+                setUrlStrategy={setUrlStrategy}
                 textInputs={textInputs}
                 addTextInput={addTextInput}
                 removeTextInput={removeTextInput}
@@ -427,6 +583,17 @@ export default function IdentityModal({
                 chatLoading={chatLoading}
                 chatToast={chatToast}
                 onChatSubmit={handleChatSubmit}
+                proposals={proposals}
+                approvedIds={approvedIds}
+                onToggleProposal={toggleProposalApproved}
+                criticalAcknowledged={criticalAcknowledged}
+                setCriticalAcknowledged={setCriticalAcknowledged}
+                applyingProposals={applyingProposals}
+                onApplyProposals={handleApplyProposals}
+                onDiscardProposals={handleDiscardProposals}
+                brandEditing={brandEditing}
+                setBrandEditing={setBrandEditing}
+                onSaveBrand={handleSaveBrand}
                 onRerun={() => {
                   if (confirm("Re-run warmup? This will replace the current identity.")) {
                     setWarmupStatus(null);
@@ -458,6 +625,8 @@ interface EmptyFormProps {
   addUrlInput: () => void;
   removeUrlInput: (id: string) => void;
   updateUrlInput: (id: string, url: string) => void;
+  runUrlTest: (id: string) => void;
+  setUrlStrategy: (id: string, strategy: ScrapeStrategy) => void;
   textInputs: TextInput[];
   addTextInput: () => void;
   removeTextInput: (id: string) => void;
@@ -526,11 +695,14 @@ function EmptyWarmupForm(props: EmptyFormProps) {
               <div className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
                 {props.gbpSuggestions.map((s) => (
                   <button
-                    key={s.place_id}
+                    key={s.placeId}
                     onClick={() => props.onSelectPlace(s)}
                     className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
                   >
-                    <div className="font-medium text-gray-900">{s.description}</div>
+                    <div className="font-medium text-gray-900">{s.mainText || s.description}</div>
+                    {s.secondaryText && (
+                      <div className="text-xs text-gray-500 truncate">{s.secondaryText}</div>
+                    )}
                   </button>
                 ))}
               </div>
@@ -557,21 +729,14 @@ function EmptyWarmupForm(props: EmptyFormProps) {
         ) : (
           <div className="space-y-2">
             {props.urlInputs.map((u) => (
-              <div key={u.id} className="flex items-center gap-2">
-                <input
-                  type="url"
-                  value={u.url}
-                  onChange={(e) => props.updateUrlInput(u.id, e.target.value)}
-                  placeholder="https://example.com/about"
-                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
-                />
-                <button
-                  onClick={() => props.removeUrlInput(u.id)}
-                  className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              <UrlInputRow
+                key={u.id}
+                input={u}
+                onChange={(url) => props.updateUrlInput(u.id, url)}
+                onRemove={() => props.removeUrlInput(u.id)}
+                onTest={() => props.runUrlTest(u.id)}
+                onSetStrategy={(strategy) => props.setUrlStrategy(u.id, strategy)}
+              />
             ))}
           </div>
         )}
@@ -762,7 +927,18 @@ interface ReadyViewProps {
   chatLoading: boolean;
   chatToast: { type: "success" | "error" | "info"; text: string } | null;
   onChatSubmit: () => void;
+  proposals: IdentityProposal[];
+  approvedIds: Set<string>;
+  onToggleProposal: (id: string) => void;
+  criticalAcknowledged: boolean;
+  setCriticalAcknowledged: (v: boolean) => void;
+  applyingProposals: boolean;
+  onApplyProposals: () => void;
+  onDiscardProposals: () => void;
   onRerun: () => void;
+  onSaveBrand: (brand: ProjectIdentity["brand"]) => Promise<void>;
+  brandEditing: boolean;
+  setBrandEditing: (v: boolean) => void;
 }
 
 function ReadyView(props: ReadyViewProps) {
@@ -780,9 +956,11 @@ function ReadyView(props: ReadyViewProps) {
         />
         <TabButton
           active={props.activeTab === "json"}
-          onClick={props.onJsonTabOpen}
+          onClick={props.brandEditing ? () => {} : props.onJsonTabOpen}
           icon={<Code className="h-3.5 w-3.5" />}
           label="JSON"
+          disabled={props.brandEditing}
+          title={props.brandEditing ? "Save or cancel brand edits first" : undefined}
         />
         <TabButton
           active={props.activeTab === "chat"}
@@ -801,7 +979,14 @@ function ReadyView(props: ReadyViewProps) {
 
       {/* Tab content */}
       <div className="p-6">
-        {props.activeTab === "summary" && <IdentitySummary identity={identity} />}
+        {props.activeTab === "summary" && (
+          <IdentitySummary
+            identity={identity}
+            brandEditing={props.brandEditing}
+            setBrandEditing={props.setBrandEditing}
+            onSaveBrand={props.onSaveBrand}
+          />
+        )}
         {props.activeTab === "json" && (
           <IdentityJsonEditor
             draft={props.jsonDraft}
@@ -818,6 +1003,14 @@ function ReadyView(props: ReadyViewProps) {
             loading={props.chatLoading}
             toast={props.chatToast}
             onSubmit={props.onChatSubmit}
+            proposals={props.proposals}
+            approvedIds={props.approvedIds}
+            onToggleProposal={props.onToggleProposal}
+            criticalAcknowledged={props.criticalAcknowledged}
+            setCriticalAcknowledged={props.setCriticalAcknowledged}
+            applyingProposals={props.applyingProposals}
+            onApplyProposals={props.onApplyProposals}
+            onDiscardProposals={props.onDiscardProposals}
           />
         )}
       </div>
@@ -830,19 +1023,27 @@ function TabButton({
   onClick,
   icon,
   label,
+  disabled,
+  title,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  disabled?: boolean;
+  title?: string;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
+      title={title}
       className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t border-b-2 transition ${
         active
           ? "text-alloro-orange border-alloro-orange"
-          : "text-gray-500 border-transparent hover:text-gray-700"
+          : disabled
+            ? "text-gray-300 border-transparent cursor-not-allowed"
+            : "text-gray-500 border-transparent hover:text-gray-700"
       }`}
     >
       {icon}
@@ -851,7 +1052,17 @@ function TabButton({
   );
 }
 
-function IdentitySummary({ identity }: { identity: ProjectIdentity }) {
+function IdentitySummary({
+  identity,
+  brandEditing,
+  setBrandEditing,
+  onSaveBrand,
+}: {
+  identity: ProjectIdentity;
+  brandEditing: boolean;
+  setBrandEditing: (v: boolean) => void;
+  onSaveBrand: (brand: ProjectIdentity["brand"]) => Promise<void>;
+}) {
   const b = identity.business;
   const br = identity.brand;
   const v = identity.voice_and_tone;
@@ -870,23 +1081,12 @@ function IdentitySummary({ identity }: { identity: ProjectIdentity }) {
         />
       </SummarySection>
 
-      <SummarySection title="Brand">
-        <div className="grid grid-cols-2 gap-3">
-          <ColorSwatch label="Primary" color={br?.primary_color} />
-          <ColorSwatch label="Accent" color={br?.accent_color} />
-        </div>
-        {br?.gradient_enabled && (
-          <div className="mt-3 text-xs text-gray-500">
-            Gradient: {br.gradient_from || "?"} → {br.gradient_to || "?"} ({br.gradient_direction})
-          </div>
-        )}
-        {br?.logo_s3_url && (
-          <div className="mt-3 flex items-center gap-2">
-            <img src={br.logo_s3_url} alt="Logo" className="h-10 w-10 object-contain rounded bg-gray-50" />
-            <span className="text-xs text-gray-500">Logo hosted</span>
-          </div>
-        )}
-      </SummarySection>
+      <BrandEditableSection
+        brand={br}
+        editing={brandEditing}
+        setEditing={setBrandEditing}
+        onSave={onSaveBrand}
+      />
 
       <SummarySection title="Voice & Tone">
         <SummaryRow label="Archetype" value={v?.archetype} />
@@ -908,6 +1108,149 @@ function IdentitySummary({ identity }: { identity: ProjectIdentity }) {
           value={identity.extracted_assets?.images?.length || 0}
         />
       </SummarySection>
+    </div>
+  );
+}
+
+function BrandEditableSection({
+  brand,
+  editing,
+  setEditing,
+  onSave,
+}: {
+  brand: ProjectIdentity["brand"];
+  editing: boolean;
+  setEditing: (v: boolean) => void;
+  onSave: (brand: ProjectIdentity["brand"]) => Promise<void>;
+}) {
+  const [primary, setPrimary] = useState<string>(brand?.primary_color || "#1E40AF");
+  const [accent, setAccent] = useState<string>(brand?.accent_color || "#F59E0B");
+  const [gradient, setGradient] = useState<GradientValue>({
+    enabled: !!brand?.gradient_enabled,
+    from: brand?.gradient_from || brand?.primary_color || "#1E40AF",
+    to: brand?.gradient_to || brand?.accent_color || "#F59E0B",
+    direction:
+      (brand?.gradient_direction as GradientValue["direction"]) || "to-br",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Re-sync from prop when editing opens
+  useEffect(() => {
+    if (!editing) return;
+    setPrimary(brand?.primary_color || "#1E40AF");
+    setAccent(brand?.accent_color || "#F59E0B");
+    setGradient({
+      enabled: !!brand?.gradient_enabled,
+      from: brand?.gradient_from || brand?.primary_color || "#1E40AF",
+      to: brand?.gradient_to || brand?.accent_color || "#F59E0B",
+      direction:
+        (brand?.gradient_direction as GradientValue["direction"]) || "to-br",
+    });
+    setError(null);
+  }, [editing, brand]);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      await onSave({
+        ...(brand || {}),
+        primary_color: primary,
+        accent_color: accent,
+        gradient_enabled: gradient.enabled,
+        gradient_from: gradient.enabled ? gradient.from : null,
+        gradient_to: gradient.enabled ? gradient.to : null,
+        gradient_direction: gradient.direction,
+      });
+      setEditing(false);
+    } catch (err: any) {
+      setError(err?.message || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+          Brand
+        </h4>
+        {!editing ? (
+          <button
+            onClick={() => setEditing(true)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-alloro-orange hover:text-orange-600"
+          >
+            Edit
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setEditing(false)}
+              disabled={saving}
+              className="text-xs font-medium text-gray-500 hover:text-gray-800 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-1 rounded-lg bg-alloro-orange px-3 py-1 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" /> Saving
+                </>
+              ) : (
+                "Save"
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!editing ? (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <ColorSwatch label="Primary" color={brand?.primary_color} />
+            <ColorSwatch label="Accent" color={brand?.accent_color} />
+          </div>
+          {brand?.gradient_enabled && (
+            <div className="mt-3 text-xs text-gray-500">
+              Gradient: {brand.gradient_from || "?"} → {brand.gradient_to || "?"} ({brand.gradient_direction})
+            </div>
+          )}
+          {brand?.logo_s3_url && (
+            <div className="mt-3 flex items-center gap-2">
+              <img
+                src={brand.logo_s3_url}
+                alt="Logo"
+                className="h-10 w-10 object-contain rounded bg-gray-50"
+              />
+              <span className="text-xs text-gray-500">Logo hosted</span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <ColorPicker value={primary} onChange={setPrimary} label="Primary" />
+            <ColorPicker value={accent} onChange={setAccent} label="Accent" />
+          </div>
+          <GradientPicker
+            value={gradient}
+            onChange={setGradient}
+            defaultFrom={primary}
+            defaultTo={accent}
+          />
+          {error && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+              {error}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1023,12 +1366,28 @@ function IdentityChat({
   loading,
   toast,
   onSubmit,
+  proposals,
+  approvedIds,
+  onToggleProposal,
+  criticalAcknowledged,
+  setCriticalAcknowledged,
+  applyingProposals,
+  onApplyProposals,
+  onDiscardProposals,
 }: {
   instruction: string;
   setInstruction: (v: string) => void;
   loading: boolean;
   toast: { type: "success" | "error" | "info"; text: string } | null;
   onSubmit: () => void;
+  proposals: IdentityProposal[];
+  approvedIds: Set<string>;
+  onToggleProposal: (id: string) => void;
+  criticalAcknowledged: boolean;
+  setCriticalAcknowledged: (v: boolean) => void;
+  applyingProposals: boolean;
+  onApplyProposals: () => void;
+  onDiscardProposals: () => void;
 }) {
   const handleKey = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1037,15 +1396,24 @@ function IdentityChat({
         onSubmit();
       }
     },
-    [onSubmit]
+    [onSubmit],
   );
 
+  const hasProposals = proposals.length > 0;
+  const anyApprovedCritical = proposals.some(
+    (p) => p.critical && approvedIds.has(p.id),
+  );
+  const canApply =
+    approvedIds.size > 0 && (!anyApprovedCritical || criticalAcknowledged);
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <p className="text-xs text-gray-500">
-        Type a natural-language instruction ("change accent to navy", "mark us as pediatric",
-        "add ADA to certifications"). The LLM picks the right update and applies it.
+        Describe what you want to change ("change accent to navy", "mark us as pediatric",
+        "add ADA to certifications"). The LLM returns a list of proposed changes for you to review
+        before any update is applied.
       </p>
+
       <div className="flex items-start gap-2">
         <textarea
           value={instruction}
@@ -1054,16 +1422,84 @@ function IdentityChat({
           rows={3}
           placeholder="e.g., Change the accent color to #0D9488"
           className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
-          disabled={loading}
+          disabled={loading || applyingProposals}
         />
         <button
           onClick={onSubmit}
-          disabled={loading || !instruction.trim()}
+          disabled={loading || applyingProposals || !instruction.trim()}
           className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Proposing
+            </>
+          ) : (
+            "Propose Changes"
+          )}
         </button>
       </div>
+
+      {hasProposals && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold text-gray-900">
+              {proposals.length} proposed change{proposals.length === 1 ? "" : "s"}
+            </div>
+            <div className="text-xs text-gray-500">
+              {approvedIds.size} approved
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+            {proposals.map((p) => (
+              <ProposalRow
+                key={p.id}
+                proposal={p}
+                approved={approvedIds.has(p.id)}
+                onToggle={() => onToggleProposal(p.id)}
+              />
+            ))}
+          </div>
+
+          {anyApprovedCritical && (
+            <label className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={criticalAcknowledged}
+                onChange={(e) => setCriticalAcknowledged(e.target.checked)}
+                className="mt-0.5 rounded"
+              />
+              <span>
+                I understand the critical changes (red badges above) may affect existing generated pages or the GBP link, and want to apply them anyway.
+              </span>
+            </label>
+          )}
+
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={onDiscardProposals}
+              disabled={applyingProposals}
+              className="text-xs font-medium text-gray-500 hover:text-gray-800 px-3 py-1.5"
+            >
+              Discard
+            </button>
+            <button
+              onClick={onApplyProposals}
+              disabled={!canApply || applyingProposals}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-4 py-1.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+            >
+              {applyingProposals ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Applying
+                </>
+              ) : (
+                <>Apply Approved ({approvedIds.size})</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div
           className={`rounded-lg border px-3 py-2 text-xs ${
@@ -1078,5 +1514,253 @@ function IdentityChat({
         </div>
       )}
     </div>
+  );
+}
+
+function ProposalRow({
+  proposal,
+  approved,
+  onToggle,
+}: {
+  proposal: IdentityProposal;
+  approved: boolean;
+  onToggle: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const actionColors: Record<string, string> = {
+    NEW: "bg-green-50 border-green-200 text-green-700",
+    UPDATE: "bg-blue-50 border-blue-200 text-blue-700",
+    DELETE: "bg-red-50 border-red-200 text-red-700",
+  };
+
+  return (
+    <div className={`p-3 ${approved ? "bg-white" : "bg-gray-50/60"}`}>
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={approved}
+          onChange={onToggle}
+          className="mt-1 rounded"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${actionColors[proposal.action] || "bg-gray-50 border-gray-200 text-gray-700"}`}
+            >
+              {proposal.action}
+            </span>
+            {proposal.critical && (
+              <span
+                title={proposal.critical_reason}
+                className="inline-flex items-center gap-0.5 rounded border border-red-300 bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700"
+              >
+                ⚠ CRITICAL
+              </span>
+            )}
+            <span className="text-xs font-mono text-gray-400 truncate">
+              {proposal.path}
+            </span>
+          </div>
+          <div className="text-sm text-gray-900 mt-1">{proposal.summary}</div>
+          {proposal.reason && (
+            <div className="text-[11px] text-gray-500 mt-0.5 italic">
+              Why: {proposal.reason}
+            </div>
+          )}
+          {proposal.critical && proposal.critical_reason && (
+            <div className="text-[11px] text-red-700 mt-1">
+              {proposal.critical_reason}
+            </div>
+          )}
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-[11px] text-alloro-orange hover:text-orange-600 mt-1"
+          >
+            {expanded ? "Hide diff" : "Show diff"}
+          </button>
+          {expanded && (
+            <div className="mt-2 rounded border border-gray-200 bg-gray-50 p-2 text-xs space-y-2">
+              {proposal.action !== "NEW" && (
+                <div>
+                  <div className="text-[10px] font-semibold text-red-600 mb-0.5">
+                    CURRENT
+                  </div>
+                  <pre className="text-[11px] text-gray-700 whitespace-pre-wrap break-words bg-red-50 rounded p-1.5 border border-red-100">
+                    {formatValue(proposal.current_value)}
+                  </pre>
+                </div>
+              )}
+              {proposal.action !== "DELETE" && (
+                <div>
+                  <div className="text-[10px] font-semibold text-green-600 mb-0.5">
+                    PROPOSED
+                  </div>
+                  <pre className="text-[11px] text-gray-700 whitespace-pre-wrap break-words bg-green-50 rounded p-1.5 border border-green-100">
+                    {formatValue(proposal.proposed_value)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatValue(v: unknown): string {
+  if (v === null || v === undefined) return "(empty)";
+  if (typeof v === "string") return v || "(empty string)";
+  return JSON.stringify(v, null, 2);
+}
+
+// ---------------------------------------------------------------------------
+// URL Input row with test + strategy picker (Plan — Part 3)
+// ---------------------------------------------------------------------------
+
+function UrlInputRow({
+  input,
+  onChange,
+  onRemove,
+  onTest,
+  onSetStrategy,
+}: {
+  input: UrlInput;
+  onChange: (url: string) => void;
+  onRemove: () => void;
+  onTest: () => void;
+  onSetStrategy: (s: ScrapeStrategy) => void;
+}) {
+  const result = input.testResult;
+  const showStrategyPicker = result && !result.ok;
+
+  return (
+    <div className="rounded-lg border border-gray-200 overflow-hidden">
+      <div className="flex items-center gap-2 p-2">
+        <input
+          type="url"
+          value={input.url}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://example.com/about"
+          className="flex-1 rounded-lg border-0 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
+        />
+        <button
+          onClick={onTest}
+          disabled={input.testing || !input.url.trim()}
+          className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          {input.testing ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            "Test"
+          )}
+        </button>
+        {renderStatusIcon(result)}
+        <button
+          onClick={onRemove}
+          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {result && !result.ok && (
+        <div className="border-t border-gray-100 bg-amber-50/50 px-3 py-2 text-xs">
+          <div className="flex items-start gap-1.5 text-amber-800">
+            <span className="font-semibold">Blocked:</span>
+            <span>
+              {result.block_type} — {result.detail}
+            </span>
+          </div>
+          {result.detected_signals.length > 0 && (
+            <div className="text-[10px] text-amber-700 mt-0.5 font-mono">
+              Signals: {result.detected_signals.join(", ")}
+            </div>
+          )}
+        </div>
+      )}
+
+      {result && result.ok && (
+        <div className="border-t border-gray-100 bg-green-50/50 px-3 py-2 text-xs text-green-800">
+          OK — {result.preview_chars.toLocaleString()} chars, status {result.status}
+        </div>
+      )}
+
+      {showStrategyPicker && (
+        <div className="border-t border-gray-100 bg-white px-3 py-2 space-y-2">
+          <div className="text-[11px] font-semibold text-gray-700">
+            Fallback strategy for this URL:
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <StrategyButton
+              label="Browser render (slower)"
+              description="Uses Chromium to render JS — bypasses most challenges"
+              active={input.strategy === "browser"}
+              onClick={() => onSetStrategy("browser")}
+            />
+            <StrategyButton
+              label="Screenshot + AI"
+              description="Screenshots the page and extracts text via AI — last resort"
+              active={input.strategy === "screenshot"}
+              onClick={() => onSetStrategy("screenshot")}
+            />
+            <StrategyButton
+              label="Skip this URL"
+              description="Don't include this URL in warmup"
+              active={input.strategy === "fetch" && result && !result.ok}
+              onClick={() => onSetStrategy("fetch")}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StrategyButton({
+  label,
+  description,
+  active,
+  onClick,
+}: {
+  label: string;
+  description: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={description}
+      className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 transition ${
+        active
+          ? "border-alloro-orange bg-alloro-orange/10 text-alloro-orange"
+          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function renderStatusIcon(result: BlockCheckResult | null | undefined) {
+  if (!result) return null;
+  if (result.ok) {
+    return (
+      <span
+        title={`OK (status ${result.status})`}
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white text-[10px]"
+      >
+        ✓
+      </span>
+    );
+  }
+  return (
+    <span
+      title={result.detail}
+      className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-white text-[10px]"
+    >
+      !
+    </span>
   );
 }
