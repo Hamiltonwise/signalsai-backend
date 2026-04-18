@@ -29,6 +29,7 @@ export function validateHtml(
   issues.push(...checkBannedPatterns(html));
   issues.push(...checkBrokenImages(html));
   issues.push(...checkLinks(html, existingPaths, existingPostSlugs));
+  issues.push(...checkCtaPaths(html));
 
   return { valid: issues.length === 0, issues };
 }
@@ -372,6 +373,87 @@ function findClosestPath(broken: string, validPaths: string[]): string | null {
   }
 
   return bestScore >= 2 ? bestPath : null;
+}
+
+/**
+ * Flags CTA-shaped elements whose href points off the canonical pattern.
+ * CTAs should resolve to /contact, tel:, mailto:, a same-page #anchor that
+ * matches an id in the HTML, or an absolute URL. Nav links (services, about,
+ * home) are NOT CTAs and are handled by checkLinks.
+ *
+ * Heuristic for "is this a CTA":
+ *   - <a> or <button> whose class attr contains `rounded-full`, `btn`, or `cta`
+ *   - OR whose visible text matches CTA action verbs (schedule, book, contact,
+ *     get started, request, consult, appointment).
+ */
+function checkCtaPaths(html: string): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const CTA_TEXT_RE = /\b(schedule|book|contact|get\s+started|request|consult|appointment)/i;
+  const CTA_CLASS_RE = /\b(?:rounded-full|btn|cta)\b/i;
+
+  // Collect same-page anchor targets so we can validate `#foo` CTAs.
+  const idMatches = html.match(/\bid=["']([^"']+)["']/g) || [];
+  const existingIds = new Set(
+    idMatches.map((m) => {
+      const mm = m.match(/\bid=["']([^"']+)["']/);
+      return mm ? mm[1] : "";
+    }).filter(Boolean)
+  );
+
+  const offenders: string[] = [];
+
+  // Match <a ...>...</a>. We only scan anchors for now since <button> rarely
+  // carries an href; if a button has data-href we'd handle that in a follow-up.
+  const anchorRe = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = anchorRe.exec(html)) !== null) {
+    const attrs = m[1] || "";
+    const inner = m[2] || "";
+
+    const classMatch = attrs.match(/\bclass=["']([^"']+)["']/i);
+    const classList = classMatch ? classMatch[1] : "";
+    const innerText = inner.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+    const isCtaByClass = CTA_CLASS_RE.test(classList);
+    const isCtaByText = CTA_TEXT_RE.test(innerText);
+    if (!isCtaByClass && !isCtaByText) continue;
+
+    const hrefMatch = attrs.match(/\bhref=["']([^"']*)["']/i);
+    if (!hrefMatch) continue;
+    const href = hrefMatch[1].trim();
+    if (!href) continue;
+
+    if (isAllowedCtaHref(href, existingIds)) continue;
+
+    offenders.push(href);
+    if (offenders.length >= 5) break;
+  }
+
+  if (offenders.length > 0) {
+    const unique = [...new Set(offenders)];
+    issues.push({
+      type: "link",
+      description: `CTA points to ${unique.map((h) => "`" + h + "`").join(", ")} — conversion CTAs should use \`/contact\`, \`tel:\`, or \`mailto:\`.`,
+      fixInstruction:
+        "Change each flagged CTA's href to `/contact` (booking/contact/schedule), `tel:<phone>`, `mailto:<email>`, or a same-page `#anchor` whose id exists in this HTML. Absolute http(s):// URLs are also allowed. Do not invent paths like /book-now or /schedule.",
+    });
+  }
+
+  return issues;
+}
+
+function isAllowedCtaHref(href: string, existingIds: Set<string>): boolean {
+  if (!href) return false;
+  // /contact (with optional trailing slash, query, path, or hash)
+  if (/^\/contact(?:[\/?#]|$)/i.test(href)) return true;
+  if (href.toLowerCase().startsWith("tel:")) return true;
+  if (href.toLowerCase().startsWith("mailto:")) return true;
+  if (/^https?:\/\//i.test(href)) return true;
+  if (href.startsWith("#")) {
+    const id = href.slice(1).split(/[?&]/)[0];
+    return id.length > 0 && existingIds.has(id);
+  }
+  return false;
 }
 
 function levenshteinDistance(a: string, b: string): number {

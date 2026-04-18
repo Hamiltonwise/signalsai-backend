@@ -16,6 +16,10 @@ import {
   Globe,
   FileText,
   Image as ImageIcon,
+  Stethoscope,
+  Briefcase,
+  ExternalLink,
+  AlertTriangle,
 } from "lucide-react";
 import {
   fetchIdentity,
@@ -31,16 +35,26 @@ import {
   type WarmupUrlInput,
   cancelGeneration,
   type ProjectIdentity,
+  type ProjectIdentityListEntry,
+  type ProjectIdentityLocation,
+  type IdentityListName,
   type WarmupInputs,
   type WarmupStatus,
+  resyncProjectIdentityList,
+  setPrimaryLocation,
+  removeProjectLocation,
+  resyncProjectLocation,
 } from "../../api/websites";
 import { searchPlaces, getPlaceDetails } from "../../api/places";
 import type { PlaceSuggestion } from "../../api/places";
 import ColorPicker from "./ColorPicker";
 import GradientPicker from "./GradientPicker";
 import type { GradientValue } from "./GradientPicker";
+import AddLocationModal from "./AddLocationModal";
+import { useConfirm } from "../ui/ConfirmModal";
+import { showSuccessToast, showErrorToast } from "../../lib/toast";
 
-type IdentityTab = "summary" | "json" | "chat";
+type IdentityTab = "summary" | "json" | "chat" | "doctors" | "services" | "locations";
 
 interface IdentityModalProps {
   projectId: string;
@@ -569,6 +583,7 @@ export default function IdentityModal({
               />
             ) : isReady && identity ? (
               <ReadyView
+                projectId={projectId}
                 identity={identity}
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
@@ -594,6 +609,10 @@ export default function IdentityModal({
                 brandEditing={brandEditing}
                 setBrandEditing={setBrandEditing}
                 onSaveBrand={handleSaveBrand}
+                onIdentityRefresh={(next) => {
+                  setIdentity(next);
+                  onIdentityChanged?.(next);
+                }}
                 onRerun={() => {
                   if (confirm("Re-run warmup? This will replace the current identity.")) {
                     setWarmupStatus(null);
@@ -913,6 +932,7 @@ function WarmingUpView({
 // ---------------------------------------------------------------------------
 
 interface ReadyViewProps {
+  projectId: string;
   identity: ProjectIdentity;
   activeTab: IdentityTab;
   setActiveTab: (tab: IdentityTab) => void;
@@ -939,15 +959,32 @@ interface ReadyViewProps {
   onSaveBrand: (brand: ProjectIdentity["brand"]) => Promise<void>;
   brandEditing: boolean;
   setBrandEditing: (v: boolean) => void;
+  /** Called when a tab mutates identity (e.g. add/remove location, resync list). */
+  onIdentityRefresh: (next: ProjectIdentity) => void;
 }
 
 function ReadyView(props: ReadyViewProps) {
   const { identity } = props;
+  const doctors: ProjectIdentityListEntry[] = Array.isArray(
+    identity.content_essentials?.doctors,
+  )
+    ? (identity.content_essentials!.doctors as ProjectIdentityListEntry[])
+    : [];
+  const services: ProjectIdentityListEntry[] = Array.isArray(
+    identity.content_essentials?.services,
+  )
+    ? (identity.content_essentials!.services as ProjectIdentityListEntry[])
+    : [];
+  const locations: ProjectIdentityLocation[] = Array.isArray(
+    (identity as any).locations,
+  )
+    ? ((identity as any).locations as ProjectIdentityLocation[])
+    : [];
 
   return (
     <div className="flex flex-col">
       {/* Tabs */}
-      <div className="flex items-center gap-1 px-6 pt-3 border-b border-gray-100">
+      <div className="flex items-center gap-1 px-6 pt-3 border-b border-gray-100 overflow-x-auto">
         <TabButton
           active={props.activeTab === "summary"}
           onClick={() => props.setActiveTab("summary")}
@@ -968,10 +1005,28 @@ function ReadyView(props: ReadyViewProps) {
           icon={<MessageCircle className="h-3.5 w-3.5" />}
           label="Chat Update"
         />
+        <TabButton
+          active={props.activeTab === "doctors"}
+          onClick={() => props.setActiveTab("doctors")}
+          icon={<Stethoscope className="h-3.5 w-3.5" />}
+          label={`Doctors${doctors.length ? ` (${doctors.length})` : ""}`}
+        />
+        <TabButton
+          active={props.activeTab === "services"}
+          onClick={() => props.setActiveTab("services")}
+          icon={<Briefcase className="h-3.5 w-3.5" />}
+          label={`Services${services.length ? ` (${services.length})` : ""}`}
+        />
+        <TabButton
+          active={props.activeTab === "locations"}
+          onClick={() => props.setActiveTab("locations")}
+          icon={<MapPin className="h-3.5 w-3.5" />}
+          label={`Locations${locations.length ? ` (${locations.length})` : ""}`}
+        />
         <div className="flex-1" />
         <button
           onClick={props.onRerun}
-          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded"
+          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded shrink-0"
         >
           <RefreshCw className="h-3.5 w-3.5" /> Re-run warmup
         </button>
@@ -1011,6 +1066,29 @@ function ReadyView(props: ReadyViewProps) {
             applyingProposals={props.applyingProposals}
             onApplyProposals={props.onApplyProposals}
             onDiscardProposals={props.onDiscardProposals}
+          />
+        )}
+        {props.activeTab === "doctors" && (
+          <IdentityListTab
+            projectId={props.projectId}
+            list="doctors"
+            entries={doctors}
+            onIdentityChange={props.onIdentityRefresh}
+          />
+        )}
+        {props.activeTab === "services" && (
+          <IdentityListTab
+            projectId={props.projectId}
+            list="services"
+            entries={services}
+            onIdentityChange={props.onIdentityRefresh}
+          />
+        )}
+        {props.activeTab === "locations" && (
+          <IdentityLocationsTab
+            projectId={props.projectId}
+            locations={locations}
+            onIdentityChange={props.onIdentityRefresh}
           />
         )}
       </div>
@@ -1067,6 +1145,7 @@ function IdentitySummary({
   const br = identity.brand;
   const v = identity.voice_and_tone;
   const ce = identity.content_essentials;
+  const hoursRows = normalizeHours((b as any)?.hours);
 
   return (
     <div className="space-y-4">
@@ -1079,6 +1158,7 @@ function IdentitySummary({
           label="Rating"
           value={b?.rating ? `${b.rating}★ (${b?.review_count || 0} reviews)` : null}
         />
+        <HoursRow rows={hoursRows} />
       </SummarySection>
 
       <BrandEditableSection
@@ -1295,6 +1375,116 @@ function SummaryRow({
           ? <span className="text-gray-300 italic">—</span>
           : value}
       </span>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Hours normalization + row renderer
+// GBP can return hours in a few shapes; normalize to a Mon-Sun ordered list.
+// -----------------------------------------------------------------------------
+
+const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+type DayName = (typeof DAY_ORDER)[number];
+
+// GBP periods[] uses 0=Sunday. Map to our Monday-first labels.
+const WEEKDAY_INDEX_TO_NAME: Record<number, DayName> = {
+  0: "Sunday",
+  1: "Monday",
+  2: "Tuesday",
+  3: "Wednesday",
+  4: "Thursday",
+  5: "Friday",
+  6: "Saturday",
+};
+
+function normalizeHours(raw: unknown): Array<{ day: DayName; text: string }> {
+  const empty: Array<{ day: DayName; text: string }> = [];
+  if (!raw) return empty;
+
+  // Shape A: array of display strings — e.g. ["Monday: 9:00 AM – 5:00 PM", ...]
+  if (Array.isArray(raw) && raw.every((r) => typeof r === "string")) {
+    const byDay = new Map<DayName, string>();
+    for (const line of raw as string[]) {
+      const match = line.match(/^\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\s*[:\-–]\s*(.+?)\s*$/i);
+      if (!match) continue;
+      const prefix = match[1].toLowerCase().slice(0, 3);
+      const day = DAY_ORDER.find((d) => d.toLowerCase().startsWith(prefix));
+      if (!day) continue;
+      byDay.set(day, match[2].trim());
+    }
+    if (byDay.size > 0) {
+      return DAY_ORDER.map((day) => ({ day, text: byDay.get(day) || "Closed" }));
+    }
+  }
+
+  // Shape B: openingHours object with weekdayDescriptions: string[]
+  if (typeof raw === "object" && raw !== null) {
+    const obj = raw as Record<string, unknown>;
+    const descriptions = obj.weekdayDescriptions;
+    if (Array.isArray(descriptions) && descriptions.every((d) => typeof d === "string")) {
+      return normalizeHours(descriptions);
+    }
+
+    // Shape C: openingHours.periods[] — [{open:{day,hour,minute}, close:{...}}]
+    const periods = obj.periods;
+    if (Array.isArray(periods)) {
+      const byDay = new Map<DayName, string[]>();
+      for (const p of periods as Array<Record<string, any>>) {
+        const open = p?.open;
+        const close = p?.close;
+        if (!open || typeof open !== "object") continue;
+        const dayIdx = typeof open.day === "number" ? open.day : -1;
+        const day = WEEKDAY_INDEX_TO_NAME[dayIdx];
+        if (!day) continue;
+        const openStr = formatPeriodTime(open.hour, open.minute);
+        const closeStr = close ? formatPeriodTime(close.hour, close.minute) : null;
+        const range = closeStr ? `${openStr} – ${closeStr}` : `${openStr} (open 24h)`;
+        const existing = byDay.get(day) || [];
+        existing.push(range);
+        byDay.set(day, existing);
+      }
+      if (byDay.size > 0) {
+        return DAY_ORDER.map((day) => ({
+          day,
+          text: (byDay.get(day) || []).join(", ") || "Closed",
+        }));
+      }
+    }
+  }
+
+  return empty;
+}
+
+function formatPeriodTime(hour: unknown, minute: unknown): string {
+  const h = typeof hour === "number" ? hour : 0;
+  const m = typeof minute === "number" ? minute : 0;
+  const suffix = h >= 12 ? "PM" : "AM";
+  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  const mm = m.toString().padStart(2, "0");
+  return `${displayH}:${mm} ${suffix}`;
+}
+
+function HoursRow({ rows }: { rows: Array<{ day: DayName; text: string }> }) {
+  if (rows.length === 0) {
+    return (
+      <div className="flex items-start justify-between gap-3 text-sm">
+        <span className="text-gray-500 shrink-0 min-w-[120px]">Hours</span>
+        <span className="text-gray-400 italic text-right">Not provided</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-start justify-between gap-3 text-sm">
+      <span className="text-gray-500 shrink-0 min-w-[120px]">Hours</span>
+      <div className="text-gray-900 text-right space-y-0.5">
+        {rows.map((r) => (
+          <div key={r.day} className="flex items-center justify-end gap-3">
+            <span className="text-gray-500 text-xs w-20 text-left">{r.day.slice(0, 3)}</span>
+            <span className="text-gray-900">{r.text}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1770,5 +1960,459 @@ function renderStatusIcon(result: BlockCheckResult | null | undefined) {
     >
       !
     </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// T7 — Doctors / Services / Locations tabs
+// ---------------------------------------------------------------------------
+
+/** Format an ISO timestamp as a compact relative string (e.g. "3h ago"). */
+function humanizeTimestamp(iso: string | null | undefined): string {
+  if (!iso) return "never";
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return "never";
+  const diffMs = Date.now() - ts;
+  if (diffMs < 0) return "just now";
+  const sec = Math.round(diffMs / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.round(hr / 24);
+  if (day < 30) return `${day}d ago`;
+  const mo = Math.round(day / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  const yr = Math.round(mo / 12);
+  return `${yr}y ago`;
+}
+
+/** Find the most-recent `last_synced_at` across a list, or null if empty. */
+function mostRecentSync(entries: Array<{ last_synced_at?: string }>): string | null {
+  const valid = entries
+    .map((e) => (e.last_synced_at ? Date.parse(e.last_synced_at) : NaN))
+    .filter((n) => !Number.isNaN(n));
+  if (valid.length === 0) return null;
+  return new Date(Math.max(...valid)).toISOString();
+}
+
+interface IdentityListTabProps {
+  projectId: string;
+  list: IdentityListName;
+  entries: ProjectIdentityListEntry[];
+  onIdentityChange: (next: ProjectIdentity) => void;
+}
+
+function IdentityListTab({
+  projectId,
+  list,
+  entries,
+  onIdentityChange,
+}: IdentityListTabProps) {
+  const [resyncing, setResyncing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [localEntries, setLocalEntries] = useState<ProjectIdentityListEntry[]>(entries);
+
+  // Keep localEntries in sync when parent identity refreshes.
+  useEffect(() => {
+    setLocalEntries(entries);
+  }, [entries]);
+
+  const handleResync = async () => {
+    if (resyncing) return;
+    setError(null);
+    try {
+      setResyncing(true);
+      const res = await resyncProjectIdentityList(projectId, list);
+      setLocalEntries(res.data.entries);
+      // Refresh the identity in the parent so the JSON tab + tab counters update.
+      const refreshed = await fetchIdentity(projectId);
+      if (refreshed.data) onIdentityChange(refreshed.data);
+      showSuccessToast(
+        `${list[0].toUpperCase() + list.slice(1)} re-synced`,
+        `${res.data.refreshed_count} fresh, ${res.data.stale_count} stale.`,
+      );
+    } catch (err: any) {
+      const msg = err?.message || "Re-sync failed";
+      setError(msg);
+      showErrorToast("Re-sync failed", msg);
+    } finally {
+      setResyncing(false);
+    }
+  };
+
+  const headerSyncStamp = mostRecentSync(localEntries);
+  const labelPlural = list === "doctors" ? "Doctors" : "Services";
+  const labelSingular = list === "doctors" ? "doctor" : "service";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-gray-500">
+            URLs we're tracking on the practice site. Re-sync re-runs extraction
+            against the cached scraped pages.
+          </p>
+          <p className="text-[11px] text-gray-400 mt-1">
+            List last synced{" "}
+            <span className="font-medium text-gray-600">
+              {humanizeTimestamp(headerSyncStamp)}
+            </span>
+          </p>
+        </div>
+        <button
+          onClick={handleResync}
+          disabled={resyncing}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 shrink-0"
+        >
+          {resyncing ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Re-syncing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-3.5 w-3.5" /> Re-sync
+            </>
+          )}
+        </button>
+      </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {localEntries.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-gray-200 p-6 text-center">
+          <p className="text-sm text-gray-500">
+            Warmup didn't find any {list} on the site — they may live on a page
+            that wasn't discovered. You can still add them manually via the Posts
+            tab.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-100">
+          {localEntries.map((entry, idx) => (
+            <IdentityListRow
+              key={`${entry.source_url || "local"}-${idx}`}
+              entry={entry}
+              labelSingular={labelSingular}
+            />
+          ))}
+        </div>
+      )}
+
+      <p className="text-[11px] text-gray-400 italic">
+        {labelPlural} list — light-touch tracking. Full content is scraped at
+        import time from the Posts tab.
+      </p>
+    </div>
+  );
+}
+
+function IdentityListRow({
+  entry,
+  labelSingular,
+}: {
+  entry: ProjectIdentityListEntry;
+  labelSingular: string;
+}) {
+  return (
+    <div className="p-3 flex items-start gap-3">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold text-gray-900 truncate">
+            {entry.name}
+          </span>
+          {entry.stale && (
+            <span
+              title={`This ${labelSingular} was not found in the most recent re-sync. Verify it still exists on the site.`}
+              className="inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700"
+            >
+              <AlertTriangle className="h-3 w-3" /> stale
+            </span>
+          )}
+        </div>
+        {entry.short_blurb && (
+          <div className="text-xs text-gray-600 mt-1 line-clamp-2">
+            {entry.short_blurb}
+          </div>
+        )}
+        <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
+          {entry.source_url ? (
+            <a
+              href={entry.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-alloro-orange hover:text-orange-600 truncate max-w-[260px]"
+            >
+              <ExternalLink className="h-3 w-3 shrink-0" />
+              <span className="truncate">{entry.source_url}</span>
+            </a>
+          ) : (
+            <span className="italic">No source URL</span>
+          )}
+          <span className="shrink-0">
+            Last synced {humanizeTimestamp(entry.last_synced_at)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface IdentityLocationsTabProps {
+  projectId: string;
+  locations: ProjectIdentityLocation[];
+  onIdentityChange: (next: ProjectIdentity) => void;
+}
+
+function IdentityLocationsTab({
+  projectId,
+  locations,
+  onIdentityChange,
+}: IdentityLocationsTabProps) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [busyPlaceId, setBusyPlaceId] = useState<string | null>(null);
+  const [removingPlaceId, setRemovingPlaceId] = useState<string | null>(null);
+  const [localLocations, setLocalLocations] = useState<ProjectIdentityLocation[]>(locations);
+  const confirm = useConfirm();
+
+  useEffect(() => {
+    setLocalLocations(locations);
+  }, [locations]);
+
+  const refreshIdentity = async () => {
+    try {
+      const refreshed = await fetchIdentity(projectId);
+      if (refreshed.data) onIdentityChange(refreshed.data);
+    } catch {
+      // Non-fatal; UI already updated locally from the per-action response.
+    }
+  };
+
+  const handleSetPrimary = async (placeId: string, name: string) => {
+    const ok = await confirm({
+      title: "Switch primary location?",
+      message: `Setting "${name || placeId}" as primary changes the main business data the AI uses for every page. Regenerate affected pages after switching.`,
+      confirmLabel: "Set as primary",
+      cancelLabel: "Cancel",
+      variant: "default",
+    });
+    if (!ok) return;
+    try {
+      setBusyPlaceId(placeId);
+      const res = await setPrimaryLocation(projectId, placeId);
+      onIdentityChange(res.data.identity);
+      const nextLocations: ProjectIdentityLocation[] = Array.isArray(
+        (res.data.identity as any).locations,
+      )
+        ? ((res.data.identity as any).locations as ProjectIdentityLocation[])
+        : [];
+      setLocalLocations(nextLocations);
+      showSuccessToast("Primary location updated", `"${name || placeId}" is now primary.`);
+    } catch (err: any) {
+      showErrorToast("Set primary failed", err?.message || "Unknown error");
+    } finally {
+      setBusyPlaceId(null);
+    }
+  };
+
+  const handleResync = async (placeId: string, name: string) => {
+    try {
+      setBusyPlaceId(placeId);
+      const res = await resyncProjectLocation(projectId, placeId);
+      setLocalLocations(res.data.locations);
+      await refreshIdentity();
+      if (res.data.location.warmup_status === "ready") {
+        showSuccessToast("Location re-synced", `"${name || placeId}" updated.`);
+      } else {
+        showErrorToast(
+          "Location scrape failed",
+          res.data.location.warmup_error || "Apify returned no data — try again later.",
+        );
+      }
+    } catch (err: any) {
+      showErrorToast("Re-sync failed", err?.message || "Unknown error");
+    } finally {
+      setBusyPlaceId(null);
+    }
+  };
+
+  const handleRemove = async (placeId: string, name: string) => {
+    const ok = await confirm({
+      title: "Remove this location?",
+      message: `"${name || placeId}" will be removed from this project's locations list. The Google Business Profile itself is not deleted.`,
+      confirmLabel: "Remove",
+      cancelLabel: "Cancel",
+      variant: "danger",
+    });
+    if (!ok) return;
+    try {
+      setRemovingPlaceId(placeId);
+      const res = await removeProjectLocation(projectId, placeId);
+      setLocalLocations(res.data.locations);
+      await refreshIdentity();
+      showSuccessToast("Location removed", `"${name || placeId}" removed from project.`);
+    } catch (err: any) {
+      showErrorToast("Remove failed", err?.message || "Unknown error");
+    } finally {
+      setRemovingPlaceId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm text-gray-700">
+            <span className="font-semibold">{localLocations.length}</span>{" "}
+            location{localLocations.length === 1 ? "" : "s"}
+          </p>
+          <p className="text-[11px] text-gray-400 mt-1">
+            Structured GBP data — re-sync per-row to refresh hours/rating/reviews.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 shrink-0"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Location
+        </button>
+      </div>
+
+      {localLocations.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-gray-200 p-6 text-center">
+          <p className="text-sm text-gray-500">
+            No locations yet. Click <span className="font-semibold">Add Location</span> to import from Google Business Profile.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-100">
+          {localLocations.map((loc) => (
+            <LocationRow
+              key={loc.place_id}
+              loc={loc}
+              busy={busyPlaceId === loc.place_id}
+              removing={removingPlaceId === loc.place_id}
+              onSetPrimary={() => handleSetPrimary(loc.place_id, loc.name)}
+              onResync={() => handleResync(loc.place_id, loc.name)}
+              onRemove={() => handleRemove(loc.place_id, loc.name)}
+            />
+          ))}
+        </div>
+      )}
+
+      {showAdd && (
+        <AddLocationModal
+          projectId={projectId}
+          onClose={() => setShowAdd(false)}
+          onAdded={(next) => {
+            setLocalLocations(next);
+            void refreshIdentity();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function LocationRow({
+  loc,
+  busy,
+  removing,
+  onSetPrimary,
+  onResync,
+  onRemove,
+}: {
+  loc: ProjectIdentityLocation;
+  busy: boolean;
+  removing: boolean;
+  onSetPrimary: () => void;
+  onResync: () => void;
+  onRemove: () => void;
+}) {
+  const isFailed = loc.warmup_status === "failed";
+
+  return (
+    <div className="p-3 flex items-start gap-3">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold text-gray-900 truncate">
+            {loc.name || <span className="italic text-gray-400">Unnamed location</span>}
+          </span>
+          {loc.is_primary && (
+            <span className="inline-flex items-center gap-0.5 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
+              <Star className="h-3 w-3" /> Primary
+            </span>
+          )}
+          {isFailed && (
+            <span
+              title={loc.warmup_error || "Last warmup attempt failed"}
+              className="inline-flex items-center gap-0.5 rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700"
+            >
+              Warmup failed
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-gray-600 mt-1 space-y-0.5">
+          {loc.address && <div>{loc.address}</div>}
+          {loc.phone && <div className="text-gray-500">{loc.phone}</div>}
+        </div>
+        <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
+          {loc.rating != null && (
+            <span className="shrink-0">
+              {loc.rating}★ ({loc.review_count || 0})
+            </span>
+          )}
+          <span className="shrink-0 font-mono truncate">{loc.place_id}</span>
+          <span className="shrink-0">
+            Last synced {humanizeTimestamp(loc.last_synced_at)}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        {!loc.is_primary && (
+          <button
+            onClick={onSetPrimary}
+            disabled={busy || removing}
+            className="text-[11px] font-medium text-gray-600 hover:text-alloro-orange px-2 py-1 rounded hover:bg-gray-50 disabled:opacity-50"
+          >
+            Set as primary
+          </button>
+        )}
+        <button
+          onClick={onResync}
+          disabled={busy || removing}
+          title="Re-scrape this location's GBP"
+          className="inline-flex items-center text-[11px] font-medium text-gray-600 hover:text-alloro-orange px-2 py-1 rounded hover:bg-gray-50 disabled:opacity-50"
+        >
+          {busy ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
+        </button>
+        <button
+          onClick={onRemove}
+          disabled={loc.is_primary || busy || removing}
+          title={
+            loc.is_primary
+              ? "Cannot remove the primary location. Set another location as primary first."
+              : "Remove this location"
+          }
+          className="inline-flex items-center p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:hover:text-gray-400 disabled:hover:bg-transparent"
+        >
+          {removing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5" />
+          )}
+        </button>
+      </div>
+    </div>
   );
 }

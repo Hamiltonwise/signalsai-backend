@@ -62,6 +62,12 @@ export interface Post {
   content: string;
   excerpt: string | null;
   featured_image: string | null;
+  /**
+   * Origin marker — set by the import-from-identity pipeline (T8/F4).
+   * URL for doctor/service imports, `place_id` for location imports.
+   * `null` for manually-created posts.
+   */
+  source_url: string | null;
   custom_fields: Record<string, unknown>;
   status: "draft" | "published";
   sort_order: number;

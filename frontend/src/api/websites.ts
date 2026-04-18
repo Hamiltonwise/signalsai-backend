@@ -1929,3 +1929,264 @@ export const fetchProjectCosts = async (
   }
   return response.json();
 };
+
+// =====================================================================
+// IDENTITY LISTS + LOCATIONS — T7 / F3
+// Appended for plan
+// `plans/04182026-no-ticket-identity-enrichments-and-post-imports/spec.md`.
+// =====================================================================
+
+/** Light-weight list entry for doctors/services tracked in identity. */
+export interface ProjectIdentityListEntry {
+  name: string;
+  source_url: string | null;
+  short_blurb: string | null;
+  last_synced_at: string;
+  stale?: boolean;
+}
+
+/** Structured location entry stored in `identity.locations[]`. */
+export interface ProjectIdentityLocation {
+  place_id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  rating: number | null;
+  review_count: number | null;
+  category: string | null;
+  website_url: string | null;
+  hours: unknown;
+  last_synced_at: string;
+  is_primary: boolean;
+  warmup_status: "ready" | "failed" | "pending";
+  warmup_error?: string;
+  stale?: boolean;
+}
+
+export type IdentityListName = "doctors" | "services";
+
+/**
+ * Re-run extraction of the doctor/service list against the cached scraped
+ * pages on identity. Returns the merged list (fresh entries first, then
+ * carry-over entries marked `stale: true`).
+ */
+export const resyncProjectIdentityList = async (
+  projectId: string,
+  list: IdentityListName,
+): Promise<{
+  success: boolean;
+  data: {
+    list: IdentityListName;
+    entries: ProjectIdentityListEntry[];
+    refreshed_count: number;
+    stale_count: number;
+  };
+}> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/identity/resync-list`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ list }),
+    },
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to resync identity list");
+  }
+  return response.json();
+};
+
+/**
+ * Append a new GBP location to the project. Backend kicks off a targeted
+ * Apify scrape for the place_id and returns the updated locations array.
+ */
+export const addProjectLocation = async (
+  projectId: string,
+  placeId: string,
+): Promise<{
+  success: boolean;
+  data: {
+    locations: ProjectIdentityLocation[];
+    added: ProjectIdentityLocation;
+  };
+}> => {
+  const response = await fetch(`${API_BASE}/${projectId}/locations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ place_id: placeId }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to add location");
+  }
+  return response.json();
+};
+
+/**
+ * Switch the project's primary location. Backend rewrites identity.business
+ * from the new primary's data so existing consumers stay correct.
+ */
+export const setPrimaryLocation = async (
+  projectId: string,
+  placeId: string,
+): Promise<{
+  success: boolean;
+  data: { identity: ProjectIdentity; primary_place_id: string };
+}> => {
+  const response = await fetch(`${API_BASE}/${projectId}/locations/primary`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ place_id: placeId }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to set primary location");
+  }
+  return response.json();
+};
+
+/**
+ * Remove a non-primary location. Returns 409 from the API if the location
+ * is the project's primary.
+ */
+export const removeProjectLocation = async (
+  projectId: string,
+  placeId: string,
+): Promise<{
+  success: boolean;
+  data: { locations: ProjectIdentityLocation[] };
+}> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/locations/${encodeURIComponent(placeId)}`,
+    { method: "DELETE" },
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to remove location");
+  }
+  return response.json();
+};
+
+/** Re-scrape a single location's GBP data. */
+export const resyncProjectLocation = async (
+  projectId: string,
+  placeId: string,
+): Promise<{
+  success: boolean;
+  data: {
+    location: ProjectIdentityLocation;
+    locations: ProjectIdentityLocation[];
+  };
+}> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/locations/${encodeURIComponent(placeId)}/resync`,
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to re-sync location");
+  }
+  return response.json();
+};
+
+// =====================================================================
+// POST IMPORT FROM IDENTITY — T8 + F4
+// =====================================================================
+//
+// Appended for plan
+// `plans/04182026-no-ticket-identity-enrichments-and-post-imports/spec.md`
+// tasks T8 + F4. Frontend posts a list of entries (URLs for doctor/service,
+// place_ids for location) and polls the returned jobId for live status.
+
+/** Post type that can be imported from the identity blob. */
+export type ImportPostType = "doctor" | "service" | "location";
+
+export type PostImportEntryStatus =
+  | "created"
+  | "updated"
+  | "skipped"
+  | "failed";
+
+export interface PostImportEntryResult {
+  /** Echoed entry key — URL for doctor/service, place_id for location. */
+  key: string;
+  status: PostImportEntryStatus;
+  post_id?: string;
+  title?: string;
+  error?: string;
+  /** True when the URL scrape needed the browser/screenshot fallback. */
+  used_fallback?: boolean;
+}
+
+export interface PostImportResultSummary {
+  total: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  results: PostImportEntryResult[];
+}
+
+export interface PostImportProgress {
+  total: number;
+  completed: number;
+  results: PostImportEntryResult[];
+}
+
+export type PostImportJobState =
+  | "waiting"
+  | "active"
+  | "completed"
+  | "failed"
+  | "delayed"
+  | "paused"
+  | "stuck"
+  | "unknown";
+
+export interface PostImportStatusResponse {
+  success: boolean;
+  data: {
+    jobId: string;
+    state: PostImportJobState;
+    progress: PostImportProgress;
+    summary: PostImportResultSummary | null;
+    failedReason: string | null;
+  };
+}
+
+/** Enqueue an import-from-identity job. Returns the BullMQ jobId. */
+export const startPostImport = async (
+  projectId: string,
+  args: {
+    postType: ImportPostType;
+    entries: string[];
+    overwrite?: boolean;
+  },
+): Promise<{ success: boolean; data: { jobId: string; total: number } }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/posts/import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(args),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to start post import");
+  }
+  return response.json();
+};
+
+/** Poll job state + per-entry results for a running/finished post import. */
+export const fetchPostImportStatus = async (
+  projectId: string,
+  jobId: string,
+): Promise<PostImportStatusResponse> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/posts/import/${jobId}`,
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to fetch post import status");
+  }
+  return response.json();
+};

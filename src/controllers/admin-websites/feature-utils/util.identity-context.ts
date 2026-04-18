@@ -171,7 +171,37 @@ export interface ProjectIdentity {
       rating?: number | null;
       text?: string | null;
     }>;
+    doctors?: Array<{
+      name: string;
+      source_url: string | null;
+      short_blurb: string | null;
+      last_synced_at: string;
+      stale?: boolean;
+    }>;
+    services?: Array<{
+      name: string;
+      source_url: string | null;
+      short_blurb: string | null;
+      last_synced_at: string;
+      stale?: boolean;
+    }>;
   };
+  locations?: Array<{
+    place_id: string;
+    name: string;
+    address: string | null;
+    phone: string | null;
+    rating: number | null;
+    review_count: number | null;
+    category: string | null;
+    website_url: string | null;
+    hours: unknown;
+    last_synced_at: string;
+    is_primary: boolean;
+    warmup_status: "ready" | "failed" | "pending";
+    warmup_error?: string;
+    stale?: boolean;
+  }>;
   extracted_assets?: {
     images?: Array<ImageManifestEntry>;
     discovered_pages?: Array<{ url?: string | null; title?: string | null; content_excerpt?: string | null }>;
@@ -215,6 +245,7 @@ export function buildStableIdentityContext(identity: ProjectIdentity): string {
   const b = identity.business || {};
   const br = identity.brand || {};
   const v = identity.voice_and_tone || {};
+  const ce = identity.content_essentials || {};
 
   const parts: string[] = [];
 
@@ -229,6 +260,32 @@ export function buildStableIdentityContext(identity: ProjectIdentity): string {
       Rating: b.rating ? `${b.rating}/5 (${b.review_count || 0} reviews)` : null,
     }),
   );
+
+  // CONTENT ESSENTIALS: light-touch awareness for doctors/services. Locations
+  // are intentionally omitted — prompts continue to read `business` for the
+  // primary location and a follow-up plan will wire "all locations" rendering.
+  const doctors = Array.isArray(ce.doctors)
+    ? ce.doctors.filter((d) => d && !d.stale && d.name)
+    : [];
+  const services = Array.isArray(ce.services)
+    ? ce.services.filter((s) => s && !s.stale && s.name)
+    : [];
+
+  if (doctors.length > 0 || services.length > 0) {
+    parts.push("\n## CONTENT ESSENTIALS");
+    if (doctors.length > 0) {
+      parts.push("Doctors:");
+      for (const d of doctors.slice(0, 25)) {
+        parts.push(`  - ${d.name}`);
+      }
+    }
+    if (services.length > 0) {
+      parts.push("Services:");
+      for (const s of services.slice(0, 25)) {
+        parts.push(`  - ${s.name}`);
+      }
+    }
+  }
 
   parts.push("\n## BRAND");
   const brandLines: Record<string, unknown> = {

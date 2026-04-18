@@ -304,6 +304,9 @@ router.post("/:id/identity/propose-updates", controller.proposeIdentityUpdates);
 // POST /:id/identity/apply-proposals — Apply admin-approved proposals
 router.post("/:id/identity/apply-proposals", controller.applyIdentityProposals);
 
+// POST /:id/identity/resync-list — Re-run doctor/service extraction against cached pages
+router.post("/:id/identity/resync-list", controller.resyncIdentityList);
+
 // GET /:id/slot-prefill — Pre-filled slot values from project_identity
 router.get("/:id/slot-prefill", controller.getSlotPrefill);
 
@@ -611,6 +614,45 @@ router.patch("/:id", controller.updateProject);
 
 // DELETE /:id — Delete project (cascade pages)
 router.delete("/:id", controller.deleteProject);
+
+// =====================================================================
+// LOCATIONS — F3 (multi-location management for IdentityModal Locations tab)
+// =====================================================================
+//
+// Appended for plan
+// `plans/04182026-no-ticket-identity-enrichments-and-post-imports/spec.md`
+// task F3. Express's `/:id` matcher above does NOT swallow `/:id/locations`
+// (path-to-regexp anchors `/:id` to end-of-path), so registration order is
+// safe even after the `/:id` catch-all.
+
+// POST   /:id/locations               — Add + scrape a new place_id
+router.post("/:id/locations", controller.addProjectLocation);
+
+// PATCH  /:id/locations/primary       — Switch primary location (rewrites identity.business)
+router.patch("/:id/locations/primary", controller.setPrimaryLocation);
+
+// POST   /:id/locations/:place_id/resync — Re-scrape a single location
+router.post("/:id/locations/:place_id/resync", controller.resyncProjectLocation);
+
+// DELETE /:id/locations/:place_id     — Remove a non-primary location
+router.delete("/:id/locations/:place_id", controller.removeProjectLocation);
+
+// =====================================================================
+// POST IMPORT FROM IDENTITY — T8 + F4
+// =====================================================================
+//
+// Appended for plan
+// `plans/04182026-no-ticket-identity-enrichments-and-post-imports/spec.md`
+// tasks T8 + F4. The `/:projectId/posts/import` paths sit deeper than the
+// catch-all `/:id` GET above, so Express's path-to-regexp does not match them
+// against the project-detail handler.
+
+// POST /:projectId/posts/import            — Enqueue a BullMQ job to import
+//                                            doctor / service / location entries
+router.post("/:projectId/posts/import", controller.startPostImport);
+
+// GET  /:projectId/posts/import/:jobId     — Poll job state + per-entry results
+router.get("/:projectId/posts/import/:jobId", controller.getPostImportStatus);
 
 // =====================================================================
 // EXPORTS

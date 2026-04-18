@@ -2,6 +2,118 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.21] - April 2026
+
+### Identity Enrichments + Multi-Location + Post Imports
+
+Closes the gap between "what we know about the practice" and "content we
+publish about them." Identity now captures hours, doctors, services, and
+multiple locations. Posts tab imports from identity in one click (fetch
+pages, download images to S3, create draft rows). Also lands the
+canonical `/contact` CTA rule and a simplified 3-step setup checklist on
+the website detail page.
+
+**Key Changes:**
+- **Multi-location support** — `identity.locations[]` top-level array
+  populated by scraping every `project.selected_place_ids[]` entry
+  (concurrency 3). `identity.business` stays as a pointer to the
+  designated primary (`project.primary_place_id`) so every existing
+  consumer keeps working unchanged. Scrape failures on individual
+  locations write `warmup_status: "failed"` + `stale: true` entries
+  instead of tanking the whole warmup.
+- **Locations tab in Identity modal** — list view with primary badge,
+  address/phone/hours, per-row re-sync, set-as-primary, and remove
+  actions. Add Location opens a modal that reuses the existing
+  `GbpSearchPicker`. Primary removal is blocked; set-as-primary warns
+  that affected pages should be regenerated.
+- **Doctor + service lightweight lists** — extracted during the
+  existing warmup distillation pass. `{name, source_url,
+  short_blurb, last_synced_at, stale?}` only, no images, no full
+  content. Capped at 100 entries per list; 400-char blurbs;
+  `source_url` must match a real discovered page.
+- **Doctors / Services tabs** — same list view with per-row
+  timestamps, stale badges, and a Re-sync button that re-runs
+  extraction against cached `discovered_pages` without re-scraping.
+- **Hours rendered in Summary** — normalizes three GBP shapes
+  (array-of-strings, `weekdayDescriptions[]`, `periods[]` object)
+  into a Mon–Sun table. "Not provided" row when missing.
+- **Import from Identity** — new toolbar button on Posts tab for
+  `doctor`, `service`, and `location` post types. Modal shows
+  checkbox-selectable entries; already-imported rows flip to
+  "Overwrite" toggles. Import fires a `wb-post-import` BullMQ job:
+  doctors/services run the existing URL-scrape strategy stack
+  (fetch → browser → screenshot), extract main content, download
+  the first meaningful image to S3, insert a post row.
+  Locations build content from structured GBP data without
+  scraping. Partial unique index on
+  `(project_id, post_type_id, source_url)` enforces dedup.
+- **Canonical `/contact` CTA rule** — prompt rule in
+  `ComponentGenerator.md` + `LayoutGenerator.md` plus a new
+  `checkCtaPaths` validator that flags CTA-shaped elements pointing
+  outside `/contact`, `tel:`, `mailto:`, or matching same-page
+  anchors. Absolute URLs pass through for external booking portals.
+- **Simpler 3-step setup UI** — replaced the onboarding-wizard style
+  card rows on `WebsiteDetail` with a compact admin checklist
+  (checkbox · title · inline action link). Locked rows dim; running
+  shows a small spinner; completed shows a green check.
+
+**Commits:**
+- `src/database/migrations/20260418000002_add_multi_location_to_projects.ts` —
+  adds `selected_place_ids TEXT[]` + `primary_place_id TEXT` on
+  `website_builder.projects`; backfills from the existing
+  `selected_place_id`.
+- `src/database/migrations/20260418000003_add_source_url_to_posts.ts` —
+  adds `posts.source_url TEXT` + partial unique index for import
+  dedup.
+- `src/controllers/admin-websites/feature-services/service.identity-warmup.ts` —
+  `buildLocationsArray` + `runWithConcurrency` helpers; primary
+  reuses its already-fetched GBP data, additional place_ids run
+  through `scrapeGbp` with concurrency 3; distillation now emits
+  `doctors[]`/`services[]` with URL allow-listing against
+  `discovered_pages`.
+- `src/controllers/admin-websites/feature-utils/util.identity-context.ts` —
+  `ProjectIdentity.locations[]`, `content_essentials.doctors[]`,
+  `content_essentials.services[]`. `buildStableIdentityContext`
+  lists doctor/service names under CONTENT ESSENTIALS; does NOT
+  iterate locations (prompts still read `business`).
+- `src/controllers/admin-websites/AdminWebsitesController.ts` —
+  6 new handlers: `resyncIdentityList`, `addProjectLocation`,
+  `setPrimaryLocation`, `removeProjectLocation`,
+  `resyncProjectLocation`, `startPostImport`, `getPostImportStatus`.
+- `src/controllers/admin-websites/feature-services/service.post-importer.ts` —
+  `importFromIdentity(projectId, {postType, entries, overwrite})`
+  branches on `location` vs doctor/service; reuses existing
+  `scrapeUrl` fallback strategy, `uploadToS3`, and `buildMediaS3Key`.
+  15 MB image cap with `content-type: image/*` guard.
+- `src/workers/processors/postImporter.processor.ts` +
+  `src/workers/worker.ts` — `wb-post-import` BullMQ worker;
+  concurrency 1, 10-min lock; progress via
+  `job.updateProgress({total, completed, results[]})`.
+- `src/agents/websiteAgents/builder/IdentityDistiller.md` — extended
+  output schema + hard rules for the new doctor/service lists.
+- `src/agents/websiteAgents/builder/{ComponentGenerator,LayoutGenerator}.md` —
+  CTA canonical-path rule.
+- `src/utils/website-utils/htmlValidator.ts` — `checkCtaPaths`
+  function; flags off-pattern CTAs with per-offender detail.
+- `frontend/src/components/Admin/IdentityModal.tsx` — three new
+  tabs (Doctors, Services, Locations); hours rendering; pulls in
+  `AddLocationModal` + `useConfirm` for primary-switch and removal.
+- `frontend/src/components/Admin/AddLocationModal.tsx` — thin
+  wrapper around `GbpSearchPicker` for the Locations tab Add flow.
+- `frontend/src/components/Admin/ImportFromIdentityModal.tsx` —
+  checkbox list, "Already imported → Overwrite" rows, live progress
+  polling against the BullMQ job, per-row results with Retry.
+- `frontend/src/components/Admin/PostsTab.tsx` — "Import from
+  Identity" toolbar button on doctor/service/location post types.
+- `frontend/src/pages/admin/WebsiteDetail.tsx` — simplified setup
+  checklist; earlier placeId-required, wizard, and Preview/Stop/
+  Delete actions from 0.0.20 remain in place.
+- `frontend/src/api/websites.ts` + `posts.ts` —
+  `resyncProjectIdentityList`, `addProjectLocation`,
+  `setPrimaryLocation`, `removeProjectLocation`,
+  `resyncProjectLocation`, `startPostImport`,
+  `fetchPostImportStatus`, and the corresponding types.
+
 ## [0.0.20] - April 2026
 
 ### Website Builder — Costs Tab, Quality Hardening, Skip Fix, Rebuild UX

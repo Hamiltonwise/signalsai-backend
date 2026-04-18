@@ -245,10 +245,14 @@ export async function runIdentityWarmup(
     checkCancel(signal);
 
     // --- 7. Content distillation ---
+    const discoveredPageUrls = discoveredPages
+      .map((p) => p.url)
+      .filter((u): u is string => typeof u === "string" && u.length > 0);
     const distilled = await distillContent(
       scrapedPagesRaw,
       userTextInputs,
       gbpData,
+      discoveredPageUrls,
       {
         projectId,
         eventType: "warmup",
@@ -258,11 +262,30 @@ export async function runIdentityWarmup(
     log("Content distilled", {
       certifications: distilled.certifications?.length || 0,
       testimonials: distilled.featured_testimonials?.length || 0,
+      doctors: distilled.doctors?.length || 0,
+      services: distilled.services?.length || 0,
     });
 
     // --- 8. Build identity + persist ---
     const business = buildBusinessFromGbp(gbpData, inputs.placeId);
     const brand = buildBrand(inputs, business.name, logoS3Url);
+
+    // --- 8a. Multi-location sweep ---
+    // Read the project's selected_place_ids + primary_place_id. Build a
+    // locations[] entry for each (primary reuses the already-scraped gbpData;
+    // non-primary runs Apify in parallel with concurrency=3).
+    const locations = await buildLocationsArray(
+      projectId,
+      inputs.placeId,
+      gbpData,
+      inputs.practiceSearchString,
+      signal,
+    );
+    log("Locations assembled", {
+      total: locations.length,
+      ready: locations.filter((l) => l.warmup_status === "ready").length,
+      failed: locations.filter((l) => l.warmup_status === "failed").length,
+    });
 
     const identity = {
       version: 1,
@@ -300,7 +323,10 @@ export async function runIdentityWarmup(
         social_links: distilled.social_links || {},
         review_themes: distilled.review_themes || [],
         featured_testimonials: distilled.featured_testimonials || [],
+        doctors: distilled.doctors || [],
+        services: distilled.services || [],
       },
+      locations,
       extracted_assets: {
         images: analyzedImages,
         discovered_pages: discoveredPages,
@@ -423,6 +449,213 @@ function buildBusinessFromGbp(
     website_url: g.website || null,
     place_id: fallbackPlaceId || g.placeId || null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// MULTI-LOCATION
+// ---------------------------------------------------------------------------
+
+interface IdentityLocation {
+  place_id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  rating: number | null;
+  review_count: number | null;
+  category: string | null;
+  website_url: string | null;
+  hours: unknown;
+  last_synced_at: string;
+  is_primary: boolean;
+  warmup_status: "ready" | "failed" | "pending";
+  warmup_error?: string;
+  stale?: boolean;
+}
+
+function buildLocationEntryFromGbp(
+  placeId: string,
+  gbpData: any,
+  isPrimary: boolean,
+): IdentityLocation {
+  const g = gbpData || {};
+  return {
+    place_id: placeId,
+    name: g.title || g.name || "",
+    address: g.address || null,
+    phone: g.phone || null,
+    rating: (g.totalScore ?? g.rating ?? null) as number | null,
+    review_count: (g.reviewsCount ?? g.reviewCount ?? null) as number | null,
+    category: g.categoryName || g.category || null,
+    website_url: g.website || null,
+    hours: g.openingHours || null,
+    last_synced_at: new Date().toISOString(),
+    is_primary: isPrimary,
+    warmup_status: "ready",
+  };
+}
+
+/**
+ * Assemble `identity.locations[]` for the project.
+ *
+ * The primary entry reuses the already-scraped `gbpData` (no extra Apify
+ * call). Non-primary entries are scraped in parallel with a concurrency
+ * limit of 3. On per-location Apify errors the entry is still written with
+ * warmup_status = "failed" + stale=true so the UI can surface a retry path.
+ */
+async function buildLocationsArray(
+  projectId: string,
+  primaryPlaceIdFromInputs: string | undefined,
+  primaryGbpData: any,
+  practiceSearchString: string | undefined,
+  signal: AbortSignal | undefined,
+): Promise<IdentityLocation[]> {
+  const project = await db(PROJECTS_TABLE)
+    .where("id", projectId)
+    .select("selected_place_ids", "primary_place_id", "selected_place_id")
+    .first();
+
+  const rawIds = Array.isArray(project?.selected_place_ids)
+    ? (project.selected_place_ids as string[])
+    : [];
+  const fallbackPrimary =
+    project?.primary_place_id ||
+    primaryPlaceIdFromInputs ||
+    project?.selected_place_id ||
+    null;
+
+  // Normalize: if selected_place_ids is empty, fall back to [primary].
+  let allIds: string[] = rawIds.filter((id): id is string => typeof id === "string" && id.length > 0);
+  if (allIds.length === 0 && fallbackPrimary) {
+    allIds = [fallbackPrimary];
+  }
+  if (allIds.length === 0) {
+    // No place_ids anywhere — return empty locations array.
+    return [];
+  }
+
+  // De-dupe while preserving order.
+  const seen = new Set<string>();
+  allIds = allIds.filter((id) => {
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+
+  const primaryId = fallbackPrimary && allIds.includes(fallbackPrimary)
+    ? fallbackPrimary
+    : allIds[0];
+
+  const results: Array<IdentityLocation | null> = new Array(allIds.length).fill(null);
+
+  // Primary slot: reuse the already-scraped GBP data we got during step 1 if
+  // it's for the primary place. If no GBP scrape happened (no placeId passed
+  // to warmup inputs, or it failed), we still emit a pending-ish entry so the
+  // array isn't empty.
+  for (let i = 0; i < allIds.length; i++) {
+    const id = allIds[i];
+    if (id !== primaryId) continue;
+    if (primaryGbpData) {
+      results[i] = buildLocationEntryFromGbp(id, primaryGbpData, true);
+    } else {
+      // We couldn't scrape the primary (warmup ran without a placeId, or the
+      // scrape failed). Mark the entry pending so the UI shows it needs a
+      // retry; do not throw — warmup overall still succeeded on other signals.
+      results[i] = {
+        place_id: id,
+        name: "",
+        address: null,
+        phone: null,
+        rating: null,
+        review_count: null,
+        category: null,
+        website_url: null,
+        hours: null,
+        last_synced_at: new Date().toISOString(),
+        is_primary: true,
+        warmup_status: "failed",
+        warmup_error: "Primary GBP scrape did not return data",
+        stale: true,
+      };
+    }
+  }
+
+  // Non-primary slots: scrape in parallel, concurrency 3.
+  const secondaryIndices = allIds
+    .map((id, i) => ({ id, i }))
+    .filter(({ id }) => id !== primaryId);
+
+  await runWithConcurrency(secondaryIndices, 3, async ({ id, i }) => {
+    try {
+      const scraped = await scrapeGbp(id, practiceSearchString, signal);
+      if (!scraped) {
+        results[i] = {
+          place_id: id,
+          name: "",
+          address: null,
+          phone: null,
+          rating: null,
+          review_count: null,
+          category: null,
+          website_url: null,
+          hours: null,
+          last_synced_at: new Date().toISOString(),
+          is_primary: false,
+          warmup_status: "failed",
+          warmup_error: "No GBP data returned for place_id",
+          stale: true,
+        };
+        return;
+      }
+      results[i] = buildLocationEntryFromGbp(id, scraped, false);
+    } catch (err: any) {
+      log("Location scrape failed", { placeId: id, error: err?.message });
+      results[i] = {
+        place_id: id,
+        name: "",
+        address: null,
+        phone: null,
+        rating: null,
+        review_count: null,
+        category: null,
+        website_url: null,
+        hours: null,
+        last_synced_at: new Date().toISOString(),
+        is_primary: false,
+        warmup_status: "failed",
+        warmup_error: err?.message || "Unknown Apify error",
+        stale: true,
+      };
+    }
+  });
+
+  return results.filter((r): r is IdentityLocation => r !== null);
+}
+
+/**
+ * Simple concurrency limiter. Runs `worker` over `items` with at most
+ * `limit` promises in flight at any time. Preserves error-swallowing
+ * responsibility to the worker — this helper never throws.
+ */
+async function runWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  const queue = [...items];
+  const runners: Promise<void>[] = [];
+  for (let i = 0; i < Math.min(limit, queue.length); i++) {
+    runners.push(
+      (async () => {
+        while (queue.length > 0) {
+          const next = queue.shift();
+          if (next === undefined) return;
+          await worker(next);
+        }
+      })(),
+    );
+  }
+  await Promise.all(runners);
 }
 
 function buildBrand(
@@ -571,12 +804,15 @@ async function classifyArchetype(
 // CONTENT DISTILLATION
 // ---------------------------------------------------------------------------
 
-async function distillContent(
-  scrapedPagesRaw: Record<string, string>,
-  userTexts: Array<{ label?: string; text: string }>,
-  gbpData: any,
-  costContext?: CostContext,
-): Promise<{
+interface DoctorOrServiceEntry {
+  name: string;
+  source_url: string | null;
+  short_blurb: string | null;
+  last_synced_at: string;
+  stale?: boolean;
+}
+
+interface DistilledContent {
   unique_value_proposition?: string | null;
   founding_story?: string | null;
   core_values?: string[];
@@ -585,10 +821,26 @@ async function distillContent(
   social_links?: Record<string, string | null>;
   review_themes?: string[];
   featured_testimonials?: Array<{ author: string | null; rating: number | null; text: string | null }>;
-}> {
+  doctors?: DoctorOrServiceEntry[];
+  services?: DoctorOrServiceEntry[];
+}
+
+async function distillContent(
+  scrapedPagesRaw: Record<string, string>,
+  userTexts: Array<{ label?: string; text: string }>,
+  gbpData: any,
+  discoveredPageUrls: string[],
+  costContext?: CostContext,
+): Promise<DistilledContent> {
   const prompt = loadPrompt("websiteAgents/builder/IdentityDistiller");
 
   const parts: string[] = [];
+
+  if (discoveredPageUrls.length > 0) {
+    parts.push(
+      `## DISCOVERED PAGES (use ONLY these exact URLs for doctors[].source_url and services[].source_url)\n\n${discoveredPageUrls.map((u) => `- ${u}`).join("\n")}`,
+    );
+  }
 
   if (Object.keys(scrapedPagesRaw).length > 0) {
     const pagesText = Object.entries(scrapedPagesRaw)
@@ -640,11 +892,105 @@ async function distillContent(
     });
 
     if (result.parsed) {
-      return result.parsed;
+      return normalizeDistilled(result.parsed, discoveredPageUrls);
     }
   } catch (err: any) {
     log("Content distillation failed — using empty", { error: err.message });
   }
 
   return {};
+}
+
+const MAX_DOCTORS_SERVICES = 100;
+const MAX_BLURB_CHARS = 400;
+
+/**
+ * Clamp list shapes + enforce source_url discipline. The LLM is instructed to
+ * only emit discovered-pages URLs, but we defend at the boundary.
+ */
+function normalizeDistilled(
+  raw: any,
+  discoveredPageUrls: string[],
+): DistilledContent {
+  const allowedUrls = new Set(discoveredPageUrls);
+  const now = new Date().toISOString();
+
+  const doctors = Array.isArray(raw?.doctors)
+    ? raw.doctors
+        .slice(0, MAX_DOCTORS_SERVICES)
+        .map((d: any) => normalizeListEntry(d, allowedUrls, now))
+        .filter((d: DoctorOrServiceEntry | null): d is DoctorOrServiceEntry => d !== null)
+    : [];
+
+  const services = Array.isArray(raw?.services)
+    ? raw.services
+        .slice(0, MAX_DOCTORS_SERVICES)
+        .map((s: any) => normalizeListEntry(s, allowedUrls, now))
+        .filter((s: DoctorOrServiceEntry | null): s is DoctorOrServiceEntry => s !== null)
+    : [];
+
+  return {
+    unique_value_proposition: raw?.unique_value_proposition ?? null,
+    founding_story: raw?.founding_story ?? null,
+    core_values: Array.isArray(raw?.core_values) ? raw.core_values : [],
+    certifications: Array.isArray(raw?.certifications) ? raw.certifications : [],
+    service_areas: Array.isArray(raw?.service_areas) ? raw.service_areas : [],
+    social_links: raw?.social_links && typeof raw.social_links === "object" ? raw.social_links : {},
+    review_themes: Array.isArray(raw?.review_themes) ? raw.review_themes : [],
+    featured_testimonials: Array.isArray(raw?.featured_testimonials)
+      ? raw.featured_testimonials
+      : [],
+    doctors,
+    services,
+  };
+}
+
+function normalizeListEntry(
+  entry: any,
+  allowedUrls: Set<string>,
+  isoNow: string,
+): DoctorOrServiceEntry | null {
+  if (!entry || typeof entry !== "object") return null;
+  const name = typeof entry.name === "string" ? entry.name.trim() : "";
+  if (!name) return null;
+
+  const rawUrl = typeof entry.source_url === "string" ? entry.source_url.trim() : null;
+  // Null if LLM hallucinated a URL not in the discovered set.
+  const source_url = rawUrl && allowedUrls.has(rawUrl) ? rawUrl : null;
+
+  const rawBlurb = typeof entry.short_blurb === "string" ? entry.short_blurb.trim() : null;
+  const short_blurb = rawBlurb ? rawBlurb.slice(0, MAX_BLURB_CHARS) : null;
+
+  return {
+    name,
+    source_url,
+    short_blurb,
+    last_synced_at: isoNow,
+  };
+}
+
+/**
+ * T5/T6 shared entry point: runs the distillation against already-scraped
+ * pages (from `identity.extracted_assets.discovered_pages` + a resurrected
+ * scraped_pages_raw map). Used by the re-sync endpoint to re-extract
+ * doctors/services WITHOUT re-scraping the site.
+ */
+export async function extractDoctorsAndServices(
+  scrapedPagesRaw: Record<string, string>,
+  userTexts: Array<{ label?: string; text: string }>,
+  gbpData: any,
+  discoveredPageUrls: string[],
+  costContext?: CostContext,
+): Promise<{ doctors: DoctorOrServiceEntry[]; services: DoctorOrServiceEntry[] }> {
+  const distilled = await distillContent(
+    scrapedPagesRaw,
+    userTexts,
+    gbpData,
+    discoveredPageUrls,
+    costContext,
+  );
+  return {
+    doctors: distilled.doctors || [],
+    services: distilled.services || [],
+  };
 }

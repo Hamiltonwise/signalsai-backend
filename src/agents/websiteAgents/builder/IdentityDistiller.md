@@ -44,6 +44,20 @@ Return a JSON object with this exact shape:
       "rating": 5,
       "text": "Testimonial text, lightly cleaned but not paraphrased"
     }
+  ],
+  "doctors": [
+    {
+      "name": "Dr. Jane Doe",
+      "source_url": "https://practice.com/about/dr-doe — MUST be an exact URL from the DISCOVERED PAGES list; null if none matches",
+      "short_blurb": "One-sentence summary under 400 characters, extracted from the page, or null"
+    }
+  ],
+  "services": [
+    {
+      "name": "Invisalign",
+      "source_url": "https://practice.com/services/invisalign — MUST be an exact URL from the DISCOVERED PAGES list; null if none matches",
+      "short_blurb": "One-sentence summary under 400 characters, extracted from the page, or null"
+    }
   ]
 }
 ```
@@ -56,5 +70,15 @@ Return a JSON object with this exact shape:
 - For `certifications`: only include if explicitly mentioned. Don't infer "professional" or "board certified" unless the source actually says so.
 - For `core_values`: phrases that the practice itself uses, or clear paraphrases. Not generic values ("quality care" is too vague).
 - For `service_areas`: only if the practice explicitly mentions cities/regions served. Don't infer from the address.
+- For `doctors`:
+  - Include ONLY doctors named explicitly on the source pages. No invention.
+  - `source_url` MUST be one of the URLs provided under DISCOVERED PAGES (exact match). If no discovered page clearly documents the doctor, set `source_url` to `null`.
+  - `short_blurb` ≤ 400 characters. One sentence. Extracted/light-paraphrase from the page. Null if nothing useful.
+  - Max 100 entries. If a practice lists more, keep the most prominent (doctors with their own bio page take priority).
+- For `services`:
+  - Include ONLY named services/treatments explicitly present on the source pages. No generic lists ("cleanings, exams, fillings").
+  - Same `source_url` rule as doctors. Null if no discovered page documents the service.
+  - `short_blurb` ≤ 400 characters. One sentence. Null if nothing useful.
+  - Max 100 entries.
 - If a field has no data, use null for strings and [] for arrays.
 - The output feeds downstream HTML generation — accuracy matters more than completeness.

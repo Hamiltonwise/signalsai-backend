@@ -23,6 +23,7 @@ import {
 } from "./processors/websiteGeneration.processor";
 import { processIdentityWarmup } from "./processors/identityWarmup.processor";
 import { processLayoutGenerate } from "./processors/websiteLayouts.processor";
+import { processPostImport } from "./processors/postImporter.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -290,6 +291,22 @@ const wbPageGenerateWorker = new Worker(
   }
 );
 
+// Website Builder — Post Importer worker (admin-triggered from Posts tab)
+const wbPostImportWorker = new Worker(
+  "wb-post-import",
+  async (job) => {
+    return await processPostImport(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000, // 10 min — sequential URL scrapes can stack up
+    prefix: '{wb}',
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 25 },
+  }
+);
+
 // Audit Leadgen worker — long-running (3–5 min); higher lock duration.
 const auditLeadgenWorker = new Worker(
   "audit-leadgen",
@@ -307,7 +324,7 @@ const auditLeadgenWorker = new Worker(
 );
 
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbIdentityWarmupWorker, wbLayoutsWorker, wbProjectScrapeWorker, wbPageGenerateWorker, auditLeadgenWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbIdentityWarmupWorker, wbLayoutsWorker, wbProjectScrapeWorker, wbPageGenerateWorker, wbPostImportWorker, auditLeadgenWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -338,6 +355,7 @@ async function shutdown(): Promise<void> {
   await wbLayoutsWorker.close();
   await wbProjectScrapeWorker.close();
   await wbPageGenerateWorker.close();
+  await wbPostImportWorker.close();
   await auditLeadgenWorker.close();
   await closeWbQueues();
   await connection.quit();

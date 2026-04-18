@@ -2514,55 +2514,27 @@ function ThreeStepOnboarding({
   const hasPages = (website.pages?.length || 0) > 0;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-base font-bold text-gray-900">
-          Get your website live in 3 steps
-        </h3>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Complete each step in order. Your inputs build up context for the AI.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <StepRow
-          index={1}
-          title="Project Identity"
-          description="Tell us about the practice — GBP, page URLs, brand colors."
-          state={identityReady ? "ready" : identityRunning ? "running" : "active"}
-          onStart={onOpenIdentity}
-          startLabel={identityReady ? "Edit" : identityRunning ? "Warming up..." : "Start"}
-        />
-        <StepRow
-          index={2}
-          title="Generate Layouts"
-          description="Header, footer, and page shell — generated once and reused across pages."
-          state={
-            layoutsReady
-              ? "ready"
-              : identityReady
-                ? "active"
-                : "locked"
-          }
-          onStart={onOpenLayouts}
-          startLabel={layoutsReady ? "Regenerate" : "Start"}
-          disabled={!identityReady && !layoutsReady}
-        />
-        <StepRow
-          index={3}
-          title="Generate First Page"
-          description="Create your homepage. More pages can be added from the Pages tab."
-          state={
-            hasPages
-              ? "ready"
-              : layoutsReady
-                ? "active"
-                : "locked"
-          }
-          onStart={onOpenFirstPage}
-          startLabel={hasPages ? "View pages" : "Start"}
-          disabled={!layoutsReady && !hasPages}
-        />
-      </div>
+    <div className="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+      <StepRow
+        title="Project Identity"
+        state={identityReady ? "ready" : identityRunning ? "running" : "active"}
+        onStart={onOpenIdentity}
+        startLabel={identityReady ? "Edit" : identityRunning ? "Warming up…" : "Start"}
+      />
+      <StepRow
+        title="Generate Layouts"
+        state={layoutsReady ? "ready" : identityReady ? "active" : "locked"}
+        onStart={onOpenLayouts}
+        startLabel={layoutsReady ? "Regenerate" : "Start"}
+        disabled={!identityReady && !layoutsReady}
+      />
+      <StepRow
+        title="Generate First Page"
+        state={hasPages ? "ready" : layoutsReady ? "active" : "locked"}
+        onStart={onOpenFirstPage}
+        startLabel={hasPages ? "View pages" : "Start"}
+        disabled={!layoutsReady && !hasPages}
+      />
     </div>
   );
 }
@@ -2570,17 +2542,13 @@ function ThreeStepOnboarding({
 type StepState = "active" | "active-soon" | "running" | "ready" | "locked";
 
 function StepRow({
-  index,
   title,
-  description,
   state,
   onStart,
   startLabel,
   disabled,
 }: {
-  index: number;
   title: string;
-  description: string;
   state: StepState;
   onStart: () => void;
   startLabel: string;
@@ -2591,67 +2559,41 @@ function StepRow({
   const isLocked = state === "locked";
 
   return (
-    <div
-      className={`flex items-center gap-4 rounded-xl border p-4 transition ${
-        isReady
-          ? "border-green-200 bg-green-50/50"
-          : isLocked
-            ? "border-gray-100 bg-gray-50/50 opacity-60"
-            : "border-gray-200 bg-white"
-      }`}
-    >
-      <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-          isReady
-            ? "bg-green-500 text-white"
-            : isRunning
-              ? "bg-amber-500 text-white"
-              : isLocked
-                ? "bg-gray-200 text-gray-400"
-                : "bg-alloro-orange text-white"
-        }`}
-      >
-        {isReady ? (
-          <Check className="h-4 w-4" />
-        ) : isRunning ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : isLocked ? (
-          <Lock className="h-3.5 w-3.5" />
-        ) : (
-          index
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
-          {isReady && (
-            <span className="text-[10px] font-semibold text-green-600 uppercase tracking-wide">
-              Complete
-            </span>
-          )}
-          {isRunning && (
-            <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide">
-              In progress
-            </span>
-          )}
+    <div className="flex items-center justify-between gap-3 px-3 py-2">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div
+          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border ${
+            isReady
+              ? "border-green-500 bg-green-500 text-white"
+              : isRunning
+                ? "border-amber-400 bg-amber-50 text-amber-600"
+                : isLocked
+                  ? "border-gray-200 bg-gray-50 text-gray-300"
+                  : "border-gray-300 bg-white"
+          }`}
+        >
+          {isReady && <Check className="h-3 w-3 stroke-[3]" strokeWidth={3} />}
+          {isRunning && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+          {isLocked && <Lock className="h-2.5 w-2.5" />}
         </div>
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        <span className={`text-sm ${isLocked ? "text-gray-400" : "text-gray-800"}`}>
+          {title}
+        </span>
       </div>
       <button
         onClick={onStart}
         disabled={disabled || isRunning}
-        className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-          isReady
-            ? "text-green-700 hover:bg-green-100"
-            : disabled
-              ? "text-gray-400 bg-gray-100 cursor-not-allowed"
-              : isRunning
-                ? "text-amber-700 bg-amber-50 cursor-default"
-                : "bg-alloro-orange text-white hover:bg-orange-600"
+        className={`text-xs font-medium transition ${
+          isLocked || disabled
+            ? "text-gray-300 cursor-not-allowed"
+            : isRunning
+              ? "text-amber-600 cursor-default"
+              : isReady
+                ? "text-gray-500 hover:text-alloro-orange"
+                : "text-alloro-orange hover:underline"
         }`}
       >
         {startLabel}
-        {!isReady && !isRunning && !disabled && <ArrowRight className="h-3 w-3" />}
       </button>
     </div>
   );

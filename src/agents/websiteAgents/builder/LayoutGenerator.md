@@ -97,6 +97,12 @@ The `.bg-gradient-brand *` rule forces descendants to inherit the chosen text co
 - Legal text: use `custom_footer_legal_text` slot, or default to "© {year} {business_name}. All rights reserved."
 - Keep footer structure from the template
 
+## Links
+
+- NEVER use `href="#"` as a placeholder
+- Use relative paths for navigation (`/contact`, `/about`, `/services`)
+- **Conversion CTAs.** Buttons, action links, and "call to action" elements (labels like "Schedule", "Book", "Contact", "Get Started", "Request a Consultation") MUST point to `/contact`, `tel:<phone>`, `mailto:<email>`, or a same-page `#` anchor. Never invent a path. Never use `href="#"` as a placeholder. Navigation links (services, about, home) are not CTAs and follow the existing link rules.
+
 ## Color System
 
 - Use utility classes only: `bg-primary`, `text-primary`, `bg-accent`, `text-accent`, `bg-primary-subtle`, `bg-accent-subtle`

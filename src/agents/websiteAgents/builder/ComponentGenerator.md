@@ -108,6 +108,7 @@ Never rewrite them. Never remove them. They are placeholders the rendering engin
 - NEVER use `href="#"`
 - Use relative paths (`/contact`, `/about`, `/services`)
 - If a hash anchor is needed, only use it if the target id exists in the same section
+- **Conversion CTAs.** Buttons, action links, and "call to action" elements (labels like "Schedule", "Book", "Contact", "Get Started", "Request a Consultation") MUST point to `/contact`, `tel:<phone>`, `mailto:<email>`, or a same-page `#` anchor. Never invent a path. Never use `href="#"` as a placeholder. Navigation links (services, about, home) are not CTAs and follow the existing link rules.
 
 ## Forms
 
