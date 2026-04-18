@@ -60,7 +60,8 @@ export type LeadgenCtaEvent =
   | "cta_clicked_strategy_call"
   | "cta_clicked_create_account"
   | "email_field_focused"
-  | "email_field_blurred_empty";
+  | "email_field_blurred_empty"
+  | "audit_retried";
 
 export type LeadgenEventName = FinalStage | LeadgenCtaEvent;
 
@@ -102,6 +103,7 @@ export interface AuditProcess {
   status: string | null;
   realtime_status: number | null;
   error_message: string | null;
+  retry_count: number;
   step_screenshots: unknown;
   step_website_analysis: unknown;
   step_self_gbp: unknown;

@@ -29,6 +29,7 @@ import {
   writeCsvRow,
 } from "./feature-services/service.csv-exporter";
 import { AuthRequest } from "../../middleware/auth";
+import { retryAuditById } from "../audit/audit-services/service.audit-retry";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -618,5 +619,96 @@ export async function bulkDeleteSubmissions(
       error: "internal_error",
       message: "Failed to bulk delete",
     });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /admin/leadgen-submissions/:id/rerun — re-enqueue a failed audit
+// ---------------------------------------------------------------------------
+
+/**
+ * Admin override for a failed leadgen audit. Resets the underlying
+ * `audit_processes` row to `pending` and re-enqueues the BullMQ job —
+ * reusing the SAME audit_id so session → audit continuity is preserved.
+ *
+ * Bypasses the 3-retry cap that the public `/audit/:auditId/retry`
+ * endpoint enforces, and does NOT increment `retry_count` (admin retries
+ * are out-of-band manual overrides, not part of the user's automatic
+ * budget).
+ *
+ * Admin-only; auth + super-admin middleware enforced at the route layer.
+ */
+export async function rerunAuditFromAdmin(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+
+    if (typeof id !== "string" || !UUID_REGEX.test(id)) {
+      return res
+        .status(400)
+        .json({ error: "invalid_id", message: "Invalid session id" });
+    }
+
+    const session = (await db("leadgen_sessions")
+      .select("id", "audit_id")
+      .where({ id })
+      .first()) as Pick<ILeadgenSession, "id" | "audit_id"> | undefined;
+
+    if (!session) {
+      return res
+        .status(404)
+        .json({ error: "not_found", message: "Session not found" });
+    }
+    if (!session.audit_id) {
+      return res.status(409).json({
+        error: "no_audit",
+        message: "Session has no associated audit to rerun",
+      });
+    }
+
+    const result = await retryAuditById(session.audit_id, {
+      skipLimit: true,
+      countsTowardLimit: false,
+    });
+
+    console.log("[AdminLeadgen] rerunAuditFromAdmin", {
+      session_id: session.id,
+      audit_id: session.audit_id,
+      result_ok: result.ok,
+      admin_user_id: req.user?.userId ?? null,
+      admin_email: req.user?.email ?? null,
+    });
+
+    if (result.ok) {
+      return res.json({
+        ok: true,
+        audit_id: result.auditId,
+        retry_count: result.retryCount,
+      });
+    }
+    if (result.reason === "not_found") {
+      return res
+        .status(404)
+        .json({ error: "not_found", message: "Audit row missing" });
+    }
+    if (result.reason === "not_failed") {
+      return res.status(409).json({
+        error: "not_failed",
+        status: result.currentStatus,
+        message: "Audit is not in a failed state",
+      });
+    }
+    // limit_exceeded is unreachable when skipLimit=true; surface defensively.
+    return res.status(500).json({
+      error: "internal_error",
+      message: "Unexpected retry state",
+    });
+  } catch (error) {
+    console.error("[AdminLeadgen] rerunAuditFromAdmin error:", error);
+    return res
+      .status(500)
+      .json({ error: "internal_error", message: "Failed to rerun audit" });
   }
 }

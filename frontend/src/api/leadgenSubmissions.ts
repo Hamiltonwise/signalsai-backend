@@ -171,6 +171,32 @@ export async function bulkDeleteSubmissions(
 }
 
 /**
+ * POST /admin/leadgen-submissions/:id/rerun — re-enqueue a failed audit.
+ *
+ * Bypasses the 3-retry cap the public endpoint enforces, and does NOT
+ * increment the audit's `retry_count` (admin is an out-of-band override).
+ * Resolves on 2xx; throws on any non-ok response so the caller can surface
+ * a toast.
+ */
+export async function rerunSubmission(
+  id: string
+): Promise<{ ok: true; audit_id: string; retry_count: number }> {
+  const data = await apiPost({
+    path: `/admin/leadgen-submissions/${id}/rerun`,
+    passedData: {},
+  });
+  if (data && data.ok === true && typeof data.audit_id === "string") {
+    return {
+      ok: true,
+      audit_id: data.audit_id,
+      retry_count:
+        typeof data.retry_count === "number" ? data.retry_count : 0,
+    };
+  }
+  throw new Error(data?.errorMessage || data?.message || "Failed to rerun audit");
+}
+
+/**
  * GET /admin/leadgen-submissions/export — streams CSV.
  *
  * Uses fetch + blob so the Authorization header is preserved (a plain

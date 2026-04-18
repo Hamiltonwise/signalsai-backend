@@ -2,6 +2,56 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.22] - April 2026
+
+### Leadgen Audit Retry — Public Endpoint, Admin Rerun, 3-Retry Cap
+
+Adds a self-service retry path for failed leadgen audits (public endpoint
+hit by the FAB "Try again" button on the leadgen tool) and an admin
+rerun override in the Leadgen Submissions detail drawer. Both reuse the
+SAME `audit_id`, preserving session → audit continuity in the admin
+timeline — no more orphaned failed rows with brand-new retry rows alongside.
+
+**Key Changes:**
+- **New migration `20260418000000_add_retry_count_to_audit_processes.ts`** —
+  adds `retry_count INTEGER NOT NULL DEFAULT 0` to `audit_processes`. The
+  column is read as part of a row-scoped UPDATE; no index needed.
+- **New shared service `service.audit-retry.ts`** with
+  `retryAuditById(auditId, options)`. A single atomic UPDATE
+  (`WHERE id=:id AND status='failed' AND retry_count < 3`) resets the row
+  and increments the counter in one shot, so two concurrent retries
+  cannot both slip past the cap. Never throws to the caller. Admin
+  callers pass `{skipLimit:true, countsTowardLimit:false}` to bypass the
+  cap without touching the user's retry budget.
+- **New public endpoint `POST /api/audit/:auditId/retry`**, gated by the
+  existing `X-Leadgen-Key` shared secret (non-silent 401 variant — this
+  is fetch, not beacon). Returns 200 `{ok:true, audit_id, retry_count}`
+  on success, 404 when the audit is missing, 409 when not in failed
+  state, and **429** `{error:"limit_exceeded", retry_count, max_retries}`
+  on the 4th attempt. Re-enqueues the same BullMQ job shape as the
+  original kickoff in `auditWorkflowService.ts`.
+- **New admin endpoint `POST /api/admin/leadgen-submissions/:id/rerun`** —
+  JWT + super-admin gated. Resolves the submission's `audit_id`, calls
+  the shared service with the admin bypass flags. Logs the admin email +
+  user id on every rerun for auditability.
+- **Admin detail drawer gains a "Rerun" button** (only visible when
+  `audit.status === 'failed'`). Click → confirm modal → hits the admin
+  endpoint → optimistically flips local status to "pending" so the UI
+  reflects the change before the next live-poll tick. Inline notice
+  banner surfaces success ("Rerun queued") or error messages.
+- **`retry_count` surfaced in the AuditPayloadBar** — `Retries: N/3`
+  badge next to the status pill so admins can see how many times the
+  user already tried before escalating.
+- **Frontend types updated** — `AuditProcess.retry_count: number` added
+  and `audit_retried` added to the `LeadgenCtaEvent` union (enriches
+  timelines without advancing `final_stage`).
+- Request handler added to `audit.ts` wraps ONLY the new `/retry` route
+  with the tracking-key gate so the existing `/start`, `/:auditId`,
+  `/:auditId/status`, and `PATCH /:auditId` routes remain unchanged.
+
+**Commits:**
+- `feat(leadgen): audit retry endpoint + admin rerun + 3-retry cap`
+
 ## [0.0.21] - April 2026
 
 ### Identity Enrichments + Multi-Location + Post Imports

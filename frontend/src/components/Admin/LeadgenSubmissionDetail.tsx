@@ -30,8 +30,13 @@ import {
   MousePointer,
   Link2,
   ChevronUp,
+  RefreshCw,
 } from "lucide-react";
-import { deleteSubmission, getSubmission } from "../../api/leadgenSubmissions";
+import {
+  deleteSubmission,
+  getSubmission,
+  rerunSubmission,
+} from "../../api/leadgenSubmissions";
 import { useConfirm } from "../ui/ConfirmModal";
 import type {
   FinalStage,
@@ -212,6 +217,8 @@ export default function LeadgenSubmissionDetail({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [rerunning, setRerunning] = useState(false);
+  const [rerunNotice, setRerunNotice] = useState<string | null>(null);
   const [payloadOpen, setPayloadOpen] = useState(false);
   // `fetching` is true during the in-flight request of a live-poll tick;
   // drives the LIVE indicator's pulse. Distinct from `loading`, which only
@@ -244,6 +251,46 @@ export default function LeadgenSubmissionDetail({
       setError(msg);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // Admin rerun — bypasses the 3-retry cap the public endpoint enforces and
+  // does NOT increment retry_count. Optimistically flips the local audit
+  // status to "pending" so the UI reflects the new state before the next
+  // live-poll tick lands.
+  const handleRerun = async () => {
+    if (!submissionId || !detail?.audit) return;
+    if (detail.audit.status !== "failed") return;
+    const ok = await confirm({
+      title: "Rerun audit",
+      message:
+        "Re-enqueue this failed audit? This bypasses the 3-retry cap and does not increment retry_count.",
+      confirmLabel: "Rerun",
+    });
+    if (!ok) return;
+    try {
+      setRerunning(true);
+      setRerunNotice(null);
+      await rerunSubmission(submissionId);
+      setDetail((prev) =>
+        prev && prev.audit
+          ? {
+              ...prev,
+              audit: {
+                ...prev.audit,
+                status: "pending",
+                error_message: null,
+              },
+            }
+          : prev
+      );
+      setRerunNotice("Rerun queued");
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to rerun audit";
+      setRerunNotice(msg);
+    } finally {
+      setRerunning(false);
     }
   };
 
@@ -375,6 +422,19 @@ export default function LeadgenSubmissionDetail({
                 <LiveIndicator fetching={fetching} />
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                {detail?.audit?.status === "failed" && (
+                  <button
+                    onClick={handleRerun}
+                    disabled={rerunning}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-alloro-navy hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                    title="Re-enqueue this failed audit (bypasses 3-retry cap)"
+                  >
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 ${rerunning ? "animate-spin" : ""}`}
+                    />
+                    {rerunning ? "Rerunning..." : "Rerun"}
+                  </button>
+                )}
                 <button
                   onClick={handleDelete}
                   disabled={deleting || !detail}
@@ -395,6 +455,18 @@ export default function LeadgenSubmissionDetail({
             </div>
 
             <div className="px-6 py-5 space-y-6">
+              {rerunNotice && (
+                <div
+                  className={`rounded-lg border px-3 py-2 text-xs font-medium ${
+                    rerunNotice === "Rerun queued"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-red-200 bg-red-50 text-red-700"
+                  }`}
+                >
+                  {rerunNotice}
+                </div>
+              )}
+
               {loading && (
                 <div className="space-y-3">
                   <div className="h-24 animate-pulse rounded-xl bg-gray-100" />
@@ -789,6 +861,7 @@ function AuditPayloadBar({
       : status === "failed"
         ? "text-red-300"
         : "text-amber-300";
+  const retryCount = typeof audit.retry_count === "number" ? audit.retry_count : 0;
   return (
     <button
       type="button"
@@ -805,6 +878,9 @@ function AuditPayloadBar({
             <span className="text-sm text-white truncate">
               Status:{" "}
               <span className={`font-semibold ${statusColor}`}>{status}</span>
+              <span className="text-slate-500 ml-2">
+                · Retries: {retryCount}/3
+              </span>
               <span className="text-slate-500 ml-2">— tap to view raw JSON</span>
             </span>
           </div>

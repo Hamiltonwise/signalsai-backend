@@ -72,4 +72,11 @@ router.delete(
   controller.deleteSubmission
 );
 
+router.post(
+  "/:id/rerun",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.rerunAuditFromAdmin
+);
+
 export default router;
