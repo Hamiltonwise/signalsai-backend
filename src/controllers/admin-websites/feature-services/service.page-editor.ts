@@ -516,6 +516,11 @@ export async function editPageComponent(
     instruction,
     chatHistory,
     mediaContext, // Inject media library context
+    costContext: {
+      projectId,
+      eventType: "editor-chat",
+      metadata: { page_id: pageId },
+    },
   });
 
   console.log(
@@ -584,6 +589,11 @@ export async function editLayoutComponent(
     instruction,
     chatHistory,
     mediaContext, // Inject media library context
+    costContext: {
+      projectId,
+      eventType: "editor-chat",
+      metadata: { scope: "layout" },
+    },
   });
 
   console.log(

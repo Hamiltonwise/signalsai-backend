@@ -482,9 +482,31 @@ export async function startPipeline(
       gradient, dynamicSlotValues,
     } = req.body;
 
-    if (!projectId || !placeId) {
+    if (!projectId) {
       return res.status(400).json({
-        success: false, error: "INVALID_INPUT", message: "projectId and placeId are required",
+        success: false, error: "INVALID_INPUT", message: "projectId is required",
+      });
+    }
+
+    // Check project existence + cached data (identity OR legacy step_*)
+    const project = await db("website_builder.projects").where("id", projectId).first();
+    if (!project) {
+      return res.status(404).json({
+        success: false, error: "NOT_FOUND", message: "Project not found",
+      });
+    }
+
+    const identity = parseIdentityJson(project.project_identity);
+    const hasIdentity = !!identity?.business;
+    const hasCachedScrape = project.step_gbp_scrape != null || hasIdentity;
+
+    // placeId is only required when we actually need to scrape (no cached data + no identity)
+    if (!hasCachedScrape && !placeId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message:
+          "placeId is required for projects without cached data. Either run Identity warmup first, or provide a placeId to scrape.",
       });
     }
 
@@ -509,10 +531,6 @@ export async function startPipeline(
         .update({ status: "IN_PROGRESS", updated_at: db.fn.now() });
     }
 
-    // Check if project already has cached scrape data
-    const project = await db("website_builder.projects").where("id", projectId).first();
-    const hasCachedScrape = project?.step_gbp_scrape != null;
-
     const gradientParams = {
       gradientEnabled: gradient?.enabled,
       gradientFrom: gradient?.from,
@@ -521,7 +539,7 @@ export async function startPipeline(
     };
 
     if (hasCachedScrape) {
-      // Skip scrape, go straight to page generation
+      // Skip scrape, go straight to page generation (identity or legacy step_* data exists)
       const pageQueue = getWbQueue("page-generate");
       await pageQueue.add("generate-page", {
         pageId, projectId, primaryColor, accentColor, pageContext,
@@ -529,9 +547,9 @@ export async function startPipeline(
         ...gradientParams,
         dynamicSlotValues,
       }, { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } });
-      console.log(`[Admin Websites] Enqueued wb-page-generate for page ${pageId} (cached scrape)`);
+      console.log(`[Admin Websites] Enqueued wb-page-generate for page ${pageId} (${hasIdentity ? "identity" : "legacy scrape"})`);
     } else {
-      // Need to scrape first
+      // No cached data — need to scrape first. placeId already required-guarded above.
       const scrapeQueue = getWbQueue("project-scrape");
       await scrapeQueue.add("scrape-project", {
         projectId, placeId, practiceSearchString, websiteUrl, scrapedData, templateId,
@@ -4120,5 +4138,87 @@ export async function deleteRedirect(req: Request, res: Response): Promise<Respo
   } catch (error: any) {
     console.error("[Admin Websites] Error deleting redirect:", error);
     return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
+// COSTS — per-project AI cost rollup (Anthropic only in MVP)
+// =====================================================================
+
+/** GET /:projectId/costs — Per-project AI cost events + totals */
+export async function getProjectCosts(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { projectId } = req.params;
+
+    // Confirm project exists so a typo returns 404 instead of an empty list.
+    const project = await db("website_builder.projects")
+      .where("id", projectId)
+      .select("id")
+      .first();
+    if (!project) {
+      return res
+        .status(404)
+        .json({ success: false, error: "NOT_FOUND", message: "Project not found" });
+    }
+
+    const events = await db("website_builder.ai_cost_events")
+      .where("project_id", projectId)
+      .orderBy("created_at", "desc")
+      .limit(100);
+
+    // Totals — sum across the per-project history (not just the visible page).
+    const totalsRow = await db("website_builder.ai_cost_events")
+      .where("project_id", projectId)
+      .select(
+        db.raw("COALESCE(SUM(estimated_cost_usd), 0)::float AS total_cost_usd"),
+        db.raw("COALESCE(SUM(input_tokens), 0)::int AS total_input"),
+        db.raw("COALESCE(SUM(output_tokens), 0)::int AS total_output"),
+        db.raw(
+          "COALESCE(SUM(cache_creation_tokens), 0)::int AS total_cache_creation",
+        ),
+        db.raw("COALESCE(SUM(cache_read_tokens), 0)::int AS total_cache_read"),
+        db.raw("COUNT(*)::int AS total_events"),
+      )
+      .first();
+
+    const shapedEvents = events.map((e: any) => ({
+      id: e.id,
+      event_type: e.event_type,
+      vendor: e.vendor,
+      model: e.model,
+      input_tokens: Number(e.input_tokens),
+      output_tokens: Number(e.output_tokens),
+      cache_creation_tokens:
+        e.cache_creation_tokens != null ? Number(e.cache_creation_tokens) : null,
+      cache_read_tokens:
+        e.cache_read_tokens != null ? Number(e.cache_read_tokens) : null,
+      estimated_cost_usd: Number(e.estimated_cost_usd),
+      metadata: e.metadata ?? null,
+      parent_event_id: e.parent_event_id ?? null,
+      created_at: e.created_at,
+    }));
+
+    return res.json({
+      success: true,
+      data: {
+        total_cost_usd: Number(totalsRow?.total_cost_usd || 0),
+        total_events: Number(totalsRow?.total_events || 0),
+        total_tokens: {
+          input: Number(totalsRow?.total_input || 0),
+          output: Number(totalsRow?.total_output || 0),
+          cache_creation: Number(totalsRow?.total_cache_creation || 0),
+          cache_read: Number(totalsRow?.total_cache_read || 0),
+        },
+        events: shapedEvents,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching project costs:", error);
+    return res
+      .status(500)
+      .json({ success: false, error: "FETCH_ERROR", message: error?.message });
   }
 }

@@ -41,14 +41,58 @@ Rules:
 - WRONG: `font-['Cormorant_Garamond',serif]` or `font-[FontName,serif]`
 - RIGHT: `font-serif` or `font-sans`
 - The wrapper loads fonts mapped to these utility classes. Inline font references break.
+- Headings (`h1`–`h6`) are forced to serif via base CSS injected by the wrapper. Do NOT add `font-sans` to heading elements — it fights the global rule. Leave the class off entirely, or use `font-serif` explicitly if you want to be safe.
+
+## Prose Style (no AI tells)
+
+- NEVER use em-dashes (`—`) or en-dashes (`–`) in body copy, headlines, CTAs, testimonials, or captions. Use commas, periods, colons, or parentheses instead. Em-dashes are a strong "AI-written" signal.
+- Prefer short, concrete sentences over long clause-stacked ones.
+- Do not use hedging filler: "simply", "truly", "deeply", "uniquely positioned", "in today's world", "nowadays".
+- These rules apply to ALL text content. Shortcodes (`{{...}}`, `[...]`) pass through unchanged.
 
 ## Content Rules
 
 - Replace ALL placeholder/lorem ipsum text with real content from the provided context
 - Use the business name, phone, address, certifications, testimonials, and services from the context
-- Match the archetype tone directive — pediatric practices should feel warm and playful; specialist-clinical practices should feel authoritative; luxury-cosmetic should feel aspirational
-- Maintain the template's structural layout (sections, columns, grids) — customize content, not architecture
+- Match the archetype tone directive. Pediatric practices feel warm and playful; specialist-clinical practices feel authoritative; luxury-cosmetic feels aspirational
 - Strip all AI instructions, HTML comments, and meta-commentary from the output
+
+## CRITICAL: Template Structural Fidelity
+
+**You customize content, not architecture.** This is non-negotiable.
+
+- Do NOT add new sibling sections, cards, columns, grids, rows, or layout wrappers that are not present in the template markup.
+- Do NOT nest new sub-components inside existing ones to "enhance" the layout.
+- If the template has 3 cards, your output has 3 cards. Not 4. Not 2. Exactly 3.
+- If the template has 1 heading + 1 paragraph + 1 button, your output has 1 heading + 1 paragraph + 1 button — with different text and the same Tailwind classes.
+- Change: text content, attribute values, image `src` URLs, slot fill-ins.
+- Do NOT change: the number of top-level direct children under `<section>`, the tag hierarchy, the nesting depth of cards/grids, the number of list items (unless the admin-provided content has a different count).
+
+If the template does not have a feature (gallery, FAQ, testimonial carousel), DO NOT invent one. Render only what the template's structure defines.
+
+## Contrast Rules (MANDATORY pairings)
+
+Background → allowed foreground text combinations:
+
+| Background | Allowed text |
+|------------|--------------|
+| `bg-white`, `bg-gray-50`, `bg-gray-100`, `bg-primary-subtle`, `bg-accent-subtle` | `text-gray-900`, `text-gray-800`, `text-gray-700`, `text-primary`, `text-accent` |
+| `bg-primary`, `bg-accent`, `bg-gradient-brand`, `bg-gray-900`, `bg-gray-800` | `text-white`, `text-gray-100`, `text-gray-200` |
+
+**Banned combinations (will be flagged by the validator):**
+- `text-white` on any light background (`bg-white`, `bg-gray-50`, `bg-gray-100`, `bg-primary-subtle`, `bg-accent-subtle`).
+- `text-gray-900` / `text-gray-800` / `text-gray-700` on any dark background (`bg-primary`, `bg-accent`, `bg-gradient-brand`, `bg-gray-900`).
+- Muted `text-gray-400` / `text-gray-500` on dark backgrounds — too low contrast.
+
+When in doubt: light bg → dark text, dark bg → white text.
+
+## Slot directives
+
+The user message may include these sections:
+
+- **ADMIN-PROVIDED SLOT VALUES** — text or URLs the admin entered. Use them as authoritative content for the corresponding area.
+- **AI-GENERATED SLOTS** — slot keys where the admin wants you to write the content yourself, grounded in the project identity. Generate appropriate, concise copy that fits the archetype.
+- **SKIP THESE SLOTS** — slot keys where the admin does NOT want the corresponding content/section included. If the template markup has a section obviously tied to that slot (e.g., a "Why Choose Us" block when the `certifications_credentials` slot is in the skip list), either remove that section entirely from the output or replace its content with an empty shell if the layout depends on it. Do NOT fabricate content for skipped slots.
 
 ## Shortcodes (Preserve Byte-Exact)
 

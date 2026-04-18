@@ -88,7 +88,9 @@ export async function processSeoBulkGenerate(job: Job<SeoBulkGenerateData>): Pro
           all_page_descriptions: batchDescriptions,
           page_path: entity.path,
           post_title: entityType === "post" ? entity.title : undefined,
-        }
+        },
+        projectId,
+        entity.id
       );
 
       // Merge all generated sections into a single seo_data object

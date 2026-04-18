@@ -9,8 +9,26 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { safeLogAiCostEvent } from "../services/ai-cost/service.ai-cost";
 
 const DEFAULT_MODEL = process.env.AGENTS_LLM_MODEL || "claude-sonnet-4-6";
+
+/**
+ * Optional cost-accounting context. When provided, the runner fires
+ * `safeLogAiCostEvent` after every successful Anthropic call. Nested tool
+ * turns inside `runWithTools` chain onto the top-level event via
+ * `parent_event_id` so a single logical run rolls up.
+ */
+export interface CostContext {
+  /** Project id for `ai_cost_events.project_id`. Null is allowed. */
+  projectId: string | null;
+  /** Event type label (e.g. `page-generate`, `warmup`, `critic`). */
+  eventType: string;
+  /** Free-form metadata row — merged with any caller-provided values. */
+  metadata?: Record<string, unknown> | null;
+  /** Parent event id — used to nest repeated tool turns under a top-level run. */
+  parentEventId?: string | null;
+}
 
 let client: Anthropic | null = null;
 
@@ -43,6 +61,11 @@ export interface LlmRunnerOptions {
    * reprocessing on subsequent calls within the window.
    */
   cachedSystemBlocks?: string[];
+  /**
+   * Optional cost-accounting context. When set, the runner fires
+   * `safeLogAiCostEvent` after a successful call. Never throws.
+   */
+  costContext?: CostContext;
 }
 
 export interface LlmRunnerResult {
@@ -80,6 +103,7 @@ export async function runAgent(
     prefill,
     images,
     cachedSystemBlocks,
+    costContext,
   } = options;
 
   const messages: Anthropic.MessageParam[] = [];
@@ -189,6 +213,23 @@ export async function runAgent(
       `parsed=${parsed ? "ok" : "null"} raw=${raw.length}ch`
   );
 
+  if (costContext) {
+    await safeLogAiCostEvent({
+      projectId: costContext.projectId,
+      eventType: costContext.eventType,
+      vendor: "anthropic",
+      model: response.model,
+      usage: {
+        input_tokens: response.usage.input_tokens,
+        output_tokens: response.usage.output_tokens,
+        cache_creation_tokens: cacheCreationTokens,
+        cache_read_tokens: cacheReadTokens,
+      },
+      metadata: costContext.metadata ?? null,
+      parentEventId: costContext.parentEventId ?? null,
+    });
+  }
+
   return {
     cacheCreationInputTokens: cacheCreationTokens,
     cacheReadInputTokens: cacheReadTokens,
@@ -245,6 +286,13 @@ export interface RunWithToolsOptions {
    * blocks. If provided, userMessage is ignored.
    */
   messages?: any[];
+  /**
+   * Optional cost-accounting context. When set, the runner fires
+   * `safeLogAiCostEvent` per turn. Callers handling multi-turn tool loops
+   * should pass the first turn's returned `costEventId` as `parentEventId`
+   * on follow-up turns to roll usage under a single logical run.
+   */
+  costContext?: CostContext;
 }
 
 export interface RunWithToolsResult {
@@ -258,6 +306,12 @@ export interface RunWithToolsResult {
   assistantContent: any[];
   cacheCreationInputTokens?: number;
   cacheReadInputTokens?: number;
+  /**
+   * Id of the `ai_cost_events` row persisted for this turn. Callers running
+   * multi-turn tool loops should pass this as `parentEventId` on subsequent
+   * calls so nested turns chain under the root run.
+   */
+  costEventId?: string | null;
 }
 
 /**
@@ -279,6 +333,7 @@ export async function runWithTools(
     toolChoice,
     cachedSystemBlocks,
     messages: conversationMessages,
+    costContext,
   } = options;
 
   console.log(
@@ -365,6 +420,25 @@ export async function runWithTools(
       `toolCalls=${toolCalls.length} stop=${response.stop_reason}`,
   );
 
+  let costEventId: string | null = null;
+  if (costContext) {
+    const logged = await safeLogAiCostEvent({
+      projectId: costContext.projectId,
+      eventType: costContext.eventType,
+      vendor: "anthropic",
+      model: response.model,
+      usage: {
+        input_tokens: response.usage.input_tokens,
+        output_tokens: response.usage.output_tokens,
+        cache_creation_tokens: cacheCreationTokens,
+        cache_read_tokens: cacheReadTokens,
+      },
+      metadata: costContext.metadata ?? null,
+      parentEventId: costContext.parentEventId ?? null,
+    });
+    costEventId = logged?.id ?? null;
+  }
+
   return {
     toolCalls,
     textResponse,
@@ -375,6 +449,7 @@ export async function runWithTools(
     stopReason: response.stop_reason ?? null,
     cacheCreationInputTokens: cacheCreationTokens,
     cacheReadInputTokens: cacheReadTokens,
+    costEventId,
   };
 }
 

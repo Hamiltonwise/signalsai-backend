@@ -330,7 +330,12 @@ export const updateWebsite = async (
 
 export interface StartPipelineRequest {
   projectId: string;
-  placeId: string;
+  /**
+   * Optional when the project already has cached data (project_identity or
+   * legacy step_* columns). Required only when the project has nothing cached
+   * and the backend needs to run an Apify scrape.
+   */
+  placeId?: string;
   templateId?: string;
   templatePageId?: string;
   path?: string;
@@ -1876,5 +1881,51 @@ export const deleteAiCommandBatch = async (
     { method: "DELETE" },
   );
   if (!response.ok) throw new Error("Failed to delete AI command batch");
+  return response.json();
+};
+
+// =====================================================================
+// AI COSTS — per-project rollup of LLM spend
+// =====================================================================
+
+export interface AiCostEvent {
+  id: string;
+  event_type: string;
+  vendor: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_tokens: number | null;
+  cache_read_tokens: number | null;
+  estimated_cost_usd: number;
+  metadata: Record<string, unknown> | null;
+  parent_event_id: string | null;
+  created_at: string;
+}
+
+export interface ProjectCostsResponse {
+  success: boolean;
+  data: {
+    total_cost_usd: number;
+    total_events: number;
+    total_tokens: {
+      input: number;
+      output: number;
+      cache_creation: number;
+      cache_read: number;
+    };
+    events: AiCostEvent[];
+  };
+}
+
+/** Fetch the Anthropic cost rollup for a project (100 most-recent events). */
+export const fetchProjectCosts = async (
+  projectId: string,
+): Promise<ProjectCostsResponse> => {
+  const response = await fetch(`${API_BASE}/${projectId}/costs`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to fetch project costs");
+  }
   return response.json();
 };

@@ -18,7 +18,7 @@
 
 import axios from "axios";
 import { db } from "../../../database/connection";
-import { runAgent } from "../../../agents/service.llm-runner";
+import { runAgent, type CostContext } from "../../../agents/service.llm-runner";
 import { loadPrompt } from "../../../agents/service.prompt-loader";
 import { uploadToS3 } from "../../../utils/core/s3";
 import {
@@ -233,7 +233,11 @@ export async function runIdentityWarmup(
     checkCancel(signal);
 
     // --- 6. Archetype classification ---
-    const archetypeResult = await classifyArchetype(gbpData, scrapedPagesRaw);
+    const archetypeResult = await classifyArchetype(gbpData, scrapedPagesRaw, {
+      projectId,
+      eventType: "warmup",
+      metadata: { stage: "archetype-classify" },
+    });
     log("Archetype classified", {
       archetype: archetypeResult.archetype,
     });
@@ -245,6 +249,11 @@ export async function runIdentityWarmup(
       scrapedPagesRaw,
       userTextInputs,
       gbpData,
+      {
+        projectId,
+        eventType: "warmup",
+        metadata: { stage: "content-distill" },
+      },
     );
     log("Content distilled", {
       certifications: distilled.certifications?.length || 0,
@@ -478,6 +487,7 @@ async function downloadAndHostLogo(
 async function classifyArchetype(
   gbpData: any,
   scrapedPagesRaw: Record<string, string>,
+  costContext?: CostContext,
 ): Promise<{
   archetype: string;
   tone_descriptor: string;
@@ -534,6 +544,7 @@ async function classifyArchetype(
       userMessage: parts.join("\n\n"),
       prefill: "{",
       maxTokens: 1024,
+      costContext,
     });
 
     if (result.parsed) {
@@ -564,6 +575,7 @@ async function distillContent(
   scrapedPagesRaw: Record<string, string>,
   userTexts: Array<{ label?: string; text: string }>,
   gbpData: any,
+  costContext?: CostContext,
 ): Promise<{
   unique_value_proposition?: string | null;
   founding_story?: string | null;
@@ -624,6 +636,7 @@ async function distillContent(
       userMessage: parts.join("\n\n"),
       prefill: "{",
       maxTokens: 4096,
+      costContext,
     });
 
     if (result.parsed) {

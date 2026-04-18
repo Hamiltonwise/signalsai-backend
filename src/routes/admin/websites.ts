@@ -593,6 +593,13 @@ router.patch("/:id/ai-command/:batchId/recommendations/:recId", controller.updat
 router.post("/:id/ai-command/:batchId/execute", controller.executeAiCommandBatch);
 
 // =====================================================================
+// COSTS — per-project AI cost rollup
+// =====================================================================
+
+// GET /:projectId/costs — Cost events + totals for the Costs tab
+router.get("/:projectId/costs", controller.getProjectCosts);
+
+// =====================================================================
 // PROJECTS (parameterized — last to avoid matching other routes)
 // =====================================================================
 

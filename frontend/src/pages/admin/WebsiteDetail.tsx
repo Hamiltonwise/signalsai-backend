@@ -36,6 +36,8 @@ import {
   Wrench,
   Fingerprint,
   Lock,
+  Eye,
+  DollarSign,
 } from "lucide-react";
 import {
   fetchWebsiteDetail,
@@ -89,6 +91,7 @@ import BackupsTab from "../../components/Admin/BackupsTab";
 import AiCommandTab from "../../components/Admin/AiCommandTab";
 import RedirectsTab from "../../components/Admin/RedirectsTab";
 import ReviewsTab from "../../components/Admin/ReviewsTab";
+import CostsTab from "../../components/Admin/CostsTab";
 import { fetchProjectCodeSnippets } from "../../api/codeSnippets";
 import type { CodeSnippet } from "../../api/codeSnippets";
 import { useConfirm } from "../../components/ui/ConfirmModal";
@@ -353,7 +356,7 @@ export default function WebsiteDetail() {
   const [scrapedData, setScrapedData] = useState("");
 
   // Detail tab: persisted in URL search params so refresh preserves tab
-  const VALID_TABS = ["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "reviews", "redirects", "backups", "advanced-tools"] as const;
+  const VALID_TABS = ["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "reviews", "redirects", "backups", "advanced-tools", "costs"] as const;
   type DetailTab = typeof VALID_TABS[number];
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get("tab");
@@ -1566,7 +1569,7 @@ export default function WebsiteDetail() {
 
       {/* Tab bar: Pages | Layouts | Code Manager | Media | Form Submissions */}
       <div className="flex items-stretch gap-1 p-1.5 bg-gray-100 rounded-xl mb-4">
-        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "reviews", "redirects", "backups", "advanced-tools"] as const).map((tab) => {
+        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "reviews", "redirects", "backups", "advanced-tools", "costs"] as const).map((tab) => {
           const isActive = detailTab === tab;
           const tabConfig: Record<string, { label: string; icon: React.ReactNode }> = {
             "pages": { label: "Pages", icon: <FileText className="w-3.5 h-3.5" /> },
@@ -1580,6 +1583,7 @@ export default function WebsiteDetail() {
             "redirects": { label: "Redirects", icon: <ArrowRightLeft className="w-3.5 h-3.5" /> },
             "backups": { label: "Backups", icon: <Archive className="w-3.5 h-3.5" /> },
             "advanced-tools": { label: "Advanced Tools", icon: <Wrench className="w-3.5 h-3.5" /> },
+            "costs": { label: "Costs", icon: <DollarSign className="w-3.5 h-3.5" /> },
           };
           const config = tabConfig[tab] || { label: tab, icon: null };
           return (
@@ -1811,6 +1815,46 @@ export default function WebsiteDetail() {
                             >
                               {displayPage.generation_status}
                             </span>
+                            {(displayPage.generation_status === "generating" || displayPage.generation_status === "queued") && (
+                              <>
+                                <Link
+                                  to={`/admin/websites/${id}/pages/${displayPage.id}/edit`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Watch sections come in live"
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-alloro-orange/30 bg-orange-50 px-3 py-1.5 text-xs font-medium text-alloro-orange transition hover:bg-orange-100"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  Preview
+                                </Link>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCancelGeneration();
+                                  }}
+                                  title="Stop generation"
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 hover:border-gray-300"
+                                >
+                                  <X className="h-3 w-3" />
+                                  Stop
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeletePage(group.path, group.pages.length);
+                                  }}
+                                  disabled={deletingPagePath === group.path}
+                                  title="Delete this page"
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                                >
+                                  {deletingPagePath === group.path ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3 w-3" />
+                                  )}
+                                  Delete
+                                </button>
+                              </>
+                            )}
                           </>
                         ) : (
                           <>
@@ -2362,6 +2406,24 @@ export default function WebsiteDetail() {
           transition={{ delay: 0.2 }}
         >
           <BackupsTab projectId={id!} projectName={website.display_name || ""} />
+        </motion.div>
+      )}
+
+      {/* Costs Section — refetches when generation transitions active → idle */}
+      {detailTab === "costs" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <CostsTab
+            projectId={id!}
+            isGenerating={pageGenStatuses.some(
+              (p) =>
+                p.generation_status === "queued" ||
+                p.generation_status === "generating",
+            )}
+          />
         </motion.div>
       )}
 

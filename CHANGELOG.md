@@ -2,6 +2,129 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.20] - April 2026
+
+### Website Builder — Costs Tab, Quality Hardening, Skip Fix, Rebuild UX
+
+Rolls up two coherent improvement bundles for the AI website builder:
+(a) a **Costs tab** per project that logs every Anthropic call with
+model, tokens, and frozen USD estimate; (b) a quality/UX pass that fixes
+the broken "Skip section" behavior, stops em-dash tells, forces serif
+headings globally, tightens template structural fidelity, adds mandatory
+contrast pairings, and finally gives the per-section rebuild a real
+pulsing overlay + toast. Also folds in the page-creation wizard refactor,
+URL scrape-blocked detection, and the per-page Preview/Stop/Delete
+actions that shipped earlier in the same thread.
+
+**Key Changes:**
+- **Costs tab** — new `website_builder.ai_cost_events` table (frozen
+  `estimated_cost_usd` at write time, nested tool-call roll-ups via
+  `parent_event_id`). Cost capture is fire-and-forget: the pipeline
+  never fails because a cost row failed to write. Wired into nine
+  Anthropic call sites: warmup, page-generate, section-regenerate,
+  layouts-build, identity-propose, seo-generation, editor-chat,
+  ai-command, minds-chat, plus the `critic` pass and nested
+  `select-image` tool turns.
+- **Costs UI** — header shows total USD + per-bucket token breakdown
+  (input / output / cache write / cache read). Event list with
+  expandable metadata JSON. Auto-refreshes when any generation
+  transitions from active to idle.
+- **Skip slot actually skips** — `__skip__` used to be advisory; the
+  AI regularly ignored it. Now: `stripSkippedSlotGroups()` pre-strips
+  tied subtrees via a `SLOT_TO_SECTION_KEYWORDS` map (cheerio-based,
+  `data-slot-group` annotations win when present). If every slot in
+  a component is skipped, the pipeline short-circuits and saves an
+  LLM call. The critic also hard-rejects `SKIPPED_SLOT_LEAKED`.
+- **Em-dash ban** — `ComponentGenerator`, `LayoutGenerator`, and
+  `ComponentCritic` prompts all forbid em-dashes and en-dashes.
+  `htmlValidator.checkProseStyle` scans visible text (not shortcodes)
+  and flags every `—` / `–`.
+- **Serif headings** — wrapper `<style>` injection forces `h1`–`h6`
+  to a serif stack globally. Component prompt tells the generator
+  not to add `font-sans` to headings.
+- **Structural fidelity** — critic rejects output that changes the
+  number of top-level children under the root `<section>` by more
+  than one. Validator flags outputs with more than one `<section>`.
+- **Contrast pairing** — explicit allow-list in the prompts. Validator
+  flags `text-white` on light backgrounds and `text-gray-7/8/900` on
+  dark backgrounds per class attribute.
+- **Section rebuild UX** — `PageEditor` tracks
+  `regeneratingSectionNames` and injects `opacity-50 animate-pulse
+  pointer-events-none` + a "Rebuilding section…" overlay into the
+  iframe `srcDoc` for the target section. On content change detected
+  by the existing live-preview poll: overlay clears, toast fires via
+  existing `showSuccessToast`, section scrolls into view.
+- **Per-page actions during generation** — in the Pages list, a row
+  in `generating` state now shows Preview / Stop / Delete buttons.
+  Preview opens the editor where sections stream in live; Stop
+  cancels the project's generation; Delete removes the page entirely.
+- **Page creation wizard** — template mode is now a 3-step wizard
+  (Page → Style → Content) with progress indicator, Back/Continue
+  footer, and the new `TemplatePageSelect` searchable combobox
+  replacing the scrolling button list.
+- **Slot UX enhancements** — each slot gets per-row **Generate** and
+  **Skip** action buttons. URL-type slots get a **Test** button that
+  probes for WAF / Cloudflare / anti-bot blocks and reports a clear
+  verdict before generation spends cycles.
+- **`placeId` requirement relaxed** — pipeline only requires `placeId`
+  when the project has no cached `project_identity` or `step_gbp_scrape`.
+  Existing projects with warmup data no longer error on page create.
+
+**Commits:**
+- `src/database/migrations/20260418000001_create_ai_cost_events.ts` —
+  new per-LLM-call table with project FK, vendor, model, token
+  breakdown, frozen USD, optional `metadata` JSONB, and
+  `parent_event_id` self-reference.
+- `src/services/ai-cost/service.ai-cost.ts` +
+  `src/services/ai-cost/pricing.ts` — hardcoded Anthropic pricing
+  map (Sonnet/Opus/Haiku 4.x), `estimateCost()`, `logAiCostEvent()`,
+  `safeLogAiCostEvent()` (never-throws).
+- `src/agents/service.llm-runner.ts` — `CostContext` option on
+  `runAgent()` and `runWithTools()`; returns `costEventId` for
+  nested tool-call threading.
+- `src/agents/websiteAgents/builder/{ComponentGenerator,LayoutGenerator,ComponentCritic}.md` —
+  em-dash ban, serif rule, structural fidelity, contrast pairings,
+  skip-slot enforcement.
+- `src/utils/website-utils/htmlValidator.ts` — `checkProseStyle`,
+  `checkContrastPairs`, and multi-section detection added to the
+  validator loop.
+- `src/controllers/admin-websites/feature-utils/util.identity-context.ts` —
+  `stripSkippedSlotGroups()` + `SLOT_TO_SECTION_KEYWORDS` map,
+  automatically applied inside `buildComponentContext`.
+- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` —
+  short-circuit when `ctx.skipGeneration` is true; cost-context
+  wiring; `section-regenerate` vs `page-generate` event differentiation.
+- `src/controllers/admin-websites/feature-services/service.{identity-warmup,layouts-pipeline,identity-proposer,seo-generation,page-editor,ai-command}.ts` —
+  cost-context threading at every call site.
+- `src/controllers/admin-websites/AdminWebsitesController.ts` —
+  `getProjectCosts` handler; `placeId` requirement relaxed when
+  identity cache exists.
+- `src/routes/admin/websites.ts` — `GET /:projectId/costs` route.
+- `src/controllers/minds/feature-services/service.minds-chat.ts` —
+  cost logging for non-streaming and streaming paths.
+- `src/workers/processors/seoBulkGenerate.processor.ts` — threads
+  `projectId` + `entity.id` so bulk SEO runs attribute costs correctly.
+- `src/utils/website-utils/{aiCommandService,pageEditorService}.ts` —
+  direct SDK calls instrumented via internal helpers.
+- `frontend/src/components/Admin/CostsTab.tsx` — total card,
+  tokens pills, scrollable event list with expandable metadata.
+- `frontend/src/components/Admin/CreatePageModal.tsx` — 3-step
+  wizard refactor, integrates `TemplatePageSelect`.
+- `frontend/src/components/Admin/TemplatePageSelect.tsx` — new
+  searchable combobox for template pages.
+- `frontend/src/components/Admin/DynamicSlotInputs.tsx` — per-slot
+  Generate/Skip actions, URL slot Test button with block detection.
+- `frontend/src/components/Admin/RegenerateComponentModal.tsx` —
+  passes section name to `onRegenerated`.
+- `frontend/src/pages/admin/PageEditor.tsx` — pulse/overlay injection,
+  content-change detection via snapshot map, toast + scroll on
+  completion.
+- `frontend/src/pages/admin/WebsiteDetail.tsx` — Costs tab mount,
+  Preview/Stop/Delete row actions during generation.
+- `frontend/src/api/websites.ts` — `fetchProjectCosts()`,
+  `AiCostEvent` / `ProjectCostsResponse` types; `placeId` made
+  optional on `StartPipelineRequest`.
+
 ## [0.0.19] - April 2026
 
 ### Live Admin Leadgen — Polling + Multi-Select Bulk Delete

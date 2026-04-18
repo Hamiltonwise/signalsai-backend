@@ -159,6 +159,11 @@ export async function generateProposals(
     tools: [PROPOSE_UPDATES_TOOL],
     toolChoice: { type: "tool", name: "propose_updates" },
     maxTokens: 2048,
+    costContext: {
+      projectId,
+      eventType: "identity-propose",
+      metadata: { instruction_preview: instruction.slice(0, 200) },
+    },
   });
 
   const call = result.toolCalls.find((c) => c.name === "propose_updates");

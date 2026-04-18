@@ -12,10 +12,10 @@
 
 import { db } from "../../../database/connection";
 import {
-  runAgent,
   runWithTools,
   type ToolSchema,
   type ToolCall,
+  type CostContext,
 } from "../../../agents/service.llm-runner";
 import { loadPrompt } from "../../../agents/service.prompt-loader";
 import { scrapeWebsite } from "./service.website-scraper";
@@ -265,6 +265,11 @@ export async function generatePageComponents(
   const criticPrompt = loadPrompt("websiteAgents/builder/ComponentCritic");
   const stableContext = buildStableIdentityContext(identity);
 
+  // Cost-tracking event type: differentiate a full build vs single-component regen.
+  const generateEventType = generateParams.singleComponent
+    ? "section-regenerate"
+    : "page-generate";
+
   // Keep existing sections for regenerate-single case
   const existingSections = normalizeSections(page.sections);
   const generatedSections: Array<{ name: string; content: string }> = generateParams.singleComponent
@@ -295,10 +300,30 @@ export async function generatePageComponents(
       generateParams.pageContext,
     );
 
+    // If every slot in this component was set to __skip__ and the template body
+    // is empty after stripping, there's nothing left to generate — omit the
+    // whole section from the page without spending an LLM call.
+    if (ctx.skipGeneration) {
+      log(`Skipping component (all slots skipped, body empty): ${component.name}`, {
+        pageId,
+        stripped: ctx.strippedSlotGroups,
+      });
+      continue;
+    }
+
     // Optional regenerate instruction for per-component regen
     const userMessageWithInstruction = generateParams.regenerateInstruction
       ? `${ctx.variableUserMessage}\n\n## ADMIN INSTRUCTION FOR REGENERATION\n${generateParams.regenerateInstruction}`
       : ctx.variableUserMessage;
+
+    const componentCostContext: CostContext = {
+      projectId,
+      eventType: generateEventType,
+      metadata: {
+        page_id: pageId,
+        component_name: component.name,
+      },
+    };
 
     let html: string | null = null;
     try {
@@ -308,6 +333,7 @@ export async function generatePageComponents(
         stableContext,
         userMessageWithInstruction,
         signal,
+        componentCostContext,
       );
     } catch (err: any) {
       log(`Component generation failed: ${component.name}`, { error: err.message });
@@ -320,6 +346,11 @@ export async function generatePageComponents(
         criticPrompt,
         component.name,
         html,
+        {
+          projectId,
+          eventType: "critic",
+          metadata: { page_id: pageId, component_name: component.name },
+        },
       ).catch(() => null);
 
       if (critique && !critique.pass) {
@@ -334,6 +365,13 @@ export async function generatePageComponents(
             stableContext,
             retryMessage,
             signal,
+            {
+              ...componentCostContext,
+              metadata: {
+                ...(componentCostContext.metadata || {}),
+                retry: true,
+              },
+            },
           );
           if (retryHtml) html = retryHtml;
         } catch (err: any) {
@@ -419,6 +457,7 @@ async function generateSingleComponent(
   stableContext: string,
   userMessage: string,
   signal?: AbortSignal,
+  costContext?: CostContext,
 ): Promise<string | null> {
   // Use runWithTools so Claude can call select_image. Loop up to 3 times
   // for tool calls, then extract final HTML.
@@ -426,8 +465,26 @@ async function generateSingleComponent(
   let toolIterations = 0;
   const maxIterations = 3;
 
+  // Thread the root cost event id through all turns so tool-use follow-ups
+  // roll up under the top-level call instead of appearing as siblings.
+  let rootCostEventId: string | null = null;
+
   while (toolIterations < maxIterations) {
     checkCancel(signal);
+
+    const turnCostContext: CostContext | undefined = costContext
+      ? rootCostEventId
+        ? {
+            ...costContext,
+            eventType: "select-image-tool",
+            parentEventId: rootCostEventId,
+            metadata: {
+              ...(costContext.metadata || {}),
+              tool_iteration: toolIterations,
+            },
+          }
+        : costContext
+      : undefined;
 
     const result = await runWithTools({
       systemPrompt: generatorPrompt,
@@ -437,7 +494,12 @@ async function generateSingleComponent(
       toolChoice: "auto",
       maxTokens: 16384,
       cachedSystemBlocks: [stableContext],
+      costContext: turnCostContext,
     });
+
+    if (rootCostEventId === null && result.costEventId) {
+      rootCostEventId = result.costEventId;
+    }
 
     if (result.toolCalls.length === 0) {
       // Claude finished — extract HTML from final text response
@@ -495,6 +557,17 @@ async function generateSingleComponent(
       toolChoice: "auto",
       maxTokens: 16384,
       cachedSystemBlocks: [stableContext],
+      costContext: costContext
+        ? {
+            ...costContext,
+            eventType: "select-image-tool",
+            parentEventId: rootCostEventId,
+            metadata: {
+              ...(costContext.metadata || {}),
+              final_turn: true,
+            },
+          }
+        : undefined,
     });
     return extractHtmlFromResponse(finalResult.textResponse);
   } catch {
@@ -566,6 +639,7 @@ async function runCritique(
   criticPrompt: string,
   componentName: string,
   html: string,
+  costContext?: CostContext,
 ): Promise<{ pass: boolean; issues: string[]; suggested_improvements: string } | null> {
   const archetype = identity.voice_and_tone?.archetype || "family-friendly";
   const tone = identity.voice_and_tone?.tone_descriptor || "professional";
@@ -588,6 +662,7 @@ async function runCritique(
       toolChoice: { type: "tool", name: "report_critique" },
       maxTokens: 1024,
       cachedSystemBlocks: [stableContext],
+      costContext,
     });
     const call = result.toolCalls.find((c) => c.name === "report_critique");
     if (!call) return null;

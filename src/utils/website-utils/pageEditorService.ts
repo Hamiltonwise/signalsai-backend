@@ -1,10 +1,17 @@
 /**
  * Page Editor Service
  * Handles LLM-powered HTML component editing via the Anthropic Claude SDK.
+ *
+ * Uses a direct Anthropic SDK call (not service.llm-runner) — cost logging is
+ * instrumented manually via `safeLogAiCostEvent`.
+ *
+ * TODO (deferred): Apify, Puppeteer, OpenAI embeddings, Google Places — left
+ * un-instrumented in this MVP pass. See `src/services/ai-cost/pricing.ts`.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { getPageEditorPrompt } from "./pageEditorPrompt";
+import { safeLogAiCostEvent } from "../../services/ai-cost/service.ai-cost";
 
 const MODEL = "claude-haiku-4-5-20251001";
 
@@ -28,6 +35,12 @@ interface EditRequest {
   chatHistory?: Array<{ role: "user" | "assistant"; content: string }>;
   mediaContext?: string;
   promptType?: "admin" | "user";
+  /** Optional: project + entity context for cost logging. */
+  costContext?: {
+    projectId: string;
+    eventType?: string;
+    metadata?: Record<string, unknown>;
+  };
 }
 
 interface EditDebugInfo {
@@ -49,7 +62,7 @@ interface EditResponse {
  * Send a component's HTML + edit instruction to Claude and get back modified HTML.
  */
 export async function editHtmlComponent(params: EditRequest): Promise<EditResponse> {
-  const { alloroClass, currentHtml, instruction, chatHistory = [], mediaContext = "", promptType = "admin" } = params;
+  const { alloroClass, currentHtml, instruction, chatHistory = [], mediaContext = "", promptType = "admin", costContext } = params;
   const ai = getClient();
 
   // Build the Anthropic messages array from chat history + current instruction
@@ -135,6 +148,25 @@ Instruction: ${instruction}${mediaContext}`;
   console.log(
     `[PageEditor] ✓ Edit complete. Input tokens: ${debugInfo.inputTokens}, Output tokens: ${debugInfo.outputTokens}`
   );
+
+  // Cost capture (fire-and-forget — never blocks the edit response)
+  if (costContext?.projectId) {
+    await safeLogAiCostEvent({
+      projectId: costContext.projectId,
+      eventType: costContext.eventType || "editor-chat",
+      vendor: "anthropic",
+      model: response.model,
+      usage: {
+        input_tokens: response.usage.input_tokens,
+        output_tokens: response.usage.output_tokens,
+      },
+      metadata: {
+        alloro_class: alloroClass,
+        prompt_type: promptType,
+        ...(costContext.metadata || {}),
+      },
+    });
+  }
 
   // Handle rejection — LLM flagged the instruction as not allowed
   if (parsed.error) {

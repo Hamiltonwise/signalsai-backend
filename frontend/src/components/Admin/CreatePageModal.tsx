@@ -2,15 +2,20 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   X,
   Loader2,
-  FileText,
   Globe,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Search,
   MapPin,
   FilePlus2,
   Upload,
   Archive,
+  FileText,
+  Palette,
+  PenSquare,
+  Check,
 } from "lucide-react";
 import { fetchTemplatePages } from "../../api/templates";
 import {
@@ -27,6 +32,7 @@ import ColorPicker from "./ColorPicker";
 import GradientPicker from "./GradientPicker";
 import type { GradientValue } from "./GradientPicker";
 import DynamicSlotInputs from "./DynamicSlotInputs";
+import TemplatePageSelect from "./TemplatePageSelect";
 
 export interface CreatePageModalProps {
   projectId: string;
@@ -58,6 +64,8 @@ export default function CreatePageModal({
   const [mode, setMode] = useState<CreateMode>(
     templateId ? "template" : "blank"
   );
+  // Wizard step (template mode only): 1 = Page, 2 = Style, 3 = Content
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [templatePages, setTemplatePages] = useState<TemplatePage[]>([]);
   const [loadingPages, setLoadingPages] = useState(true);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
@@ -110,6 +118,11 @@ export default function CreatePageModal({
   const [artifactFile, setArtifactFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset wizard to first step whenever the user switches mode
+  useEffect(() => {
+    setStep(1);
+  }, [mode]);
 
   useEffect(() => {
     if (!templateId) {
@@ -245,7 +258,7 @@ export default function CreatePageModal({
         templateId,
         templatePageId: selectedPageId,
         path: slug,
-        placeId: overridePlaceId,
+        placeId: overridePlaceId || undefined,
         websiteUrl:
           dataSource === "website" ? overrideWebsiteUrl || null : null,
         pageContext: pageContext.trim() || undefined,
@@ -453,159 +466,159 @@ export default function CreatePageModal({
 
             {mode === "template" ? (
               <>
-                {/* Template page selector */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Template Page
-                  </label>
-                  {loadingPages ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Loading pages...
-                    </div>
-                  ) : templatePages.length === 0 ? (
-                    <p className="text-sm text-red-500">
-                      No template pages found.
-                    </p>
-                  ) : (
+                {/* Wizard step indicator */}
+                <WizardSteps
+                  current={step}
+                  steps={[
+                    { id: 1, label: "Page", icon: <FileText className="w-3.5 h-3.5" /> },
+                    { id: 2, label: "Style", icon: <Palette className="w-3.5 h-3.5" /> },
+                    { id: 3, label: "Content", icon: <PenSquare className="w-3.5 h-3.5" /> },
+                  ]}
+                />
+
+                {step === 1 && (
+                  <>
+                    {/* Template page search-select */}
                     <div className="space-y-1.5">
-                      {templatePages.map((page) => (
-                        <button
-                          key={page.id}
-                          onClick={() => setSelectedPageId(page.id)}
-                          className={`w-full text-left px-3 py-2.5 rounded-lg border transition flex items-center gap-2.5 ${
-                            selectedPageId === page.id
-                              ? "border-alloro-orange bg-orange-50 text-gray-900"
-                              : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                          }`}
-                        >
-                          <FileText
-                            className={`w-4 h-4 flex-shrink-0 ${selectedPageId === page.id ? "text-alloro-orange" : "text-gray-400"}`}
-                          />
-                          <span className="text-sm font-medium truncate">
-                            {page.name}
-                          </span>
-                          {page.sections && page.sections.length > 0 && (
-                            <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
-                              {page.sections.length} section
-                              {page.sections.length !== 1 ? "s" : ""}
-                            </span>
-                          )}
-                        </button>
-                      ))}
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Template Page
+                      </label>
+                      <TemplatePageSelect
+                        pages={templatePages}
+                        value={selectedPageId}
+                        onChange={(id) => setSelectedPageId(id)}
+                        loading={loadingPages}
+                      />
+                      <p className="text-xs text-gray-400">
+                        Pick the section layout the AI should fill with your
+                        business content.
+                      </p>
                     </div>
-                  )}
-                </div>
 
-                {/* Blank canvas shortcut */}
-                <button
-                  type="button"
-                  onClick={handleSubmitBlank}
-                  disabled={submitting || !slug || !!slugError}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-alloro-orange hover:text-alloro-orange hover:bg-orange-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <FilePlus2 className="w-4 h-4" />
-                  Start with a blank canvas
-                </button>
-
-                {/* Slug input */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Page Slug
-                  </label>
-                  <input
-                    type="text"
-                    value={slug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="/services"
-                    className={`w-full text-sm px-3 py-2 rounded-lg border focus:ring-2 outline-none transition ${
-                      slugError
-                        ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-                        : "border-gray-200 focus:border-alloro-orange focus:ring-alloro-orange/20"
-                    }`}
-                  />
-                  {slugError && (
-                    <p className="text-xs text-red-500">{slugError}</p>
-                  )}
-                  <p className="text-xs text-gray-400">
-                    The URL path for this page (e.g., / for homepage, /services,
-                    /about-us)
-                  </p>
-                </div>
-
-                {/* Page context */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Page Context
-                  </label>
-                  <textarea
-                    value={pageContext}
-                    onChange={(e) => setPageContext(e.target.value)}
-                    placeholder="Describe what this page should be about, e.g. 'Orthodontic services including braces, Invisalign, and retainers for children and adults'"
-                    rows={3}
-                    className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none resize-none transition"
-                  />
-                  <p className="text-xs text-gray-400">
-                    Add details about this page so the AI generates relevant,
-                    specific content instead of generic filler.
-                  </p>
-                </div>
-
-                {/* Brand colors (per-page override) */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Brand Colors
-                  </label>
-                  <div className="flex items-start gap-4">
-                    <ColorPicker
-                      label="Primary"
-                      value={pagePrimaryColor}
-                      onChange={setPagePrimaryColor}
-                    />
-                    <ColorPicker
-                      label="Accent"
-                      value={pageAccentColor}
-                      onChange={setPageAccentColor}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    Pre-loaded from the project. Adjust per-page if needed.
-                  </p>
-                </div>
-
-                {/* Gradient (Plan B) */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">Gradient</label>
-                  <GradientPicker
-                    value={gradient}
-                    onChange={setGradient}
-                    defaultFrom={pagePrimaryColor}
-                    defaultTo={pageAccentColor}
-                  />
-                </div>
-
-                {/* Dynamic slots for this template page (Plan B) */}
-                {(dynamicSlots.length > 0 || loadingSlots) && (
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      Page-Specific Context
-                      {loadingSlots && (
-                        <Loader2 className="inline-block ml-2 h-3 w-3 animate-spin text-gray-400" />
+                    {/* Slug input */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Page Slug
+                      </label>
+                      <input
+                        type="text"
+                        value={slug}
+                        onChange={(e) => handleSlugChange(e.target.value)}
+                        placeholder="/services"
+                        className={`w-full text-sm px-3 py-2 rounded-lg border focus:ring-2 outline-none transition ${
+                          slugError
+                            ? "border-red-300 focus:border-red-400 focus:ring-red-200"
+                            : "border-gray-200 focus:border-alloro-orange focus:ring-alloro-orange/20"
+                        }`}
+                      />
+                      {slugError && (
+                        <p className="text-xs text-red-500">{slugError}</p>
                       )}
-                    </label>
-                    <p className="text-xs text-gray-500">
-                      Extra context the AI will use for this specific page. Pre-filled from your project identity — edit if needed.
-                    </p>
-                    <DynamicSlotInputs
-                      slots={dynamicSlots}
-                      values={dynamicSlotValues}
-                      onChange={updateSlotValue}
-                    />
-                  </div>
+                      <p className="text-xs text-gray-400">
+                        The URL path for this page (e.g., / for homepage,
+                        /services, /about-us).
+                      </p>
+                    </div>
+
+                    {/* Blank canvas shortcut */}
+                    <button
+                      type="button"
+                      onClick={handleSubmitBlank}
+                      disabled={submitting || !slug || !!slugError}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-alloro-orange hover:text-alloro-orange hover:bg-orange-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <FilePlus2 className="w-4 h-4" />
+                      Or start with a blank canvas
+                    </button>
+                  </>
                 )}
 
-                {/* Overrides section */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                {step === 2 && (
+                  <>
+                    {/* Brand colors (per-page override) */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Brand Colors
+                      </label>
+                      <div className="flex items-start gap-4">
+                        <ColorPicker
+                          label="Primary"
+                          value={pagePrimaryColor}
+                          onChange={setPagePrimaryColor}
+                        />
+                        <ColorPicker
+                          label="Accent"
+                          value={pageAccentColor}
+                          onChange={setPageAccentColor}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        Pre-loaded from the project. Adjust per-page if needed.
+                      </p>
+                    </div>
+
+                    {/* Gradient */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Gradient
+                      </label>
+                      <GradientPicker
+                        value={gradient}
+                        onChange={setGradient}
+                        defaultFrom={pagePrimaryColor}
+                        defaultTo={pageAccentColor}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {step === 3 && (
+                  <>
+                    {/* Page description (was "Page Context") */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Page Description
+                        <span className="text-gray-400 font-normal ml-1">
+                          optional
+                        </span>
+                      </label>
+                      <textarea
+                        value={pageContext}
+                        onChange={(e) => setPageContext(e.target.value)}
+                        placeholder="What's this page about? e.g. 'Orthodontic services including braces, Invisalign, and retainers for children and adults'"
+                        rows={2}
+                        className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none resize-none transition"
+                      />
+                      <p className="text-xs text-gray-400">
+                        High-level framing for the whole page. Per-section
+                        content is filled in below.
+                      </p>
+                    </div>
+
+                    {/* Dynamic slots for this template page */}
+                    {(dynamicSlots.length > 0 || loadingSlots) && (
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-semibold text-gray-700">
+                          Section Content
+                          {loadingSlots && (
+                            <Loader2 className="inline-block ml-2 h-3 w-3 animate-spin text-gray-400" />
+                          )}
+                        </label>
+                        <p className="text-xs text-gray-500">
+                          Pre-filled from your project identity. Edit, let AI
+                          generate, or skip sections you don't want.
+                        </p>
+                        <DynamicSlotInputs
+                          slots={dynamicSlots}
+                          values={dynamicSlotValues}
+                          onChange={updateSlotValue}
+                          projectId={projectId}
+                        />
+                      </div>
+                    )}
+
+                    {/* Overrides section */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setShowOverrides(!showOverrides)}
                     className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
@@ -727,6 +740,8 @@ export default function CreatePageModal({
                     </div>
                   )}
                 </div>
+                  </>
+                )}
               </>
             ) : mode === "blank" ? (
               <>
@@ -909,45 +924,121 @@ export default function CreatePageModal({
           </div>
 
           {/* Footer */}
-          <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-end gap-3">
-            <button
-              onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={
-                mode === "template"
-                  ? isTemplateDisabled
-                  : mode === "blank"
-                    ? isBlankDisabled
-                    : isArtifactDisabled
-              }
-              className="inline-flex items-center gap-2 bg-alloro-orange hover:bg-alloro-orange/90 disabled:bg-alloro-orange/50 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {mode === "template"
-                    ? "Generating..."
-                    : mode === "blank"
-                      ? "Creating..."
-                      : "Uploading..."}
-                </>
-              ) : mode === "template" ? (
-                "Generate Page"
-              ) : mode === "blank" ? (
-                "Create Blank Page"
-              ) : (
-                "Upload App"
+          <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between gap-3">
+            <div>
+              {mode === "template" && step > 1 && !submitting && (
+                <button
+                  onClick={() => setStep((s) => (s === 3 ? 2 : 1))}
+                  className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Back
+                </button>
               )}
-            </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onClose}
+                disabled={submitting}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              {mode === "template" && step < 3 ? (
+                <button
+                  onClick={() => setStep((s) => (s === 1 ? 2 : 3))}
+                  disabled={step === 1 && (!selectedPageId || !slug || !!slugError)}
+                  className="inline-flex items-center gap-2 bg-alloro-orange hover:bg-alloro-orange/90 disabled:bg-alloro-orange/50 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed"
+                >
+                  Continue
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={
+                    mode === "template"
+                      ? isTemplateDisabled
+                      : mode === "blank"
+                        ? isBlankDisabled
+                        : isArtifactDisabled
+                  }
+                  className="inline-flex items-center gap-2 bg-alloro-orange hover:bg-alloro-orange/90 disabled:bg-alloro-orange/50 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {mode === "template"
+                        ? "Generating..."
+                        : mode === "blank"
+                          ? "Creating..."
+                          : "Uploading..."}
+                    </>
+                  ) : mode === "template" ? (
+                    "Generate Page"
+                  ) : mode === "blank" ? (
+                    "Create Blank Page"
+                  ) : (
+                    "Upload App"
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function WizardSteps({
+  current,
+  steps,
+}: {
+  current: 1 | 2 | 3;
+  steps: { id: 1 | 2 | 3; label: string; icon: React.ReactNode }[];
+}) {
+  return (
+    <div className="flex items-center justify-between px-1">
+      {steps.map((s, idx) => {
+        const done = current > s.id;
+        const active = current === s.id;
+        return (
+          <div key={s.id} className="flex items-center flex-1 last:flex-none">
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold transition ${
+                  done
+                    ? "bg-alloro-orange text-white"
+                    : active
+                      ? "bg-alloro-orange/10 text-alloro-orange ring-2 ring-alloro-orange"
+                      : "bg-gray-100 text-gray-400"
+                }`}
+              >
+                {done ? <Check className="w-3.5 h-3.5" /> : s.id}
+              </div>
+              <span
+                className={`text-xs font-medium ${
+                  active
+                    ? "text-gray-900"
+                    : done
+                      ? "text-gray-600"
+                      : "text-gray-400"
+                }`}
+              >
+                {s.label}
+              </span>
+            </div>
+            {idx < steps.length - 1 && (
+              <div
+                className={`flex-1 h-px mx-3 transition ${
+                  done ? "bg-alloro-orange" : "bg-gray-200"
+                }`}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

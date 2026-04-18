@@ -32,10 +32,15 @@ Never remove them. Never rewrite them. They are resolved at render time by the e
 ## Wrapper Rules (when name is "wrapper")
 
 1. **Preserve `{{slot}}`** — must appear exactly once in the `<main>` or `<body>` area.
-2. **Inject brand color CSS** — add this `<style>` block inside `<head>`:
+2. **Inject brand color CSS + serif headings** — add this `<style>` block inside `<head>`:
 
 ```html
 <style>
+  /* Headings use serif globally. Individual components should not override this with font-sans. */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif, Georgia, "Times New Roman", serif) !important;
+  }
+
   .text-primary { color: {primary_color} !important; }
   .text-primary-subtle { color: {primary_color}99 !important; }
   .bg-primary { background-color: {primary_color} !important; }
@@ -46,6 +51,8 @@ Never remove them. Never rewrite them. They are resolved at render time by the e
   .bg-accent-subtle { background-color: {accent_color}22 !important; }
 </style>
 ```
+
+If the template's existing font loader defines a `--font-serif` CSS variable (e.g., via a Google Fonts import), the rule will pick it up. Otherwise it falls back to the system serif stack. Do NOT remove any existing Google Fonts `<link>` tags.
 
 3. **If gradient is enabled**, also inject:
 
@@ -95,6 +102,19 @@ The `.bg-gradient-brand *` rule forces descendants to inherit the chosen text co
 - Use utility classes only: `bg-primary`, `text-primary`, `bg-accent`, `text-accent`, `bg-primary-subtle`, `bg-accent-subtle`
 - NEVER use Tailwind opacity variants like `bg-primary/10` — they don't work
 - Gradient classes `bg-gradient-brand` and `text-gradient-brand` work ONLY if you injected them in the `<style>` block (wrapper only)
+
+## Prose Style
+
+- NEVER use em-dashes (`—`) or en-dashes (`–`) anywhere. Replace with commas, periods, colons, or parentheses.
+- No hedging filler ("simply", "truly", "deeply", "in today's world").
+
+## Contrast Rules (MANDATORY)
+
+When a section or nav bar has a background, the text color must be paired correctly:
+
+- Light bg (`bg-white`, `bg-gray-50`, `bg-gray-100`, `bg-primary-subtle`, `bg-accent-subtle`) → use `text-gray-900` / `text-gray-800` / `text-primary` / `text-accent`.
+- Dark bg (`bg-primary`, `bg-accent`, `bg-gradient-brand`, `bg-gray-900`) → use `text-white` / `text-gray-100`.
+- NEVER combine `text-white` with `bg-white` / light-tinted backgrounds. NEVER combine `text-gray-900` with dark backgrounds.
 
 ## BANNED
 

@@ -8,7 +8,12 @@ interface RegenerateComponentModalProps {
   sectionNames: string[];
   /** Optional section preselected */
   defaultSection?: string;
-  onRegenerated: () => void;
+  /**
+   * Called after the regenerate request succeeds. Receives the name of the
+   * section that was enqueued for regeneration so the caller can drive
+   * per-section UI feedback (pulse/gray + toast on completion).
+   */
+  onRegenerated: (sectionName: string) => void;
   onClose: () => void;
 }
 
@@ -38,7 +43,7 @@ export default function RegenerateComponentModal({
       setSubmitting(true);
       setError(null);
       await regenerateComponent(projectId, pageId, section, instruction.trim() || undefined);
-      onRegenerated();
+      onRegenerated(section);
     } catch (err: any) {
       setError(err?.message || "Failed to regenerate");
     } finally {

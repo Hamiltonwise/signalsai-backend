@@ -200,6 +200,11 @@ export async function analyzeBatch(batchId: string): Promise<void> {
             prompt: promptWithTemplates,
             targetLabel: `Layout > ${capitalize(field)}`,
             currentHtml: html,
+            costContext: {
+              projectId: batch.project_id,
+              eventType: "ai-command",
+              metadata: { batch_id: batchId, scope: "layout", field },
+            },
           });
 
           for (const rec of result.recommendations) {
@@ -267,6 +272,18 @@ export async function analyzeBatch(batchId: string): Promise<void> {
               prompt: promptWithTemplates,
               targetLabel: `${page.path} > ${sectionName}`,
               currentHtml: sectionHtml,
+              costContext: {
+                projectId: batch.project_id,
+                eventType: "ai-command",
+                metadata: {
+                  batch_id: batchId,
+                  scope: "page-section",
+                  page_id: page.id,
+                  page_path: page.path,
+                  section_name: sectionName,
+                  section_index: i,
+                },
+              },
             });
 
             for (const rec of result.recommendations) {
@@ -311,6 +328,11 @@ export async function analyzeBatch(batchId: string): Promise<void> {
             prompt: promptWithTemplates,
             targetLabel: `Post: ${post.title}`,
             currentHtml: post.content,
+            costContext: {
+              projectId: batch.project_id,
+              eventType: "ai-command",
+              metadata: { batch_id: batchId, scope: "post", post_id: post.id },
+            },
           });
 
           for (const rec of result.recommendations) {
@@ -355,6 +377,11 @@ export async function analyzeBatch(batchId: string): Promise<void> {
         existingPostSlugs: existingPostSlugs.map((p) => `${p.post_type_slug}/${p.slug}`),
         postTypes: postTypes.map((pt: any) => `${pt.slug} (${pt.name})`),
         existingMenus,
+        costContext: {
+          projectId: batch.project_id,
+          eventType: "ai-command",
+          metadata: { batch_id: batchId, scope: "structural" },
+        },
       });
 
       // Deduplicate redirects — skip if from_path already exists in DB or in this batch
@@ -505,15 +532,20 @@ interface ExecutionContext {
   createdRedirects: Map<string, string>;                      // from_path → to_path
   /** Tracks draft page IDs created during batch execution (path → draft page ID) */
   pageDrafts: Map<string, string>;
+  /** Project + batch ids — used to attribute LLM costs back to the project. */
+  projectId?: string;
+  batchId?: string;
 }
 
-function createExecutionContext(): ExecutionContext {
+function createExecutionContext(opts?: { projectId?: string; batchId?: string }): ExecutionContext {
   return {
     createdPages: new Map(),
     createdPosts: new Map(),
     createdMenus: new Map(),
     createdRedirects: new Map(),
     pageDrafts: new Map(),
+    projectId: opts?.projectId,
+    batchId: opts?.batchId,
   };
 }
 
@@ -627,6 +659,17 @@ async function analyzeSpecializedBatch(
                 viewport: ss.viewport.label,
                 pagePath: page.path,
                 sectionHtml: pageHtml,
+                costContext: {
+                  projectId: batch.project_id,
+                  eventType: "ai-command",
+                  metadata: {
+                    batch_id: batchId,
+                    scope: "screenshot-visual",
+                    page_id: page.id,
+                    page_path: page.path,
+                    viewport: ss.viewport.label,
+                  },
+                },
               });
 
               for (const issue of issues) {
@@ -755,7 +798,7 @@ export async function executeBatch(batchId: string): Promise<void> {
     `[AiCommand] Executing batch ${batchId}: ${sorted.length} approved recommendations (phase-ordered)`
   );
 
-  const ctx = createExecutionContext();
+  const ctx = createExecutionContext({ projectId: batch.project_id, batchId });
   let executedCount = 0;
   let failedCount = 0;
 
@@ -862,6 +905,17 @@ async function executeRecommendation(rec: any, ctx: ExecutionContext): Promise<v
     instruction: finalInstruction,
     currentHtml,
     targetLabel: rec.target_label,
+    costContext: ctx.projectId
+      ? {
+          projectId: ctx.projectId,
+          eventType: "ai-command",
+          metadata: {
+            batch_id: ctx.batchId || null,
+            recommendation_id: rec.id,
+            target_type: rec.target_type,
+          },
+        }
+      : undefined,
   });
 
   // Run agentic validation pipeline — auto-fix UI and link issues
@@ -1338,6 +1392,17 @@ async function executeCreatePage(rec: any, ctx: ExecutionContext): Promise<void>
   const plan = await planPageSections({
     purpose: pageContext,
     existingSections,
+    costContext: ctx.projectId
+      ? {
+          projectId: ctx.projectId,
+          eventType: "ai-command",
+          metadata: {
+            batch_id: ctx.batchId || null,
+            recommendation_id: rec.id,
+            stage: "plan-page-sections",
+          },
+        }
+      : undefined,
   });
 
   // Generate each section
@@ -1354,6 +1419,18 @@ async function executeCreatePage(rec: any, ctx: ExecutionContext): Promise<void>
         pageContext,
         priorSections: createdSections.map((s) => s.content),
         siteStyleContext,
+        costContext: ctx.projectId
+          ? {
+              projectId: ctx.projectId,
+              eventType: "ai-command",
+              metadata: {
+                batch_id: ctx.batchId || null,
+                recommendation_id: rec.id,
+                stage: "generate-section",
+                section_name: planned.name,
+              },
+            }
+          : undefined,
       });
 
       // Run agentic pipeline on generated section
@@ -1518,6 +1595,18 @@ async function executeCreatePost(rec: any, ctx: ExecutionContext): Promise<void>
     referenceContent,
     styleContext,
     customFieldsHint: customFieldsInstruction,
+    costContext: ctx.projectId
+      ? {
+          projectId: ctx.projectId,
+          eventType: "ai-command",
+          metadata: {
+            batch_id: ctx.batchId || null,
+            recommendation_id: rec.id,
+            stage: "generate-post-content",
+            post_title: meta.title,
+          },
+        }
+      : undefined,
   });
 
   // Run agentic pipeline

@@ -5,6 +5,7 @@ import { MindConversationModel, IMindConversation } from "../../../models/MindCo
 import { MindMessageModel, IMindMessage } from "../../../models/MindMessageModel";
 import { shouldCompact, compactConversation } from "./service.minds-compaction";
 import { shouldUseRag, retrieveForChat, buildRetrievedContext } from "./service.minds-retrieval";
+import { safeLogAiCostEvent } from "../../../services/ai-cost/service.ai-cost";
 
 const MODEL = process.env.MINDS_LLM_MODEL || "claude-sonnet-4-6";
 const MAX_HISTORY_MESSAGES = 30;
@@ -206,6 +207,23 @@ export async function chat(
   const reply =
     response.content[0]?.type === "text" ? response.content[0].text : "";
 
+  // Cost capture — minds-chat is mind-scoped (no project), so projectId stays null.
+  await safeLogAiCostEvent({
+    projectId: null,
+    eventType: "minds-chat",
+    vendor: "anthropic",
+    model: response.model,
+    usage: {
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+    },
+    metadata: {
+      mind_id: mindId,
+      conversation_id: convId,
+      stream: false,
+    },
+  });
+
   // Store assistant response + increment count
   await MindMessageModel.addMessage(convId, "assistant", reply);
   await MindConversationModel.incrementMessageCount(convId);
@@ -244,6 +262,9 @@ export async function chatStream(
   });
 
   let fullReply = "";
+  let usageInputTokens = 0;
+  let usageOutputTokens = 0;
+  let resolvedModel: string = MODEL;
 
   for await (const event of stream) {
     if (
@@ -252,8 +273,34 @@ export async function chatStream(
     ) {
       fullReply += event.delta.text;
       onChunk(event.delta.text);
+    } else if (event.type === "message_start" && (event as any).message) {
+      const msg = (event as any).message;
+      if (msg?.usage?.input_tokens) usageInputTokens = msg.usage.input_tokens;
+      if (msg?.model) resolvedModel = msg.model;
+    } else if (event.type === "message_delta" && (event as any).usage) {
+      const usage = (event as any).usage;
+      if (typeof usage.output_tokens === "number") {
+        usageOutputTokens = usage.output_tokens;
+      }
     }
   }
+
+  // Cost capture — best-effort (stream usage may be partial on SDK errors).
+  await safeLogAiCostEvent({
+    projectId: null,
+    eventType: "minds-chat",
+    vendor: "anthropic",
+    model: resolvedModel,
+    usage: {
+      input_tokens: usageInputTokens,
+      output_tokens: usageOutputTokens,
+    },
+    metadata: {
+      mind_id: mindId,
+      conversation_id: convId,
+      stream: true,
+    },
+  });
 
   // Persist complete assistant message AFTER stream ends
   await MindMessageModel.addMessage(convId, "assistant", fullReply);

@@ -11,6 +11,7 @@ import {
   runWithTools,
   type ToolSchema,
   type ToolCall,
+  type CostContext,
 } from "../../../agents/service.llm-runner";
 import { loadPrompt } from "../../../agents/service.prompt-loader";
 import { uploadToS3 } from "../../../utils/core/s3";
@@ -141,12 +142,18 @@ export async function generateLayouts(
       });
 
       const userMessage = buildLayoutComponentMessage(name, markup, identity, slotValues);
+      const componentCostContext: CostContext = {
+        projectId,
+        eventType: "layouts-build",
+        metadata: { component: name },
+      };
       const html = await generateLayoutComponent(
         identity,
         layoutPrompt,
         stableContext,
         userMessage,
         signal,
+        componentCostContext,
       );
 
       if (!html) {
@@ -166,6 +173,7 @@ export async function generateLayouts(
           stableContext,
           retryMessage,
           signal,
+          { ...componentCostContext, metadata: { ...(componentCostContext.metadata || {}), retry: true } },
         );
         if (retryHtml && retryHtml.includes("{{slot}}")) {
           await db(PROJECTS_TABLE).where("id", projectId).update({
@@ -243,13 +251,31 @@ async function generateLayoutComponent(
   stableContext: string,
   userMessage: string,
   signal?: AbortSignal,
+  costContext?: CostContext,
 ): Promise<string | null> {
   const messages: any[] = [{ role: "user", content: userMessage }];
   let iterations = 0;
   const maxIterations = 3;
 
+  // Root cost event id — threads nested tool turns under the top-level run.
+  let rootCostEventId: string | null = null;
+
   while (iterations < maxIterations) {
     checkCancel(signal);
+
+    const turnCostContext: CostContext | undefined = costContext
+      ? rootCostEventId
+        ? {
+            ...costContext,
+            eventType: "select-image-tool",
+            parentEventId: rootCostEventId,
+            metadata: {
+              ...(costContext.metadata || {}),
+              tool_iteration: iterations,
+            },
+          }
+        : costContext
+      : undefined;
 
     const result = await runWithTools({
       systemPrompt,
@@ -259,7 +285,12 @@ async function generateLayoutComponent(
       toolChoice: "auto",
       maxTokens: 16384,
       cachedSystemBlocks: [stableContext],
+      costContext: turnCostContext,
     });
+
+    if (rootCostEventId === null && result.costEventId) {
+      rootCostEventId = result.costEventId;
+    }
 
     if (result.toolCalls.length === 0) {
       return extractHtmlFromResponse(result.textResponse);
@@ -312,6 +343,17 @@ async function generateLayoutComponent(
       toolChoice: "auto",
       maxTokens: 16384,
       cachedSystemBlocks: [stableContext],
+      costContext: costContext
+        ? {
+            ...costContext,
+            eventType: "select-image-tool",
+            parentEventId: rootCostEventId,
+            metadata: {
+              ...(costContext.metadata || {}),
+              final_turn: true,
+            },
+          }
+        : undefined,
     });
     return extractHtmlFromResponse(final.textResponse);
   } catch {

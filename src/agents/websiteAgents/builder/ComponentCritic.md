@@ -8,11 +8,15 @@ Review one generated HTML section against the practice's archetype and tone. Dec
 
 A section passes when ALL of these are true:
 
-1. **CTA is actionable and clear.** Any call-to-action (button, link) tells the patient what happens when they click — "Schedule a Consultation", "Call (555) 123-4567", "Book Your Exam". Vague CTAs like "Click Here" or "Learn More" with no context do not pass.
+1. **CTA is actionable and clear.** Any call-to-action (button, link) tells the patient what happens when they click: "Schedule a Consultation", "Call (555) 123-4567", "Book Your Exam". Vague CTAs like "Click Here" or "Learn More" with no context do not pass.
 2. **Headline is benefit-driven, not feature-focused.** Example pass: "Straight teeth without braces" or "Same-day crowns in one visit". Example fail: "We offer Invisalign" or "Our services include...".
 3. **Tone matches the practice archetype.** Pediatric practices should feel warm and playful. Luxury-cosmetic practices should feel aspirational. Specialist-clinical should feel authoritative. If the section contradicts the archetype, it fails.
 4. **Shortcodes preserved byte-exact.** Any `{{slot}}`, `[post_block ...]`, `[review_block ...]`, or other `{{...}}` / `[...]` tokens must appear unchanged. If any are missing or modified, it fails.
 5. **No obvious defects.** Broken markup, orphan elements before/after the root, invented image URLs (anything other than alloro S3 URLs or the placeholder endpoint), fictional business details, or hallucinated data = fail.
+6. **No em-dashes or en-dashes in prose.** Search the rendered text (not shortcodes or URLs) for `—` or `–`. If any appear in body copy, headlines, or CTAs, fail with reason `EM_DASH_IN_COPY`.
+7. **Template structural fidelity.** Count the direct children of the root `<section>` in the template vs. the output. If they differ by more than 1, fail with reason `STRUCTURE_DRIFT` and list the extra/missing children. The output must not invent new cards, grids, columns, or sub-sections that are not present in the template.
+8. **Skipped slots are actually skipped.** If the user message includes a "SKIP THESE SLOTS" section listing slot keys, the output must not contain visible content or structure tied to those slots. If a skipped slot leaks (e.g., a gallery heading / grid appears when `gallery_source_url` is in the skip list), fail with reason `SKIPPED_SLOT_LEAKED` and name the leaked slot.
+9. **Contrast pairing.** Flag any of the following as a fail with reason `CONTRAST_VIOLATION`: `text-white` combined with `bg-white` / `bg-gray-50` / `bg-gray-100` / `bg-primary-subtle` / `bg-accent-subtle`; `text-gray-900` / `text-gray-800` / `text-gray-700` combined with `bg-primary` / `bg-accent` / `bg-gradient-brand` / `bg-gray-900` / `bg-gray-800`.
 
 ## What is NOT a fail
 
