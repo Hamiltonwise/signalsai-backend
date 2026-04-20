@@ -4,9 +4,11 @@ import type { Knex } from "knex";
  * Backfill `website_builder.media` from each project's
  * `project_identity.extracted_assets.images` JSONB array.
  *
- * Runs after `20260420000001_add_unique_project_s3url_to_media.ts` so the
- * `ON CONFLICT (project_id, s3_url) DO NOTHING` clause has the unique index
- * it needs. Re-runs produce zero inserts.
+ * Idempotent via per-row existence check (SELECT-then-INSERT) rather than
+ * ON CONFLICT, because the sibling unique index is PARTIAL
+ * (`WHERE s3_url IS NOT NULL`) and Postgres requires the ON CONFLICT target
+ * to include the matching predicate — which Knex's `.onConflict().ignore()`
+ * doesn't emit. Per-row checks sidestep the shape entirely.
  *
  * Iterates all projects with a non-null `project_identity`, pulls the
  * `extracted_assets.images` array, and inserts any missing media rows.
@@ -82,14 +84,28 @@ export async function up(knex: Knex): Promise<void> {
     if (rows.length === 0) continue;
     projectsWithImages += 1;
 
-    const inserted = await knex("website_builder.media")
-      .insert(rows)
-      .onConflict(["project_id", "s3_url"])
-      .ignore()
-      .returning("id");
+    // Fetch all existing s3_urls for this project in one query, diff, insert
+    // the remainder. Avoids ON CONFLICT entirely so the partial unique index
+    // predicate mismatch can't bite us.
+    const existing = await knex("website_builder.media")
+      .where("project_id", p.id)
+      .select("s3_url");
+    const existingSet = new Set(
+      existing
+        .map((r: { s3_url: string | null }) => r.s3_url)
+        .filter((u: string | null): u is string => !!u),
+    );
 
-    totalInserted += inserted.length;
-    totalSkipped += rows.length - inserted.length;
+    const toInsert = rows.filter((r) => !existingSet.has(r.s3_url));
+    if (toInsert.length === 0) {
+      totalSkipped += rows.length;
+      continue;
+    }
+
+    await knex("website_builder.media").insert(toInsert);
+
+    totalInserted += toInsert.length;
+    totalSkipped += rows.length - toInsert.length;
   }
 
   console.log(
