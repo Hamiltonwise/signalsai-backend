@@ -473,7 +473,6 @@ export async function getPageProgressiveState(
     .select(
       "id",
       "path",
-      "name",
       "generation_status",
       "generation_progress",
       "sections",
@@ -485,7 +484,7 @@ export async function getPageProgressiveState(
   const templatePage = page.template_page_id
     ? await db("website_builder.template_pages")
         .where("id", page.template_page_id)
-        .select("sections")
+        .select("name", "sections")
         .first()
     : null;
 
@@ -530,7 +529,7 @@ export async function getPageProgressiveState(
 
   return {
     pageId: page.id,
-    name: page.name,
+    name: templatePage?.name || null,
     path: page.path,
     generation_status: page.generation_status,
     generation_progress: parse(page.generation_progress),
