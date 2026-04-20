@@ -12,7 +12,6 @@ import {
   RefreshCw,
   Code,
   Layout,
-  MessageCircle,
   Globe,
   FileText,
   Image as ImageIcon,
@@ -20,16 +19,16 @@ import {
   Briefcase,
   ExternalLink,
   AlertTriangle,
+  Pencil,
+  FileJson,
 } from "lucide-react";
 import {
   fetchIdentity,
   fetchIdentityStatus,
   startIdentityWarmup,
   updateIdentity,
-  proposeIdentityUpdates,
-  applyIdentityProposals,
+  patchIdentitySlice,
   testUrl,
-  type IdentityProposal,
   type BlockCheckResult,
   type ScrapeStrategy,
   type WarmupUrlInput,
@@ -51,10 +50,20 @@ import ColorPicker from "./ColorPicker";
 import GradientPicker from "./GradientPicker";
 import type { GradientValue } from "./GradientPicker";
 import AddLocationModal from "./AddLocationModal";
+import IdentityImagesTab from "./IdentityImagesTab";
+import IdentitySliceEditor from "./IdentitySliceEditor";
+import MonacoJsonEditor from "./MonacoJsonEditor";
+import RerunWarmupDialog from "./RerunWarmupDialog";
 import { useConfirm } from "../ui/ConfirmModal";
 import { showSuccessToast, showErrorToast } from "../../lib/toast";
 
-type IdentityTab = "summary" | "json" | "chat" | "doctors" | "services" | "locations";
+type IdentityTab =
+  | "summary"
+  | "json"
+  | "doctors"
+  | "services"
+  | "locations"
+  | "images";
 
 interface IdentityModalProps {
   projectId: string;
@@ -76,6 +85,18 @@ interface TextInput {
   text: string;
 }
 
+/**
+ * `identity.locations[]` isn't declared on ProjectIdentity yet (it's a JSONB
+ * extension shipped in the identity-enrichments plan) — this helper narrows
+ * the untyped lookup in one place so consumers don't reach for `as any`.
+ */
+function readIdentityLocations(
+  identity: ProjectIdentity,
+): ProjectIdentityLocation[] {
+  const raw = (identity as unknown as { locations?: unknown }).locations;
+  return Array.isArray(raw) ? (raw as ProjectIdentityLocation[]) : [];
+}
+
 export default function IdentityModal({
   projectId,
   onClose,
@@ -90,11 +111,9 @@ export default function IdentityModal({
   const [gbpQuery, setGbpQuery] = useState("");
   const [gbpSuggestions, setGbpSuggestions] = useState<PlaceSuggestion[]>([]);
   const [searchingGbp, setSearchingGbp] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState<{
-    placeId: string;
-    name: string;
-    address: string;
-  } | null>(null);
+  const [selectedPlaces, setSelectedPlaces] = useState<
+    Array<{ placeId: string; name: string; address: string }>
+  >([]);
   const [urlInputs, setUrlInputs] = useState<UrlInput[]>([]);
   const [textInputs, setTextInputs] = useState<TextInput[]>([]);
   const [logoUrl, setLogoUrl] = useState("");
@@ -108,19 +127,20 @@ export default function IdentityModal({
   const [brandEditing, setBrandEditing] = useState(false);
   const [jsonDraft, setJsonDraft] = useState("");
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const [jsonIsValid, setJsonIsValid] = useState(true);
   const [savingJson, setSavingJson] = useState(false);
 
-  // Chat / proposals state
-  const [chatInstruction, setChatInstruction] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatToast, setChatToast] = useState<{
+  // Transient toast (e.g. after JSON save, slice save).
+  const [toast, setToast] = useState<{
     type: "success" | "error" | "info";
     text: string;
   } | null>(null);
-  const [proposals, setProposals] = useState<IdentityProposal[]>([]);
-  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
-  const [criticalAcknowledged, setCriticalAcknowledged] = useState(false);
-  const [applyingProposals, setApplyingProposals] = useState(false);
+
+  // Re-run warmup dialog (3-button replacement for native confirm())
+  const [rerunDialogOpen, setRerunDialogOpen] = useState(false);
+  // When true, handleGenerate() is auto-invoked once the form view mounts
+  // with rehydrated state. Cleared after firing to prevent re-fires.
+  const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
@@ -214,11 +234,14 @@ export default function IdentityModal({
     try {
       const response = await getPlaceDetails(suggestion.placeId);
       const place = response.place;
-      setSelectedPlace({
+      const entry = {
         placeId: suggestion.placeId,
         name: String(place?.name || suggestion.mainText || suggestion.description),
         address: String(place?.formattedAddress || suggestion.secondaryText || suggestion.description),
-      });
+      };
+      setSelectedPlaces((prev) =>
+        prev.some((p) => p.placeId === entry.placeId) ? prev : [...prev, entry],
+      );
       setGbpSuggestions([]);
       setGbpQuery("");
     } catch (err) {
@@ -318,7 +341,7 @@ export default function IdentityModal({
     if (submitting) return;
 
     const hasAnyInput =
-      !!selectedPlace ||
+      selectedPlaces.length > 0 ||
       urlInputs.some((u) => u.url.trim()) ||
       textInputs.some((t) => t.text.trim());
 
@@ -331,7 +354,8 @@ export default function IdentityModal({
     try {
       setSubmitting(true);
       const inputs: WarmupInputs = {
-        placeId: selectedPlace?.placeId,
+        placeId: selectedPlaces[0]?.placeId,
+        placeIds: selectedPlaces.length > 0 ? selectedPlaces.map((p) => p.placeId) : undefined,
         urls: urlInputs
           .filter((u) => u.url.trim())
           .map((u): WarmupUrlInput | string => {
@@ -361,6 +385,139 @@ export default function IdentityModal({
     }
   };
 
+  /**
+   * Rehydrate the EmptyWarmupForm state from the current identity so the
+   * admin can replay warmup verbatim. Pulled from:
+   *   - identity.locations[] (primary source of selected places — there is
+   *     no project.selected_place_ids field yet, and locations[] carries
+   *     the exact place_id/name/address triple we need).
+   *   - identity.sources_used.urls[] (each entry becomes a UrlInput).
+   *   - identity.raw_inputs.user_text_inputs[] (full text is stored).
+   *
+   * Returns true when at least one source was rehydrated — caller uses that
+   * to decide whether the auto-submit is safe.
+   */
+  const rehydrateFromIdentity = useCallback((): boolean => {
+    if (!identity) return false;
+
+    // Locations → selectedPlaces (primary first).
+    const rawLocations = readIdentityLocations(identity);
+    const sortedLocations = [...rawLocations].sort((a, b) => {
+      if (a.is_primary && !b.is_primary) return -1;
+      if (!a.is_primary && b.is_primary) return 1;
+      return 0;
+    });
+    const rehydratedPlaces = sortedLocations
+      .filter((loc) => !!loc.place_id)
+      .map((loc) => ({
+        placeId: loc.place_id,
+        name: loc.name || "",
+        address: loc.address || "",
+      }));
+
+    // URLs → urlInputs (strategy defaults to "fetch" — sources_used trace
+    // doesn't persist the admin's original strategy choice).
+    const sourceUrls = identity.sources_used?.urls || [];
+    const rehydratedUrls: UrlInput[] = sourceUrls
+      .map((u) => (u.url ? u.url.trim() : ""))
+      .filter((url) => !!url)
+      .map((url, idx) => ({
+        id: `rehydrated-url-${Date.now()}-${idx}`,
+        url,
+        strategy: "fetch" as ScrapeStrategy,
+      }));
+
+    // Text inputs → textInputs.
+    const rawTexts = identity.raw_inputs?.user_text_inputs || [];
+    const rehydratedTexts: TextInput[] = rawTexts
+      .filter((t) => t && typeof t.text === "string" && t.text.trim().length > 0)
+      .map((t, idx) => ({
+        id: `rehydrated-text-${Date.now()}-${idx}`,
+        label: t.label || "",
+        text: t.text,
+      }));
+
+    setSelectedPlaces(rehydratedPlaces);
+    setUrlInputs(rehydratedUrls);
+    setTextInputs(rehydratedTexts);
+    // Preserve brand colors from the current identity so the replay uses the
+    // same palette as before (these aren't wiped on re-run; they're just
+    // passed through to the warmup payload).
+    if (identity.brand?.primary_color) setPrimaryColor(identity.brand.primary_color);
+    if (identity.brand?.accent_color) setAccentColor(identity.brand.accent_color);
+    setGradientEnabled(!!identity.brand?.gradient_enabled);
+    setLogoUrl(""); // Logo URL re-seeds from the already-hosted s3_url via the backend; don't re-fetch.
+
+    return (
+      rehydratedPlaces.length > 0 ||
+      rehydratedUrls.length > 0 ||
+      rehydratedTexts.length > 0
+    );
+  }, [identity]);
+
+  /**
+   * Detect whether the current identity has any source we can rehydrate.
+   * Used to disable the "Keep current sources" primary action when there's
+   * nothing to replay.
+   */
+  const canKeepSources = (() => {
+    if (!identity) return false;
+    const hasLocations = readIdentityLocations(identity).some(
+      (loc) => !!loc.place_id,
+    );
+    const hasUrls = (identity.sources_used?.urls || []).some(
+      (u) => !!u.url && u.url.trim().length > 0,
+    );
+    const hasTexts = (identity.raw_inputs?.user_text_inputs || []).some(
+      (t) => typeof t?.text === "string" && t.text.trim().length > 0,
+    );
+    return hasLocations || hasUrls || hasTexts;
+  })();
+
+  const handleRerunRequested = () => {
+    setRerunDialogOpen(true);
+  };
+
+  const handleRerunKeepSources = () => {
+    setRerunDialogOpen(false);
+    const rehydrated = rehydrateFromIdentity();
+    if (!rehydrated) {
+      setError(
+        "No prior sources to reuse. Use 'Edit sources' to enter new inputs.",
+      );
+      return;
+    }
+    // Drop to the empty form view so EmptyWarmupForm renders with rehydrated
+    // state, then auto-submit on the next tick.
+    setWarmupStatus(null);
+    setIdentity(null);
+    setPendingAutoSubmit(true);
+  };
+
+  const handleRerunEditSources = () => {
+    setRerunDialogOpen(false);
+    setWarmupStatus(null);
+    setIdentity(null);
+  };
+
+  // Auto-submit the warmup form once the EmptyWarmupForm view is mounted
+  // with rehydrated state. Runs in a short microtask so setState batches
+  // from handleRerunKeepSources have flushed.
+  useEffect(() => {
+    if (!pendingAutoSubmit) return;
+    // Only fire once the modal is actually in the empty/form state.
+    if (identity !== null || warmupStatus !== null) return;
+    setPendingAutoSubmit(false);
+    // Defer so the rehydrated state is visible to the user for a beat.
+    const t = setTimeout(() => {
+      void handleGenerate();
+    }, 0);
+    return () => clearTimeout(t);
+    // handleGenerate is declared below; we intentionally only depend on the
+    // pending flag + view state here to avoid re-running.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAutoSubmit, identity, warmupStatus]);
+
   const handleCancel = async () => {
     if (!confirm("Cancel the running warmup?")) return;
     try {
@@ -374,11 +531,16 @@ export default function IdentityModal({
   const handleJsonTabOpen = () => {
     if (identity) setJsonDraft(JSON.stringify(identity, null, 2));
     setJsonError(null);
+    setJsonIsValid(true);
     setActiveTab("json");
   };
 
   const handleJsonSave = async () => {
     setJsonError(null);
+    if (!jsonIsValid) {
+      setJsonError("Fix JSON errors before saving.");
+      return;
+    }
     let parsed: ProjectIdentity;
     try {
       parsed = JSON.parse(jsonDraft);
@@ -391,7 +553,7 @@ export default function IdentityModal({
       const res = await updateIdentity(projectId, parsed);
       setIdentity(res.data);
       onIdentityChanged?.(res.data);
-      setChatToast({ type: "success", text: "Identity saved." });
+      setToast({ type: "success", text: "Identity saved." });
     } catch (err: any) {
       setJsonError(err?.message || "Save failed");
     } finally {
@@ -409,98 +571,15 @@ export default function IdentityModal({
     const res = await updateIdentity(projectId, updated);
     setIdentity(res.data);
     onIdentityChanged?.(res.data);
-    setChatToast({ type: "success", text: "Brand updated." });
-  };
-
-  const handleChatSubmit = async () => {
-    const instruction = chatInstruction.trim();
-    if (!instruction || chatLoading) return;
-    setChatLoading(true);
-    setProposals([]);
-    setApprovedIds(new Set());
-    setCriticalAcknowledged(false);
-    try {
-      const res = await proposeIdentityUpdates(projectId, instruction);
-      const returned = res.data.proposals || [];
-      setProposals(returned);
-      // Default: approve all non-critical, leave critical unchecked
-      const defaultApproved = new Set<string>(
-        returned.filter((p) => !p.critical).map((p) => p.id),
-      );
-      setApprovedIds(defaultApproved);
-      if (returned.length === 0) {
-        setChatToast({
-          type: "info",
-          text: "No changes proposed. Try a more specific instruction.",
-        });
-      }
-    } catch (err: any) {
-      setChatToast({ type: "error", text: err?.message || "Failed to propose updates" });
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  const toggleProposalApproved = (id: string) => {
-    setApprovedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const handleApplyProposals = async () => {
-    if (applyingProposals) return;
-    const approved = proposals.filter((p) => approvedIds.has(p.id));
-    if (approved.length === 0) {
-      setChatToast({ type: "info", text: "No proposals approved." });
-      return;
-    }
-    // Critical confirmation gate
-    const anyCritical = approved.some((p) => p.critical);
-    if (anyCritical && !criticalAcknowledged) {
-      setChatToast({
-        type: "error",
-        text: "Please confirm you understand the critical changes before applying.",
-      });
-      return;
-    }
-    try {
-      setApplyingProposals(true);
-      const res = await applyIdentityProposals(projectId, approved);
-      setIdentity(res.data.identity);
-      onIdentityChanged?.(res.data.identity);
-      const msg = `Applied ${res.data.appliedCount} of ${approved.length} changes${
-        res.data.skippedCount > 0 ? `. ${res.data.skippedCount} skipped.` : ""
-      }`;
-      setChatToast({ type: "success", text: msg });
-      setProposals([]);
-      setApprovedIds(new Set());
-      setCriticalAcknowledged(false);
-      setChatInstruction("");
-    } catch (err: any) {
-      setChatToast({ type: "error", text: err?.message || "Failed to apply proposals" });
-    } finally {
-      setApplyingProposals(false);
-    }
-  };
-
-  const handleDiscardProposals = () => {
-    setProposals([]);
-    setApprovedIds(new Set());
-    setCriticalAcknowledged(false);
+    setToast({ type: "success", text: "Brand updated." });
   };
 
   // Auto-dismiss toast after 4s
   useEffect(() => {
-    if (!chatToast) return;
-    const t = setTimeout(() => setChatToast(null), 4000);
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
     return () => clearTimeout(t);
-  }, [chatToast]);
+  }, [toast]);
 
   const isWarming = warmupStatus === "running" || warmupStatus === "queued";
   const isReady = warmupStatus === "ready" && !!identity?.business;
@@ -550,8 +629,17 @@ export default function IdentityModal({
                 setGbpQuery={setGbpQuery}
                 gbpSuggestions={gbpSuggestions}
                 searchingGbp={searchingGbp}
-                selectedPlace={selectedPlace}
-                clearSelectedPlace={() => setSelectedPlace(null)}
+                selectedPlaces={selectedPlaces}
+                removeSelectedPlace={(pid) =>
+                  setSelectedPlaces((prev) => prev.filter((p) => p.placeId !== pid))
+                }
+                setPrimaryPlace={(pid) =>
+                  setSelectedPlaces((prev) => {
+                    const target = prev.find((p) => p.placeId === pid);
+                    if (!target) return prev;
+                    return [target, ...prev.filter((p) => p.placeId !== pid)];
+                  })
+                }
                 onSelectPlace={handleSelectPlace}
                 urlInputs={urlInputs}
                 addUrlInput={addUrlInput}
@@ -591,21 +679,11 @@ export default function IdentityModal({
                 jsonDraft={jsonDraft}
                 setJsonDraft={setJsonDraft}
                 jsonError={jsonError}
+                jsonIsValid={jsonIsValid}
+                setJsonIsValid={setJsonIsValid}
                 savingJson={savingJson}
                 onJsonSave={handleJsonSave}
-                chatInstruction={chatInstruction}
-                setChatInstruction={setChatInstruction}
-                chatLoading={chatLoading}
-                chatToast={chatToast}
-                onChatSubmit={handleChatSubmit}
-                proposals={proposals}
-                approvedIds={approvedIds}
-                onToggleProposal={toggleProposalApproved}
-                criticalAcknowledged={criticalAcknowledged}
-                setCriticalAcknowledged={setCriticalAcknowledged}
-                applyingProposals={applyingProposals}
-                onApplyProposals={handleApplyProposals}
-                onDiscardProposals={handleDiscardProposals}
+                toast={toast}
                 brandEditing={brandEditing}
                 setBrandEditing={setBrandEditing}
                 onSaveBrand={handleSaveBrand}
@@ -613,17 +691,21 @@ export default function IdentityModal({
                   setIdentity(next);
                   onIdentityChanged?.(next);
                 }}
-                onRerun={() => {
-                  if (confirm("Re-run warmup? This will replace the current identity.")) {
-                    setWarmupStatus(null);
-                    setIdentity(null);
-                  }
-                }}
+                onRerun={handleRerunRequested}
+                onToast={setToast}
               />
             ) : null}
           </div>
         </div>
       </div>
+
+      <RerunWarmupDialog
+        open={rerunDialogOpen}
+        canKeepSources={canKeepSources}
+        onKeepSources={handleRerunKeepSources}
+        onEditSources={handleRerunEditSources}
+        onCancel={() => setRerunDialogOpen(false)}
+      />
     </div>
   );
 }
@@ -637,8 +719,9 @@ interface EmptyFormProps {
   setGbpQuery: (v: string) => void;
   gbpSuggestions: PlaceSuggestion[];
   searchingGbp: boolean;
-  selectedPlace: { placeId: string; name: string; address: string } | null;
-  clearSelectedPlace: () => void;
+  selectedPlaces: Array<{ placeId: string; name: string; address: string }>;
+  removeSelectedPlace: (placeId: string) => void;
+  setPrimaryPlace: (placeId: string) => void;
   onSelectPlace: (s: PlaceSuggestion) => void;
   urlInputs: UrlInput[];
   addUrlInput: () => void;
@@ -677,57 +760,124 @@ function EmptyWarmupForm(props: EmptyFormProps) {
         </p>
       </div>
 
-      {/* GBP */}
+      {/* GBP — multi-select */}
       <section>
-        <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-2">
-          <MapPin className="h-3.5 w-3.5" /> Google Business Profile
-        </label>
-        {props.selectedPlace ? (
-          <div className="flex items-start justify-between rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <div className="min-w-0">
-              <div className="text-sm font-medium text-gray-900 truncate">{props.selectedPlace.name}</div>
-              <div className="text-xs text-gray-500 truncate">{props.selectedPlace.address}</div>
-            </div>
-            <button
-              onClick={props.clearSelectedPlace}
-              className="text-xs text-gray-400 hover:text-red-600 ml-2 shrink-0"
-            >
-              Change
-            </button>
-          </div>
-        ) : (
-          <div className="relative">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                value={props.gbpQuery}
-                onChange={(e) => props.setGbpQuery(e.target.value)}
-                placeholder="Search for your business..."
-                className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30 focus:border-alloro-orange"
-              />
-              {props.searchingGbp && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
-              )}
-            </div>
-            {props.gbpSuggestions.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
-                {props.gbpSuggestions.map((s) => (
-                  <button
-                    key={s.placeId}
-                    onClick={() => props.onSelectPlace(s)}
-                    className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                  >
-                    <div className="font-medium text-gray-900">{s.mainText || s.description}</div>
-                    {s.secondaryText && (
-                      <div className="text-xs text-gray-500 truncate">{s.secondaryText}</div>
-                    )}
-                  </button>
-                ))}
-              </div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+            <MapPin className="h-3.5 w-3.5" /> Google Business Profiles
+            {props.selectedPlaces.length > 0 && (
+              <span className="text-[10px] font-normal text-gray-400">
+                ({props.selectedPlaces.length} selected)
+              </span>
             )}
+          </label>
+          <span className="text-[10px] text-gray-400">
+            One per location. First is primary.
+          </span>
+        </div>
+
+        {props.selectedPlaces.length > 0 && (
+          <div className="space-y-1.5 mb-2">
+            {props.selectedPlaces.map((p, idx) => {
+              const isPrimary = idx === 0;
+              return (
+                <div
+                  key={p.placeId}
+                  className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-gray-900 truncate">
+                        {p.name}
+                      </span>
+                      {isPrimary && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-alloro-orange bg-alloro-orange/10 rounded px-1.5 py-0.5 shrink-0">
+                          Primary
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">{p.address}</div>
+                  </div>
+                  {!isPrimary && (
+                    <button
+                      onClick={() => props.setPrimaryPlace(p.placeId)}
+                      className="text-[11px] text-gray-500 hover:text-alloro-orange shrink-0"
+                      title="Make this the primary location"
+                    >
+                      Set primary
+                    </button>
+                  )}
+                  <button
+                    onClick={() => props.removeSelectedPlace(p.placeId)}
+                    className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 shrink-0"
+                    title="Remove"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
+
+        <div className="relative">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              value={props.gbpQuery}
+              onChange={(e) => props.setGbpQuery(e.target.value)}
+              placeholder={
+                props.selectedPlaces.length === 0
+                  ? "Search for your business..."
+                  : "Add another location..."
+              }
+              className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30 focus:border-alloro-orange"
+            />
+            {props.searchingGbp && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+            )}
+          </div>
+          {props.gbpSuggestions.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
+              {props.gbpSuggestions.map((s) => {
+                const alreadySelected = props.selectedPlaces.some(
+                  (p) => p.placeId === s.placeId,
+                );
+                return (
+                  <button
+                    key={s.placeId}
+                    onClick={() => !alreadySelected && props.onSelectPlace(s)}
+                    disabled={alreadySelected}
+                    className={`block w-full text-left px-3 py-2 text-sm border-b border-gray-100 last:border-0 ${
+                      alreadySelected
+                        ? "bg-gray-50 text-gray-400 cursor-not-allowed"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 truncate">
+                          {s.mainText || s.description}
+                        </div>
+                        {s.secondaryText && (
+                          <div className="text-xs text-gray-500 truncate">
+                            {s.secondaryText}
+                          </div>
+                        )}
+                      </div>
+                      {alreadySelected && (
+                        <span className="text-[10px] text-gray-400 shrink-0">
+                          Added
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* URLs */}
@@ -928,8 +1078,10 @@ function WarmingUpView({
 }
 
 // ---------------------------------------------------------------------------
-// ReadyView — tabs: summary, json, chat
+// ReadyView — tabs: summary, json, doctors, services, locations, images
 // ---------------------------------------------------------------------------
+
+type ToastShape = { type: "success" | "error" | "info"; text: string };
 
 interface ReadyViewProps {
   projectId: string;
@@ -940,27 +1092,18 @@ interface ReadyViewProps {
   jsonDraft: string;
   setJsonDraft: (v: string) => void;
   jsonError: string | null;
+  jsonIsValid: boolean;
+  setJsonIsValid: (v: boolean) => void;
   savingJson: boolean;
   onJsonSave: () => void;
-  chatInstruction: string;
-  setChatInstruction: (v: string) => void;
-  chatLoading: boolean;
-  chatToast: { type: "success" | "error" | "info"; text: string } | null;
-  onChatSubmit: () => void;
-  proposals: IdentityProposal[];
-  approvedIds: Set<string>;
-  onToggleProposal: (id: string) => void;
-  criticalAcknowledged: boolean;
-  setCriticalAcknowledged: (v: boolean) => void;
-  applyingProposals: boolean;
-  onApplyProposals: () => void;
-  onDiscardProposals: () => void;
+  toast: ToastShape | null;
   onRerun: () => void;
   onSaveBrand: (brand: ProjectIdentity["brand"]) => Promise<void>;
   brandEditing: boolean;
   setBrandEditing: (v: boolean) => void;
   /** Called when a tab mutates identity (e.g. add/remove location, resync list). */
   onIdentityRefresh: (next: ProjectIdentity) => void;
+  onToast: (toast: ToastShape | null) => void;
 }
 
 function ReadyView(props: ReadyViewProps) {
@@ -980,6 +1123,7 @@ function ReadyView(props: ReadyViewProps) {
   )
     ? ((identity as any).locations as ProjectIdentityLocation[])
     : [];
+  const images = identity.extracted_assets?.images || [];
 
   return (
     <div className="flex flex-col">
@@ -1000,28 +1144,32 @@ function ReadyView(props: ReadyViewProps) {
           title={props.brandEditing ? "Save or cancel brand edits first" : undefined}
         />
         <TabButton
-          active={props.activeTab === "chat"}
-          onClick={() => props.setActiveTab("chat")}
-          icon={<MessageCircle className="h-3.5 w-3.5" />}
-          label="Chat Update"
-        />
-        <TabButton
           active={props.activeTab === "doctors"}
           onClick={() => props.setActiveTab("doctors")}
           icon={<Stethoscope className="h-3.5 w-3.5" />}
-          label={`Doctors${doctors.length ? ` (${doctors.length})` : ""}`}
+          label="Doctors"
+          count={doctors.length}
         />
         <TabButton
           active={props.activeTab === "services"}
           onClick={() => props.setActiveTab("services")}
           icon={<Briefcase className="h-3.5 w-3.5" />}
-          label={`Services${services.length ? ` (${services.length})` : ""}`}
+          label="Services"
+          count={services.length}
         />
         <TabButton
           active={props.activeTab === "locations"}
           onClick={() => props.setActiveTab("locations")}
           icon={<MapPin className="h-3.5 w-3.5" />}
-          label={`Locations${locations.length ? ` (${locations.length})` : ""}`}
+          label="Locations"
+          count={locations.length}
+        />
+        <TabButton
+          active={props.activeTab === "images"}
+          onClick={() => props.setActiveTab("images")}
+          icon={<ImageIcon className="h-3.5 w-3.5" />}
+          label="Images"
+          count={images.length}
         />
         <div className="flex-1" />
         <button
@@ -1046,26 +1194,11 @@ function ReadyView(props: ReadyViewProps) {
           <IdentityJsonEditor
             draft={props.jsonDraft}
             setDraft={props.setJsonDraft}
+            isValid={props.jsonIsValid}
+            setIsValid={props.setJsonIsValid}
             error={props.jsonError}
             saving={props.savingJson}
             onSave={props.onJsonSave}
-          />
-        )}
-        {props.activeTab === "chat" && (
-          <IdentityChat
-            instruction={props.chatInstruction}
-            setInstruction={props.setChatInstruction}
-            loading={props.chatLoading}
-            toast={props.chatToast}
-            onSubmit={props.onChatSubmit}
-            proposals={props.proposals}
-            approvedIds={props.approvedIds}
-            onToggleProposal={props.onToggleProposal}
-            criticalAcknowledged={props.criticalAcknowledged}
-            setCriticalAcknowledged={props.setCriticalAcknowledged}
-            applyingProposals={props.applyingProposals}
-            onApplyProposals={props.onApplyProposals}
-            onDiscardProposals={props.onDiscardProposals}
           />
         )}
         {props.activeTab === "doctors" && (
@@ -1074,6 +1207,7 @@ function ReadyView(props: ReadyViewProps) {
             list="doctors"
             entries={doctors}
             onIdentityChange={props.onIdentityRefresh}
+            onToast={props.onToast}
           />
         )}
         {props.activeTab === "services" && (
@@ -1082,6 +1216,7 @@ function ReadyView(props: ReadyViewProps) {
             list="services"
             entries={services}
             onIdentityChange={props.onIdentityRefresh}
+            onToast={props.onToast}
           />
         )}
         {props.activeTab === "locations" && (
@@ -1090,6 +1225,23 @@ function ReadyView(props: ReadyViewProps) {
             locations={locations}
             onIdentityChange={props.onIdentityRefresh}
           />
+        )}
+        {props.activeTab === "images" && (
+          <IdentityImagesTab images={images} />
+        )}
+
+        {props.toast && (
+          <div
+            className={`mt-4 rounded-lg border px-3 py-2 text-xs ${
+              props.toast.type === "success"
+                ? "bg-green-50 border-green-200 text-green-700"
+                : props.toast.type === "error"
+                  ? "bg-red-50 border-red-200 text-red-700"
+                  : "bg-blue-50 border-blue-200 text-blue-700"
+            }`}
+          >
+            {props.toast.text}
+          </div>
         )}
       </div>
     </div>
@@ -1101,6 +1253,7 @@ function TabButton({
   onClick,
   icon,
   label,
+  count,
   disabled,
   title,
 }: {
@@ -1108,6 +1261,7 @@ function TabButton({
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  count?: number;
   disabled?: boolean;
   title?: string;
 }) {
@@ -1115,8 +1269,8 @@ function TabButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      title={title}
-      className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t border-b-2 transition ${
+      title={title || label}
+      className={`group inline-flex items-center px-2.5 py-2 text-xs font-medium rounded-t border-b-2 transition-colors ${
         active
           ? "text-alloro-orange border-alloro-orange"
           : disabled
@@ -1124,8 +1278,17 @@ function TabButton({
             : "text-gray-500 border-transparent hover:text-gray-700"
       }`}
     >
-      {icon}
-      {label}
+      <span className="shrink-0">{icon}</span>
+      <span
+        className={`inline-flex items-center overflow-hidden whitespace-nowrap transition-all duration-200 ease-out ${
+          active ? "max-w-[160px] opacity-100 ml-1.5" : "max-w-0 opacity-0 ml-0"
+        }`}
+      >
+        {label}
+        {typeof count === "number" && count > 0 && (
+          <span className="ml-1 text-[10px] text-alloro-orange/70">({count})</span>
+        )}
+      </span>
     </button>
   );
 }
@@ -1300,6 +1463,8 @@ function BrandEditableSection({
 
       {!editing ? (
         <>
+          {/* Logo thumbnail — prepended so the admin can verify capture at a glance. */}
+          <LogoThumbnailRow logoUrl={brand?.logo_s3_url} />
           <div className="grid grid-cols-2 gap-3">
             <ColorSwatch label="Primary" color={brand?.primary_color} />
             <ColorSwatch label="Accent" color={brand?.accent_color} />
@@ -1307,16 +1472,6 @@ function BrandEditableSection({
           {brand?.gradient_enabled && (
             <div className="mt-3 text-xs text-gray-500">
               Gradient: {brand.gradient_from || "?"} → {brand.gradient_to || "?"} ({brand.gradient_direction})
-            </div>
-          )}
-          {brand?.logo_s3_url && (
-            <div className="mt-3 flex items-center gap-2">
-              <img
-                src={brand.logo_s3_url}
-                alt="Logo"
-                className="h-10 w-10 object-contain rounded bg-gray-50"
-              />
-              <span className="text-xs text-gray-500">Logo hosted</span>
             </div>
           )}
         </>
@@ -1489,6 +1644,38 @@ function HoursRow({ rows }: { rows: Array<{ day: DayName; text: string }> }) {
   );
 }
 
+function LogoThumbnailRow({ logoUrl }: { logoUrl: string | null | undefined }) {
+  if (logoUrl) {
+    return (
+      <div className="mb-3 flex items-center gap-3">
+        <img
+          src={logoUrl}
+          alt="Logo"
+          loading="lazy"
+          className="h-12 w-12 rounded border border-gray-200 bg-gray-50 object-contain"
+        />
+        <div className="min-w-0">
+          <div className="text-xs font-semibold text-gray-700">Logo</div>
+          <div className="text-[11px] text-gray-500 truncate">Hosted on S3</div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mb-3 flex items-center gap-3">
+      <div className="flex h-12 w-12 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50">
+        <ImageIcon className="h-5 w-5 text-gray-300" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-xs font-semibold text-gray-700">Logo</div>
+        <div className="text-[11px] text-gray-500">
+          No logo detected — upload in Brand edit mode.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ColorSwatch({
   label,
   color,
@@ -1513,12 +1700,16 @@ function ColorSwatch({
 function IdentityJsonEditor({
   draft,
   setDraft,
+  isValid,
+  setIsValid,
   error,
   saving,
   onSave,
 }: {
   draft: string;
   setDraft: (v: string) => void;
+  isValid: boolean;
+  setIsValid: (v: boolean) => void;
   error: string | null;
   saving: boolean;
   onSave: () => void;
@@ -1526,15 +1717,22 @@ function IdentityJsonEditor({
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-500">
-        Edit the full identity JSON directly. Validated and saved to the database.
+        Edit the full identity JSON directly. Validated on every keystroke.
+        Save is disabled until the JSON is valid.
       </p>
-      <textarea
+      <MonacoJsonEditor
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        rows={24}
-        className="w-full font-mono text-xs border border-gray-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
+        onChange={setDraft}
+        onValidationChange={setIsValid}
+        height="60vh"
       />
-      {error && (
+      {!isValid && (
+        <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs text-amber-800">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          Invalid JSON — fix before saving
+        </div>
+      )}
+      {error && isValid && (
         <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
           {error}
         </div>
@@ -1542,8 +1740,8 @@ function IdentityJsonEditor({
       <div className="flex items-center justify-end">
         <button
           onClick={onSave}
-          disabled={saving}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+          disabled={saving || !isValid}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? (
             <>
@@ -1556,260 +1754,6 @@ function IdentityJsonEditor({
       </div>
     </div>
   );
-}
-
-function IdentityChat({
-  instruction,
-  setInstruction,
-  loading,
-  toast,
-  onSubmit,
-  proposals,
-  approvedIds,
-  onToggleProposal,
-  criticalAcknowledged,
-  setCriticalAcknowledged,
-  applyingProposals,
-  onApplyProposals,
-  onDiscardProposals,
-}: {
-  instruction: string;
-  setInstruction: (v: string) => void;
-  loading: boolean;
-  toast: { type: "success" | "error" | "info"; text: string } | null;
-  onSubmit: () => void;
-  proposals: IdentityProposal[];
-  approvedIds: Set<string>;
-  onToggleProposal: (id: string) => void;
-  criticalAcknowledged: boolean;
-  setCriticalAcknowledged: (v: boolean) => void;
-  applyingProposals: boolean;
-  onApplyProposals: () => void;
-  onDiscardProposals: () => void;
-}) {
-  const handleKey = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        onSubmit();
-      }
-    },
-    [onSubmit],
-  );
-
-  const hasProposals = proposals.length > 0;
-  const anyApprovedCritical = proposals.some(
-    (p) => p.critical && approvedIds.has(p.id),
-  );
-  const canApply =
-    approvedIds.size > 0 && (!anyApprovedCritical || criticalAcknowledged);
-
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-gray-500">
-        Describe what you want to change ("change accent to navy", "mark us as pediatric",
-        "add ADA to certifications"). The LLM returns a list of proposed changes for you to review
-        before any update is applied.
-      </p>
-
-      <div className="flex items-start gap-2">
-        <textarea
-          value={instruction}
-          onChange={(e) => setInstruction(e.target.value)}
-          onKeyDown={handleKey}
-          rows={3}
-          placeholder="e.g., Change the accent color to #0D9488"
-          className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
-          disabled={loading || applyingProposals}
-        />
-        <button
-          onClick={onSubmit}
-          disabled={loading || applyingProposals || !instruction.trim()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" /> Proposing
-            </>
-          ) : (
-            "Propose Changes"
-          )}
-        </button>
-      </div>
-
-      {hasProposals && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-gray-900">
-              {proposals.length} proposed change{proposals.length === 1 ? "" : "s"}
-            </div>
-            <div className="text-xs text-gray-500">
-              {approvedIds.size} approved
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden">
-            {proposals.map((p) => (
-              <ProposalRow
-                key={p.id}
-                proposal={p}
-                approved={approvedIds.has(p.id)}
-                onToggle={() => onToggleProposal(p.id)}
-              />
-            ))}
-          </div>
-
-          {anyApprovedCritical && (
-            <label className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={criticalAcknowledged}
-                onChange={(e) => setCriticalAcknowledged(e.target.checked)}
-                className="mt-0.5 rounded"
-              />
-              <span>
-                I understand the critical changes (red badges above) may affect existing generated pages or the GBP link, and want to apply them anyway.
-              </span>
-            </label>
-          )}
-
-          <div className="flex items-center justify-end gap-2">
-            <button
-              onClick={onDiscardProposals}
-              disabled={applyingProposals}
-              className="text-xs font-medium text-gray-500 hover:text-gray-800 px-3 py-1.5"
-            >
-              Discard
-            </button>
-            <button
-              onClick={onApplyProposals}
-              disabled={!canApply || applyingProposals}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-4 py-1.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
-            >
-              {applyingProposals ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Applying
-                </>
-              ) : (
-                <>Apply Approved ({approvedIds.size})</>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {toast && (
-        <div
-          className={`rounded-lg border px-3 py-2 text-xs ${
-            toast.type === "success"
-              ? "bg-green-50 border-green-200 text-green-700"
-              : toast.type === "error"
-                ? "bg-red-50 border-red-200 text-red-700"
-                : "bg-blue-50 border-blue-200 text-blue-700"
-          }`}
-        >
-          {toast.text}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ProposalRow({
-  proposal,
-  approved,
-  onToggle,
-}: {
-  proposal: IdentityProposal;
-  approved: boolean;
-  onToggle: () => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const actionColors: Record<string, string> = {
-    NEW: "bg-green-50 border-green-200 text-green-700",
-    UPDATE: "bg-blue-50 border-blue-200 text-blue-700",
-    DELETE: "bg-red-50 border-red-200 text-red-700",
-  };
-
-  return (
-    <div className={`p-3 ${approved ? "bg-white" : "bg-gray-50/60"}`}>
-      <div className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          checked={approved}
-          onChange={onToggle}
-          className="mt-1 rounded"
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold ${actionColors[proposal.action] || "bg-gray-50 border-gray-200 text-gray-700"}`}
-            >
-              {proposal.action}
-            </span>
-            {proposal.critical && (
-              <span
-                title={proposal.critical_reason}
-                className="inline-flex items-center gap-0.5 rounded border border-red-300 bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700"
-              >
-                ⚠ CRITICAL
-              </span>
-            )}
-            <span className="text-xs font-mono text-gray-400 truncate">
-              {proposal.path}
-            </span>
-          </div>
-          <div className="text-sm text-gray-900 mt-1">{proposal.summary}</div>
-          {proposal.reason && (
-            <div className="text-[11px] text-gray-500 mt-0.5 italic">
-              Why: {proposal.reason}
-            </div>
-          )}
-          {proposal.critical && proposal.critical_reason && (
-            <div className="text-[11px] text-red-700 mt-1">
-              {proposal.critical_reason}
-            </div>
-          )}
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="text-[11px] text-alloro-orange hover:text-orange-600 mt-1"
-          >
-            {expanded ? "Hide diff" : "Show diff"}
-          </button>
-          {expanded && (
-            <div className="mt-2 rounded border border-gray-200 bg-gray-50 p-2 text-xs space-y-2">
-              {proposal.action !== "NEW" && (
-                <div>
-                  <div className="text-[10px] font-semibold text-red-600 mb-0.5">
-                    CURRENT
-                  </div>
-                  <pre className="text-[11px] text-gray-700 whitespace-pre-wrap break-words bg-red-50 rounded p-1.5 border border-red-100">
-                    {formatValue(proposal.current_value)}
-                  </pre>
-                </div>
-              )}
-              {proposal.action !== "DELETE" && (
-                <div>
-                  <div className="text-[10px] font-semibold text-green-600 mb-0.5">
-                    PROPOSED
-                  </div>
-                  <pre className="text-[11px] text-gray-700 whitespace-pre-wrap break-words bg-green-50 rounded p-1.5 border border-green-100">
-                    {formatValue(proposal.proposed_value)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function formatValue(v: unknown): string {
-  if (v === null || v === undefined) return "(empty)";
-  if (typeof v === "string") return v || "(empty string)";
-  return JSON.stringify(v, null, 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -2002,6 +1946,37 @@ interface IdentityListTabProps {
   list: IdentityListName;
   entries: ProjectIdentityListEntry[];
   onIdentityChange: (next: ProjectIdentity) => void;
+  onToast: (toast: ToastShape | null) => void;
+}
+
+/**
+ * Validate a URL string via native `new URL()`. Returns the trimmed URL on
+ * success, or throws with a human-readable message.
+ */
+function validateUrlOrThrow(raw: string, label = "URL"): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  try {
+    // Throws TypeError on invalid URLs.
+    new URL(trimmed);
+    return trimmed;
+  } catch {
+    throw new Error(`${label} is not a valid URL`);
+  }
+}
+
+/**
+ * Merge semantics per Dave: placeholder shows current value. Empty input =
+ * no change (returns current). Non-empty = new value. Explicit null clear is
+ * only reachable via the raw JSON editor, not this UI.
+ */
+function mergeField(
+  nextRaw: string,
+  current: string | null | undefined,
+): string | null {
+  const trimmed = nextRaw.trim();
+  if (!trimmed) return (current ?? null) as string | null;
+  return trimmed;
 }
 
 function IdentityListTab({
@@ -2009,15 +1984,32 @@ function IdentityListTab({
   list,
   entries,
   onIdentityChange,
+  onToast,
 }: IdentityListTabProps) {
   const [resyncing, setResyncing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localEntries, setLocalEntries] = useState<ProjectIdentityListEntry[]>(entries);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [addingNew, setAddingNew] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState(false);
+  // Transient invalid-preview state. While `sourceOpen && sourceInvalid` the
+  // tab's main body (rows + counts) renders empty + warning banner. Reverts
+  // to latest identity when the drawer closes (saved or cancelled).
+  const [sourceInvalid, setSourceInvalid] = useState(false);
 
   // Keep localEntries in sync when parent identity refreshes.
   useEffect(() => {
     setLocalEntries(entries);
   }, [entries]);
+
+  // When the slice drawer closes, reset its validation bit so the main view
+  // returns to rendering from latest identity.
+  useEffect(() => {
+    if (!sourceOpen) setSourceInvalid(false);
+  }, [sourceOpen]);
+
+  const slicePath = `content_essentials.${list}`;
 
   const handleResync = async () => {
     if (resyncing) return;
@@ -2042,13 +2034,76 @@ function IdentityListTab({
     }
   };
 
+  /** Patch the full slice via PATCH /identity/slice then refresh. */
+  const commitSliceArray = async (nextEntries: ProjectIdentityListEntry[]) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await patchIdentitySlice(projectId, slicePath, nextEntries);
+      onIdentityChange(res.data);
+      const nextCE = (res.data.content_essentials || {}) as Record<string, unknown>;
+      const rawList = nextCE[list];
+      setLocalEntries(
+        Array.isArray(rawList) ? (rawList as ProjectIdentityListEntry[]) : [],
+      );
+      onToast({ type: "success", text: `${list[0].toUpperCase() + list.slice(1)} updated.` });
+    } catch (err: any) {
+      const msg = err?.message || "Save failed";
+      setError(msg);
+      onToast({ type: "error", text: msg });
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRowSave = async (
+    idx: number,
+    patch: Partial<ProjectIdentityListEntry> & { name: string },
+  ) => {
+    const current = localEntries[idx];
+    const next: ProjectIdentityListEntry = {
+      ...current,
+      ...patch,
+      last_synced_at: new Date().toISOString(),
+    };
+    const nextArr = [...localEntries];
+    nextArr[idx] = next;
+    await commitSliceArray(nextArr);
+    setEditingIdx(null);
+  };
+
+  const handleRowRemove = async (idx: number) => {
+    const nextArr = localEntries.filter((_, i) => i !== idx);
+    await commitSliceArray(nextArr);
+    setEditingIdx(null);
+  };
+
+  const handleAddNew = async (entry: ProjectIdentityListEntry) => {
+    const nextArr = [...localEntries, entry];
+    await commitSliceArray(nextArr);
+    setAddingNew(false);
+  };
+
+  const handleSliceSave = async (value: unknown) => {
+    if (!Array.isArray(value)) {
+      throw new Error(`${list} slice must be a JSON array`);
+    }
+    await commitSliceArray(value as ProjectIdentityListEntry[]);
+  };
+
   const headerSyncStamp = mostRecentSync(localEntries);
   const labelPlural = list === "doctors" ? "Doctors" : "Services";
   const labelSingular = list === "doctors" ? "doctor" : "service";
 
+  // Transient invalid-preview rule: while the source drawer holds invalid
+  // JSON, the main view hides all rows and shows a warning banner. The
+  // drawer itself remains interactive.
+  const showInvalidPreview = sourceOpen && sourceInvalid;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <p className="text-xs text-gray-500">
             URLs we're tracking on the practice site. Re-sync re-runs extraction
@@ -2061,21 +2116,38 @@ function IdentityListTab({
             </span>
           </p>
         </div>
-        <button
-          onClick={handleResync}
-          disabled={resyncing}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 shrink-0"
-        >
-          {resyncing ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Re-syncing...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-3.5 w-3.5" /> Re-sync
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setAddingNew(true)}
+            disabled={addingNew || saving}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add {labelSingular}
+          </button>
+          <button
+            onClick={() => setSourceOpen(true)}
+            disabled={saving}
+            title="Edit the raw JSON slice"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <FileJson className="h-3.5 w-3.5" /> Edit source
+          </button>
+          <button
+            onClick={handleResync}
+            disabled={resyncing || saving}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {resyncing ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Re-syncing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-3.5 w-3.5" /> Re-sync
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -2084,41 +2156,114 @@ function IdentityListTab({
         </div>
       )}
 
-      {localEntries.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-200 p-6 text-center">
-          <p className="text-sm text-gray-500">
-            Warmup didn't find any {list} on the site — they may live on a page
-            that wasn't discovered. You can still add them manually via the Posts
-            tab.
-          </p>
+      {showInvalidPreview ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-800">
+            <div className="font-semibold">Source editor has invalid JSON</div>
+            <div className="mt-0.5">
+              The {labelSingular} list is hidden until the JSON editor holds
+              valid JSON. Close the editor to revert to the last-saved state.
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-100">
-          {localEntries.map((entry, idx) => (
-            <IdentityListRow
-              key={`${entry.source_url || "local"}-${idx}`}
-              entry={entry}
+        <>
+          {addingNew && (
+            <IdentityListAddRow
               labelSingular={labelSingular}
+              existing={localEntries}
+              saving={saving}
+              onCancel={() => setAddingNew(false)}
+              onSave={handleAddNew}
             />
-          ))}
-        </div>
+          )}
+
+          {localEntries.length === 0 && !addingNew ? (
+            <div className="rounded-lg border border-dashed border-gray-200 p-6 text-center">
+              <p className="text-sm text-gray-500">
+                Warmup didn't find any {list} on the site — add them manually
+                with the button above, or use Re-sync to re-scan cached pages.
+              </p>
+            </div>
+          ) : localEntries.length > 0 ? (
+            <div className="rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-100">
+              {localEntries.map((entry, idx) => (
+                <IdentityListRow
+                  key={`${entry.source_url || "local"}-${idx}`}
+                  entry={entry}
+                  labelSingular={labelSingular}
+                  editing={editingIdx === idx}
+                  saving={saving}
+                  onStartEdit={() => setEditingIdx(idx)}
+                  onCancelEdit={() => setEditingIdx(null)}
+                  onSave={(patch) => handleRowSave(idx, patch)}
+                  onRemove={() => handleRowRemove(idx)}
+                />
+              ))}
+            </div>
+          ) : null}
+        </>
       )}
 
       <p className="text-[11px] text-gray-400 italic">
         {labelPlural} list — light-touch tracking. Full content is scraped at
         import time from the Posts tab.
       </p>
+
+      <IdentitySliceEditor
+        open={sourceOpen}
+        title={`Edit ${labelPlural} Source`}
+        slicePath={slicePath}
+        initialValue={entries}
+        onSave={handleSliceSave}
+        onClose={() => setSourceOpen(false)}
+        onValidationChange={(isValid) => setSourceInvalid(!isValid)}
+      />
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Inline row renderer + editor for doctors/services — T9
+// ---------------------------------------------------------------------------
+
+interface IdentityListRowProps {
+  entry: ProjectIdentityListEntry;
+  labelSingular: string;
+  editing: boolean;
+  saving: boolean;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSave: (
+    patch: Partial<ProjectIdentityListEntry> & { name: string },
+  ) => Promise<void>;
+  onRemove: () => void;
 }
 
 function IdentityListRow({
   entry,
   labelSingular,
-}: {
-  entry: ProjectIdentityListEntry;
-  labelSingular: string;
-}) {
+  editing,
+  saving,
+  onStartEdit,
+  onCancelEdit,
+  onSave,
+  onRemove,
+}: IdentityListRowProps) {
+  if (editing) {
+    return (
+      <IdentityListRowEditor
+        entry={entry}
+        labelSingular={labelSingular}
+        saving={saving}
+        onCancel={onCancelEdit}
+        onSave={onSave}
+        onRemove={onRemove}
+      />
+    );
+  }
+
   return (
     <div className="p-3 flex items-start gap-3">
       <div className="min-w-0 flex-1">
@@ -2158,6 +2303,282 @@ function IdentityListRow({
             Last synced {humanizeTimestamp(entry.last_synced_at)}
           </span>
         </div>
+      </div>
+      <button
+        onClick={onStartEdit}
+        disabled={saving}
+        title={`Edit ${labelSingular}`}
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-alloro-orange px-2 py-1 rounded hover:bg-gray-50 disabled:opacity-50 shrink-0"
+      >
+        <Pencil className="h-3.5 w-3.5" /> Edit
+      </button>
+    </div>
+  );
+}
+
+/** Shared editor UI — used for both "add new" and "edit existing" rows. */
+interface RowEditorCommonProps {
+  saving: boolean;
+  onCancel: () => void;
+}
+
+function IdentityListRowEditor({
+  entry,
+  labelSingular,
+  saving,
+  onCancel,
+  onSave,
+  onRemove,
+}: RowEditorCommonProps & {
+  entry: ProjectIdentityListEntry;
+  labelSingular: string;
+  onSave: (
+    patch: Partial<ProjectIdentityListEntry> & { name: string },
+  ) => Promise<void>;
+  onRemove: () => void;
+}) {
+  // In edit mode: empty input means "no change" (placeholder shows current).
+  // In add mode: empty means empty. We're always in edit mode here.
+  const [nameDraft, setNameDraft] = useState("");
+  const [urlDraft, setUrlDraft] = useState("");
+  const [blurbDraft, setBlurbDraft] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setErr(null);
+    // Name is required. If left blank, we keep the current value (merge rule).
+    // But if the current value is also blank, reject.
+    const mergedName = (nameDraft.trim() || entry.name || "").trim();
+    if (!mergedName) {
+      setErr("Name is required.");
+      return;
+    }
+    let mergedUrl: string | null = entry.source_url ?? null;
+    if (urlDraft.trim()) {
+      try {
+        mergedUrl = validateUrlOrThrow(urlDraft, "Source URL");
+      } catch (e: any) {
+        setErr(e.message);
+        return;
+      }
+    }
+    const mergedBlurb = mergeField(blurbDraft, entry.short_blurb);
+    if (mergedBlurb && mergedBlurb.length > 400) {
+      setErr("Blurb must be 400 characters or fewer.");
+      return;
+    }
+    try {
+      await onSave({
+        name: mergedName,
+        source_url: mergedUrl,
+        short_blurb: mergedBlurb,
+      });
+    } catch {
+      /* handled upstream */
+    }
+  };
+
+  return (
+    <div className="p-3 bg-alloro-orange/5 border-l-2 border-alloro-orange space-y-2">
+      <div className="text-[11px] font-semibold text-alloro-orange uppercase tracking-wider">
+        Editing {labelSingular}
+      </div>
+      <div className="grid grid-cols-1 gap-2">
+        <label className="text-[11px] text-gray-500">
+          Name <span className="text-red-500">*</span>
+          <input
+            type="text"
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            placeholder={entry.name || "e.g. Dr. John Smith"}
+            className="mt-0.5 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
+          />
+        </label>
+        <label className="text-[11px] text-gray-500">
+          Source URL
+          <input
+            type="url"
+            value={urlDraft}
+            onChange={(e) => setUrlDraft(e.target.value)}
+            placeholder={entry.source_url || "https://example.com/..."}
+            className="mt-0.5 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
+          />
+        </label>
+        <label className="text-[11px] text-gray-500">
+          Blurb (≤ 400 chars)
+          <textarea
+            value={blurbDraft}
+            onChange={(e) => setBlurbDraft(e.target.value)}
+            placeholder={
+              entry.short_blurb || `Short description of this ${labelSingular}`
+            }
+            rows={3}
+            maxLength={400}
+            className="mt-0.5 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
+          />
+        </label>
+      </div>
+      {err && (
+        <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5">
+          {err}
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <button
+          onClick={onRemove}
+          disabled={saving}
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 disabled:opacity-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" /> Remove
+        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onCancel}
+            disabled={saving}
+            className="text-xs font-medium text-gray-500 hover:text-gray-800 px-3 py-1.5 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving
+              </>
+            ) : (
+              "Save"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Inline "Add new entry" form. Empty fields create an entry with null URL/blurb. */
+function IdentityListAddRow({
+  labelSingular,
+  existing,
+  saving,
+  onCancel,
+  onSave,
+}: RowEditorCommonProps & {
+  labelSingular: string;
+  existing: ProjectIdentityListEntry[];
+  onSave: (entry: ProjectIdentityListEntry) => Promise<void>;
+}) {
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [blurb, setBlurb] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setErr(null);
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setErr("Name is required.");
+      return;
+    }
+    // Simple duplicate check on name.
+    if (existing.some((e) => e.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
+      setErr(`A ${labelSingular} with that name already exists.`);
+      return;
+    }
+    let validUrl: string | null = null;
+    if (url.trim()) {
+      try {
+        validUrl = validateUrlOrThrow(url, "Source URL");
+      } catch (e: any) {
+        setErr(e.message);
+        return;
+      }
+    }
+    const trimmedBlurb = blurb.trim();
+    if (trimmedBlurb.length > 400) {
+      setErr("Blurb must be 400 characters or fewer.");
+      return;
+    }
+    try {
+      await onSave({
+        name: trimmedName,
+        source_url: validUrl,
+        short_blurb: trimmedBlurb || null,
+        last_synced_at: new Date().toISOString(),
+      });
+    } catch {
+      /* handled upstream */
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-alloro-orange/40 bg-alloro-orange/5 p-3 space-y-2">
+      <div className="text-[11px] font-semibold text-alloro-orange uppercase tracking-wider">
+        Add {labelSingular}
+      </div>
+      <div className="grid grid-cols-1 gap-2">
+        <label className="text-[11px] text-gray-500">
+          Name <span className="text-red-500">*</span>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={
+              labelSingular === "doctor" ? "e.g. Dr. John Smith" : "e.g. Invisalign"
+            }
+            className="mt-0.5 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
+          />
+        </label>
+        <label className="text-[11px] text-gray-500">
+          Source URL (optional)
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://example.com/..."
+            className="mt-0.5 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
+          />
+        </label>
+        <label className="text-[11px] text-gray-500">
+          Blurb (optional, ≤ 400 chars)
+          <textarea
+            value={blurb}
+            onChange={(e) => setBlurb(e.target.value)}
+            placeholder={`Short description of this ${labelSingular}`}
+            rows={3}
+            maxLength={400}
+            className="mt-0.5 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-alloro-orange/30"
+          />
+        </label>
+      </div>
+      {err && (
+        <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5">
+          {err}
+        </div>
+      )}
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <button
+          onClick={onCancel}
+          disabled={saving}
+          className="text-xs font-medium text-gray-500 hover:text-gray-800 px-3 py-1.5 disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding
+            </>
+          ) : (
+            "Add"
+          )}
+        </button>
       </div>
     </div>
   );

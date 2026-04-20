@@ -18,6 +18,7 @@
  */
 
 import { Request, Response } from "express";
+import { z } from "zod";
 import * as projectManager from "./feature-services/service.project-manager";
 import * as templateManager from "./feature-services/service.template-manager";
 import * as pageEditor from "./feature-services/service.page-editor";
@@ -35,7 +36,6 @@ import * as aiCommand from "./feature-services/service.ai-command";
 import * as redirectsService from "./feature-services/service.redirects";
 import * as artifactUpload from "./feature-services/service.artifact-upload";
 import * as generationPipeline from "./feature-services/service.generation-pipeline";
-import * as identityProposer from "./feature-services/service.identity-proposer";
 import * as identityWarmup from "./feature-services/service.identity-warmup";
 import * as slotPrefill from "./feature-services/service.slot-prefill";
 import { detectBlock } from "./feature-utils/util.url-block-detector";
@@ -611,6 +611,7 @@ export async function startIdentityWarmup(
     const { id } = req.params;
     const {
       placeId,
+      placeIds,
       practiceSearchString,
       urls,
       texts,
@@ -620,16 +621,42 @@ export async function startIdentityWarmup(
       gradient,
     } = req.body;
 
-    // Reset cancel flag before starting
-    await db("website_builder.projects").where("id", id).update({
+    // Normalize multi-GBP selection. The frontend may send `placeIds` (full
+    // list) and optionally `placeId` (explicit primary). Fall back to the
+    // single-place legacy path when `placeIds` is absent.
+    const normalizedPlaceIds: string[] = Array.isArray(placeIds)
+      ? placeIds.filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0)
+      : [];
+    const resolvedPrimary: string | null =
+      (typeof placeId === "string" && placeId.trim()) ||
+      normalizedPlaceIds[0] ||
+      null;
+    const fullIdList: string[] =
+      normalizedPlaceIds.length > 0
+        ? normalizedPlaceIds
+        : resolvedPrimary
+          ? [resolvedPrimary]
+          : [];
+
+    // Reset cancel flag + persist selected_place_ids / primary_place_id BEFORE
+    // enqueueing the worker so F2's multi-location loop picks them up.
+    const projectUpdates: Record<string, unknown> = {
       generation_cancel_requested: false,
       updated_at: db.fn.now(),
-    });
+    };
+    if (fullIdList.length > 0) {
+      projectUpdates.selected_place_ids = fullIdList;
+      projectUpdates.primary_place_id = resolvedPrimary;
+      // Back-compat mirror for legacy consumers of the singular column.
+      projectUpdates.selected_place_id = resolvedPrimary;
+    }
+    await db("website_builder.projects").where("id", id).update(projectUpdates);
 
     const jobData: IdentityWarmupJobData = {
       projectId: id,
       inputs: {
-        placeId,
+        placeId: resolvedPrimary || undefined,
+        placeIds: fullIdList.length > 0 ? fullIdList : undefined,
         practiceSearchString,
         urls,
         texts,
@@ -774,74 +801,6 @@ export async function updateIdentity(
   }
 }
 
-/** POST /:id/identity/propose-updates — Generate update proposals for admin review */
-export async function proposeIdentityUpdates(
-  req: Request,
-  res: Response,
-): Promise<Response> {
-  try {
-    const { id } = req.params;
-    const { instruction } = req.body;
-
-    if (!instruction || typeof instruction !== "string") {
-      return res.status(400).json({
-        success: false,
-        error: "INVALID_INPUT",
-        message: "instruction string required",
-      });
-    }
-
-    const proposals = await identityProposer.generateProposals(id, instruction);
-
-    return res.json({ success: true, data: { proposals } });
-  } catch (error: any) {
-    console.error("[Admin Websites] Error generating proposals:", error);
-    return res.status(500).json({
-      success: false,
-      error: "PROPOSE_ERROR",
-      message: error?.message || "Failed to generate proposals",
-    });
-  }
-}
-
-/** POST /:id/identity/apply-proposals — Apply the admin-approved proposals */
-export async function applyIdentityProposals(
-  req: Request,
-  res: Response,
-): Promise<Response> {
-  try {
-    const { id } = req.params;
-    const { proposals } = req.body;
-
-    if (!Array.isArray(proposals)) {
-      return res.status(400).json({
-        success: false,
-        error: "INVALID_INPUT",
-        message: "proposals array required",
-      });
-    }
-
-    const result = await identityProposer.applyProposals(id, proposals);
-
-    return res.json({
-      success: true,
-      data: {
-        identity: result.identity,
-        appliedCount: result.appliedCount,
-        skippedCount: result.skippedCount,
-        warnings: result.warnings,
-      },
-    });
-  } catch (error: any) {
-    console.error("[Admin Websites] Error applying proposals:", error);
-    return res.status(500).json({
-      success: false,
-      error: "APPLY_ERROR",
-      message: error?.message || "Failed to apply proposals",
-    });
-  }
-}
-
 /**
  * POST /:id/identity/resync-list — Manual re-sync of identity.content_essentials.{doctors|services}.
  *
@@ -925,10 +884,18 @@ export async function resyncIdentityList(
       });
     }
 
+    const identityLocations = Array.isArray(identity.locations)
+      ? identity.locations.filter(
+          (l: any) =>
+            l && typeof l.place_id === "string" && l.place_id.length > 0,
+        )
+      : [];
+
     const { doctors, services } = await identityWarmup.extractDoctorsAndServices(
       scrapedPagesRaw,
       userTextInputs,
       gbpRaw,
+      identityLocations,
       discoveredPageUrls,
       {
         projectId: id,
@@ -4999,6 +4966,154 @@ export async function resyncProjectLocation(
       success: false,
       error: "RESYNC_LOCATION_ERROR",
       message: error?.message || "Failed to re-sync location",
+    });
+  }
+}
+
+// =====================================================================
+// IDENTITY — slice PATCH
+// =====================================================================
+//
+// `PATCH /:id/identity/slice` — surgical edit for a single allow-listed
+// section of `project_identity`. Replaces the slice wholesale (no deep merge)
+// after per-slice Zod validation.
+//
+// See `plans/04202026-no-ticket-identity-modal-cleanup-and-crud/spec.md` T3.
+
+const doctorSliceSchema = z
+  .object({
+    name: z.string().min(1),
+    source_url: z.string().nullable().optional(),
+    short_blurb: z.string().nullable().optional(),
+    credentials: z.array(z.string()).nullable().optional(),
+    location_place_ids: z.array(z.string()).nullable().optional(),
+    last_synced_at: z.string().nullable().optional(),
+    stale: z.boolean().optional(),
+  })
+  .strict();
+
+const serviceSliceSchema = z
+  .object({
+    name: z.string().min(1),
+    source_url: z.string().nullable().optional(),
+    short_blurb: z.string().nullable().optional(),
+    category: z.string().nullable().optional(),
+    location_place_ids: z.array(z.string()).nullable().optional(),
+    last_synced_at: z.string().nullable().optional(),
+    stale: z.boolean().optional(),
+  })
+  .strict();
+
+const looseObject = z.record(z.string(), z.unknown());
+
+const IDENTITY_SLICE_VALIDATORS: Record<string, z.ZodTypeAny> = {
+  "content_essentials.doctors": z.array(doctorSliceSchema),
+  "content_essentials.services": z.array(serviceSliceSchema),
+  "content_essentials.featured_testimonials": z.array(z.unknown()),
+  "content_essentials.core_values": z.array(z.unknown()),
+  "content_essentials.certifications": z.array(z.unknown()),
+  "content_essentials.service_areas": z.array(z.unknown()),
+  "content_essentials.social_links": z.array(z.unknown()),
+  "content_essentials.unique_value_proposition": z
+    .union([z.string(), z.null()]),
+  "content_essentials.founding_story": z.union([z.string(), z.null()]),
+  "content_essentials.review_themes": z.array(z.unknown()),
+  locations: z.array(z.unknown()),
+  brand: looseObject,
+  voice_and_tone: looseObject,
+};
+
+/** Deep-set a value at a dotted path in `target`, mutating intermediates. */
+function setAtPath(target: any, dottedPath: string, value: unknown): void {
+  const keys = dottedPath.split(".");
+  let cursor = target;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (
+      cursor[key] === null ||
+      cursor[key] === undefined ||
+      typeof cursor[key] !== "object"
+    ) {
+      cursor[key] = {};
+    }
+    cursor = cursor[key];
+  }
+  cursor[keys[keys.length - 1]] = value;
+}
+
+/** PATCH /:id/identity/slice — Surgical per-slice edit with Zod validation. */
+export async function patchIdentitySlice(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { path: slicePath, value } = req.body || {};
+
+    if (!slicePath || typeof slicePath !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "path string required",
+      });
+    }
+
+    const validator = IDENTITY_SLICE_VALIDATORS[slicePath];
+    if (!validator) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_PATH",
+        message: `path "${slicePath}" is not in the slice allow-list`,
+      });
+    }
+
+    const parsed = validator.safeParse(value);
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_SHAPE",
+        message: `value does not match the expected shape for "${slicePath}"`,
+        details: parsed.error.issues,
+      });
+    }
+
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("project_identity")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    const identity = parseIdentityJson(project.project_identity) || {
+      version: 1,
+    };
+
+    setAtPath(identity, slicePath, parsed.data);
+
+    if (!identity.version) identity.version = 1;
+    identity.last_updated_at = new Date().toISOString();
+
+    // Mirror brand colors to legacy columns if brand was the slice that changed.
+    const updatePayload: Record<string, unknown> = {
+      project_identity: JSON.stringify(identity),
+      updated_at: db.fn.now(),
+    };
+    if (slicePath === "brand") {
+      updatePayload.primary_color = identity.brand?.primary_color ?? null;
+      updatePayload.accent_color = identity.brand?.accent_color ?? null;
+    }
+
+    await db("website_builder.projects").where("id", id).update(updatePayload);
+
+    return res.json({ success: true, data: identity });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error patching identity slice:", error);
+    return res.status(500).json({
+      success: false,
+      error: "PATCH_SLICE_ERROR",
+      message: error?.message || "Failed to patch identity slice",
     });
   }
 }

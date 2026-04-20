@@ -298,12 +298,6 @@ router.get("/:id/identity/status", controller.getIdentityStatus);
 // PUT  /:id/identity — Replace identity with admin-edited JSON
 router.put("/:id/identity", controller.updateIdentity);
 
-// POST /:id/identity/propose-updates — Generate update proposals for admin review
-router.post("/:id/identity/propose-updates", controller.proposeIdentityUpdates);
-
-// POST /:id/identity/apply-proposals — Apply admin-approved proposals
-router.post("/:id/identity/apply-proposals", controller.applyIdentityProposals);
-
 // POST /:id/identity/resync-list — Re-run doctor/service extraction against cached pages
 router.post("/:id/identity/resync-list", controller.resyncIdentityList);
 
@@ -653,6 +647,19 @@ router.post("/:projectId/posts/import", controller.startPostImport);
 
 // GET  /:projectId/posts/import/:jobId     — Poll job state + per-entry results
 router.get("/:projectId/posts/import/:jobId", controller.getPostImportStatus);
+
+// =====================================================================
+// IDENTITY SLICE PATCH — T3
+// =====================================================================
+//
+// Appended for plan
+// `plans/04202026-no-ticket-identity-modal-cleanup-and-crud/spec.md` T3.
+// Surgical per-slice edit for `project_identity`. Accepts only the allow-list
+// enforced inside the handler. Path anchors after `/:id/identity/` so it does
+// not collide with the catch-all `/:id` matcher above.
+
+// PATCH /:id/identity/slice — Replace one allow-listed slice of identity
+router.patch("/:id/identity/slice", controller.patchIdentitySlice);
 
 // =====================================================================
 // EXPORTS

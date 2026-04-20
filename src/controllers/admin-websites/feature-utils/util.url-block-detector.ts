@@ -35,6 +35,13 @@ export type BlockCheckResult =
       status: number;
       preview_chars: number;
       preview_text: string;
+      /**
+       * Orthogonal signal to `ok`. True when the response passed block
+       * detection but the visible body has < 500 non-whitespace chars — a
+       * common signature of JS-hydrated SPAs that warmup would scrape empty.
+       * Not a replacement for the ≥ 200 empty-body threshold below.
+       */
+      thin_content?: boolean;
     }
   | {
       ok: false;
@@ -369,6 +376,7 @@ export async function detectBlock(url: string): Promise<BlockCheckResult> {
     status,
     preview_chars: body.length,
     preview_text: preview,
+    thin_content: preview.trim().length < 500,
   };
 }
 

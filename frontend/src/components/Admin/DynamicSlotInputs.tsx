@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { Loader2, Sparkles, Ban, ExternalLink } from "lucide-react";
+import {
+  Loader2,
+  Sparkles,
+  Ban,
+  ExternalLink,
+  AlertTriangle,
+} from "lucide-react";
 import type { DynamicSlotDef, BlockCheckResult } from "../../api/websites";
 import { testUrl } from "../../api/websites";
 
@@ -244,17 +250,29 @@ function UrlSlotInput({
         )}
       </div>
       {result && !result.ok && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-800">
-          <div className="font-semibold">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] text-red-800">
+          <div className="flex items-center gap-1 font-semibold">
+            <Ban className="h-3 w-3 shrink-0" />
             Blocked: {result.block_type} ({result.detail})
           </div>
-          <div className="text-amber-700 mt-0.5">
+          <div className="text-red-700 mt-0.5">
             The AI may not be able to scrape this URL. You can still keep it as
             context, or try a different URL.
           </div>
         </div>
       )}
-      {result && result.ok && (
+      {result && result.ok && result.thin_content === true && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-800">
+          <div className="flex items-center gap-1 font-semibold">
+            <AlertTriangle className="h-3 w-3 shrink-0" />
+            Looks thin ({result.preview_chars.toLocaleString()} chars).
+          </div>
+          <div className="text-amber-700 mt-0.5">
+            This may scrape empty — try a different URL.
+          </div>
+        </div>
+      )}
+      {result && result.ok && result.thin_content !== true && (
         <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-[11px] text-green-800">
           OK — {result.preview_chars.toLocaleString()} chars received (status {result.status}).
         </div>

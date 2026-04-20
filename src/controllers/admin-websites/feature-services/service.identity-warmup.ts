@@ -17,6 +17,7 @@
  */
 
 import axios from "axios";
+import * as cheerio from "cheerio";
 import { db } from "../../../database/connection";
 import { runAgent, type CostContext } from "../../../agents/service.llm-runner";
 import { loadPrompt } from "../../../agents/service.prompt-loader";
@@ -25,7 +26,11 @@ import {
   buildMediaS3Key,
   buildS3Url,
 } from "../../admin-media/feature-utils/util.s3-helpers";
-import { scrapeUrl, type ScrapeStrategy } from "./service.url-scrape-strategies";
+import {
+  scrapeUrlWithEscalation,
+  normalizeScrapeUrl,
+  type ScrapeStrategy,
+} from "./service.url-scrape-strategies";
 import { scrapeGbp } from "../feature-utils/util.gbp-scraper";
 import {
   processImages,
@@ -35,7 +40,9 @@ import {
 
 const PROJECTS_TABLE = "website_builder.projects";
 
-const MAX_SOURCE_CHARS = 50_000;
+// Cap applied to cleaned text (post-HTML-strip), not raw HTML. At 100k of
+// readable content we have plenty of signal without bloating the JSONB.
+const MAX_SOURCE_CHARS = 100_000;
 const LOG_PREFIX = "[IdentityWarmup]";
 
 function log(msg: string, data?: Record<string, unknown>): void {
@@ -58,7 +65,14 @@ export interface WarmupUrlInput {
 }
 
 export interface WarmupInputs {
+  /** Primary GBP place_id. When `placeIds` is provided, primary should match its first entry. */
   placeId?: string;
+  /**
+   * Full set of GBP place_ids to attach to this project (one per physical
+   * location). First entry is treated as primary unless overridden by an
+   * explicit primary in the controller. Written to `projects.selected_place_ids`.
+   */
+  placeIds?: string[];
   practiceSearchString?: string;
   /**
    * Accepts either a plain URL string (defaults to "fetch" strategy) or an
@@ -159,6 +173,18 @@ export async function runIdentityWarmup(
       content_excerpt: string | null;
     }> = [];
 
+    // Track the FINAL strategy actually used for each URL (post-escalation),
+    // keyed by the original URL so we can persist it in sources_used.urls[].
+    const finalStrategyByUrl = new Map<string, ScrapeStrategy>();
+
+    // Raw HTML keyed by original input URL, populated for the primary page
+    // (key === "home"). Needed below for the auto-discovery pass that parses
+    // <a href> out of the site's homepage markup. Kept OUT of scrapedPagesRaw
+    // because that dict stores cleaned/capped text for distillation.
+    const rawHtmlByUrl = new Map<string, string>();
+
+    const adminEnteredCount = inputs.urls ? inputs.urls.length : 0;
+
     if (inputs.urls && inputs.urls.length > 0) {
       const normalizedUrls: WarmupUrlInput[] = inputs.urls.map((u) =>
         typeof u === "string" ? { url: u, strategy: "fetch" } : u,
@@ -169,12 +195,30 @@ export async function runIdentityWarmup(
         const strat: ScrapeStrategy = strategy || "fetch";
         log(`Scraping url ${i + 1}/${normalizedUrls.length}`, { url, strategy: strat });
         try {
-          const result = await scrapeUrl(url, strat);
+          const result = await scrapeUrlWithEscalation(url, strat, signal);
+          finalStrategyByUrl.set(url, result.strategy_used_final);
+          if (result.escalations.length > 0) {
+            log("URL escalated", {
+              url,
+              initial: strat,
+              final: result.strategy_used_final,
+              hops: result.escalations,
+            });
+          }
           if (result.pages && Object.keys(result.pages).length > 0) {
             for (const [key, content] of Object.entries(result.pages)) {
+              // Stash raw HTML for the homepage only — the auto-discovery
+              // pass below parses <a href> from this. Non-home keys are rare
+              // on current scrape strategies but we guard explicitly.
+              if (key === "home") {
+                rawHtmlByUrl.set(url, String(content));
+              }
+              // Clean HTML first, then cap — otherwise we store 50k of
+              // framework scaffolding (scripts/styles/hydration markup) and
+              // distillation only gets nav/footer text after re-cleaning.
               const cleaned = cleanForClaude(String(content));
-              const cappedRaw = capString(String(content));
-              scrapedPagesRaw[`${url}#${key}`] = cappedRaw;
+              const capped = capString(cleaned);
+              scrapedPagesRaw[`${url}#${key}`] = capped;
               discoveredPages.push({
                 url: key === "home" ? url : `${url}#${key}`,
                 title: key,
@@ -186,11 +230,78 @@ export async function runIdentityWarmup(
             scrapedImages.push(...result.images);
           }
           if (result.was_blocked) {
-            log("URL was blocked despite strategy fallback", { url, strategy: strat });
+            log("URL was blocked despite strategy fallback", {
+              url,
+              strategy: result.strategy_used_final,
+            });
           }
         } catch (err: any) {
           log("Website scrape failed", { url, error: err.message });
         }
+      }
+    }
+
+    checkCancel(signal);
+
+    // --- 2b. Auto-discover dental sub-pages ---
+    // Skip if admin explicitly enumerated ≥ 5 URLs (assume intent) or we've
+    // already hit the 10-page cap. Same-origin + whitelist + concurrency 3.
+    if (
+      adminEnteredCount < 5 &&
+      Object.keys(scrapedPagesRaw).length < 10 &&
+      rawHtmlByUrl.size > 0
+    ) {
+      const discoveredCandidates = collectDiscoveredSubPages(
+        rawHtmlByUrl,
+        scrapedPagesRaw,
+      );
+      const remaining = 10 - Object.keys(scrapedPagesRaw).length;
+      const toScrape = discoveredCandidates.slice(0, Math.max(0, remaining));
+
+      if (toScrape.length > 0) {
+        log("Auto-discovery candidates", {
+          found: discoveredCandidates.length,
+          to_scrape: toScrape.length,
+          remaining_slots: remaining,
+        });
+
+        await runWithConcurrency(toScrape, 3, async (discoveredUrl) => {
+          checkCancel(signal);
+          try {
+            const result = await scrapeUrlWithEscalation(
+              discoveredUrl,
+              "browser",
+              signal,
+            );
+            finalStrategyByUrl.set(discoveredUrl, result.strategy_used_final);
+            if (result.pages && Object.keys(result.pages).length > 0) {
+              for (const [key, content] of Object.entries(result.pages)) {
+                const cleaned = cleanForClaude(String(content));
+                const capped = capString(cleaned);
+                scrapedPagesRaw[`${discoveredUrl}#${key}`] = capped;
+                discoveredPages.push({
+                  url: key === "home" ? discoveredUrl : `${discoveredUrl}#${key}`,
+                  title: key,
+                  content_excerpt: cleaned.slice(0, 500),
+                });
+              }
+            }
+            if (Array.isArray(result.images)) {
+              scrapedImages.push(...result.images);
+            }
+          } catch (err: any) {
+            log("Auto-discovered page scrape failed", {
+              url: discoveredUrl,
+              error: err?.message,
+            });
+          }
+        });
+
+        log("Auto-discovered sub-pages", {
+          total_after_discovery: Object.keys(scrapedPagesRaw).length,
+          admin_entered: adminEnteredCount,
+          discovered_added: toScrape.length,
+        });
       }
     }
 
@@ -202,8 +313,31 @@ export async function runIdentityWarmup(
       text: capString(t.text),
     }));
 
+    // --- 3b. Multi-location sweep (runs BEFORE image processing so every
+    // GBP's photos feed into the unified vision-analyzed manifest) ---
+    const { locations, secondaryImageUrls } = await buildLocationsArray(
+      projectId,
+      inputs.placeId,
+      gbpData,
+      inputs.practiceSearchString,
+      signal,
+    );
+    log("Locations assembled", {
+      total: locations.length,
+      ready: locations.filter((l) => l.warmup_status === "ready").length,
+      failed: locations.filter((l) => l.warmup_status === "failed").length,
+      secondary_images: secondaryImageUrls.length,
+    });
+
+    checkCancel(signal);
+
     // --- 4. Image collection + S3 upload + Claude vision analysis ---
-    const imageUrls = collectImageUrls(gbpData, { images: scrapedImages });
+    // Unified across: primary GBP, scraped website pages, and every secondary GBP.
+    const imageUrls = collectImageUrls(
+      gbpData,
+      { images: scrapedImages },
+      secondaryImageUrls,
+    );
     let analyzedImages: ImageAnalysisResult[] = [];
     if (imageUrls.length > 0) {
       analyzedImages = await processImages(projectId, imageUrls, signal);
@@ -252,6 +386,7 @@ export async function runIdentityWarmup(
       scrapedPagesRaw,
       userTextInputs,
       gbpData,
+      locations,
       discoveredPageUrls,
       {
         projectId,
@@ -270,22 +405,8 @@ export async function runIdentityWarmup(
     const business = buildBusinessFromGbp(gbpData, inputs.placeId);
     const brand = buildBrand(inputs, business.name, logoS3Url);
 
-    // --- 8a. Multi-location sweep ---
-    // Read the project's selected_place_ids + primary_place_id. Build a
-    // locations[] entry for each (primary reuses the already-scraped gbpData;
-    // non-primary runs Apify in parallel with concurrency=3).
-    const locations = await buildLocationsArray(
-      projectId,
-      inputs.placeId,
-      gbpData,
-      inputs.practiceSearchString,
-      signal,
-    );
-    log("Locations assembled", {
-      total: locations.length,
-      ready: locations.filter((l) => l.warmup_status === "ready").length,
-      failed: locations.filter((l) => l.warmup_status === "failed").length,
-    });
+    // (Locations already assembled in step 3b — reused here in the identity
+    // object. `locations` is in scope from that earlier destructure.)
 
     const identity = {
       version: 1,
@@ -295,13 +416,21 @@ export async function runIdentityWarmup(
         gbp: inputs.placeId
           ? { place_id: inputs.placeId, scraped_at: new Date().toISOString() }
           : null,
-        urls: (inputs.urls || []).map((url) => ({
-          url,
-          scraped_at: new Date().toISOString(),
-          char_length: Object.entries(scrapedPagesRaw)
-            .filter(([k]) => k.startsWith(`${url}#`))
-            .reduce((sum, [, content]) => sum + content.length, 0),
-        })),
+        urls: (inputs.urls || []).map((raw) => {
+          const entry: WarmupUrlInput =
+            typeof raw === "string" ? { url: raw, strategy: "fetch" } : raw;
+          const u = entry.url;
+          const initialStrat: ScrapeStrategy = entry.strategy || "fetch";
+          const finalStrat = finalStrategyByUrl.get(u) || initialStrat;
+          return {
+            url: u,
+            scraped_at: new Date().toISOString(),
+            char_length: Object.entries(scrapedPagesRaw)
+              .filter(([k]) => k.startsWith(`${u}#`))
+              .reduce((sum, [, content]) => sum + content.length, 0),
+            strategy_used_final: finalStrat,
+          };
+        }),
         text_inputs: userTextInputs.map((t) => ({
           label: t.label,
           char_length: (t.text || "").length,
@@ -455,7 +584,7 @@ function buildBusinessFromGbp(
 // MULTI-LOCATION
 // ---------------------------------------------------------------------------
 
-interface IdentityLocation {
+export interface IdentityLocation {
   place_id: string;
   name: string;
   address: string | null;
@@ -508,7 +637,7 @@ async function buildLocationsArray(
   primaryGbpData: any,
   practiceSearchString: string | undefined,
   signal: AbortSignal | undefined,
-): Promise<IdentityLocation[]> {
+): Promise<{ locations: IdentityLocation[]; secondaryImageUrls: string[] }> {
   const project = await db(PROJECTS_TABLE)
     .where("id", projectId)
     .select("selected_place_ids", "primary_place_id", "selected_place_id")
@@ -530,7 +659,7 @@ async function buildLocationsArray(
   }
   if (allIds.length === 0) {
     // No place_ids anywhere — return empty locations array.
-    return [];
+    return { locations: [], secondaryImageUrls: [] };
   }
 
   // De-dupe while preserving order.
@@ -584,6 +713,10 @@ async function buildLocationsArray(
     .map((id, i) => ({ id, i }))
     .filter(({ id }) => id !== primaryId);
 
+  // Accumulate GBP image URLs from every secondary scrape so the caller
+  // can feed them into the unified image pipeline.
+  const secondaryImageUrls: string[] = [];
+
   await runWithConcurrency(secondaryIndices, 3, async ({ id, i }) => {
     try {
       const scraped = await scrapeGbp(id, practiceSearchString, signal);
@@ -607,6 +740,11 @@ async function buildLocationsArray(
         return;
       }
       results[i] = buildLocationEntryFromGbp(id, scraped, false);
+      if (Array.isArray(scraped?.imageUrls)) {
+        for (const u of scraped.imageUrls) {
+          if (typeof u === "string" && u.length > 0) secondaryImageUrls.push(u);
+        }
+      }
     } catch (err: any) {
       log("Location scrape failed", { placeId: id, error: err?.message });
       results[i] = {
@@ -628,7 +766,10 @@ async function buildLocationsArray(
     }
   });
 
-  return results.filter((r): r is IdentityLocation => r !== null);
+  return {
+    locations: results.filter((r): r is IdentityLocation => r !== null),
+    secondaryImageUrls,
+  };
 }
 
 /**
@@ -656,6 +797,116 @@ async function runWithConcurrency<T>(
     );
   }
   await Promise.all(runners);
+}
+
+// ---------------------------------------------------------------------------
+// AUTO-DISCOVERY (dental sub-pages)
+// ---------------------------------------------------------------------------
+
+/**
+ * Whitelist of pathname patterns that map to dental-practice sub-pages we
+ * want to feed into identity distillation. Case-insensitive. Narrow by
+ * design — `/blog`, `/news`, `/post`, and per-treatment pages are excluded
+ * (too much content volume, low signal per the plan).
+ */
+const SUB_PAGE_WHITELIST: RegExp[] = [
+  /^\/meet-dr-/i,
+  /^\/dr-/i,
+  /^\/doctor/i,
+  /^\/our-team/i,
+  /^\/our-doctors/i,
+  /^\/team/i,
+  /^\/services/i,
+  /^\/treatments/i,
+  /^\/procedures/i,
+  /^\/about/i,
+  /^\/our-practice/i,
+  /^\/our-story/i,
+];
+
+const DROPPED_FILE_EXT = /\.(pdf|docx?|jpe?g|png|gif|mp4|zip|svg|ico)$/i;
+const MAX_DISCOVERED_URL_LENGTH = 200;
+
+/**
+ * Parse every scraped homepage's raw HTML, extract `<a href>` values,
+ * normalize, filter (same-origin + whitelist + file-extension reject +
+ * length cap), dedupe against already-scraped URLs, and return the list.
+ *
+ * Result URLs are `normalizeScrapeUrl().primary` values — the scrape layer
+ * will still attempt the fallback once before escalating if they block.
+ */
+function collectDiscoveredSubPages(
+  rawHtmlByUrl: Map<string, string>,
+  scrapedPagesRaw: Record<string, string>,
+): string[] {
+  const alreadyScheduled = new Set<string>();
+  for (const key of Object.keys(scrapedPagesRaw)) {
+    // keys are `${url}#${pageKey}` — strip the anchor to compare URLs only.
+    const hashIdx = key.lastIndexOf("#");
+    const urlPart = hashIdx >= 0 ? key.slice(0, hashIdx) : key;
+    alreadyScheduled.add(urlPart);
+  }
+
+  const seen = new Set<string>(alreadyScheduled);
+  const ordered: string[] = [];
+
+  for (const [pageUrl, html] of rawHtmlByUrl.entries()) {
+    let pageUrlParsed: URL;
+    try {
+      pageUrlParsed = new URL(pageUrl);
+    } catch {
+      continue;
+    }
+
+    let $: cheerio.CheerioAPI;
+    try {
+      $ = cheerio.load(html);
+    } catch {
+      continue;
+    }
+
+    $("a[href]").each((_, el) => {
+      const href = $(el).attr("href");
+      if (!href || typeof href !== "string") return;
+
+      // Resolve relative URLs against the source page.
+      let resolved: URL;
+      try {
+        resolved = new URL(href, pageUrl);
+      } catch {
+        return;
+      }
+
+      // Same-origin only (hostname match — different ports would already be
+      // oddities on dental sites; hostname equality is sufficient).
+      if (resolved.hostname !== pageUrlParsed.hostname) return;
+
+      // Strip fragment — we care about the path, not in-page anchors.
+      resolved.hash = "";
+
+      // File-extension rejects.
+      if (DROPPED_FILE_EXT.test(resolved.pathname)) return;
+
+      // `?download=*` rejects.
+      if (resolved.searchParams.has("download")) return;
+
+      // Length cap.
+      if (resolved.href.length > MAX_DISCOVERED_URL_LENGTH) return;
+
+      // Whitelist pathname match.
+      const path = resolved.pathname;
+      if (!SUB_PAGE_WHITELIST.some((rx) => rx.test(path))) return;
+
+      // Normalize (http→https, www) — produces the actual URL we'd scrape.
+      const { primary } = normalizeScrapeUrl(resolved.href);
+
+      if (seen.has(primary)) return;
+      seen.add(primary);
+      ordered.push(primary);
+    });
+  }
+
+  return ordered;
 }
 
 function buildBrand(
@@ -775,7 +1026,6 @@ async function classifyArchetype(
     const result = await runAgent({
       systemPrompt: prompt,
       userMessage: parts.join("\n\n"),
-      prefill: "{",
       maxTokens: 1024,
       costContext,
     });
@@ -808,6 +1058,8 @@ interface DoctorOrServiceEntry {
   name: string;
   source_url: string | null;
   short_blurb: string | null;
+  credentials?: string[];
+  location_place_ids?: string[];
   last_synced_at: string;
   stale?: boolean;
 }
@@ -829,6 +1081,7 @@ async function distillContent(
   scrapedPagesRaw: Record<string, string>,
   userTexts: Array<{ label?: string; text: string }>,
   gbpData: any,
+  locations: IdentityLocation[],
   discoveredPageUrls: string[],
   costContext?: CostContext,
 ): Promise<DistilledContent> {
@@ -842,11 +1095,27 @@ async function distillContent(
     );
   }
 
+  if (locations.length > 0) {
+    const locLines = locations
+      .map((l) => {
+        const name = l.name || "(unnamed)";
+        const addr = l.address || "(no address)";
+        return `- ${l.place_id} — ${name} — ${addr}`;
+      })
+      .join("\n");
+    parts.push(
+      `## LOCATIONS (use these place_ids for doctors[].location_place_ids when the doctor is explicitly tied to an office)\n\n${locLines}`,
+    );
+  }
+
   if (Object.keys(scrapedPagesRaw).length > 0) {
     const pagesText = Object.entries(scrapedPagesRaw)
       .map(([key, content]) => {
-        const cleaned = cleanForClaude(content).slice(0, 8000);
-        return `### ${key}\n${cleaned}`;
+        // Content is already cleaned + capped in warmup step 2. cleanForClaude
+        // is a defensive no-op (idempotent on already-clean text) in case a
+        // future caller forgets to clean upstream.
+        const text = cleanForClaude(content).slice(0, 15000);
+        return `### ${key}\n${text}`;
       })
       .join("\n\n");
     parts.push(`## Website Content\n\n${pagesText}`);
@@ -886,7 +1155,6 @@ async function distillContent(
     const result = await runAgent({
       systemPrompt: prompt,
       userMessage: parts.join("\n\n"),
-      prefill: "{",
       maxTokens: 4096,
       costContext,
     });
@@ -918,7 +1186,7 @@ function normalizeDistilled(
   const doctors = Array.isArray(raw?.doctors)
     ? raw.doctors
         .slice(0, MAX_DOCTORS_SERVICES)
-        .map((d: any) => normalizeListEntry(d, allowedUrls, now))
+        .map((d: any) => normalizeDoctorEntry(d, allowedUrls, now))
         .filter((d: DoctorOrServiceEntry | null): d is DoctorOrServiceEntry => d !== null)
     : [];
 
@@ -970,6 +1238,38 @@ function normalizeListEntry(
 }
 
 /**
+ * Doctor-specific normalizer. Preserves optional `credentials[]` and
+ * `location_place_ids[]` emitted by the distiller (services entries don't
+ * carry these fields).
+ */
+function normalizeDoctorEntry(
+  entry: any,
+  allowedUrls: Set<string>,
+  isoNow: string,
+): DoctorOrServiceEntry | null {
+  const base = normalizeListEntry(entry, allowedUrls, isoNow);
+  if (!base) return null;
+
+  const credentials = Array.isArray(entry?.credentials)
+    ? entry.credentials
+        .filter((c: unknown): c is string => typeof c === "string" && c.trim().length > 0)
+        .map((c: string) => c.trim())
+    : [];
+
+  const location_place_ids = Array.isArray(entry?.location_place_ids)
+    ? entry.location_place_ids
+        .filter((p: unknown): p is string => typeof p === "string" && p.trim().length > 0)
+        .map((p: string) => p.trim())
+    : [];
+
+  return {
+    ...base,
+    credentials,
+    location_place_ids,
+  };
+}
+
+/**
  * T5/T6 shared entry point: runs the distillation against already-scraped
  * pages (from `identity.extracted_assets.discovered_pages` + a resurrected
  * scraped_pages_raw map). Used by the re-sync endpoint to re-extract
@@ -979,6 +1279,7 @@ export async function extractDoctorsAndServices(
   scrapedPagesRaw: Record<string, string>,
   userTexts: Array<{ label?: string; text: string }>,
   gbpData: any,
+  locations: IdentityLocation[],
   discoveredPageUrls: string[],
   costContext?: CostContext,
 ): Promise<{ doctors: DoctorOrServiceEntry[]; services: DoctorOrServiceEntry[] }> {
@@ -986,6 +1287,7 @@ export async function extractDoctorsAndServices(
     scrapedPagesRaw,
     userTexts,
     gbpData,
+    locations,
     discoveredPageUrls,
     costContext,
   );

@@ -175,6 +175,8 @@ export interface ProjectIdentity {
       name: string;
       source_url: string | null;
       short_blurb: string | null;
+      credentials?: string[];
+      location_place_ids?: string[];
       last_synced_at: string;
       stale?: boolean;
     }>;
@@ -261,9 +263,29 @@ export function buildStableIdentityContext(identity: ProjectIdentity): string {
     }),
   );
 
-  // CONTENT ESSENTIALS: light-touch awareness for doctors/services. Locations
-  // are intentionally omitted — prompts continue to read `business` for the
-  // primary location and a follow-up plan will wire "all locations" rendering.
+  const locations = Array.isArray(identity.locations)
+    ? identity.locations.filter((l) => l && !l.stale && l.name)
+    : [];
+
+  if (locations.length > 1) {
+    parts.push(`\n## LOCATIONS (${locations.length} total)`);
+    parts.push(
+      "This practice operates across multiple locations. Mention each by name when copy references \"our locations\" or similar:",
+    );
+    const sorted = [...locations].sort(
+      (a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0),
+    );
+    for (const l of sorted) {
+      const city = shortLocationLabel(l.address);
+      const bits = [l.name, city].filter(Boolean).join(" — ");
+      const primary = l.is_primary ? " (primary)" : "";
+      parts.push(`  - ${bits}${primary}`);
+    }
+    parts.push(
+      "Do NOT emit hyperlinks to individual location pages — those public routes are not live yet. Reference locations as plain text.",
+    );
+  }
+
   const doctors = Array.isArray(ce.doctors)
     ? ce.doctors.filter((d) => d && !d.stale && d.name)
     : [];
@@ -274,15 +296,21 @@ export function buildStableIdentityContext(identity: ProjectIdentity): string {
   if (doctors.length > 0 || services.length > 0) {
     parts.push("\n## CONTENT ESSENTIALS");
     if (doctors.length > 0) {
-      parts.push("Doctors:");
+      parts.push("Doctors (use credentials verbatim; don't invent titles):");
       for (const d of doctors.slice(0, 25)) {
-        parts.push(`  - ${d.name}`);
+        const creds =
+          Array.isArray(d.credentials) && d.credentials.length > 0
+            ? ` — ${d.credentials.join(", ")}`
+            : "";
+        parts.push(`  - ${d.name}${creds}`);
+        if (d.short_blurb) parts.push(`      ${d.short_blurb}`);
       }
     }
     if (services.length > 0) {
       parts.push("Services:");
       for (const s of services.slice(0, 25)) {
         parts.push(`  - ${s.name}`);
+        if (s.short_blurb) parts.push(`      ${s.short_blurb}`);
       }
     }
   }
@@ -326,6 +354,24 @@ export function buildStableIdentityContext(identity: ProjectIdentity): string {
   parts.push(colorRules.filter(Boolean).join("\n"));
 
   return parts.join("\n");
+}
+
+/**
+ * Best-effort "city, ST" label from a full street address. Falls back to the
+ * trimmed address when the comma-split doesn't look like a US address.
+ * Used only for LLM context — no callers rely on exact formatting.
+ */
+function shortLocationLabel(address: string | null | undefined): string | null {
+  if (!address) return null;
+  const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    const city = parts[parts.length - 3];
+    const stateZip = parts[parts.length - 2];
+    const st = stateZip.split(/\s+/)[0];
+    return st ? `${city}, ${st}` : city;
+  }
+  if (parts.length === 2) return parts[1];
+  return parts[0] || null;
 }
 
 function kvLines(obj: Record<string, unknown>): string {
@@ -462,7 +508,7 @@ export function buildComponentContext(
   );
   parts.push(`\n## TEMPLATE MARKUP\n\`\`\`html\n${strippedMarkup}\n\`\`\``);
 
-  const relevantContent = extractRelevantContent(compName, ce);
+  const relevantContent = extractRelevantContent(compName, ce, identity.locations);
   if (relevantContent) {
     parts.push(`\n## PAGE-SPECIFIC CONTEXT\n${relevantContent}`);
   }
@@ -529,9 +575,15 @@ export function buildComponentContext(
 function extractRelevantContent(
   compName: string,
   ce: ProjectIdentity["content_essentials"],
+  locations: ProjectIdentity["locations"],
 ): string | null {
   if (!ce) return null;
   const parts: string[] = [];
+
+  const activeLocations = Array.isArray(locations)
+    ? locations.filter((l) => l && !l.stale && l.name)
+    : [];
+  const isMultiLocation = activeLocations.length > 1;
 
   const addList = (label: string, items: unknown) => {
     if (!Array.isArray(items) || items.length === 0) return;
@@ -566,6 +618,53 @@ function extractRelevantContent(
     addList("Core values", ce.core_values);
   }
 
+  if (
+    compName.includes("doctor") ||
+    compName.includes("team") ||
+    compName.includes("meet") ||
+    compName.includes("staff") ||
+    compName.includes("provider")
+  ) {
+    const activeDoctors = Array.isArray(ce.doctors)
+      ? ce.doctors.filter((d) => d && !d.stale && d.name)
+      : [];
+    if (activeDoctors.length > 0) {
+      parts.push(
+        "**Doctor roster (use credentials verbatim; keep blurbs as seed material, rewrite in voice):**",
+      );
+      for (const d of activeDoctors) {
+        const creds =
+          Array.isArray(d.credentials) && d.credentials.length > 0
+            ? ` — ${d.credentials.join(", ")}`
+            : "";
+        parts.push(`  - ${d.name}${creds}`);
+        if (d.short_blurb) parts.push(`      ${d.short_blurb}`);
+      }
+      parts.push(
+        "When assigning photos to doctors, match the image whose description mentions that doctor's name (e.g., embroidered on scrubs, lab coat text). If no explicit match, prefer a solo headshot over a group photo.",
+      );
+    }
+  }
+
+  if (
+    compName.includes("service") ||
+    compName.includes("treatment") ||
+    compName.includes("procedure")
+  ) {
+    const activeServices = Array.isArray(ce.services)
+      ? ce.services.filter((s) => s && !s.stale && s.name)
+      : [];
+    if (activeServices.length > 0) {
+      parts.push(
+        "**Services offered (rewrite blurbs in voice; don't invent services not listed):**",
+      );
+      for (const s of activeServices) {
+        parts.push(`  - ${s.name}`);
+        if (s.short_blurb) parts.push(`      ${s.short_blurb}`);
+      }
+    }
+  }
+
   if (compName.includes("testimonial") || compName.includes("review")) {
     if (ce.featured_testimonials && ce.featured_testimonials.length > 0) {
       parts.push("**Featured testimonials:**");
@@ -591,6 +690,14 @@ function extractRelevantContent(
     }
     addList("Service areas", ce.service_areas);
     addList("Certifications", ce.certifications);
+    if (isMultiLocation) {
+      parts.push("**All locations (list each by name; plain text, no links):**");
+      for (const l of activeLocations) {
+        const city = shortLocationLabel(l.address);
+        const bits = [l.name, city, l.phone].filter(Boolean).join(" — ");
+        parts.push(`  - ${bits}`);
+      }
+    }
   }
 
   if (
@@ -600,6 +707,27 @@ function extractRelevantContent(
   ) {
     addStr("Founding story", ce.founding_story);
     addList("Core values", ce.core_values);
+    if (isMultiLocation) {
+      parts.push(
+        `**Multi-location:** practice has ${activeLocations.length} locations — reflect this in any "about us" copy (e.g., "across our ${activeLocations.length} offices" rather than singular phrasing).`,
+      );
+    }
+  }
+
+  if (
+    isMultiLocation &&
+    (compName.includes("hero") ||
+      compName.includes("upgrade") ||
+      compName === "wrapper")
+  ) {
+    const cities = activeLocations
+      .map((l) => shortLocationLabel(l.address))
+      .filter(Boolean);
+    if (cities.length > 0) {
+      parts.push(
+        `**Multi-location:** serving ${cities.join(", ")}. Prefer plural framing in CTAs (e.g., "find your nearest office" instead of "visit us at 123 Main St").`,
+      );
+    }
   }
 
   return parts.length > 0 ? parts.join("\n") : null;

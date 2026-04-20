@@ -526,7 +526,10 @@ export interface WarmupUrlInput {
 }
 
 export interface WarmupInputs {
+  /** Primary GBP place_id. When `placeIds` is present, primary should match its first entry. */
   placeId?: string;
+  /** Full set of GBP place_ids (one per physical location). First is treated as primary. */
+  placeIds?: string[];
   practiceSearchString?: string;
   /** String or object-with-strategy. Backend accepts both. */
   urls?: Array<string | WarmupUrlInput>;
@@ -592,67 +595,6 @@ export const updateIdentity = async (
 };
 
 // =====================================================================
-// IDENTITY PROPOSALS (replaces the old chat-update tool flow)
-// =====================================================================
-
-export type ProposalAction = "NEW" | "UPDATE" | "DELETE";
-
-export interface IdentityProposal {
-  id: string;
-  action: ProposalAction;
-  path: string;
-  current_value: unknown;
-  proposed_value: unknown;
-  summary: string;
-  reason: string;
-  array_item?: boolean;
-  critical: boolean;
-  critical_reason?: string;
-}
-
-/** Ask the LLM to produce a list of proposed identity updates. */
-export const proposeIdentityUpdates = async (
-  projectId: string,
-  instruction: string,
-): Promise<{ success: boolean; data: { proposals: IdentityProposal[] } }> => {
-  const response = await fetch(
-    `${API_BASE}/${projectId}/identity/propose-updates`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ instruction }),
-    },
-  );
-  if (!response.ok) throw new Error(`Failed to propose updates: ${response.statusText}`);
-  return response.json();
-};
-
-/** Apply the admin-approved subset of proposals. */
-export const applyIdentityProposals = async (
-  projectId: string,
-  proposals: IdentityProposal[],
-): Promise<{
-  success: boolean;
-  data: {
-    identity: ProjectIdentity;
-    appliedCount: number;
-    skippedCount: number;
-    warnings: string[];
-  };
-}> => {
-  const response = await fetch(
-    `${API_BASE}/${projectId}/identity/apply-proposals`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ proposals }),
-    },
-  );
-  if (!response.ok) throw new Error(`Failed to apply proposals: ${response.statusText}`);
-  return response.json();
-};
-
-// =====================================================================
 // URL BLOCK DETECTION
 // =====================================================================
 
@@ -676,7 +618,18 @@ export type BlockVendor =
   | "unknown";
 
 export type BlockCheckResult =
-  | { ok: true; status: number; preview_chars: number; preview_text?: string }
+  | {
+      ok: true;
+      status: number;
+      preview_chars: number;
+      preview_text?: string;
+      /**
+       * True when the URL returned a successful response but the extracted text
+       * is under the 500-char threshold used by warmup. Rendered as an amber
+       * "Looks thin" warning in the URL Test UI (distinct from blocked).
+       */
+      thin_content?: boolean;
+    }
   | {
       ok: false;
       block_type: BlockVendor;
@@ -2187,6 +2140,41 @@ export const fetchPostImportStatus = async (
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.message || "Failed to fetch post import status");
+  }
+  return response.json();
+};
+
+// =====================================================================
+// IDENTITY SLICE PATCH
+// =====================================================================
+//
+// Appended for plan
+// `plans/04202026-no-ticket-identity-modal-cleanup-and-crud/spec.md` T3.
+// Backend allow-list: `content_essentials.doctors`, `.services`,
+// `.featured_testimonials`, `.core_values`, `.certifications`,
+// `.service_areas`, `.social_links`, `.unique_value_proposition`,
+// `.founding_story`, `.review_themes`, `locations`, `brand`,
+// `voice_and_tone`. Everything else returns 400 `INVALID_PATH`.
+
+/** Replace a single allow-listed slice of `project_identity`. */
+export const patchIdentitySlice = async (
+  projectId: string,
+  path: string,
+  value: unknown,
+): Promise<{ success: boolean; data: ProjectIdentity }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/identity/slice`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, value }),
+    },
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      error.message || `Failed to patch identity slice: ${response.statusText}`,
+    );
   }
   return response.json();
 };

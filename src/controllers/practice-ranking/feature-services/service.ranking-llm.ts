@@ -176,7 +176,6 @@ export async function runRankingAnalysis(
       userMessage: JSON.stringify(payload.additional_data),
       maxTokens: 16384,
       temperature: 0,
-      prefill: "{",
     });
 
     _log(

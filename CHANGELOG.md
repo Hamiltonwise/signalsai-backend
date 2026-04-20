@@ -2,6 +2,132 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.23] - April 2026
+
+### Website Builder — Identity Rebuild, Warmup Quality, Multi-Location + Doctor Enrichment
+
+A multi-plan arc hardening the website-builder identity pipeline end to end.
+Three plan folders landed together in one shippable slice —
+`04192026-no-ticket-warmup-quality-fixes`,
+`04192026-no-ticket-warmup-autodiscover-and-distill-tuning`,
+`04202026-no-ticket-identity-modal-cleanup-and-crud` — plus post-audit
+refinements around multi-location rendering, doctor / service prompt
+enrichment, and content-hash image dedup.
+
+**Warmup — Quality Fixes:**
+- **Prefill 400 across 5 callers** — `claude-sonnet-4-6` silently dropped
+  assistant-prefill support. `classifyArchetype`, `distillContent`, image
+  vision analysis, and two other callers were failing with 400 and falling
+  back to defaults. Removed `prefill: "{"` everywhere; added a strip+warn
+  guardrail in `runAgent` so future callers can't re-break it.
+- **URL normalization** — GBP-returned `http://example.com/` was getting
+  blocked by Chromium. Added `normalizeScrapeUrl()` with fallback-once
+  retry (http → https + www).
+- **Clean-before-cap** — `MAX_SOURCE_CHARS` was applied to raw HTML before
+  cleaning, leaving ~3-5k of usable text out of 50k scaffolding. Swapped
+  to clean first, then cap. Raised cap to 100k. Distillation slice bumped
+  8k → 15k.
+- **Browser scrape lazy-image capture** — 5s flat wait missed
+  IntersectionObserver loaders. Added `autoScroll` helper, absolutize
+  relative URLs, bumped timeout to 25s.
+
+**Warmup — Auto-Discover + Distillation Tuning:**
+- **Auto-discover sub-pages** — homepage scrape emits a `discovered_pages`
+  list (doctor pages, contact, practice pages); distillation uses them to
+  populate per-doctor credentials and per-service blurbs not visible from
+  the homepage alone.
+- **Distillation prompt tightened** — `IdentityDistiller.md` stops emitting
+  empty `certifications[]` when nothing was found, and populates
+  `doctors[i].credentials[]` per-doctor rather than a single catch-all list.
+
+**Identity Modal — Rebuild:**
+- **Monaco JSON editor** replaces the raw textarea on the JSON tab.
+  Lazy-loaded via `React.lazy` + `Suspense`. Validation-gated save.
+- **Slice PATCH endpoint** — `PATCH /:id/identity/slice` with Zod validators
+  per slice and a 13-path allow-list (`content_essentials.*`, `locations`,
+  `brand`, `voice_and_tone`). `brand` and `voice_and_tone` remain
+  permissive-shaped.
+- **Doctors / Services CRUD with merge semantics** — add + per-row edit
+  with placeholder = current value, empty = no change, null = clear.
+  Stamps `last_synced_at` on every edit.
+- **Slide-up source editor** — bottom sheet panel matching the
+  LeadgenSubmissionDetail pattern (70vh, rounded-t-2xl). Wired to the
+  Doctors + Services tabs so admins can edit the raw source behind any row
+  inline.
+- **New Images tab** — renders `extracted_assets.images[]` with
+  description, use_case, and S3 URL. Logo thumbnail surfaced.
+- **Re-run warmup "Keep sources" dialog** — three-button replacement for
+  the native `confirm()`: Keep / Replace / Cancel. Prevents accidental
+  destruction of manually-edited identity data.
+- **Chat Update tab removed (wire-rip)** — deleted
+  `service.identity-proposer.ts`, `IdentityProposer.md`, both handlers,
+  routes, imports, and all frontend plumbing.
+
+**Media Backfill:**
+- **New migration `20260420000001_add_unique_project_s3url_to_media.ts`** —
+  unique partial index on `(project_id, s3_url) WHERE s3_url IS NOT NULL`
+  so repeat warmups + backfill are idempotent via ON CONFLICT DO NOTHING.
+- **New migration `20260420000002_backfill_media_from_identity_images.ts`** —
+  streams projects, inserts `website_builder.media` rows from each
+  project's `project_identity.extracted_assets.images[]`, `.onConflict`
+  ignored.
+- **`util.image-processor.ts`** — warmup image pipeline now mirrors every
+  analyzed image into the `media` table as a fire-and-forget insert so the
+  Media Browser picks up warmup-captured photos. Insert failure is
+  non-fatal and logged.
+
+**Layouts Tab — Modal Extraction:**
+- **New `LayoutInputsModal.tsx`** — mirrors the IdentityModal shell (fixed
+  inset, max-w-3xl, 75vh body). Houses slot inputs + generate / regenerate
+  / cancel. The Layouts tab now shows a compact summary card + single
+  button to open the modal, letting "Edit Layouts Directly" sit right
+  under without a wall of inputs pushing it off-screen.
+
+**Prompt Enrichment — Multi-Location, Doctors, Services:**
+- **Multi-location** — `util.identity-context.ts` emits a
+  `## LOCATIONS (N total)` block in stable context whenever >1 active
+  location exists, listing each as `Name — City, ST (primary)`. Footer
+  components also get a full list with phone per row. About / story /
+  values components get a plural-framing nudge. Hero / upgrade / wrapper
+  components get city-list context with CTA guidance. Prompts explicitly
+  forbid hyperlinks to `/location/<slug>` until the public route lands
+  (deferred follow-up).
+- **Doctor roster** — stable context emits credentials verbatim
+  (`— DDS, Diplomate ABE, Board Certified`) with the short blurb indented.
+  Component-specific block for doctor / team / meet / staff / provider
+  components includes the full roster + guidance to match photos by
+  description ("name embroidered on scrubs").
+- **Service blurbs** — stable context + service / treatment / procedure
+  component blocks include `services[].short_blurb` with an
+  anti-hallucination guardrail ("don't invent services not listed").
+
+**Image Dedup:**
+- **Content-hash dedup in `util.image-processor.ts`** — SHA-1 of the
+  downloaded buffer; byte-identical images served from CDN + origin
+  (WordPress' `tdosites.com` vs `www.*.com` pattern) upload + analyze
+  once. Logs dedup count. Prior warmups still have dupes in
+  `extracted_assets.images[]`; re-run warmup to clear.
+
+**One-off Ops (Coastal project):**
+- **Template assignment** — project was created without the confirm flow
+  so `template_id` was NULL and the Layouts tab had nothing to render.
+  Assigned Alloro Dental Template via
+  `scripts/debug-warmup/assign-coastal-template.ts`.
+- **Media backfill** — 58 identity images backfilled into
+  `website_builder.media` via
+  `scripts/debug-warmup/backfill-coastal-media.ts` (idempotent per-row
+  existence check, works without the unique index migration applied).
+
+**Debug Scripts:**
+- New `scripts/debug-warmup/` with: `inspect-identity`, `inspect-images`,
+  `inspect-template`, `list-templates`, `e2e-pipeline`,
+  `repro-distill-prod`, `test-url-normalize`, `test-autodiscover`,
+  `check-cost-events`, `find-project`, `backfill-coastal-media`,
+  `assign-coastal-template`.
+
+**Commits:**
+- `feat(website-builder): identity rebuild + warmup quality + prompt enrichment`
+
 ## [0.0.22] - April 2026
 
 ### Leadgen Audit Retry — Public Endpoint, Admin Rerun, 3-Retry Cap

@@ -125,8 +125,16 @@ export async function runAgent(
     messages.push({ role: "user", content: userMessage });
   }
 
+  // Claude 4.x models (Sonnet 4.6, Opus 4.7, Haiku 4.5) dropped support for
+  // assistant-message prefill: the conversation MUST end with a user message.
+  // Silently strip any prefill with a warning so legacy callers don't 400.
+  // The `extractJson` helper handles markdown fences + brace matching, so
+  // prefill is no longer needed for JSON-shape steering.
   if (prefill) {
-    messages.push({ role: "assistant", content: prefill });
+    console.warn(
+      `[LLM] prefill="${prefill}" ignored — Claude 4.x rejects assistant prefill. ` +
+        `Remove prefill from your runAgent call; extractJson handles JSON parsing.`,
+    );
   }
 
   const imgSizeKB = images
@@ -193,12 +201,10 @@ export async function runAgent(
     (b: any): b is Anthropic.TextBlock => b.type === "text"
   );
 
-  let raw = textBlock?.text || "";
+  const raw = textBlock?.text || "";
 
-  if (prefill) {
-    raw = prefill + raw;
-  }
-
+  // prefill was stripped earlier for Claude 4.x compat — extractJson handles
+  // unprefilled JSON via direct parse, fence strip, and brace matching.
   const parsed = extractJson(raw);
 
   const cacheCreationTokens = response.usage?.cache_creation_input_tokens ?? 0;
