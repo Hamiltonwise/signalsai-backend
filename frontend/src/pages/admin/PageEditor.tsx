@@ -1287,13 +1287,10 @@ function PageEditorInner() {
                 }}
               >
                 {isLivePreview ? (
-                  <div className="w-full h-full overflow-y-auto">
-                    <ProgressivePagePreview
-                      projectId={projectId || ""}
-                      pageId={pageId || ""}
-                      minHeight="100%"
-                    />
-                  </div>
+                  <ProgressivePagePreview
+                    projectId={projectId || ""}
+                    pageId={pageId || ""}
+                  />
                 ) : (
                   <iframe
                     ref={iframeRef}

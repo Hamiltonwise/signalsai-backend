@@ -506,6 +506,9 @@ export interface PageProgressiveState {
   generation_progress: GenerationProgress | null;
   template_sections: Array<{ name: string; content: string }>;
   generated_sections: Array<{ name: string; content: string }>;
+  wrapper: string | null;
+  header: string | null;
+  footer: string | null;
 }
 
 /**

@@ -467,6 +467,9 @@ export async function getPageProgressiveState(
   generation_progress: any;
   template_sections: Array<{ name: string; content: string }>;
   generated_sections: Array<{ name: string; content: string }>;
+  wrapper: string | null;
+  header: string | null;
+  footer: string | null;
 }> {
   const page = await db(PAGES_TABLE)
     .where({ id: pageId, project_id: projectId })
@@ -480,6 +483,11 @@ export async function getPageProgressiveState(
     )
     .first();
   if (!page) throw new Error("PAGE_NOT_FOUND");
+
+  const project = await db(PROJECTS_TABLE)
+    .where("id", projectId)
+    .select("wrapper", "header", "footer")
+    .first();
 
   const templatePage = page.template_page_id
     ? await db("website_builder.template_pages")
@@ -535,6 +543,9 @@ export async function getPageProgressiveState(
     generation_progress: parse(page.generation_progress),
     template_sections,
     generated_sections,
+    wrapper: project?.wrapper || null,
+    header: project?.header || null,
+    footer: project?.footer || null,
   };
 }
 
