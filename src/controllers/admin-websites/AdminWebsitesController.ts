@@ -38,6 +38,7 @@ import * as artifactUpload from "./feature-services/service.artifact-upload";
 import * as generationPipeline from "./feature-services/service.generation-pipeline";
 import * as identityWarmup from "./feature-services/service.identity-warmup";
 import * as slotPrefill from "./feature-services/service.slot-prefill";
+import { generateSlotValuesFromIdentity } from "./feature-services/service.slot-generator";
 import { detectBlock } from "./feature-utils/util.url-block-detector";
 import { db } from "../../database/connection";
 import { getWbQueue } from "../../workers/wb-queues";
@@ -211,10 +212,25 @@ export async function getPagesGenerationStatus(
     return res.json({ success: true, data: pages });
   } catch (error: any) {
     console.error("[Admin Websites] Error fetching page generation status:", error);
-    return res.status(500).json({
+    return res.status(500).json({ success: false, error: "FETCH_ERROR" });
+  }
+}
+
+/** GET /:id/pages/:pageId/progressive-state — Template section scaffolding + generated sections so far */
+export async function getPageProgressiveState(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id, pageId } = req.params;
+    const data = await projectManager.getPageProgressiveState(id, pageId);
+    return res.json({ success: true, data });
+  } catch (error: any) {
+    const status = error?.message === "PAGE_NOT_FOUND" ? 404 : 500;
+    console.error("[Admin Websites] Error fetching page progressive state:", error);
+    return res.status(status).json({
       success: false,
-      error: "FETCH_ERROR",
-      message: error?.message || "Failed to fetch page generation status",
+      error: error?.message || "FETCH_ERROR",
     });
   }
 }
@@ -1195,6 +1211,39 @@ export async function getSlotPrefill(
   } catch (error: any) {
     console.error("[Admin Websites] Error fetching slot prefill:", error);
     return res.status(500).json({ success: false, error: "FETCH_ERROR" });
+  }
+}
+
+/** POST /:id/slot-generate — LLM-fill text slots using full identity context */
+export async function generateSlotValues(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { templatePageId, pageContext } = req.body || {};
+
+    if (typeof templatePageId !== "string" || !templatePageId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "templatePageId is required",
+      });
+    }
+
+    const result = await generateSlotValuesFromIdentity(
+      id,
+      templatePageId,
+      typeof pageContext === "string" ? pageContext : undefined,
+    );
+    return res.json({ success: true, data: result });
+  } catch (error: any) {
+    const code = error?.message === "IDENTITY_NOT_READY" ? 409 : 500;
+    console.error("[Admin Websites] Error generating slot values:", error);
+    return res.status(code).json({
+      success: false,
+      error: error?.message || "GENERATE_ERROR",
+    });
   }
 }
 

@@ -16,6 +16,7 @@ import {
   Palette,
   PenSquare,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { fetchTemplatePages } from "../../api/templates";
 import {
@@ -23,6 +24,7 @@ import {
   createBlankPage,
   uploadArtifactPage,
   fetchSlotPrefill,
+  generateSlotValues,
 } from "../../api/websites";
 import type { TemplatePage } from "../../api/templates";
 import type { DynamicSlotDef } from "../../api/websites";
@@ -172,6 +174,29 @@ export default function CreatePageModal({
 
   const updateSlotValue = (key: string, value: string) => {
     setDynamicSlotValues((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const textSlotCount = dynamicSlots.filter((s) => s.type !== "url").length;
+  const [rewriting, setRewriting] = useState(false);
+  const [rewriteError, setRewriteError] = useState<string | null>(null);
+
+  const rewriteAllFromIdentity = async () => {
+    if (!selectedPageId || !projectId || rewriting) return;
+    setRewriting(true);
+    setRewriteError(null);
+    try {
+      const res = await generateSlotValues(
+        projectId,
+        selectedPageId,
+        pageContext.trim() || undefined,
+      );
+      const generated = res.data?.values || {};
+      setDynamicSlotValues((prev) => ({ ...prev, ...generated }));
+    } catch (err: any) {
+      setRewriteError(err?.message || "Failed to generate slot values");
+    } finally {
+      setRewriting(false);
+    }
   };
 
   const validateSlug = (value: string): boolean => {
@@ -598,16 +623,46 @@ export default function CreatePageModal({
                     {/* Dynamic slots for this template page */}
                     {(dynamicSlots.length > 0 || loadingSlots) && (
                       <div className="space-y-1.5">
-                        <label className="block text-sm font-semibold text-gray-700">
-                          Section Content
-                          {loadingSlots && (
-                            <Loader2 className="inline-block ml-2 h-3 w-3 animate-spin text-gray-400" />
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700">
+                              Section Content
+                              {loadingSlots && (
+                                <Loader2 className="inline-block ml-2 h-3 w-3 animate-spin text-gray-400" />
+                              )}
+                            </label>
+                            <p className="text-xs text-gray-500">
+                              Pre-filled from your project identity. Edit, let AI
+                              generate, or skip sections you don't want.
+                            </p>
+                          </div>
+                          {textSlotCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={rewriteAllFromIdentity}
+                              disabled={rewriting}
+                              className="shrink-0 inline-flex items-center gap-1 rounded-md border border-alloro-orange/40 bg-alloro-orange/5 px-2 py-1 text-[11px] font-medium text-alloro-orange hover:bg-alloro-orange/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                              title="Run an LLM pass over every text slot using the project's identity context"
+                            >
+                              {rewriting ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Rewriting…
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="h-3 w-3" />
+                                  Rewrite all from identity
+                                </>
+                              )}
+                            </button>
                           )}
-                        </label>
-                        <p className="text-xs text-gray-500">
-                          Pre-filled from your project identity. Edit, let AI
-                          generate, or skip sections you don't want.
-                        </p>
+                        </div>
+                        {rewriteError && (
+                          <div className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] text-red-700">
+                            {rewriteError}
+                          </div>
+                        )}
                         <DynamicSlotInputs
                           slots={dynamicSlots}
                           values={dynamicSlotValues}

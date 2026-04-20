@@ -451,6 +451,94 @@ export async function getPagesGenerationStatus(projectId: string): Promise<any[]
   return pages;
 }
 
+/**
+ * Fetch the in-flight state for a single page: template section scaffolding
+ * (names + template markup) plus whichever sections have been generated so
+ * far. Feeds the progressive section reveal UI during generation.
+ */
+export async function getPageProgressiveState(
+  projectId: string,
+  pageId: string,
+): Promise<{
+  pageId: string;
+  name: string | null;
+  path: string | null;
+  generation_status: string | null;
+  generation_progress: any;
+  template_sections: Array<{ name: string; content: string }>;
+  generated_sections: Array<{ name: string; content: string }>;
+}> {
+  const page = await db(PAGES_TABLE)
+    .where({ id: pageId, project_id: projectId })
+    .select(
+      "id",
+      "path",
+      "name",
+      "generation_status",
+      "generation_progress",
+      "sections",
+      "template_page_id",
+    )
+    .first();
+  if (!page) throw new Error("PAGE_NOT_FOUND");
+
+  const templatePage = page.template_page_id
+    ? await db("website_builder.template_pages")
+        .where("id", page.template_page_id)
+        .select("sections")
+        .first()
+    : null;
+
+  const parse = (v: unknown): any => {
+    if (!v) return null;
+    if (typeof v === "object") return v;
+    if (typeof v === "string") {
+      try {
+        return JSON.parse(v);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const rawTemplate = parse(templatePage?.sections);
+  const templateSectionsArr = Array.isArray(rawTemplate)
+    ? rawTemplate
+    : Array.isArray(rawTemplate?.sections)
+      ? rawTemplate.sections
+      : [];
+  const template_sections = templateSectionsArr
+    .map((s: any, idx: number) => ({
+      name: s?.name || `section-${idx}`,
+      content: typeof s?.content === "string" ? s.content : "",
+    }))
+    .filter((s: any) => s.content);
+
+  const rawGenerated = parse(page.sections);
+  const generatedArr = Array.isArray(rawGenerated)
+    ? rawGenerated
+    : Array.isArray(rawGenerated?.sections)
+      ? rawGenerated.sections
+      : [];
+  const generated_sections = generatedArr
+    .map((s: any, idx: number) => ({
+      name: s?.name || `section-${idx}`,
+      content: typeof s?.content === "string" ? s.content : "",
+    }))
+    .filter((s: any) => s.content);
+
+  return {
+    pageId: page.id,
+    name: page.name,
+    path: page.path,
+    generation_status: page.generation_status,
+    generation_progress: parse(page.generation_progress),
+    template_sections,
+    generated_sections,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Create all pages from template (bulk kick-off)
 // ---------------------------------------------------------------------------

@@ -31,6 +31,7 @@ import type { ChatMessage } from "../../components/PageEditor/ChatPanel";
 import { ConfirmModal } from "../../components/settings/ConfirmModal";
 import { AlertModal } from "../../components/ui/AlertModal";
 import SectionsEditor from "../../components/Admin/SectionsEditor";
+import ProgressivePagePreview from "../../components/Admin/ProgressivePagePreview";
 import RegenerateComponentModal from "../../components/Admin/RegenerateComponentModal";
 import { showSuccessToast } from "../../lib/toast";
 
@@ -1285,44 +1286,22 @@ function PageEditorInner() {
                   maxWidth: "100%",
                 }}
               >
-                <iframe
-                  ref={iframeRef}
-                  srcDoc={prepareHtmlForPreview(previewHtml)}
-                  sandbox="allow-same-origin allow-scripts"
-                  onLoad={handleIframeLoad}
-                  className="w-full h-full border-0 bg-white"
-                />
-
-                {/* Live preview overlay — shown while page is being generated */}
-                {isLivePreview && (
-                  <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
-                    <div className="bg-gradient-to-t from-amber-50/90 to-transparent pt-12 pb-4 px-6 pointer-events-auto">
-                      <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg border border-amber-200 px-5 py-4 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
-                          <span className="text-sm font-semibold text-gray-900">
-                            Building page...
-                          </span>
-                          {livePreviewProgress && (
-                            <span className="text-xs text-gray-500 ml-auto">
-                              {livePreviewProgress.current_component} ({livePreviewProgress.completed}/{livePreviewProgress.total})
-                            </span>
-                          )}
-                        </div>
-                        {livePreviewProgress && livePreviewProgress.total > 0 && (
-                          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-amber-500 rounded-full transition-all duration-700 ease-out"
-                              style={{ width: `${Math.round((livePreviewProgress.completed / livePreviewProgress.total) * 100)}%` }}
-                            />
-                          </div>
-                        )}
-                        <p className="text-xs text-gray-400">
-                          Components appear as they are generated. Editing will be available when complete.
-                        </p>
-                      </div>
-                    </div>
+                {isLivePreview ? (
+                  <div className="w-full h-full overflow-y-auto">
+                    <ProgressivePagePreview
+                      projectId={projectId || ""}
+                      pageId={pageId || ""}
+                      minHeight="100%"
+                    />
                   </div>
+                ) : (
+                  <iframe
+                    ref={iframeRef}
+                    srcDoc={prepareHtmlForPreview(previewHtml)}
+                    sandbox="allow-same-origin allow-scripts"
+                    onLoad={handleIframeLoad}
+                    className="w-full h-full border-0 bg-white"
+                  />
                 )}
               </div>
             </div>

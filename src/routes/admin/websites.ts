@@ -273,6 +273,9 @@ router.get("/:id/status", controller.getProjectStatus);
 // GET  /:id/pages/generation-status — Per-page generation status (before /:id/pages/:pageId)
 router.get("/:id/pages/generation-status", controller.getPagesGenerationStatus);
 
+// GET  /:id/pages/:pageId/progressive-state — Template scaffolding + generated sections so far
+router.get("/:id/pages/:pageId/progressive-state", controller.getPageProgressiveState);
+
 // POST /:id/create-all-from-template — Bulk create all pages from template
 router.post("/:id/create-all-from-template", controller.createAllFromTemplate);
 
@@ -303,6 +306,9 @@ router.post("/:id/identity/resync-list", controller.resyncIdentityList);
 
 // GET /:id/slot-prefill — Pre-filled slot values from project_identity
 router.get("/:id/slot-prefill", controller.getSlotPrefill);
+
+// POST /:id/slot-generate — LLM-fill text slots using identity context
+router.post("/:id/slot-generate", controller.generateSlotValues);
 
 // POST /:id/generate-layouts — Enqueue layouts generation
 router.post("/:id/generate-layouts", controller.startLayoutGeneration);

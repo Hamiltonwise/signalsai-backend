@@ -28,7 +28,9 @@ type IdentityType = Record<string, any>;
 
 const EXTRACTORS: Record<string, (identity: IdentityType) => string | null> = {
   // Homepage slots
-  certifications_credentials: (id) => joinList(id.content_essentials?.certifications),
+  certifications_credentials: (id) =>
+    joinList(id.content_essentials?.certifications) ||
+    joinList(uniqueDoctorCredentials(id)),
   unique_value_proposition: (id) => str(id.content_essentials?.unique_value_proposition),
   gallery_source_url: (id) => findImageUrl(id, "gallery"),
   faq_focus_topics: (id) => joinList(id.content_essentials?.review_themes),
@@ -93,6 +95,32 @@ function str(v: unknown): string | null {
 function joinList(v: unknown): string | null {
   if (!Array.isArray(v) || v.length === 0) return null;
   return v.filter((x) => typeof x === "string" && x.trim()).join(", ") || null;
+}
+
+/**
+ * Unique, deduped list of credentials across all non-stale doctors. Used as a
+ * fallback for practice-level certifications when the dedicated
+ * `content_essentials.certifications` is empty — admin-editable, so running
+ * this on every warmup would overwrite hand-tuned values, but on first
+ * prefill it's strictly additive.
+ */
+function uniqueDoctorCredentials(identity: IdentityType): string[] {
+  const doctors = identity.content_essentials?.doctors;
+  if (!Array.isArray(doctors) || doctors.length === 0) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const d of doctors) {
+    if (!d || d.stale) continue;
+    const creds = Array.isArray(d.credentials) ? d.credentials : [];
+    for (const c of creds) {
+      if (typeof c !== "string") continue;
+      const key = c.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(c.trim());
+    }
+  }
+  return out;
 }
 
 function findImageUrl(identity: IdentityType, useCase: string): string | null {

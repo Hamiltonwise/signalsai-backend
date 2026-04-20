@@ -28,6 +28,33 @@ Rules:
 - Call `select_image` at most 3 times per section. Pick the most useful images first.
 - If the manifest has no suitable match for a slot you need, use the placeholder URL or a `bg-gray-200` div.
 
+## Button System (MANDATORY)
+
+All buttons and CTA links on a single page use ONE consistent shape. Pick the template's dominant button shape (look at what the template markup already uses in this section and upstream sections) and apply it EVERYWHERE. Do not mix shapes on the same page.
+
+Two allowed shapes:
+
+- **Pill (rounded-full):**
+  - Primary: `class="inline-flex items-center justify-center px-8 py-4 rounded-full font-medium bg-primary text-white hover:opacity-90 transition-opacity"`
+  - Secondary: `class="inline-flex items-center justify-center px-8 py-4 rounded-full font-medium border border-primary text-primary hover:bg-primary-subtle transition-colors"`
+
+- **Rectangle (rounded-lg):**
+  - Primary: `class="inline-flex items-center justify-center px-8 py-4 rounded-lg font-medium bg-primary text-white hover:opacity-90 transition-opacity"`
+  - Secondary: `class="inline-flex items-center justify-center px-8 py-4 rounded-lg font-medium border border-primary text-primary hover:bg-primary-subtle transition-colors"`
+
+Rules:
+- NEVER mix `rounded-full` and `rounded-lg` (or `rounded-xl` / `rounded-md`) buttons on the same page.
+- NEVER change border-width between secondary buttons in the same page (pick `border` OR `border-2`, never both).
+- If the template section has a button with a specific radius utility, match it exactly. Do NOT change the template's chosen shape.
+
+**Tag/badge pills are NOT buttons.** Credentials, category labels, status chips, and tag clouds are `<span>`, never `<a>` or `<button>`. They never have hover states, never have href. Use:
+
+```
+<span class="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-primary-subtle text-primary">Board Certified Endodontist</span>
+```
+
+If the content is informational (a credential, a specialty name, a category) and clicking it would go nowhere meaningful, it's a badge — output a `<span>`, not an `<a>`.
+
 ## Color System
 
 - Use utility classes ONLY: `text-primary`, `bg-primary`, `text-accent`, `bg-accent`
@@ -69,6 +96,40 @@ Rules:
 - Do NOT change: the number of top-level direct children under `<section>`, the tag hierarchy, the nesting depth of cards/grids, the number of list items (unless the admin-provided content has a different count).
 
 If the template does not have a feature (gallery, FAQ, testimonial carousel), DO NOT invent one. Render only what the template's structure defines.
+
+**Thin/empty template slots.** If the template section is a thin wrapper containing only a heading + subheading + optional CTA, and the body region is either:
+- empty,
+- a comment like `<!-- doctors grid -->`, `<!-- services list -->`, `<!-- team -->`,
+- an `<!-- ALLORO_SHORTCODE: <type> -->` marker,
+- or a shortcode token like `[post_block type="..."]` / `[review_block]`,
+
+…then your job is to customize the **heading and subheading only**. PRESERVE the body region verbatim. The rendering engine fills the slot at serve time. Do NOT fabricate cards, grids, badge walls, or hand-written Tailwind to fill the empty region.
+
+## Shortcode Emission Fallback
+
+Known shortcode types and their tokens:
+- doctors → `[post_block type="doctors"]`
+- services → `[post_block type="services"]`
+- reviews → `[review_block]`
+- posts (generic) → `[post_block type="posts"]`
+
+If the template section is clearly about one of these types (heading contains "doctors" / "meet the team" / "our specialists" / "providers" / "services" / "treatments" / "reviews" / "testimonials") AND the body region lacks both a shortcode token and an `ALLORO_SHORTCODE` marker, emit the matching shortcode yourself as the ONLY body content (no cards, no fabricated profiles, no example content). Example:
+
+```html
+<section class="py-16 md:py-24 px-6 md:px-12 lg:px-20">
+  <div class="max-w-7xl mx-auto text-center">
+    <h2 class="text-3xl md:text-4xl font-serif text-gray-900 mb-4">Meet Our Board-Certified Endodontists</h2>
+    <p class="text-gray-600 mb-12">Every provider brings advanced specialty training and a genuine commitment to patient comfort.</p>
+    [post_block type="doctors"]
+  </div>
+</section>
+```
+
+Never fill a doctor/service/review slot with hand-written HTML. The server owns that rendering.
+
+## Alt-Text Grounding
+
+When emitting `alt="..."`, use the image manifest's `description` field verbatim (truncate to 120 chars if it runs longer). Do NOT invent alt text from the `use_case` field, the business name, or inferred context. If the manifest description says "reception area with blue seating," that IS your alt text, not "Our Welcoming Reception."
 
 ## Contrast Rules (MANDATORY pairings)
 

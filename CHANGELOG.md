@@ -2,6 +2,127 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.24] - April 2026
+
+### Website Builder — Agent Accuracy, Progressive Section Reveal, Shortcode Markers, Slot LLM-Fill
+
+Quality and UX pass landing three plan folders —
+`04202026-no-ticket-agent-accuracy-fixes`,
+`04202026-no-ticket-progressive-section-reveal`,
+`04202026-no-ticket-template-shortcode-audit` — plus a Create Page modal
+feature for on-demand LLM slot fill and a doctor-credentials fallback on
+the deterministic prefill. Driven by the Coastal homepage audit: button
+shape drift, fabricated doctor/service/review sections, missing shortcode
+coverage, inline styles, and a build experience that scrolled the viewport
+on every section completion.
+
+**Agent accuracy — prompts + normalizer + whole-page critic:**
+- **`ComponentGenerator.md` tightened** — four new contract sections:
+  - **Button System (MANDATORY)** — two allowed shapes (`rounded-full` pill
+    or `rounded-lg` rectangle), two variants each. Pick ONE shape per page
+    and apply everywhere. Badges are `<span>`, never `<a>`.
+  - **Thin/empty slot preservation** — if a template section is a thin
+    wrapper with just a heading + shortcode slot / marker comment / empty
+    body, customize heading/subheading only and preserve the slot verbatim.
+    No more invented cards to fill empty regions.
+  - **Shortcode emission fallback** — if a section is clearly about
+    doctors / services / reviews but no shortcode token is present, emit
+    the canonical token (`[post_block type="doctors"]` etc.) as the only
+    body content. Never fill these slots with hand-written HTML.
+  - **Alt-text grounding** — use the image manifest's `description` field
+    verbatim for `alt` attributes. No more fabricated "Reception Desk" /
+    "Treatment Bay" alts.
+- **`ComponentCritic.md`** — three new checks: #10 no inline styles (fail
+  `INLINE_STYLE_USED`), #11 button shape consistency within a section
+  (fail `BUTTON_SHAPE_DRIFT`), #12 badge-as-anchor (fail `BADGE_AS_ANCHOR`).
+- **New `util.html-normalizer.ts`** — deterministic cheerio pass between
+  generator and critic: strips LLM-emitted `style="..."` attributes
+  (whitelisting `<section style="background: var(...)">`), converts
+  credential-pill `<a>` elements to `<span>`, normalizes mixed button
+  radii to the dominant shape, and enforces `ALLORO_SHORTCODE` markers
+  (strips fabricated children, injects canonical shortcode token). Wired
+  in `service.generation-pipeline.ts` before each per-component critic
+  call so the critic evaluates normalized output.
+- **New `WholePageCritic.md` + `runWholePageCritique()`** — single LLM
+  pass over the concatenated page after all components complete. Checks
+  cross-section button uniformity, border-weight drift on secondary
+  buttons, shortcode coverage for expected content types, no inline
+  styles anywhere, no duplicate primary CTAs. Soft gate: logs issues, does
+  not block publish.
+
+**Progressive section reveal — Page Editor build experience:**
+- **New `GET /:id/pages/:pageId/progressive-state`** endpoint and
+  `getPageProgressiveState()` service — returns the template section
+  scaffolding (name + template markup) plus whichever sections have been
+  generated so far. Polling-ready; mirrors the existing page-status shape.
+- **New `ProgressivePagePreview.tsx`** — single sandboxed iframe that
+  renders every template section from tick zero. Pending sections show
+  their template markup dimmed with a centered "Building {section}…"
+  pill; completed sections swap in with a CSS fade-in, in place.
+  **Viewport stays put** — no scroll-to-top on section completion. Sticky
+  progress bar at the top of the preview keeps "section-gallery (9/11)"
+  visible without overlaying content.
+- **`PageEditor.tsx` wired** — when `isLivePreview` is true, the old
+  single-iframe-plus-overlay-card is replaced by `ProgressivePagePreview`.
+  When generation completes, the existing preview takes over as before.
+
+**Template shortcode markers — 6 sections annotated:**
+- **`ALLORO_SHORTCODE` convention documented** at top of
+  `shortcodeResolver.service.ts` with the full type vocabulary (doctors,
+  services, reviews, posts, menus, locations). The resolver itself never
+  reads the marker — it's advisory metadata for the ComponentGenerator +
+  normalizer.
+- **New `scripts/debug-warmup/audit-template-shortcodes.ts`** — scans
+  every `templates` + `template_pages` row, reports regions that look
+  like they should be owned by a shortcode but aren't marked. Heuristic
+  based on heading keywords + structural thinness; output is reviewable,
+  never auto-applies.
+- **New `scripts/debug-warmup/apply-template-markers.ts`** — one-off
+  write script for the 5 accepted candidates. Dry-run by default,
+  `--apply` writes. Idempotent — re-run is a no-op.
+- **6 sections marked in the DB** across both active templates:
+  - Alloro Dental (2d325d15): `section-meet-our-team` → doctors,
+    `section-testimonials` → reviews, `section-location-services` → services
+  - Alloro SaaS (4c8da173): `section-google-reviews` → reviews,
+    `section-testimonials` → reviews, `section-testimonials-grid` → reviews
+
+**Create Page modal — on-demand LLM slot fill + smarter prefill:**
+- **"Rewrite all from identity" button** in the Create Page modal's
+  Section Content header. Single click triggers one Sonnet call over all
+  text-type slots using the full identity context (voice, locations,
+  doctors, services), replies with concrete text for every slot, and
+  populates the form inline so the admin can review/edit before
+  Continue. URL slots skipped. Replaces the older "Generate all empty"
+  sentinel-flip button — admin now sees materialized text, not a "you'll
+  see it after the page is built" surprise.
+- **New `service.slot-generator.ts`** — reuses
+  `buildStableIdentityContext()` so multi-location rules + doctor roster
+  + service blurbs all land in the prompt. Response values are key-allow-
+  listed against the template_page's slot definitions so the LLM can't
+  inject extra keys. Returns 409 when identity isn't ready, 400 on
+  missing `templatePageId`.
+- **New `POST /:id/slot-generate`** endpoint and
+  `generateSlotValues()` controller handler + `generateSlotValues` API
+  client in `frontend/src/api/websites.ts`.
+- **Deterministic prefill gains a fallback** —
+  `certifications_credentials` now falls back to a deduped union of
+  `doctors[].credentials` when `content_essentials.certifications` is
+  empty. For Coastal, the previously-empty "Certifications & Credentials"
+  slot now auto-fills with DDS / Diplomate ABE / Board Certified
+  Endodontist / etc. Helper `uniqueDoctorCredentials()` (case-insensitive
+  dedup, skips stale doctors).
+
+**Coastal homepage audit findings (concrete):** button shapes mixed
+`rounded-full` with `rounded-lg` in the Specialists section, the whole
+Specialists block was hand-rolled with no `alloro-tpl-v1-release-*` class
+namespace, doctor roster never rendered (comment stub, no shortcode
+emitted), services section was heading-only, footer columns empty, alt
+text invented. All six root causes are addressed by the prompt contract
+changes + normalizer + shortcode markers above.
+
+**Commits:**
+- `feat(website-builder): agent accuracy + progressive reveal + shortcode markers`
+
 ## [0.0.23] - April 2026
 
 ### Website Builder — Identity Rebuild, Warmup Quality, Multi-Location + Doctor Enrichment

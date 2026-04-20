@@ -498,6 +498,36 @@ export const fetchPagesGenerationStatus = async (
   return response.json();
 };
 
+export interface PageProgressiveState {
+  pageId: string;
+  name: string | null;
+  path: string | null;
+  generation_status: string | null;
+  generation_progress: GenerationProgress | null;
+  template_sections: Array<{ name: string; content: string }>;
+  generated_sections: Array<{ name: string; content: string }>;
+}
+
+/**
+ * Fetch the in-flight state of a single page — template section scaffolding
+ * plus whichever sections have been generated so far. Used by the
+ * ProgressivePagePreview during page generation.
+ */
+export const fetchPageProgressiveState = async (
+  projectId: string,
+  pageId: string,
+): Promise<{ success: boolean; data: PageProgressiveState }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/pages/${pageId}/progressive-state`,
+  );
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch page progressive state: ${response.statusText}`,
+    );
+  }
+  return response.json();
+};
+
 /**
  * Cancel all in-progress page generation for a project
  */
@@ -719,6 +749,27 @@ export const fetchSlotPrefill = async (
     : `?templatePageId=${encodeURIComponent(opts.templatePageId || "")}`;
   const response = await fetch(`${API_BASE}/${projectId}/slot-prefill${qs}`);
   if (!response.ok) throw new Error(`Failed to fetch slot prefill: ${response.statusText}`);
+  return response.json();
+};
+
+/** LLM-generate concrete text values for every text-type slot on a template page. */
+export const generateSlotValues = async (
+  projectId: string,
+  templatePageId: string,
+  pageContext?: string,
+): Promise<{
+  success: boolean;
+  data: { values: Record<string, string> };
+}> => {
+  const response = await fetch(`${API_BASE}/${projectId}/slot-generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ templatePageId, pageContext }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || err.error || `Failed to generate slot values: ${response.statusText}`);
+  }
   return response.json();
 };
 

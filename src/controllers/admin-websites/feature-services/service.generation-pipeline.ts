@@ -25,6 +25,7 @@ import {
   processImages as processImagesShared,
   collectImageUrls as collectImageUrlsShared,
 } from "../feature-utils/util.image-processor";
+import { normalizeComponentHtml } from "../feature-utils/util.html-normalizer";
 import {
   buildStableIdentityContext,
   buildComponentContext,
@@ -339,6 +340,21 @@ export async function generatePageComponents(
       log(`Component generation failed: ${component.name}`, { error: err.message });
     }
 
+    // Deterministic normalizer: strip LLM-emitted inline styles, convert
+    // badge-shaped anchors to <span>, and collapse mixed button radii.
+    // Runs before the critic so the critic evaluates the cleaned HTML.
+    if (html) {
+      const { html: normalized, report } = normalizeComponentHtml(html);
+      if (
+        report.inlineStylesStripped > 0 ||
+        report.badgeAnchorsConverted > 0 ||
+        report.buttonRadiiRewritten > 0
+      ) {
+        log(`Normalizer cleaned ${component.name}`, report as any);
+      }
+      html = normalized;
+    }
+
     // Critique pass
     if (html) {
       const critique = await runCritique(
@@ -411,6 +427,36 @@ export async function generatePageComponents(
         }),
         updated_at: db.fn.now(),
       });
+  }
+
+  // Whole-page critic — one LLM pass over the concatenated HTML, checking
+  // cross-section consistency. Soft gate: logs verdict, does not block
+  // publish.
+  try {
+    const wholePageHtml = generatedSections.map((s) => s.content).join("\n");
+    const wholePageVerdict = await runWholePageCritique(
+      identity,
+      wholePageHtml,
+      page.name || page.path || "page",
+      {
+        projectId,
+        eventType: "whole_page_critic",
+        metadata: { page_id: pageId },
+      },
+    );
+    if (wholePageVerdict) {
+      if (wholePageVerdict.pass) {
+        log("Whole-page critic passed", { pageId });
+      } else {
+        log("Whole-page critic flagged issues", {
+          pageId,
+          issues: wholePageVerdict.issues,
+          suggestions: wholePageVerdict.suggested_improvements,
+        });
+      }
+    }
+  } catch (err: any) {
+    log("Whole-page critique threw", { error: err.message, pageId });
   }
 
   await db(PAGES_TABLE).where("id", pageId).update({
@@ -675,6 +721,59 @@ async function runCritique(
     };
   } catch (err: any) {
     log("Critique call failed", { error: err.message });
+    return null;
+  }
+}
+
+/**
+ * Whole-page critique — one LLM call over the concatenated page HTML,
+ * evaluating cross-section consistency (button shape uniformity, border
+ * weight, shortcode coverage, duplicate CTAs, inline styles). Soft gate:
+ * logs issues but does not block publish.
+ */
+async function runWholePageCritique(
+  identity: ProjectIdentity,
+  wholePageHtml: string,
+  pageName: string,
+  costContext?: CostContext,
+): Promise<{ pass: boolean; issues: string[]; suggested_improvements: string } | null> {
+  if (!wholePageHtml || wholePageHtml.trim().length === 0) return null;
+
+  const wholePagePrompt = loadPrompt("websiteAgents/builder/WholePageCritic");
+  const archetype = identity.voice_and_tone?.archetype || "family-friendly";
+  const tone = identity.voice_and_tone?.tone_descriptor || "professional";
+  const businessName = identity.business?.name || "the practice";
+
+  const stableContext = [
+    `## PRACTICE CONTEXT`,
+    `Business: ${businessName}`,
+    `Archetype: ${archetype}`,
+    `Tone: ${tone}`,
+  ].join("\n");
+
+  const userMessage = `## PAGE: ${pageName}\n\n## FULL PAGE HTML\n\`\`\`html\n${wholePageHtml}\n\`\`\`\n\nReview this entire page for cross-section consistency and call the report_critique tool with your findings.`;
+
+  try {
+    const result = await runWithTools({
+      systemPrompt: wholePagePrompt,
+      userMessage,
+      tools: [REPORT_CRITIQUE_TOOL],
+      toolChoice: { type: "tool", name: "report_critique" },
+      maxTokens: 1024,
+      cachedSystemBlocks: [stableContext],
+      costContext,
+    });
+    const call = result.toolCalls.find((c) => c.name === "report_critique");
+    if (!call) return null;
+    return {
+      pass: !!call.input.pass,
+      issues: Array.isArray(call.input.issues)
+        ? (call.input.issues as string[])
+        : [],
+      suggested_improvements: String(call.input.suggested_improvements || ""),
+    };
+  } catch (err: any) {
+    log("Whole-page critique call failed", { error: err.message });
     return null;
   }
 }

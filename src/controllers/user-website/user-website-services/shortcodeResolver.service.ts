@@ -7,6 +7,37 @@
  *
  * Each resolved shortcode is wrapped in a marker div so the editor can
  * restore the original shortcode token during section extraction.
+ *
+ * =====================================================================
+ * ALLORO_SHORTCODE MARKER CONVENTION (consumed by ComponentGenerator +
+ * util.html-normalizer; resolver itself is unaffected)
+ * =====================================================================
+ *
+ * Template sections that are owned by a shortcode — the doctor roster,
+ * services list, reviews, etc. — should be annotated in their template
+ * HTML with a marker comment:
+ *
+ *     <!-- ALLORO_SHORTCODE: <type> -->
+ *
+ * Supported `<type>` vocabulary (mirrors what this resolver understands):
+ *   - doctors       → {{ post_block items='<id>' ... }} (post type `doctors`)
+ *   - services      → {{ post_block items='<id>' ... }} (post type `services`)
+ *   - reviews       → {{ review_block items='<id>' ... }}
+ *   - posts         → {{ post_block items='<id>' ... }} (generic/other post types)
+ *   - menus         → {{ menu items='<id>' ... }}
+ *   - locations     → {{ post_block items='<id>' ... }} (post type `locations`)
+ *
+ * Contract:
+ *   - The LLM component generator MUST preserve the marker region
+ *     verbatim; it customizes only heading/subheading, not the body.
+ *   - The post-gen HTML normalizer (util.html-normalizer.ts) SHOULD
+ *     strip any fabricated children inside a marked region and re-insert
+ *     the canonical shortcode token when one is missing.
+ *   - The resolver itself never reads the marker — markers are purely
+ *     advisory metadata for upstream generation/normalization steps.
+ *
+ * When adding a new shortcode type in this file, update the vocabulary
+ * above so template annotations stay aligned.
  */
 
 import { db } from "../../../database/connection";
