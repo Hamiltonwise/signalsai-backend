@@ -12,10 +12,7 @@ import {
   FileText,
   Loader2,
   AlertCircle,
-  MapPin,
-  Phone,
   Star,
-  Search,
   X,
   Code,
   Trash2,
@@ -31,7 +28,6 @@ import {
   Newspaper,
   Menu,
   ArrowRightLeft,
-  ArrowRight,
   Archive,
   Wrench,
   Fingerprint,
@@ -41,14 +37,12 @@ import {
 } from "lucide-react";
 import {
   fetchWebsiteDetail,
-  updateWebsite,
   deleteWebsite,
   deletePageByPath,
   linkWebsiteToOrganization,
   connectDomain,
   verifyDomainAdmin,
   disconnectDomain,
-  createAllFromTemplate,
   fetchPagesGenerationStatus,
   cancelGeneration,
   fetchSlotPrefill,
@@ -67,10 +61,6 @@ import {
   useAdminWebsiteDetail,
   useInvalidateAdminWebsiteDetail,
 } from "../../hooks/queries/useAdminQueries";
-import { searchPlaces, getPlaceDetails } from "../../api/places";
-import type { PlaceSuggestion, PlaceDetails } from "../../api/places";
-import { fetchTemplates, fetchTemplatePages } from "../../api/templates";
-import type { Template, TemplatePage } from "../../api/templates";
 import {
   AdminPageHeader,
   ActionButton,
@@ -78,11 +68,9 @@ import {
 } from "../../components/ui/DesignSystem";
 import CreatePageModal from "../../components/Admin/CreatePageModal";
 import IdentityModal from "../../components/Admin/IdentityModal";
-import DynamicSlotInputs from "../../components/Admin/DynamicSlotInputs";
 import LayoutInputsModal from "../../components/Admin/LayoutInputsModal";
 import MediaTab from "../../components/Admin/MediaTab";
 import CodeManagerTab from "../../components/Admin/CodeManagerTab";
-import ColorPicker from "../../components/Admin/ColorPicker";
 import ConnectDomainModal from "../../components/Admin/ConnectDomainModal";
 import RecipientsConfig from "../../components/Admin/RecipientsConfig";
 import FormSubmissionsTab from "../../components/Admin/FormSubmissionsTab";
@@ -239,29 +227,7 @@ export default function WebsiteDetail() {
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState<string | null>(null);
 
-  // GBP Selector state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
-  const [isConfirming, setIsConfirming] = useState(false);
-  const [isSkipping, setIsSkipping] = useState(false);
-  const [websiteUrl, setWebsiteUrl] = useState("");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const [searchError, setSearchError] = useState<string | null>(null);
   const [, setIsPolling] = useState(false);
-
-  // Template selector state
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    null,
-  );
-  const [selectedTemplatePages, setSelectedTemplatePages] = useState<
-    TemplatePage[]
-  >([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   // Create page modal state
   const [showCreatePageModal, setShowCreatePageModal] = useState(false);
@@ -349,14 +315,6 @@ export default function WebsiteDetail() {
 
   const isBulkSeoActive = bulkSeoStatus !== null && (bulkSeoStatus.status === "queued" || bulkSeoStatus.status === "processing");
 
-  // Color picker state
-  const [primaryColor, setPrimaryColor] = useState("#1E40AF");
-  const [accentColor, setAccentColor] = useState("#F59E0B");
-
-  // Data source toggle: scrape a website or paste data manually
-  const [dataSource, setDataSource] = useState<"website" | "pasted">("website");
-  const [scrapedData, setScrapedData] = useState("");
-
   // Detail tab: persisted in URL search params so refresh preserves tab
   const VALID_TABS = ["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "reviews", "redirects", "backups", "advanced-tools", "costs"] as const;
   type DetailTab = typeof VALID_TABS[number];
@@ -392,14 +350,7 @@ export default function WebsiteDetail() {
   // Per-page generation status polling
   const [pageGenStatuses, setPageGenStatuses] = useState<PageGenerationStatusItem[]>([]);
   const [isCreatingAll, setIsCreatingAll] = useState(false);
-  // Per-page websiteUrl overrides: { [templatePageId]: url }
-  const [pageWebsiteUrls, setPageWebsiteUrls] = useState<Record<string, string>>({});
-  // Per-page path inputs: { [templatePageId]: path }
-  const [pagePathInputs, setPagePathInputs] = useState<Record<string, string>>({});
 
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageGenPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const expectedPageCountRef = useRef<number>(0);
@@ -497,48 +448,6 @@ export default function WebsiteDetail() {
       loadAvailableOrganizations();
     }
   }, [website?.organization?.id, loadAvailableOrganizations]);
-
-  // Load templates for selector (only when CREATED status or no template set yet)
-  useEffect(() => {
-    if (!website || (website.status !== "CREATED" && website.template_id)) return;
-    const loadTemplates = async () => {
-      try {
-        setLoadingTemplates(true);
-        const response = await fetchTemplates();
-        const published = response.data.filter((t) => t.status === "published");
-        setTemplates(published);
-        // Pre-select the active template
-        const active = published.find((t) => t.is_active);
-        if (active) {
-          setSelectedTemplateId(active.id);
-          // Load its pages
-          const pagesResponse = await fetchTemplatePages(active.id);
-          setSelectedTemplatePages(pagesResponse.data);
-        } else if (published.length > 0) {
-          setSelectedTemplateId(published[0].id);
-          const pagesResponse = await fetchTemplatePages(published[0].id);
-          setSelectedTemplatePages(pagesResponse.data);
-        }
-      } catch (err) {
-        console.error("Failed to load templates:", err);
-      } finally {
-        setLoadingTemplates(false);
-      }
-    };
-    loadTemplates();
-  }, [website?.status]);
-
-  // Load template pages when template selection changes
-  const handleTemplateChange = async (templateId: string) => {
-    setSelectedTemplateId(templateId);
-    try {
-      const response = await fetchTemplatePages(templateId);
-      setSelectedTemplatePages(response.data);
-    } catch (err) {
-      console.error("Failed to load template pages:", err);
-      setSelectedTemplatePages([]);
-    }
-  };
 
   // Project status polling (stops when CREATED or LIVE)
   useEffect(() => {
@@ -689,7 +598,7 @@ export default function WebsiteDetail() {
 
   const handleCancelLayouts = async () => {
     if (!id) return;
-    if (!confirm("Cancel layouts generation?")) return;
+    if (!(await confirm({ title: "Cancel layouts generation?", confirmLabel: "Cancel generation", variant: "danger" }))) return;
     try {
       await cancelGeneration(id);
       const res = await fetchLayoutsStatus(id);
@@ -699,18 +608,9 @@ export default function WebsiteDetail() {
     }
   };
 
-  // Click outside dropdown
+  // Close org dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(event.target as Node)
-      ) {
-        setIsDropdownOpen(false);
-      }
-      // Also handle org dropdown
       if (
         orgDropdownRef.current &&
         !orgDropdownRef.current.contains(event.target as Node)
@@ -721,173 +621,6 @@ export default function WebsiteDetail() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // Debounced search
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    setSearchError(null);
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    if (value.trim().length < 2) {
-      setSuggestions([]);
-      setIsDropdownOpen(false);
-      return;
-    }
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        setSearching(true);
-        const response = await searchPlaces(value);
-        setSuggestions(response.suggestions || []);
-        setIsDropdownOpen(response.suggestions?.length > 0);
-      } catch (err) {
-        console.error("Search failed:", err);
-        setSearchError("Network error. Please try again.");
-        setSuggestions([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-  }, []);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isDropdownOpen || suggestions.length === 0) return;
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setHighlightedIndex((prev) =>
-          prev < suggestions.length - 1 ? prev + 1 : 0,
-        );
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setHighlightedIndex((prev) =>
-          prev > 0 ? prev - 1 : suggestions.length - 1,
-        );
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (highlightedIndex >= 0 && highlightedIndex < suggestions.length)
-          handleSelectPlace(suggestions[highlightedIndex]);
-        break;
-      case "Escape":
-        setIsDropdownOpen(false);
-        setHighlightedIndex(-1);
-        break;
-    }
-  };
-
-  const handleSelectPlace = async (suggestion: PlaceSuggestion) => {
-    if (!id || isLoadingDetails) return;
-    try {
-      setIsLoadingDetails(true);
-      setSearchError(null);
-      setSuggestions([]);
-      setIsDropdownOpen(false);
-      setSearchQuery(suggestion.mainText);
-      const detailsResponse = await getPlaceDetails(suggestion.placeId);
-      const place = detailsResponse.place;
-      setSelectedPlace(place);
-      setWebsiteUrl(place.websiteUri || "");
-    } catch (err) {
-      console.error("Failed to load place details:", err);
-      setSearchError("Failed to load business details. Please try again.");
-    } finally {
-      setIsLoadingDetails(false);
-    }
-  };
-
-  const handleConfirmSelection = async () => {
-    if (!id || !selectedPlace || isConfirming) return;
-    if (!selectedTemplateId) {
-      setSearchError("Please select a template.");
-      return;
-    }
-    if (selectedTemplatePages.length === 0) {
-      setSearchError(
-        "Selected template has no pages. Please add pages to the template first.",
-      );
-      return;
-    }
-
-    try {
-      setIsConfirming(true);
-      setIsCreatingAll(true);
-      setSearchError(null);
-
-      // Save project metadata (place, template, colors) — server sets status to IN_PROGRESS
-      await updateWebsite(id, {
-        selected_place_id: selectedPlace.placeId,
-        selected_website_url: dataSource === "website" ? (websiteUrl || null) : null,
-        template_id: selectedTemplateId,
-        primary_color: primaryColor,
-        accent_color: accentColor,
-        step_gbp_scrape: {
-          name: selectedPlace.name,
-          formattedAddress: selectedPlace.formattedAddress,
-          phone: selectedPlace.phone,
-          rating: selectedPlace.rating,
-          reviewCount: selectedPlace.reviewCount,
-          websiteUri: dataSource === "website" ? (websiteUrl || null) : null,
-          category: selectedPlace.category,
-        },
-      } as any);
-
-      // Build per-page config using explicit path inputs and websiteUrl overrides
-      const globalWebsiteUrl = dataSource === "website" ? (websiteUrl || null) : null;
-      const pageConfigs = selectedTemplatePages.map((tp) => ({
-        templatePageId: tp.id,
-        path: pagePathInputs[tp.id] ?? "",
-        websiteUrl: pageWebsiteUrls[tp.id] !== undefined ? (pageWebsiteUrls[tp.id] || null) : globalWebsiteUrl,
-      }));
-
-      try {
-        const result = await createAllFromTemplate(id, {
-          templateId: selectedTemplateId,
-          placeId: selectedPlace.placeId,
-          pages: pageConfigs,
-          businessName: selectedPlace.name,
-          formattedAddress: selectedPlace.formattedAddress,
-          city: selectedPlace.city,
-          state: selectedPlace.state,
-          phone: selectedPlace.phone ?? undefined,
-          category: selectedPlace.category,
-          primaryColor,
-          accentColor,
-          practiceSearchString: selectedPlace.practiceSearchString,
-          rating: selectedPlace.rating ?? undefined,
-          reviewCount: selectedPlace.reviewCount,
-        });
-
-        // Seed the polling state with queued items immediately
-        setPageGenStatuses(result.data.map((p) => ({
-          id: p.id,
-          path: p.path,
-          status: "draft",
-          generation_status: "queued" as const,
-          template_page_name: selectedTemplatePages.find((tp) => tp.id === p.templatePageId)?.name ?? null,
-          updated_at: new Date().toISOString(),
-        })));
-      } catch (webhookErr) {
-        console.error("Create all pipeline error:", webhookErr);
-        toast.error("Failed to start page generation. Please try again.");
-      }
-
-      await loadWebsite();
-      setSelectedPlace(null);
-      setSearchQuery("");
-      setWebsiteUrl("");
-    } catch (err) {
-      console.error("Failed to confirm selection:", err);
-      setSearchError("Failed to save selection. Please try again.");
-    } finally {
-      setIsConfirming(false);
-    }
-  };
-
-  const handleClearSelection = () => {
-    setSelectedPlace(null);
-    setSearchQuery("");
-    setWebsiteUrl("");
-  };
 
   const handleDelete = async () => {
     if (!id || isDeleting) return;
@@ -1057,7 +790,7 @@ export default function WebsiteDetail() {
 
   const handleCancelGeneration = async () => {
     if (!id) return;
-    if (!confirm("Cancel all in-progress page generation?")) return;
+    if (!(await confirm({ title: "Cancel all in-progress page generation?", confirmLabel: "Cancel all", variant: "danger" }))) return;
     try {
       await cancelGeneration(id);
       // Force immediate poll to refresh statuses

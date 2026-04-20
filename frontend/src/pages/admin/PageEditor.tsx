@@ -434,7 +434,7 @@ function PageEditorInner() {
 
   // Live preview mode — active when page is being generated
   const [isLivePreview, setIsLivePreview] = useState(false);
-  const [livePreviewProgress, setLivePreviewProgress] = useState<{
+  const [, setLivePreviewProgress] = useState<{
     total: number;
     completed: number;
     current_component: string;

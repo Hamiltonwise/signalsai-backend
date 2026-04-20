@@ -1118,10 +1118,8 @@ function ReadyView(props: ReadyViewProps) {
   )
     ? (identity.content_essentials!.services as ProjectIdentityListEntry[])
     : [];
-  const locations: ProjectIdentityLocation[] = Array.isArray(
-    (identity as any).locations,
-  )
-    ? ((identity as any).locations as ProjectIdentityLocation[])
+  const locations: ProjectIdentityLocation[] = Array.isArray(identity.locations)
+    ? identity.locations
     : [];
   const images = identity.extracted_assets?.images || [];
 
@@ -1405,6 +1403,8 @@ function BrandEditableSection({
       setError(null);
       await onSave({
         ...(brand || {}),
+        logo_s3_url: brand?.logo_s3_url ?? null,
+        logo_alt_text: brand?.logo_alt_text ?? null,
         primary_color: primary,
         accent_color: accent,
         gradient_enabled: gradient.enabled,
@@ -2628,9 +2628,9 @@ function IdentityLocationsTab({
       const res = await setPrimaryLocation(projectId, placeId);
       onIdentityChange(res.data.identity);
       const nextLocations: ProjectIdentityLocation[] = Array.isArray(
-        (res.data.identity as any).locations,
+        res.data.identity.locations,
       )
-        ? ((res.data.identity as any).locations as ProjectIdentityLocation[])
+        ? res.data.identity.locations
         : [];
       setLocalLocations(nextLocations);
       showSuccessToast("Primary location updated", `"${name || placeId}" is now primary.`);

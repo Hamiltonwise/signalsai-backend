@@ -77,7 +77,10 @@ export interface ProjectIdentity {
       rating: number | null;
       text: string | null;
     }>;
+    doctors?: ProjectIdentityListEntry[];
+    services?: ProjectIdentityListEntry[];
   };
+  locations?: ProjectIdentityLocation[];
   extracted_assets?: {
     images: Array<{
       source_url: string | null;
