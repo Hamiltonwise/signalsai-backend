@@ -169,7 +169,7 @@ export async function generateSeoForSection(
     all_page_descriptions,
     page_path,
     post_title,
-  });
+  }, projectId, entityId);
 }
 
 // ---------------------------------------------------------------------------
@@ -222,7 +222,7 @@ export async function generateAllSeoSections(
     const result = await runGenerateSection(section, entityType, businessData, creatorContext, validatorContext, {
       ...rest,
       existing_seo_data: accumulated,
-    });
+    }, projectId, entityId);
     accumulated = { ...accumulated, ...result.generated };
     results.push(result);
   }
@@ -251,7 +251,9 @@ async function runGenerateSection(
     all_page_descriptions?: string[];
     page_path?: string;
     post_title?: string;
-  }
+  },
+  projectId?: string,
+  entityId?: string
 ): Promise<{ section: string; generated: Record<string, unknown>; insight: string }> {
   const systemPrompt = buildSystemPrompt(section, businessData, creatorContext);
   const userPrompt = buildUserPrompt(section, { ...data, entityType });
@@ -261,6 +263,19 @@ async function runGenerateSection(
     userMessage: userPrompt,
     model: MODEL,
     maxTokens: MAX_TOKENS,
+    costContext: projectId
+      ? {
+          projectId,
+          eventType: "seo-generation",
+          metadata: {
+            section,
+            entity_type: entityType,
+            entity_id: entityId || null,
+            page_path: data.page_path || null,
+            stage: "generate",
+          },
+        }
+      : undefined,
   });
 
   const generated = result.parsed || parseGeneratedSeo(result.raw, section);
@@ -271,7 +286,10 @@ async function runGenerateSection(
     businessData,
     validatorContext,
     data.page_path,
-    data.post_title
+    data.post_title,
+    projectId,
+    entityId,
+    entityType
   );
 
   return { section, generated, insight };
@@ -327,6 +345,17 @@ Analyze the "${section}" section's SEO data. Return ONLY valid JSON: { "insight"
     userMessage: userPrompt,
     model: MODEL,
     maxTokens: 512,
+    costContext: {
+      projectId,
+      eventType: "seo-generation",
+      metadata: {
+        section,
+        entity_type: entityType,
+        entity_id: entityId,
+        page_path: page_path || null,
+        stage: "analyze",
+      },
+    },
   });
 
   const parsed = result.parsed || parseGeneratedSeo(result.raw, section);
@@ -347,7 +376,10 @@ async function generateInsight(
   businessData: Record<string, unknown>,
   validatorContext: string,
   pagePath?: string,
-  postTitle?: string
+  postTitle?: string,
+  projectId?: string,
+  entityId?: string,
+  entityType?: "page" | "post"
 ): Promise<string> {
   try {
     const basePrompt = loadPrompt("websiteAgents/SeoInsight");
@@ -370,6 +402,19 @@ Provide a brief insight about this generated "${section}" section. Return ONLY v
       userMessage: userPrompt,
       model: MODEL,
       maxTokens: 256,
+      costContext: projectId
+        ? {
+            projectId,
+            eventType: "seo-generation",
+            metadata: {
+              section,
+              entity_type: entityType || null,
+              entity_id: entityId || null,
+              page_path: pagePath || null,
+              stage: "insight",
+            },
+          }
+        : undefined,
     });
 
     const parsed = result.parsed || parseGeneratedSeo(result.raw, section);
@@ -446,7 +491,9 @@ export async function generateAllWithSharedContext(
     all_page_descriptions?: string[];
     page_path?: string;
     post_title?: string;
-  }
+  },
+  projectId?: string,
+  entityId?: string
 ): Promise<Array<{ section: string; generated: Record<string, unknown>; insight: string }>> {
   const results: Array<{ section: string; generated: Record<string, unknown>; insight: string }> = [];
   let accumulated = { ...(data.existing_seo_data || {}) };
@@ -458,7 +505,9 @@ export async function generateAllWithSharedContext(
       ctx.businessData,
       ctx.creatorContext,
       ctx.validatorContext,
-      { ...data, existing_seo_data: accumulated }
+      { ...data, existing_seo_data: accumulated },
+      projectId,
+      entityId
     );
     accumulated = { ...accumulated, ...result.generated };
     results.push(result);

@@ -440,6 +440,7 @@ export async function getPagesGenerationStatus(projectId: string): Promise<any[]
       `${PAGES_TABLE}.path`,
       `${PAGES_TABLE}.status`,
       `${PAGES_TABLE}.generation_status`,
+      `${PAGES_TABLE}.generation_progress`,
       `${PAGES_TABLE}.updated_at`,
       db.raw(`website_builder.template_pages.name as template_page_name`),
     )
@@ -448,6 +449,104 @@ export async function getPagesGenerationStatus(projectId: string): Promise<any[]
     .orderBy(`${PAGES_TABLE}.path`, "asc");
 
   return pages;
+}
+
+/**
+ * Fetch the in-flight state for a single page: template section scaffolding
+ * (names + template markup) plus whichever sections have been generated so
+ * far. Feeds the progressive section reveal UI during generation.
+ */
+export async function getPageProgressiveState(
+  projectId: string,
+  pageId: string,
+): Promise<{
+  pageId: string;
+  name: string | null;
+  path: string | null;
+  generation_status: string | null;
+  generation_progress: any;
+  template_sections: Array<{ name: string; content: string }>;
+  generated_sections: Array<{ name: string; content: string }>;
+  wrapper: string | null;
+  header: string | null;
+  footer: string | null;
+}> {
+  const page = await db(PAGES_TABLE)
+    .where({ id: pageId, project_id: projectId })
+    .select(
+      "id",
+      "path",
+      "generation_status",
+      "generation_progress",
+      "sections",
+      "template_page_id",
+    )
+    .first();
+  if (!page) throw new Error("PAGE_NOT_FOUND");
+
+  const project = await db(PROJECTS_TABLE)
+    .where("id", projectId)
+    .select("wrapper", "header", "footer")
+    .first();
+
+  const templatePage = page.template_page_id
+    ? await db("website_builder.template_pages")
+        .where("id", page.template_page_id)
+        .select("name", "sections")
+        .first()
+    : null;
+
+  const parse = (v: unknown): any => {
+    if (!v) return null;
+    if (typeof v === "object") return v;
+    if (typeof v === "string") {
+      try {
+        return JSON.parse(v);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const rawTemplate = parse(templatePage?.sections);
+  const templateSectionsArr = Array.isArray(rawTemplate)
+    ? rawTemplate
+    : Array.isArray(rawTemplate?.sections)
+      ? rawTemplate.sections
+      : [];
+  const template_sections = templateSectionsArr
+    .map((s: any, idx: number) => ({
+      name: s?.name || `section-${idx}`,
+      content: typeof s?.content === "string" ? s.content : "",
+    }))
+    .filter((s: any) => s.content);
+
+  const rawGenerated = parse(page.sections);
+  const generatedArr = Array.isArray(rawGenerated)
+    ? rawGenerated
+    : Array.isArray(rawGenerated?.sections)
+      ? rawGenerated.sections
+      : [];
+  const generated_sections = generatedArr
+    .map((s: any, idx: number) => ({
+      name: s?.name || `section-${idx}`,
+      content: typeof s?.content === "string" ? s.content : "",
+    }))
+    .filter((s: any) => s.content);
+
+  return {
+    pageId: page.id,
+    name: templatePage?.name || null,
+    path: page.path,
+    generation_status: page.generation_status,
+    generation_progress: parse(page.generation_progress),
+    template_sections,
+    generated_sections,
+    wrapper: project?.wrapper || null,
+    header: project?.header || null,
+    footer: project?.footer || null,
+  };
 }
 
 // ---------------------------------------------------------------------------

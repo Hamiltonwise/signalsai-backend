@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, type DragEvent, type ChangeEvent } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, type DragEvent, type ChangeEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   fetchPage,
@@ -31,6 +31,88 @@ import type { ChatMessage } from "../../components/PageEditor/ChatPanel";
 import { ConfirmModal } from "../../components/settings/ConfirmModal";
 import { AlertModal } from "../../components/ui/AlertModal";
 import SectionsEditor from "../../components/Admin/SectionsEditor";
+import ProgressivePagePreview from "../../components/Admin/ProgressivePagePreview";
+import RegenerateComponentModal from "../../components/Admin/RegenerateComponentModal";
+import { showSuccessToast } from "../../lib/toast";
+
+/**
+ * Inject "Rebuilding section…" overlay + pulse/gray styling into the assembled
+ * page HTML for every section whose name is in `regeneratingNames`. We mutate
+ * the HTML string (not the iframe DOM) so the effect survives the srcDoc
+ * re-render cycle triggered by live-preview polling.
+ *
+ * Sections are pre-tagged by `renderPage` with `data-alloro-section="{name}"`
+ * on their root element (see utils/templateRenderer.ts). We locate each match
+ * via a permissive regex, append the pulse classes to the existing class
+ * attribute, wrap the body in a relatively-positioned container via CSS, and
+ * prepend an absolutely-positioned overlay pill.
+ *
+ * Kept deliberately lightweight — no DOMParser, no cheerio, no iframe-side
+ * mutation. Idempotent: passing the same name twice will add classes twice
+ * but the pill is keyed by a marker attribute so only one is injected.
+ */
+function injectRegenerateOverlays(html: string, regeneratingNames: Set<string>): string {
+  if (regeneratingNames.size === 0) return html;
+
+  let out = html;
+  for (const name of regeneratingNames) {
+    // Escape the name for use inside the double-quoted attribute and regex.
+    const escapedAttr = name.replace(/"/g, '\\"');
+    const escapedRegex = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // Match the opening tag carrying data-alloro-section="{name}".
+    // Captures: (1) tag prefix up to class attr or end-of-tag, (2) existing
+    // class value if any. We only need to handle the common case of a class
+    // attribute already being present — renderPage-tagged sections universally
+    // carry Tailwind classes.
+    const openTagRe = new RegExp(
+      `(<\\w+\\b[^>]*\\bdata-alloro-section="${escapedRegex}"[^>]*)>`,
+      "i",
+    );
+    const match = out.match(openTagRe);
+    if (!match) continue;
+
+    const fullOpenTag = match[0];
+    const openTagWithoutClose = match[1];
+
+    // Inject the pulse classes into the existing class attribute, or add one.
+    const pulseClasses = "alloro-regenerating opacity-50 animate-pulse pointer-events-none relative";
+    let newOpenTag: string;
+    if (/\bclass="([^"]*)"/i.test(openTagWithoutClose)) {
+      newOpenTag = openTagWithoutClose.replace(
+        /\bclass="([^"]*)"/i,
+        (_full, existing) => `class="${existing} ${pulseClasses}"`,
+      );
+    } else if (/\bclass='([^']*)'/i.test(openTagWithoutClose)) {
+      newOpenTag = openTagWithoutClose.replace(
+        /\bclass='([^']*)'/i,
+        (_full, existing) => `class='${existing} ${pulseClasses}'`,
+      );
+    } else {
+      newOpenTag = `${openTagWithoutClose} class="${pulseClasses}"`;
+    }
+
+    // Build the overlay pill — inline-styled so it doesn't rely on Tailwind
+    // classes that may or may not be bundled in the preview iframe.
+    const overlayHtml = `<div data-alloro-regen-overlay="${escapedAttr}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;pointer-events:none;"><div style="display:inline-flex;align-items:center;gap:8px;background:#212D40;color:#fff;padding:10px 16px;border-radius:9999px;box-shadow:0 10px 25px rgba(0,0,0,0.25);font-size:14px;font-weight:600;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:alloro-regen-spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Rebuilding section…</div></div>`;
+
+    const replacement = `${newOpenTag}>${overlayHtml}`;
+    out = out.replace(fullOpenTag, replacement);
+  }
+
+  // Inject the keyframes for the spinner exactly once. The preview iframe
+  // already carries Tailwind for animate-pulse, so we only need the spin.
+  if (out.includes("data-alloro-regen-overlay") && !out.includes("data-alloro-regen-keyframes")) {
+    const styleTag = `<style data-alloro-regen-keyframes>@keyframes alloro-regen-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>`;
+    if (/<\/head>/i.test(out)) {
+      out = out.replace(/<\/head>/i, `${styleTag}</head>`);
+    } else {
+      out = styleTag + out;
+    }
+  }
+
+  return out;
+}
 
 const MAX_CHAT_MESSAGES_PER_COMPONENT = 50;
 
@@ -339,6 +421,27 @@ function PageEditorInner() {
   const { selectedInfo, setSelectedInfo, clearSelection, setupListeners, toggleHidden } =
     useIframeSelector(iframeRef, handleIframeQuickAction);
 
+  // Regenerate component modal (Plan B T14)
+  const [regenerateModalOpen, setRegenerateModalOpen] = useState(false);
+
+  // Per-section regenerate UX (spec T10). Names of sections currently being
+  // rebuilt by the regenerate-component job. While a name is in this set the
+  // preview HTML is augmented with a pulse/gray + "Rebuilding section…" pill.
+  // Snapshots hold the section's pre-regen content so the poll loop can tell
+  // when the new content has landed.
+  const [regeneratingSectionNames, setRegeneratingSectionNames] = useState<Set<string>>(new Set());
+  const regenerateSnapshotsRef = useRef<Map<string, string>>(new Map());
+
+  // Live preview mode — active when page is being generated
+  const [isLivePreview, setIsLivePreview] = useState(false);
+  const [, setLivePreviewProgress] = useState<{
+    total: number;
+    completed: number;
+    current_component: string;
+  } | null>(null);
+  const livePreviewPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevSectionCountRef = useRef(0);
+
   // Debounced auto-save ref
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatMapRef = useRef(chatMap);
@@ -446,6 +549,148 @@ function PageEditorInner() {
 
     loadPage();
   }, [projectId, pageId]);
+
+  // --- Live preview mode: detect generating status and poll for updates ---
+  useEffect(() => {
+    if (!page || !projectId || !pageId || !project) return;
+
+    const isGenerating =
+      page.generation_status === "generating" || page.generation_status === "queued";
+
+    if (!isGenerating) {
+      setIsLivePreview(false);
+      setLivePreviewProgress(null);
+      return;
+    }
+
+    setIsLivePreview(true);
+    if (page.generation_progress) {
+      setLivePreviewProgress(page.generation_progress);
+    }
+    prevSectionCountRef.current = normalizeSections(page.sections).length;
+
+    const pollLivePreview = async () => {
+      try {
+        const response = await fetchPage(projectId, pageId);
+        const updatedPage = response.data;
+        const updatedSections = normalizeSections(updatedPage.sections);
+
+        // Update sections and re-render preview
+        setSections(updatedSections);
+        const assembled = renderPage(
+          project.wrapper || "{{slot}}",
+          project.header || "",
+          project.footer || "",
+          updatedSections,
+          undefined,
+          undefined,
+          undefined,
+          projectId,
+        );
+        setHtmlContent(assembled);
+        setPage(updatedPage);
+
+        if (updatedPage.generation_progress) {
+          setLivePreviewProgress(updatedPage.generation_progress);
+        }
+
+        prevSectionCountRef.current = updatedSections.length;
+
+        // Per-section regenerate completion detection (spec T10).
+        // Compare each regenerating section's fresh content against the
+        // snapshot we took when the user kicked regeneration off. If it
+        // differs, the rebuild landed — drop the overlay, toast, and scroll
+        // the section into view inside the iframe.
+        const snapshots = regenerateSnapshotsRef.current;
+        if (snapshots.size > 0) {
+          const finished: string[] = [];
+          for (const [name, prevContent] of snapshots) {
+            const fresh = updatedSections.find((s) => s.name === name);
+            if (fresh && fresh.content && fresh.content !== prevContent) {
+              finished.push(name);
+            }
+          }
+          if (finished.length > 0) {
+            setRegeneratingSectionNames((prev) => {
+              const next = new Set(prev);
+              for (const name of finished) next.delete(name);
+              return next;
+            });
+            for (const name of finished) {
+              snapshots.delete(name);
+              showSuccessToast("Section rebuilt", "Review changes");
+              // Scroll the rebuilt section into view inside the iframe. Run
+              // on the next tick so the srcDoc update has flushed.
+              setTimeout(() => {
+                const doc = iframeRef.current?.contentDocument;
+                if (!doc) return;
+                const el = doc.querySelector(
+                  `[data-alloro-section="${CSS.escape(name)}"]`,
+                );
+                if (el && "scrollIntoView" in el) {
+                  (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }, 50);
+            }
+          }
+        }
+
+        // Check if generation is done
+        if (
+          updatedPage.generation_status === "ready" ||
+          updatedPage.generation_status === "failed" ||
+          updatedPage.generation_status === "cancelled"
+        ) {
+          setIsLivePreview(false);
+          setLivePreviewProgress(null);
+          // Reload full page data for edit mode
+          const [freshProject, freshPage] = await Promise.all([
+            fetchWebsiteDetail(projectId),
+            fetchPage(projectId, pageId),
+          ]);
+          setProject(freshProject.data);
+          const finalSections = normalizeSections(freshPage.data.sections);
+          setSections(finalSections);
+          setPage(freshPage.data);
+          const finalHtml = renderPage(
+            freshProject.data.wrapper || "{{slot}}",
+            freshProject.data.header || "",
+            freshProject.data.footer || "",
+            finalSections,
+            undefined,
+            undefined,
+            undefined,
+            projectId,
+          );
+          setHtmlContent(finalHtml);
+
+          // Failsafe: clear any lingering regenerate overlays once the job
+          // has finished. If content comparison didn't fire (e.g. retry that
+          // produced identical output), we still want to release the UI.
+          if (regenerateSnapshotsRef.current.size > 0) {
+            const stillPending = Array.from(regenerateSnapshotsRef.current.keys());
+            regenerateSnapshotsRef.current.clear();
+            setRegeneratingSectionNames(new Set());
+            // Only toast once — an aggregate message is fine here.
+            if (stillPending.length > 0 && updatedPage.generation_status === "ready") {
+              showSuccessToast("Section rebuilt", "Review changes");
+            }
+          }
+        } else {
+          livePreviewPollRef.current = setTimeout(pollLivePreview, 2000);
+        }
+      } catch (err) {
+        console.error("Live preview poll error:", err);
+        livePreviewPollRef.current = setTimeout(pollLivePreview, 2000);
+      }
+    };
+
+    livePreviewPollRef.current = setTimeout(pollLivePreview, 2000);
+
+    return () => {
+      if (livePreviewPollRef.current) clearTimeout(livePreviewPollRef.current);
+    };
+  }, [page?.generation_status, projectId, pageId]);
 
   // --- Fetch system prompt for debug tab preview ---
   useEffect(() => {
@@ -850,6 +1095,15 @@ function PageEditorInner() {
     ? chatMap.get(selectedInfo.alloroClass) || []
     : [];
 
+  // --- Preview HTML with per-section regenerate overlays applied ---
+  // Derived so either a change to htmlContent (new generation arrived) or a
+  // change to regeneratingSectionNames (user kicked off / we cleared a
+  // rebuild) re-runs the overlay injection.
+  const previewHtml = useMemo(
+    () => injectRegenerateOverlays(htmlContent, regeneratingSectionNames),
+    [htmlContent, regeneratingSectionNames],
+  );
+
   // --- Loading state ---
   if (loading) {
     return (
@@ -1010,7 +1264,7 @@ function PageEditorInner() {
                 }}
               >
                 <iframe
-                  srcDoc={prepareHtmlForPreview(htmlContent)}
+                  srcDoc={prepareHtmlForPreview(previewHtml)}
                   sandbox="allow-same-origin allow-scripts"
                   className="w-full h-full border-0 bg-white"
                 />
@@ -1032,20 +1286,27 @@ function PageEditorInner() {
                   maxWidth: "100%",
                 }}
               >
-                <iframe
-                  ref={iframeRef}
-                  srcDoc={prepareHtmlForPreview(htmlContent)}
-                  sandbox="allow-same-origin allow-scripts"
-                  onLoad={handleIframeLoad}
-                  className="w-full h-full border-0 bg-white"
-                />
+                {isLivePreview ? (
+                  <ProgressivePagePreview
+                    projectId={projectId || ""}
+                    pageId={pageId || ""}
+                  />
+                ) : (
+                  <iframe
+                    ref={iframeRef}
+                    srcDoc={prepareHtmlForPreview(previewHtml)}
+                    sandbox="allow-same-origin allow-scripts"
+                    onLoad={handleIframeLoad}
+                    className="w-full h-full border-0 bg-white"
+                  />
+                )}
               </div>
             </div>
           </>
         )}
 
-        {/* Editor sidebar — shown only in visual view */}
-        {activeView === "visual" && (
+        {/* Editor sidebar — shown only in visual view, hidden during live preview */}
+        {activeView === "visual" && !isLivePreview && (
           <EditorSidebar
             selectedInfo={selectedInfo}
             chatMessages={currentChatMessages}
@@ -1084,6 +1345,48 @@ function PageEditorInner() {
         buttonText="Continue Editing"
         autoDismiss={true}
       />
+
+      {/* Regenerate Component floating button (Plan B T14) */}
+      {!isLivePreview && !loading && sections.length > 0 && activeView === "visual" && (
+        <button
+          onClick={() => setRegenerateModalOpen(true)}
+          title="Regenerate a section with AI"
+          className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full bg-alloro-orange px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-orange-600 transition"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2L14.09 8.26L20.5 8.27L15.45 12.14L17.54 18.4L12 14.53L6.46 18.4L8.55 12.14L3.5 8.27L9.91 8.26L12 2Z" />
+          </svg>
+          Regenerate Section
+        </button>
+      )}
+
+      {/* Regenerate Component Modal */}
+      {regenerateModalOpen && projectId && draftPageId && (
+        <RegenerateComponentModal
+          projectId={projectId}
+          pageId={draftPageId}
+          sectionNames={sections.map((s) => s.name)}
+          onRegenerated={async (sectionName) => {
+            setRegenerateModalOpen(false);
+            // Snapshot the section's current content so the poll loop can
+            // detect when the new HTML replaces it.
+            const target = sectionsRef.current.find((s) => s.name === sectionName);
+            if (target) {
+              regenerateSnapshotsRef.current.set(sectionName, target.content || "");
+            }
+            // Flag the section as regenerating — drives pulse/gray + pill.
+            setRegeneratingSectionNames((prev) => {
+              const next = new Set(prev);
+              next.add(sectionName);
+              return next;
+            });
+            // Re-fetch page to trigger the live-preview effect (page.generation_status === "generating")
+            const freshPage = await fetchPage(projectId, draftPageId);
+            setPage(freshPage.data);
+          }}
+          onClose={() => setRegenerateModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

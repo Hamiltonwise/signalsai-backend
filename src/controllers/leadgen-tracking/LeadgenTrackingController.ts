@@ -29,6 +29,8 @@ import {
 import {
   isLaterStage,
   shouldSetAbandoned,
+  shouldRecordStageEvent,
+  isProgressionStage,
 } from "./feature-utils/util.event-ordering";
 import { parseUserAgent } from "../../lib/userAgent";
 import { enqueueEmailNotification } from "./feature-services/service.email-notification-queue";
@@ -297,6 +299,31 @@ async function ingestEvent(body: unknown): Promise<{
     session = (await db("leadgen_sessions")
       .where({ id: session_id })
       .first()) as ILeadgenSession;
+  }
+
+  // Strict-order gate for progression stage events. CTA / interaction
+  // events (cta_clicked_*, email_field_*) and `abandoned` short-circuit
+  // — they may fire many times and have their own separate handling.
+  //
+  // Progression events are exactly-once per session:
+  //   - duplicate  (incoming === session.final_stage)   -> skip
+  //   - regression (ord(incoming) < ord(final_stage))   -> skip
+  //   - forward                                         -> allow
+  //
+  // Skipped writes still return {ok:true} so silent-fire tracking calls
+  // on the client don't error, but the event row and session_patch are
+  // not written. Visible in pm2 as "[LeadgenTracking] suppressed event".
+  if (isProgressionStage(event_name)) {
+    const decision = shouldRecordStageEvent(event_name, session);
+    if (!decision.allow) {
+      console.log("[LeadgenTracking] suppressed event", {
+        session_id,
+        event_name,
+        reason: decision.reason,
+        current_stage: session.final_stage,
+      });
+      return { status: 200, body: { ok: true, suppressed: decision.reason } };
+    }
   }
 
   // Insert the event row.

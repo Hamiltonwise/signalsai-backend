@@ -9,8 +9,26 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { safeLogAiCostEvent } from "../services/ai-cost/service.ai-cost";
 
 const DEFAULT_MODEL = process.env.AGENTS_LLM_MODEL || "claude-sonnet-4-6";
+
+/**
+ * Optional cost-accounting context. When provided, the runner fires
+ * `safeLogAiCostEvent` after every successful Anthropic call. Nested tool
+ * turns inside `runWithTools` chain onto the top-level event via
+ * `parent_event_id` so a single logical run rolls up.
+ */
+export interface CostContext {
+  /** Project id for `ai_cost_events.project_id`. Null is allowed. */
+  projectId: string | null;
+  /** Event type label (e.g. `page-generate`, `warmup`, `critic`). */
+  eventType: string;
+  /** Free-form metadata row — merged with any caller-provided values. */
+  metadata?: Record<string, unknown> | null;
+  /** Parent event id — used to nest repeated tool turns under a top-level run. */
+  parentEventId?: string | null;
+}
 
 let client: Anthropic | null = null;
 
@@ -36,6 +54,18 @@ export interface LlmRunnerOptions {
     mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
     base64: string;
   }>;
+  /**
+   * Optional cached system blocks prepended to the systemPrompt. When present,
+   * the system is structured as an array of blocks with `cache_control: ephemeral`
+   * set on the cached prefix so Claude's prompt cache (5-min TTL) can skip
+   * reprocessing on subsequent calls within the window.
+   */
+  cachedSystemBlocks?: string[];
+  /**
+   * Optional cost-accounting context. When set, the runner fires
+   * `safeLogAiCostEvent` after a successful call. Never throws.
+   */
+  costContext?: CostContext;
 }
 
 export interface LlmRunnerResult {
@@ -48,6 +78,9 @@ export interface LlmRunnerResult {
   /** Token usage */
   inputTokens: number;
   outputTokens: number;
+  /** Prompt cache metrics (when cachedSystemBlocks was used) */
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
 }
 
 // =====================================================================
@@ -69,6 +102,8 @@ export async function runAgent(
     temperature = 0,
     prefill,
     images,
+    cachedSystemBlocks,
+    costContext,
   } = options;
 
   const messages: Anthropic.MessageParam[] = [];
@@ -90,8 +125,16 @@ export async function runAgent(
     messages.push({ role: "user", content: userMessage });
   }
 
+  // Claude 4.x models (Sonnet 4.6, Opus 4.7, Haiku 4.5) dropped support for
+  // assistant-message prefill: the conversation MUST end with a user message.
+  // Silently strip any prefill with a warning so legacy callers don't 400.
+  // The `extractJson` helper handles markdown fences + brace matching, so
+  // prefill is no longer needed for JSON-shape steering.
   if (prefill) {
-    messages.push({ role: "assistant", content: prefill });
+    console.warn(
+      `[LLM] prefill="${prefill}" ignored — Claude 4.x rejects assistant prefill. ` +
+        `Remove prefill from your runAgent call; extractJson handles JSON parsing.`,
+    );
   }
 
   const imgSizeKB = images
@@ -108,16 +151,38 @@ export async function runAgent(
       `images=${imgCount}${imgCount ? ` (${imgSizeKB}kB)` : ""} maxTokens=${maxTokens}`
   );
 
+  // Build system param. If cachedSystemBlocks provided, structure system as
+  // an array of blocks with cache_control: ephemeral on the cached prefix.
+  let systemParam: any;
+  if (cachedSystemBlocks && cachedSystemBlocks.length > 0) {
+    systemParam = [
+      ...cachedSystemBlocks.map((text) => ({
+        type: "text",
+        text,
+        cache_control: { type: "ephemeral" },
+      })),
+      // The main systemPrompt is also cached — it's stable per template
+      { type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } },
+    ];
+  } else {
+    systemParam = systemPrompt;
+  }
+
   const callStart = Date.now();
-  let response;
+  let response: any;
   try {
-    response = await getClient().messages.create({
-      model,
-      max_tokens: maxTokens,
-      temperature,
-      system: systemPrompt,
-      messages,
-    });
+    response = await (getClient() as any).messages.create(
+      {
+        model,
+        max_tokens: maxTokens,
+        temperature,
+        system: systemParam,
+        messages,
+      },
+      cachedSystemBlocks && cachedSystemBlocks.length > 0
+        ? { headers: { "anthropic-beta": "prompt-caching-2024-07-31" } }
+        : undefined,
+    );
   } catch (err: any) {
     const status = err?.status ?? err?.response?.status ?? "?";
     const body = err?.error ?? err?.response?.data ?? err?.body;
@@ -133,26 +198,47 @@ export async function runAgent(
   }
 
   const textBlock = response.content.find(
-    (b): b is Anthropic.TextBlock => b.type === "text"
+    (b: any): b is Anthropic.TextBlock => b.type === "text"
   );
 
-  let raw = textBlock?.text || "";
+  const raw = textBlock?.text || "";
 
-  // If we used a prefill, prepend it to reconstruct the full response
-  if (prefill) {
-    raw = prefill + raw;
-  }
-
-  // Attempt JSON parse with multiple extraction strategies
+  // prefill was stripped earlier for Claude 4.x compat — extractJson handles
+  // unprefilled JSON via direct parse, fence strip, and brace matching.
   const parsed = extractJson(raw);
+
+  const cacheCreationTokens = response.usage?.cache_creation_input_tokens ?? 0;
+  const cacheReadTokens = response.usage?.cache_read_input_tokens ?? 0;
+  const cacheSuffix = cacheCreationTokens || cacheReadTokens
+    ? ` cacheWrite=${cacheCreationTokens} cacheRead=${cacheReadTokens}`
+    : "";
 
   console.log(
     `[LLM] ✓ ${response.model} (${Date.now() - callStart}ms) ` +
-      `tokens=${response.usage.input_tokens}/${response.usage.output_tokens} ` +
+      `tokens=${response.usage.input_tokens}/${response.usage.output_tokens}${cacheSuffix} ` +
       `parsed=${parsed ? "ok" : "null"} raw=${raw.length}ch`
   );
 
+  if (costContext) {
+    await safeLogAiCostEvent({
+      projectId: costContext.projectId,
+      eventType: costContext.eventType,
+      vendor: "anthropic",
+      model: response.model,
+      usage: {
+        input_tokens: response.usage.input_tokens,
+        output_tokens: response.usage.output_tokens,
+        cache_creation_tokens: cacheCreationTokens,
+        cache_read_tokens: cacheReadTokens,
+      },
+      metadata: costContext.metadata ?? null,
+      parentEventId: costContext.parentEventId ?? null,
+    });
+  }
+
   return {
+    cacheCreationInputTokens: cacheCreationTokens,
+    cacheReadInputTokens: cacheReadTokens,
     raw,
     parsed,
     model: response.model,
@@ -164,6 +250,213 @@ export async function runAgent(
 function stripDataUrlPrefix(data: string): string {
   const match = data.match(/^data:image\/[a-zA-Z0-9.+-]+;base64,(.*)$/);
   return match ? match[1] : data;
+}
+
+// =====================================================================
+// TOOL CALLING
+// =====================================================================
+
+export interface ToolSchema {
+  name: string;
+  description: string;
+  input_schema: {
+    type: "object";
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+export interface RunWithToolsOptions {
+  systemPrompt: string;
+  userMessage: string;
+  tools: ToolSchema[];
+  model?: string;
+  maxTokens?: number;
+  temperature?: number;
+  /**
+   * Optional tool choice — "auto" (default), "any" (must call a tool),
+   * or a specific tool name.
+   */
+  toolChoice?: "auto" | "any" | { type: "tool"; name: string };
+  /** Optional cached system blocks — see LlmRunnerOptions.cachedSystemBlocks */
+  cachedSystemBlocks?: string[];
+  /**
+   * Conversation continuation — when responding to previous tool calls, pass
+   * the full messages array including assistant tool_use and user tool_result
+   * blocks. If provided, userMessage is ignored.
+   */
+  messages?: any[];
+  /**
+   * Optional cost-accounting context. When set, the runner fires
+   * `safeLogAiCostEvent` per turn. Callers handling multi-turn tool loops
+   * should pass the first turn's returned `costEventId` as `parentEventId`
+   * on follow-up turns to roll usage under a single logical run.
+   */
+  costContext?: CostContext;
+}
+
+export interface RunWithToolsResult {
+  toolCalls: ToolCall[];
+  textResponse: string | null;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  stopReason: string | null;
+  /** Raw assistant content array (for feeding back into conversations). */
+  assistantContent: any[];
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
+  /**
+   * Id of the `ai_cost_events` row persisted for this turn. Callers running
+   * multi-turn tool loops should pass this as `parentEventId` on subsequent
+   * calls so nested turns chain under the root run.
+   */
+  costEventId?: string | null;
+}
+
+/**
+ * Call Claude with a set of tools available. Returns structured tool calls
+ * (Claude may call multiple in a single turn) and/or a text response.
+ * Used for structured output scenarios (identity chat updates, critique,
+ * image selection) where the LLM must pick a structured action.
+ */
+export async function runWithTools(
+  options: RunWithToolsOptions,
+): Promise<RunWithToolsResult> {
+  const {
+    systemPrompt,
+    userMessage,
+    tools,
+    model = DEFAULT_MODEL,
+    maxTokens = 4096,
+    temperature = 0,
+    toolChoice,
+    cachedSystemBlocks,
+    messages: conversationMessages,
+    costContext,
+  } = options;
+
+  console.log(
+    `[LLM-TOOLS] → ${model} system=${systemPrompt.length}ch user=${userMessage.length}ch ` +
+      `tools=${tools.length} maxTokens=${maxTokens}`,
+  );
+
+  // System param with optional cached blocks
+  let systemParam: any;
+  if (cachedSystemBlocks && cachedSystemBlocks.length > 0) {
+    systemParam = [
+      ...cachedSystemBlocks.map((text) => ({
+        type: "text",
+        text,
+        cache_control: { type: "ephemeral" },
+      })),
+      { type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } },
+    ];
+  } else {
+    systemParam = systemPrompt;
+  }
+
+  const requestBody: any = {
+    model,
+    max_tokens: maxTokens,
+    temperature,
+    system: systemParam,
+    messages: conversationMessages && conversationMessages.length > 0
+      ? conversationMessages
+      : [{ role: "user", content: userMessage }],
+    tools,
+  };
+
+  if (toolChoice === "auto") {
+    requestBody.tool_choice = { type: "auto" };
+  } else if (toolChoice === "any") {
+    requestBody.tool_choice = { type: "any" };
+  } else if (toolChoice && typeof toolChoice === "object") {
+    requestBody.tool_choice = toolChoice;
+  }
+
+  const callStart = Date.now();
+  let response: any;
+  try {
+    response = await (getClient() as any).beta.tools.messages.create(
+      requestBody,
+      cachedSystemBlocks && cachedSystemBlocks.length > 0
+        ? { headers: { "anthropic-beta": "prompt-caching-2024-07-31,tools-2024-04-04" } }
+        : undefined,
+    );
+  } catch (err: any) {
+    const status = err?.status ?? err?.response?.status ?? "?";
+    console.error(
+      `[LLM-TOOLS] ✗ API error (${Date.now() - callStart}ms) status=${status} message="${err?.message}"`,
+    );
+    throw err;
+  }
+
+  const toolCalls: ToolCall[] = [];
+  const textParts: string[] = [];
+
+  for (const block of response.content as Array<any>) {
+    if (block.type === "tool_use") {
+      toolCalls.push({
+        id: block.id,
+        name: block.name,
+        input: block.input as Record<string, unknown>,
+      });
+    } else if (block.type === "text") {
+      textParts.push(block.text);
+    }
+  }
+
+  const textResponse = textParts.length > 0 ? textParts.join("\n") : null;
+  const cacheCreationTokens = response.usage?.cache_creation_input_tokens ?? 0;
+  const cacheReadTokens = response.usage?.cache_read_input_tokens ?? 0;
+  const cacheSuffix = cacheCreationTokens || cacheReadTokens
+    ? ` cacheWrite=${cacheCreationTokens} cacheRead=${cacheReadTokens}`
+    : "";
+
+  console.log(
+    `[LLM-TOOLS] ✓ ${response.model} (${Date.now() - callStart}ms) ` +
+      `tokens=${response.usage.input_tokens}/${response.usage.output_tokens}${cacheSuffix} ` +
+      `toolCalls=${toolCalls.length} stop=${response.stop_reason}`,
+  );
+
+  let costEventId: string | null = null;
+  if (costContext) {
+    const logged = await safeLogAiCostEvent({
+      projectId: costContext.projectId,
+      eventType: costContext.eventType,
+      vendor: "anthropic",
+      model: response.model,
+      usage: {
+        input_tokens: response.usage.input_tokens,
+        output_tokens: response.usage.output_tokens,
+        cache_creation_tokens: cacheCreationTokens,
+        cache_read_tokens: cacheReadTokens,
+      },
+      metadata: costContext.metadata ?? null,
+      parentEventId: costContext.parentEventId ?? null,
+    });
+    costEventId = logged?.id ?? null;
+  }
+
+  return {
+    toolCalls,
+    textResponse,
+    assistantContent: response.content,
+    model: response.model,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+    stopReason: response.stop_reason ?? null,
+    cacheCreationInputTokens: cacheCreationTokens,
+    cacheReadInputTokens: cacheReadTokens,
+    costEventId,
+  };
 }
 
 // =====================================================================

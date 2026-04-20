@@ -24,9 +24,12 @@ export function validateHtml(
   const issues: ValidationIssue[] = [];
   issues.push(...checkStructure(html));
   issues.push(...checkColors(html));
+  issues.push(...checkContrastPairs(html));
+  issues.push(...checkProseStyle(html));
   issues.push(...checkBannedPatterns(html));
   issues.push(...checkBrokenImages(html));
   issues.push(...checkLinks(html, existingPaths, existingPostSlugs));
+  issues.push(...checkCtaPaths(html));
 
   return { valid: issues.length === 0, issues };
 }
@@ -56,6 +59,15 @@ function checkStructure(html: string): ValidationIssue[] {
   if (inlineStyles.length > 0) {
     issues.push({ type: "ui", description: `${inlineStyles.length} inline style(s).`,
       fixInstruction: "Convert to Tailwind CSS classes." });
+  }
+
+  // Multiple top-level <section> tags — the generator produces ONE section per component.
+  // More than one usually means the AI invented additional sibling sections.
+  const topLevelSectionCount = (html.match(/<section\b/gi) || []).length;
+  if (topLevelSectionCount > 1) {
+    issues.push({ type: "ui",
+      description: `Output contains ${topLevelSectionCount} <section> elements — component should have exactly one.`,
+      fixInstruction: "Keep only the root <section>. Merge content into it or remove invented sub-sections. Template structural fidelity: do not add sibling sections." });
   }
 
   return issues;
@@ -123,6 +135,83 @@ function checkColors(html: string): ValidationIssue[] {
   if (hasDarkBg && (html.match(/\btext-gray-[4-7]00\b/g) || []).length > 0) {
     issues.push({ type: "ui", description: "Low-contrast text on dark background.",
       fixInstruction: "Use text-white or text-gray-100/200 on dark backgrounds." });
+  }
+
+  return issues;
+}
+
+/**
+ * Flags banned foreground/background Tailwind combinations that produce
+ * unreadable contrast. Scans each element's class attribute as a unit so a
+ * `bg-white` on element A and `text-white` on element B don't falsely pair.
+ */
+function checkContrastPairs(html: string): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+
+  const LIGHT_BG = /\b(?:bg-white|bg-gray-50|bg-gray-100|bg-primary-subtle|bg-accent-subtle)\b/;
+  const DARK_BG = /\b(?:bg-primary|bg-accent|bg-gradient-brand|bg-gray-800|bg-gray-900)\b/;
+  const LIGHT_TEXT = /\b(?:text-white|text-gray-100|text-gray-200)\b/;
+  const DARK_TEXT = /\b(?:text-gray-900|text-gray-800|text-gray-700)\b/;
+
+  const classAttrs = html.match(/class=["'][^"']+["']/gi) || [];
+  let lightBgWithLightText = 0;
+  let darkBgWithDarkText = 0;
+  const offendingClasses: string[] = [];
+
+  for (const attr of classAttrs) {
+    const hasLightBg = LIGHT_BG.test(attr);
+    const hasDarkBg = DARK_BG.test(attr);
+    const hasLightText = LIGHT_TEXT.test(attr);
+    const hasDarkText = DARK_TEXT.test(attr);
+
+    // bg-accent-subtle is a special case — it's tinted, not dark — so only exclude bg-primary when exclusion is needed.
+    // A class attr that has BOTH a light bg and bg-accent/bg-primary is rare; treat it as dark-bg dominant.
+    if (hasLightBg && !hasDarkBg && hasLightText) {
+      lightBgWithLightText++;
+      if (offendingClasses.length < 2) offendingClasses.push(attr.replace(/^class=["']|["']$/g, ""));
+    }
+    if (hasDarkBg && hasDarkText) {
+      darkBgWithDarkText++;
+      if (offendingClasses.length < 2) offendingClasses.push(attr.replace(/^class=["']|["']$/g, ""));
+    }
+  }
+
+  if (lightBgWithLightText > 0) {
+    issues.push({ type: "ui",
+      description: `${lightBgWithLightText} element(s) combine light text (text-white/gray-100/200) with a light background — unreadable.`,
+      fixInstruction: `Change to text-gray-900 or text-gray-800 for text on light backgrounds. Offending class attr example: ${offendingClasses[0] || "(none)"}` });
+  }
+  if (darkBgWithDarkText > 0) {
+    issues.push({ type: "ui",
+      description: `${darkBgWithDarkText} element(s) combine dark text (text-gray-700/800/900) with a dark background — unreadable.`,
+      fixInstruction: `Change to text-white or text-gray-100 for text on dark backgrounds. Offending class attr example: ${offendingClasses[offendingClasses.length - 1] || "(none)"}` });
+  }
+
+  return issues;
+}
+
+/**
+ * Flags prose-level AI tells. Currently catches em-dashes and en-dashes in
+ * visible text content. Matches against text outside tags; shortcodes like
+ * `{{slot}}` and `[post_block]` pass through.
+ */
+function checkProseStyle(html: string): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+
+  // Strip tag innards, style blocks, and shortcodes before scanning.
+  const textOnly = html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\{\{[^}]+\}\}/g, "")
+    .replace(/\[[^\]]+\]/g, "");
+
+  const dashMatches = textOnly.match(/[—–]/g) || [];
+  if (dashMatches.length > 0) {
+    issues.push({ type: "ui",
+      description: `${dashMatches.length} em-dash/en-dash character(s) in prose — AI tell.`,
+      fixInstruction: "Replace every — and – in visible copy with a comma, period, colon, or parentheses. Do not touch shortcodes." });
   }
 
   return issues;
@@ -284,6 +373,87 @@ function findClosestPath(broken: string, validPaths: string[]): string | null {
   }
 
   return bestScore >= 2 ? bestPath : null;
+}
+
+/**
+ * Flags CTA-shaped elements whose href points off the canonical pattern.
+ * CTAs should resolve to /contact, tel:, mailto:, a same-page #anchor that
+ * matches an id in the HTML, or an absolute URL. Nav links (services, about,
+ * home) are NOT CTAs and are handled by checkLinks.
+ *
+ * Heuristic for "is this a CTA":
+ *   - <a> or <button> whose class attr contains `rounded-full`, `btn`, or `cta`
+ *   - OR whose visible text matches CTA action verbs (schedule, book, contact,
+ *     get started, request, consult, appointment).
+ */
+function checkCtaPaths(html: string): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const CTA_TEXT_RE = /\b(schedule|book|contact|get\s+started|request|consult|appointment)/i;
+  const CTA_CLASS_RE = /\b(?:rounded-full|btn|cta)\b/i;
+
+  // Collect same-page anchor targets so we can validate `#foo` CTAs.
+  const idMatches = html.match(/\bid=["']([^"']+)["']/g) || [];
+  const existingIds = new Set(
+    idMatches.map((m) => {
+      const mm = m.match(/\bid=["']([^"']+)["']/);
+      return mm ? mm[1] : "";
+    }).filter(Boolean)
+  );
+
+  const offenders: string[] = [];
+
+  // Match <a ...>...</a>. We only scan anchors for now since <button> rarely
+  // carries an href; if a button has data-href we'd handle that in a follow-up.
+  const anchorRe = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = anchorRe.exec(html)) !== null) {
+    const attrs = m[1] || "";
+    const inner = m[2] || "";
+
+    const classMatch = attrs.match(/\bclass=["']([^"']+)["']/i);
+    const classList = classMatch ? classMatch[1] : "";
+    const innerText = inner.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+    const isCtaByClass = CTA_CLASS_RE.test(classList);
+    const isCtaByText = CTA_TEXT_RE.test(innerText);
+    if (!isCtaByClass && !isCtaByText) continue;
+
+    const hrefMatch = attrs.match(/\bhref=["']([^"']*)["']/i);
+    if (!hrefMatch) continue;
+    const href = hrefMatch[1].trim();
+    if (!href) continue;
+
+    if (isAllowedCtaHref(href, existingIds)) continue;
+
+    offenders.push(href);
+    if (offenders.length >= 5) break;
+  }
+
+  if (offenders.length > 0) {
+    const unique = [...new Set(offenders)];
+    issues.push({
+      type: "link",
+      description: `CTA points to ${unique.map((h) => "`" + h + "`").join(", ")} — conversion CTAs should use \`/contact\`, \`tel:\`, or \`mailto:\`.`,
+      fixInstruction:
+        "Change each flagged CTA's href to `/contact` (booking/contact/schedule), `tel:<phone>`, `mailto:<email>`, or a same-page `#anchor` whose id exists in this HTML. Absolute http(s):// URLs are also allowed. Do not invent paths like /book-now or /schedule.",
+    });
+  }
+
+  return issues;
+}
+
+function isAllowedCtaHref(href: string, existingIds: Set<string>): boolean {
+  if (!href) return false;
+  // /contact (with optional trailing slash, query, path, or hash)
+  if (/^\/contact(?:[\/?#]|$)/i.test(href)) return true;
+  if (href.toLowerCase().startsWith("tel:")) return true;
+  if (href.toLowerCase().startsWith("mailto:")) return true;
+  if (/^https?:\/\//i.test(href)) return true;
+  if (href.startsWith("#")) {
+    const id = href.slice(1).split(/[?&]/)[0];
+    return id.length > 0 && existingIds.has(id);
+  }
+  return false;
 }
 
 function levenshteinDistance(a: string, b: string): number {

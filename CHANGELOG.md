@@ -2,6 +2,538 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.24] - April 2026
+
+### Website Builder — Agent Accuracy, Progressive Section Reveal, Shortcode Markers, Slot LLM-Fill
+
+Quality and UX pass landing three plan folders —
+`04202026-no-ticket-agent-accuracy-fixes`,
+`04202026-no-ticket-progressive-section-reveal`,
+`04202026-no-ticket-template-shortcode-audit` — plus a Create Page modal
+feature for on-demand LLM slot fill and a doctor-credentials fallback on
+the deterministic prefill. Driven by the Coastal homepage audit: button
+shape drift, fabricated doctor/service/review sections, missing shortcode
+coverage, inline styles, and a build experience that scrolled the viewport
+on every section completion.
+
+**Agent accuracy — prompts + normalizer + whole-page critic:**
+- **`ComponentGenerator.md` tightened** — four new contract sections:
+  - **Button System (MANDATORY)** — two allowed shapes (`rounded-full` pill
+    or `rounded-lg` rectangle), two variants each. Pick ONE shape per page
+    and apply everywhere. Badges are `<span>`, never `<a>`.
+  - **Thin/empty slot preservation** — if a template section is a thin
+    wrapper with just a heading + shortcode slot / marker comment / empty
+    body, customize heading/subheading only and preserve the slot verbatim.
+    No more invented cards to fill empty regions.
+  - **Shortcode emission fallback** — if a section is clearly about
+    doctors / services / reviews but no shortcode token is present, emit
+    the canonical token (`[post_block type="doctors"]` etc.) as the only
+    body content. Never fill these slots with hand-written HTML.
+  - **Alt-text grounding** — use the image manifest's `description` field
+    verbatim for `alt` attributes. No more fabricated "Reception Desk" /
+    "Treatment Bay" alts.
+- **`ComponentCritic.md`** — three new checks: #10 no inline styles (fail
+  `INLINE_STYLE_USED`), #11 button shape consistency within a section
+  (fail `BUTTON_SHAPE_DRIFT`), #12 badge-as-anchor (fail `BADGE_AS_ANCHOR`).
+- **New `util.html-normalizer.ts`** — deterministic cheerio pass between
+  generator and critic: strips LLM-emitted `style="..."` attributes
+  (whitelisting `<section style="background: var(...)">`), converts
+  credential-pill `<a>` elements to `<span>`, normalizes mixed button
+  radii to the dominant shape, and enforces `ALLORO_SHORTCODE` markers
+  (strips fabricated children, injects canonical shortcode token). Wired
+  in `service.generation-pipeline.ts` before each per-component critic
+  call so the critic evaluates normalized output.
+- **New `WholePageCritic.md` + `runWholePageCritique()`** — single LLM
+  pass over the concatenated page after all components complete. Checks
+  cross-section button uniformity, border-weight drift on secondary
+  buttons, shortcode coverage for expected content types, no inline
+  styles anywhere, no duplicate primary CTAs. Soft gate: logs issues, does
+  not block publish.
+
+**Progressive section reveal — Page Editor build experience:**
+- **New `GET /:id/pages/:pageId/progressive-state`** endpoint and
+  `getPageProgressiveState()` service — returns the template section
+  scaffolding (name + template markup) plus whichever sections have been
+  generated so far. Polling-ready; mirrors the existing page-status shape.
+- **New `ProgressivePagePreview.tsx`** — single sandboxed iframe that
+  renders every template section from tick zero. Pending sections show
+  their template markup dimmed with a centered "Building {section}…"
+  pill; completed sections swap in with a CSS fade-in, in place.
+  **Viewport stays put** — no scroll-to-top on section completion. Sticky
+  progress bar at the top of the preview keeps "section-gallery (9/11)"
+  visible without overlaying content.
+- **`PageEditor.tsx` wired** — when `isLivePreview` is true, the old
+  single-iframe-plus-overlay-card is replaced by `ProgressivePagePreview`.
+  When generation completes, the existing preview takes over as before.
+
+**Template shortcode markers — 6 sections annotated:**
+- **`ALLORO_SHORTCODE` convention documented** at top of
+  `shortcodeResolver.service.ts` with the full type vocabulary (doctors,
+  services, reviews, posts, menus, locations). The resolver itself never
+  reads the marker — it's advisory metadata for the ComponentGenerator +
+  normalizer.
+- **New `scripts/debug-warmup/audit-template-shortcodes.ts`** — scans
+  every `templates` + `template_pages` row, reports regions that look
+  like they should be owned by a shortcode but aren't marked. Heuristic
+  based on heading keywords + structural thinness; output is reviewable,
+  never auto-applies.
+- **New `scripts/debug-warmup/apply-template-markers.ts`** — one-off
+  write script for the 5 accepted candidates. Dry-run by default,
+  `--apply` writes. Idempotent — re-run is a no-op.
+- **6 sections marked in the DB** across both active templates:
+  - Alloro Dental (2d325d15): `section-meet-our-team` → doctors,
+    `section-testimonials` → reviews, `section-location-services` → services
+  - Alloro SaaS (4c8da173): `section-google-reviews` → reviews,
+    `section-testimonials` → reviews, `section-testimonials-grid` → reviews
+
+**Create Page modal — on-demand LLM slot fill + smarter prefill:**
+- **"Rewrite all from identity" button** in the Create Page modal's
+  Section Content header. Single click triggers one Sonnet call over all
+  text-type slots using the full identity context (voice, locations,
+  doctors, services), replies with concrete text for every slot, and
+  populates the form inline so the admin can review/edit before
+  Continue. URL slots skipped. Replaces the older "Generate all empty"
+  sentinel-flip button — admin now sees materialized text, not a "you'll
+  see it after the page is built" surprise.
+- **New `service.slot-generator.ts`** — reuses
+  `buildStableIdentityContext()` so multi-location rules + doctor roster
+  + service blurbs all land in the prompt. Response values are key-allow-
+  listed against the template_page's slot definitions so the LLM can't
+  inject extra keys. Returns 409 when identity isn't ready, 400 on
+  missing `templatePageId`.
+- **New `POST /:id/slot-generate`** endpoint and
+  `generateSlotValues()` controller handler + `generateSlotValues` API
+  client in `frontend/src/api/websites.ts`.
+- **Deterministic prefill gains a fallback** —
+  `certifications_credentials` now falls back to a deduped union of
+  `doctors[].credentials` when `content_essentials.certifications` is
+  empty. For Coastal, the previously-empty "Certifications & Credentials"
+  slot now auto-fills with DDS / Diplomate ABE / Board Certified
+  Endodontist / etc. Helper `uniqueDoctorCredentials()` (case-insensitive
+  dedup, skips stale doctors).
+
+**Coastal homepage audit findings (concrete):** button shapes mixed
+`rounded-full` with `rounded-lg` in the Specialists section, the whole
+Specialists block was hand-rolled with no `alloro-tpl-v1-release-*` class
+namespace, doctor roster never rendered (comment stub, no shortcode
+emitted), services section was heading-only, footer columns empty, alt
+text invented. All six root causes are addressed by the prompt contract
+changes + normalizer + shortcode markers above.
+
+**Commits:**
+- `feat(website-builder): agent accuracy + progressive reveal + shortcode markers`
+
+## [0.0.23] - April 2026
+
+### Website Builder — Identity Rebuild, Warmup Quality, Multi-Location + Doctor Enrichment
+
+A multi-plan arc hardening the website-builder identity pipeline end to end.
+Three plan folders landed together in one shippable slice —
+`04192026-no-ticket-warmup-quality-fixes`,
+`04192026-no-ticket-warmup-autodiscover-and-distill-tuning`,
+`04202026-no-ticket-identity-modal-cleanup-and-crud` — plus post-audit
+refinements around multi-location rendering, doctor / service prompt
+enrichment, and content-hash image dedup.
+
+**Warmup — Quality Fixes:**
+- **Prefill 400 across 5 callers** — `claude-sonnet-4-6` silently dropped
+  assistant-prefill support. `classifyArchetype`, `distillContent`, image
+  vision analysis, and two other callers were failing with 400 and falling
+  back to defaults. Removed `prefill: "{"` everywhere; added a strip+warn
+  guardrail in `runAgent` so future callers can't re-break it.
+- **URL normalization** — GBP-returned `http://example.com/` was getting
+  blocked by Chromium. Added `normalizeScrapeUrl()` with fallback-once
+  retry (http → https + www).
+- **Clean-before-cap** — `MAX_SOURCE_CHARS` was applied to raw HTML before
+  cleaning, leaving ~3-5k of usable text out of 50k scaffolding. Swapped
+  to clean first, then cap. Raised cap to 100k. Distillation slice bumped
+  8k → 15k.
+- **Browser scrape lazy-image capture** — 5s flat wait missed
+  IntersectionObserver loaders. Added `autoScroll` helper, absolutize
+  relative URLs, bumped timeout to 25s.
+
+**Warmup — Auto-Discover + Distillation Tuning:**
+- **Auto-discover sub-pages** — homepage scrape emits a `discovered_pages`
+  list (doctor pages, contact, practice pages); distillation uses them to
+  populate per-doctor credentials and per-service blurbs not visible from
+  the homepage alone.
+- **Distillation prompt tightened** — `IdentityDistiller.md` stops emitting
+  empty `certifications[]` when nothing was found, and populates
+  `doctors[i].credentials[]` per-doctor rather than a single catch-all list.
+
+**Identity Modal — Rebuild:**
+- **Monaco JSON editor** replaces the raw textarea on the JSON tab.
+  Lazy-loaded via `React.lazy` + `Suspense`. Validation-gated save.
+- **Slice PATCH endpoint** — `PATCH /:id/identity/slice` with Zod validators
+  per slice and a 13-path allow-list (`content_essentials.*`, `locations`,
+  `brand`, `voice_and_tone`). `brand` and `voice_and_tone` remain
+  permissive-shaped.
+- **Doctors / Services CRUD with merge semantics** — add + per-row edit
+  with placeholder = current value, empty = no change, null = clear.
+  Stamps `last_synced_at` on every edit.
+- **Slide-up source editor** — bottom sheet panel matching the
+  LeadgenSubmissionDetail pattern (70vh, rounded-t-2xl). Wired to the
+  Doctors + Services tabs so admins can edit the raw source behind any row
+  inline.
+- **New Images tab** — renders `extracted_assets.images[]` with
+  description, use_case, and S3 URL. Logo thumbnail surfaced.
+- **Re-run warmup "Keep sources" dialog** — three-button replacement for
+  the native `confirm()`: Keep / Replace / Cancel. Prevents accidental
+  destruction of manually-edited identity data.
+- **Chat Update tab removed (wire-rip)** — deleted
+  `service.identity-proposer.ts`, `IdentityProposer.md`, both handlers,
+  routes, imports, and all frontend plumbing.
+
+**Media Backfill:**
+- **New migration `20260420000001_add_unique_project_s3url_to_media.ts`** —
+  unique partial index on `(project_id, s3_url) WHERE s3_url IS NOT NULL`
+  so repeat warmups + backfill are idempotent via ON CONFLICT DO NOTHING.
+- **New migration `20260420000002_backfill_media_from_identity_images.ts`** —
+  streams projects, inserts `website_builder.media` rows from each
+  project's `project_identity.extracted_assets.images[]`, `.onConflict`
+  ignored.
+- **`util.image-processor.ts`** — warmup image pipeline now mirrors every
+  analyzed image into the `media` table as a fire-and-forget insert so the
+  Media Browser picks up warmup-captured photos. Insert failure is
+  non-fatal and logged.
+
+**Layouts Tab — Modal Extraction:**
+- **New `LayoutInputsModal.tsx`** — mirrors the IdentityModal shell (fixed
+  inset, max-w-3xl, 75vh body). Houses slot inputs + generate / regenerate
+  / cancel. The Layouts tab now shows a compact summary card + single
+  button to open the modal, letting "Edit Layouts Directly" sit right
+  under without a wall of inputs pushing it off-screen.
+
+**Prompt Enrichment — Multi-Location, Doctors, Services:**
+- **Multi-location** — `util.identity-context.ts` emits a
+  `## LOCATIONS (N total)` block in stable context whenever >1 active
+  location exists, listing each as `Name — City, ST (primary)`. Footer
+  components also get a full list with phone per row. About / story /
+  values components get a plural-framing nudge. Hero / upgrade / wrapper
+  components get city-list context with CTA guidance. Prompts explicitly
+  forbid hyperlinks to `/location/<slug>` until the public route lands
+  (deferred follow-up).
+- **Doctor roster** — stable context emits credentials verbatim
+  (`— DDS, Diplomate ABE, Board Certified`) with the short blurb indented.
+  Component-specific block for doctor / team / meet / staff / provider
+  components includes the full roster + guidance to match photos by
+  description ("name embroidered on scrubs").
+- **Service blurbs** — stable context + service / treatment / procedure
+  component blocks include `services[].short_blurb` with an
+  anti-hallucination guardrail ("don't invent services not listed").
+
+**Image Dedup:**
+- **Content-hash dedup in `util.image-processor.ts`** — SHA-1 of the
+  downloaded buffer; byte-identical images served from CDN + origin
+  (WordPress' `tdosites.com` vs `www.*.com` pattern) upload + analyze
+  once. Logs dedup count. Prior warmups still have dupes in
+  `extracted_assets.images[]`; re-run warmup to clear.
+
+**One-off Ops (Coastal project):**
+- **Template assignment** — project was created without the confirm flow
+  so `template_id` was NULL and the Layouts tab had nothing to render.
+  Assigned Alloro Dental Template via
+  `scripts/debug-warmup/assign-coastal-template.ts`.
+- **Media backfill** — 58 identity images backfilled into
+  `website_builder.media` via
+  `scripts/debug-warmup/backfill-coastal-media.ts` (idempotent per-row
+  existence check, works without the unique index migration applied).
+
+**Debug Scripts:**
+- New `scripts/debug-warmup/` with: `inspect-identity`, `inspect-images`,
+  `inspect-template`, `list-templates`, `e2e-pipeline`,
+  `repro-distill-prod`, `test-url-normalize`, `test-autodiscover`,
+  `check-cost-events`, `find-project`, `backfill-coastal-media`,
+  `assign-coastal-template`.
+
+**Commits:**
+- `feat(website-builder): identity rebuild + warmup quality + prompt enrichment`
+
+## [0.0.22] - April 2026
+
+### Leadgen Audit Retry — Public Endpoint, Admin Rerun, 3-Retry Cap
+
+Adds a self-service retry path for failed leadgen audits (public endpoint
+hit by the FAB "Try again" button on the leadgen tool) and an admin
+rerun override in the Leadgen Submissions detail drawer. Both reuse the
+SAME `audit_id`, preserving session → audit continuity in the admin
+timeline — no more orphaned failed rows with brand-new retry rows alongside.
+
+**Key Changes:**
+- **New migration `20260418000000_add_retry_count_to_audit_processes.ts`** —
+  adds `retry_count INTEGER NOT NULL DEFAULT 0` to `audit_processes`. The
+  column is read as part of a row-scoped UPDATE; no index needed.
+- **New shared service `service.audit-retry.ts`** with
+  `retryAuditById(auditId, options)`. A single atomic UPDATE
+  (`WHERE id=:id AND status='failed' AND retry_count < 3`) resets the row
+  and increments the counter in one shot, so two concurrent retries
+  cannot both slip past the cap. Never throws to the caller. Admin
+  callers pass `{skipLimit:true, countsTowardLimit:false}` to bypass the
+  cap without touching the user's retry budget.
+- **New public endpoint `POST /api/audit/:auditId/retry`**, gated by the
+  existing `X-Leadgen-Key` shared secret (non-silent 401 variant — this
+  is fetch, not beacon). Returns 200 `{ok:true, audit_id, retry_count}`
+  on success, 404 when the audit is missing, 409 when not in failed
+  state, and **429** `{error:"limit_exceeded", retry_count, max_retries}`
+  on the 4th attempt. Re-enqueues the same BullMQ job shape as the
+  original kickoff in `auditWorkflowService.ts`.
+- **New admin endpoint `POST /api/admin/leadgen-submissions/:id/rerun`** —
+  JWT + super-admin gated. Resolves the submission's `audit_id`, calls
+  the shared service with the admin bypass flags. Logs the admin email +
+  user id on every rerun for auditability.
+- **Admin detail drawer gains a "Rerun" button** (only visible when
+  `audit.status === 'failed'`). Click → confirm modal → hits the admin
+  endpoint → optimistically flips local status to "pending" so the UI
+  reflects the change before the next live-poll tick. Inline notice
+  banner surfaces success ("Rerun queued") or error messages.
+- **`retry_count` surfaced in the AuditPayloadBar** — `Retries: N/3`
+  badge next to the status pill so admins can see how many times the
+  user already tried before escalating.
+- **Frontend types updated** — `AuditProcess.retry_count: number` added
+  and `audit_retried` added to the `LeadgenCtaEvent` union (enriches
+  timelines without advancing `final_stage`).
+- Request handler added to `audit.ts` wraps ONLY the new `/retry` route
+  with the tracking-key gate so the existing `/start`, `/:auditId`,
+  `/:auditId/status`, and `PATCH /:auditId` routes remain unchanged.
+
+**Commits:**
+- `feat(leadgen): audit retry endpoint + admin rerun + 3-retry cap`
+
+## [0.0.21] - April 2026
+
+### Identity Enrichments + Multi-Location + Post Imports
+
+Closes the gap between "what we know about the practice" and "content we
+publish about them." Identity now captures hours, doctors, services, and
+multiple locations. Posts tab imports from identity in one click (fetch
+pages, download images to S3, create draft rows). Also lands the
+canonical `/contact` CTA rule and a simplified 3-step setup checklist on
+the website detail page.
+
+**Key Changes:**
+- **Multi-location support** — `identity.locations[]` top-level array
+  populated by scraping every `project.selected_place_ids[]` entry
+  (concurrency 3). `identity.business` stays as a pointer to the
+  designated primary (`project.primary_place_id`) so every existing
+  consumer keeps working unchanged. Scrape failures on individual
+  locations write `warmup_status: "failed"` + `stale: true` entries
+  instead of tanking the whole warmup.
+- **Locations tab in Identity modal** — list view with primary badge,
+  address/phone/hours, per-row re-sync, set-as-primary, and remove
+  actions. Add Location opens a modal that reuses the existing
+  `GbpSearchPicker`. Primary removal is blocked; set-as-primary warns
+  that affected pages should be regenerated.
+- **Doctor + service lightweight lists** — extracted during the
+  existing warmup distillation pass. `{name, source_url,
+  short_blurb, last_synced_at, stale?}` only, no images, no full
+  content. Capped at 100 entries per list; 400-char blurbs;
+  `source_url` must match a real discovered page.
+- **Doctors / Services tabs** — same list view with per-row
+  timestamps, stale badges, and a Re-sync button that re-runs
+  extraction against cached `discovered_pages` without re-scraping.
+- **Hours rendered in Summary** — normalizes three GBP shapes
+  (array-of-strings, `weekdayDescriptions[]`, `periods[]` object)
+  into a Mon–Sun table. "Not provided" row when missing.
+- **Import from Identity** — new toolbar button on Posts tab for
+  `doctor`, `service`, and `location` post types. Modal shows
+  checkbox-selectable entries; already-imported rows flip to
+  "Overwrite" toggles. Import fires a `wb-post-import` BullMQ job:
+  doctors/services run the existing URL-scrape strategy stack
+  (fetch → browser → screenshot), extract main content, download
+  the first meaningful image to S3, insert a post row.
+  Locations build content from structured GBP data without
+  scraping. Partial unique index on
+  `(project_id, post_type_id, source_url)` enforces dedup.
+- **Canonical `/contact` CTA rule** — prompt rule in
+  `ComponentGenerator.md` + `LayoutGenerator.md` plus a new
+  `checkCtaPaths` validator that flags CTA-shaped elements pointing
+  outside `/contact`, `tel:`, `mailto:`, or matching same-page
+  anchors. Absolute URLs pass through for external booking portals.
+- **Simpler 3-step setup UI** — replaced the onboarding-wizard style
+  card rows on `WebsiteDetail` with a compact admin checklist
+  (checkbox · title · inline action link). Locked rows dim; running
+  shows a small spinner; completed shows a green check.
+
+**Commits:**
+- `src/database/migrations/20260418000002_add_multi_location_to_projects.ts` —
+  adds `selected_place_ids TEXT[]` + `primary_place_id TEXT` on
+  `website_builder.projects`; backfills from the existing
+  `selected_place_id`.
+- `src/database/migrations/20260418000003_add_source_url_to_posts.ts` —
+  adds `posts.source_url TEXT` + partial unique index for import
+  dedup.
+- `src/controllers/admin-websites/feature-services/service.identity-warmup.ts` —
+  `buildLocationsArray` + `runWithConcurrency` helpers; primary
+  reuses its already-fetched GBP data, additional place_ids run
+  through `scrapeGbp` with concurrency 3; distillation now emits
+  `doctors[]`/`services[]` with URL allow-listing against
+  `discovered_pages`.
+- `src/controllers/admin-websites/feature-utils/util.identity-context.ts` —
+  `ProjectIdentity.locations[]`, `content_essentials.doctors[]`,
+  `content_essentials.services[]`. `buildStableIdentityContext`
+  lists doctor/service names under CONTENT ESSENTIALS; does NOT
+  iterate locations (prompts still read `business`).
+- `src/controllers/admin-websites/AdminWebsitesController.ts` —
+  6 new handlers: `resyncIdentityList`, `addProjectLocation`,
+  `setPrimaryLocation`, `removeProjectLocation`,
+  `resyncProjectLocation`, `startPostImport`, `getPostImportStatus`.
+- `src/controllers/admin-websites/feature-services/service.post-importer.ts` —
+  `importFromIdentity(projectId, {postType, entries, overwrite})`
+  branches on `location` vs doctor/service; reuses existing
+  `scrapeUrl` fallback strategy, `uploadToS3`, and `buildMediaS3Key`.
+  15 MB image cap with `content-type: image/*` guard.
+- `src/workers/processors/postImporter.processor.ts` +
+  `src/workers/worker.ts` — `wb-post-import` BullMQ worker;
+  concurrency 1, 10-min lock; progress via
+  `job.updateProgress({total, completed, results[]})`.
+- `src/agents/websiteAgents/builder/IdentityDistiller.md` — extended
+  output schema + hard rules for the new doctor/service lists.
+- `src/agents/websiteAgents/builder/{ComponentGenerator,LayoutGenerator}.md` —
+  CTA canonical-path rule.
+- `src/utils/website-utils/htmlValidator.ts` — `checkCtaPaths`
+  function; flags off-pattern CTAs with per-offender detail.
+- `frontend/src/components/Admin/IdentityModal.tsx` — three new
+  tabs (Doctors, Services, Locations); hours rendering; pulls in
+  `AddLocationModal` + `useConfirm` for primary-switch and removal.
+- `frontend/src/components/Admin/AddLocationModal.tsx` — thin
+  wrapper around `GbpSearchPicker` for the Locations tab Add flow.
+- `frontend/src/components/Admin/ImportFromIdentityModal.tsx` —
+  checkbox list, "Already imported → Overwrite" rows, live progress
+  polling against the BullMQ job, per-row results with Retry.
+- `frontend/src/components/Admin/PostsTab.tsx` — "Import from
+  Identity" toolbar button on doctor/service/location post types.
+- `frontend/src/pages/admin/WebsiteDetail.tsx` — simplified setup
+  checklist; earlier placeId-required, wizard, and Preview/Stop/
+  Delete actions from 0.0.20 remain in place.
+- `frontend/src/api/websites.ts` + `posts.ts` —
+  `resyncProjectIdentityList`, `addProjectLocation`,
+  `setPrimaryLocation`, `removeProjectLocation`,
+  `resyncProjectLocation`, `startPostImport`,
+  `fetchPostImportStatus`, and the corresponding types.
+
+## [0.0.20] - April 2026
+
+### Website Builder — Costs Tab, Quality Hardening, Skip Fix, Rebuild UX
+
+Rolls up two coherent improvement bundles for the AI website builder:
+(a) a **Costs tab** per project that logs every Anthropic call with
+model, tokens, and frozen USD estimate; (b) a quality/UX pass that fixes
+the broken "Skip section" behavior, stops em-dash tells, forces serif
+headings globally, tightens template structural fidelity, adds mandatory
+contrast pairings, and finally gives the per-section rebuild a real
+pulsing overlay + toast. Also folds in the page-creation wizard refactor,
+URL scrape-blocked detection, and the per-page Preview/Stop/Delete
+actions that shipped earlier in the same thread.
+
+**Key Changes:**
+- **Costs tab** — new `website_builder.ai_cost_events` table (frozen
+  `estimated_cost_usd` at write time, nested tool-call roll-ups via
+  `parent_event_id`). Cost capture is fire-and-forget: the pipeline
+  never fails because a cost row failed to write. Wired into nine
+  Anthropic call sites: warmup, page-generate, section-regenerate,
+  layouts-build, identity-propose, seo-generation, editor-chat,
+  ai-command, minds-chat, plus the `critic` pass and nested
+  `select-image` tool turns.
+- **Costs UI** — header shows total USD + per-bucket token breakdown
+  (input / output / cache write / cache read). Event list with
+  expandable metadata JSON. Auto-refreshes when any generation
+  transitions from active to idle.
+- **Skip slot actually skips** — `__skip__` used to be advisory; the
+  AI regularly ignored it. Now: `stripSkippedSlotGroups()` pre-strips
+  tied subtrees via a `SLOT_TO_SECTION_KEYWORDS` map (cheerio-based,
+  `data-slot-group` annotations win when present). If every slot in
+  a component is skipped, the pipeline short-circuits and saves an
+  LLM call. The critic also hard-rejects `SKIPPED_SLOT_LEAKED`.
+- **Em-dash ban** — `ComponentGenerator`, `LayoutGenerator`, and
+  `ComponentCritic` prompts all forbid em-dashes and en-dashes.
+  `htmlValidator.checkProseStyle` scans visible text (not shortcodes)
+  and flags every `—` / `–`.
+- **Serif headings** — wrapper `<style>` injection forces `h1`–`h6`
+  to a serif stack globally. Component prompt tells the generator
+  not to add `font-sans` to headings.
+- **Structural fidelity** — critic rejects output that changes the
+  number of top-level children under the root `<section>` by more
+  than one. Validator flags outputs with more than one `<section>`.
+- **Contrast pairing** — explicit allow-list in the prompts. Validator
+  flags `text-white` on light backgrounds and `text-gray-7/8/900` on
+  dark backgrounds per class attribute.
+- **Section rebuild UX** — `PageEditor` tracks
+  `regeneratingSectionNames` and injects `opacity-50 animate-pulse
+  pointer-events-none` + a "Rebuilding section…" overlay into the
+  iframe `srcDoc` for the target section. On content change detected
+  by the existing live-preview poll: overlay clears, toast fires via
+  existing `showSuccessToast`, section scrolls into view.
+- **Per-page actions during generation** — in the Pages list, a row
+  in `generating` state now shows Preview / Stop / Delete buttons.
+  Preview opens the editor where sections stream in live; Stop
+  cancels the project's generation; Delete removes the page entirely.
+- **Page creation wizard** — template mode is now a 3-step wizard
+  (Page → Style → Content) with progress indicator, Back/Continue
+  footer, and the new `TemplatePageSelect` searchable combobox
+  replacing the scrolling button list.
+- **Slot UX enhancements** — each slot gets per-row **Generate** and
+  **Skip** action buttons. URL-type slots get a **Test** button that
+  probes for WAF / Cloudflare / anti-bot blocks and reports a clear
+  verdict before generation spends cycles.
+- **`placeId` requirement relaxed** — pipeline only requires `placeId`
+  when the project has no cached `project_identity` or `step_gbp_scrape`.
+  Existing projects with warmup data no longer error on page create.
+
+**Commits:**
+- `src/database/migrations/20260418000001_create_ai_cost_events.ts` —
+  new per-LLM-call table with project FK, vendor, model, token
+  breakdown, frozen USD, optional `metadata` JSONB, and
+  `parent_event_id` self-reference.
+- `src/services/ai-cost/service.ai-cost.ts` +
+  `src/services/ai-cost/pricing.ts` — hardcoded Anthropic pricing
+  map (Sonnet/Opus/Haiku 4.x), `estimateCost()`, `logAiCostEvent()`,
+  `safeLogAiCostEvent()` (never-throws).
+- `src/agents/service.llm-runner.ts` — `CostContext` option on
+  `runAgent()` and `runWithTools()`; returns `costEventId` for
+  nested tool-call threading.
+- `src/agents/websiteAgents/builder/{ComponentGenerator,LayoutGenerator,ComponentCritic}.md` —
+  em-dash ban, serif rule, structural fidelity, contrast pairings,
+  skip-slot enforcement.
+- `src/utils/website-utils/htmlValidator.ts` — `checkProseStyle`,
+  `checkContrastPairs`, and multi-section detection added to the
+  validator loop.
+- `src/controllers/admin-websites/feature-utils/util.identity-context.ts` —
+  `stripSkippedSlotGroups()` + `SLOT_TO_SECTION_KEYWORDS` map,
+  automatically applied inside `buildComponentContext`.
+- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts` —
+  short-circuit when `ctx.skipGeneration` is true; cost-context
+  wiring; `section-regenerate` vs `page-generate` event differentiation.
+- `src/controllers/admin-websites/feature-services/service.{identity-warmup,layouts-pipeline,identity-proposer,seo-generation,page-editor,ai-command}.ts` —
+  cost-context threading at every call site.
+- `src/controllers/admin-websites/AdminWebsitesController.ts` —
+  `getProjectCosts` handler; `placeId` requirement relaxed when
+  identity cache exists.
+- `src/routes/admin/websites.ts` — `GET /:projectId/costs` route.
+- `src/controllers/minds/feature-services/service.minds-chat.ts` —
+  cost logging for non-streaming and streaming paths.
+- `src/workers/processors/seoBulkGenerate.processor.ts` — threads
+  `projectId` + `entity.id` so bulk SEO runs attribute costs correctly.
+- `src/utils/website-utils/{aiCommandService,pageEditorService}.ts` —
+  direct SDK calls instrumented via internal helpers.
+- `frontend/src/components/Admin/CostsTab.tsx` — total card,
+  tokens pills, scrollable event list with expandable metadata.
+- `frontend/src/components/Admin/CreatePageModal.tsx` — 3-step
+  wizard refactor, integrates `TemplatePageSelect`.
+- `frontend/src/components/Admin/TemplatePageSelect.tsx` — new
+  searchable combobox for template pages.
+- `frontend/src/components/Admin/DynamicSlotInputs.tsx` — per-slot
+  Generate/Skip actions, URL slot Test button with block detection.
+- `frontend/src/components/Admin/RegenerateComponentModal.tsx` —
+  passes section name to `onRegenerated`.
+- `frontend/src/pages/admin/PageEditor.tsx` — pulse/overlay injection,
+  content-change detection via snapshot map, toast + scroll on
+  completion.
+- `frontend/src/pages/admin/WebsiteDetail.tsx` — Costs tab mount,
+  Preview/Stop/Delete row actions during generation.
+- `frontend/src/api/websites.ts` — `fetchProjectCosts()`,
+  `AiCostEvent` / `ProjectCostsResponse` types; `placeId` made
+  optional on `StartPipelineRequest`.
+
 ## [0.0.19] - April 2026
 
 ### Live Admin Leadgen — Polling + Multi-Select Bulk Delete

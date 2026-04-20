@@ -4,6 +4,111 @@
 
 import type { Section } from "./templates";
 
+// ---------------------------------------------------------------------------
+// Project Identity (new consolidated source of truth)
+// ---------------------------------------------------------------------------
+
+export interface ProjectIdentityBusiness {
+  name: string | null;
+  category: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  hours: unknown | null;
+  rating: number | null;
+  review_count: number | null;
+  website_url: string | null;
+  place_id: string | null;
+}
+
+export interface ProjectIdentityBrand {
+  primary_color: string | null;
+  accent_color: string | null;
+  gradient_enabled: boolean;
+  gradient_from: string | null;
+  gradient_to: string | null;
+  gradient_direction: string;
+  /** Preferred text color when rendering content on top of bg-gradient-brand ("white" | "dark") */
+  gradient_text_color?: "white" | "dark" | null;
+  /** Named preset controlling stop distribution — all presets are subtle (no hard edges). */
+  gradient_preset?:
+    | "smooth"
+    | "lean-primary"
+    | "lean-accent"
+    | "soft-lean-primary"
+    | "soft-lean-accent"
+    | "warm-middle"
+    | "quick-transition"
+    | "long-transition"
+    | null;
+  logo_s3_url: string | null;
+  logo_alt_text: string | null;
+  fonts?: { heading: string; body: string };
+}
+
+export interface ProjectIdentity {
+  version: number;
+  warmed_up_at?: string | null;
+  last_updated_at?: string | null;
+  sources_used?: {
+    gbp?: { place_id: string; scraped_at: string } | null;
+    urls?: Array<{ url: string; scraped_at: string; char_length: number | null }>;
+    text_inputs?: Array<{ label: string; char_length: number }>;
+  };
+  business?: ProjectIdentityBusiness;
+  brand?: ProjectIdentityBrand;
+  voice_and_tone?: {
+    archetype: string | null;
+    tone_descriptor: string | null;
+    voice_samples: string[];
+  };
+  content_essentials?: {
+    unique_value_proposition: string | null;
+    founding_story: string | null;
+    core_values: string[];
+    certifications: string[];
+    service_areas: string[];
+    social_links: Record<string, string | null>;
+    review_themes: string[];
+    featured_testimonials: Array<{
+      author: string | null;
+      rating: number | null;
+      text: string | null;
+    }>;
+    doctors?: ProjectIdentityListEntry[];
+    services?: ProjectIdentityListEntry[];
+  };
+  locations?: ProjectIdentityLocation[];
+  extracted_assets?: {
+    images: Array<{
+      source_url: string | null;
+      s3_url: string | null;
+      description: string | null;
+      use_case: string | null;
+      resolution: string | null;
+      is_logo: boolean;
+      usability_rank: number | null;
+    }>;
+    discovered_pages: Array<{
+      url: string | null;
+      title: string | null;
+      content_excerpt: string | null;
+    }>;
+  };
+  raw_inputs?: {
+    gbp_raw?: unknown;
+    scraped_pages_raw?: Record<string, string>;
+    user_text_inputs?: Array<{ label: string; text: string }>;
+  };
+  meta?: {
+    warmup_status?: "queued" | "running" | "ready" | "failed" | null;
+  };
+}
+
+export type WarmupStatus = "queued" | "running" | "ready" | "failed" | null;
+
 export interface WebsiteProject {
   id: string;
   user_id: string;
@@ -20,6 +125,7 @@ export interface WebsiteProject {
   primary_color: string | null;
   accent_color: string | null;
   step_gbp_scrape: Record<string, unknown> | null;
+  project_identity?: ProjectIdentity | null;
   created_at: string;
   updated_at: string;
   organization?: {
@@ -61,6 +167,7 @@ export interface WebsitePage {
   version: number;
   status: string;
   generation_status?: PageGenerationStatus | null;
+  generation_progress?: GenerationProgress | null;
   page_type?: "sections" | "artifact";
   artifact_s3_prefix?: string | null;
   sections: Section[];
@@ -226,7 +333,12 @@ export const updateWebsite = async (
 
 export interface StartPipelineRequest {
   projectId: string;
-  placeId: string;
+  /**
+   * Optional when the project already has cached data (project_identity or
+   * legacy step_* columns). Required only when the project has nothing cached
+   * and the backend needs to run an Apify scrape.
+   */
+  placeId?: string;
   templateId?: string;
   templatePageId?: string;
   path?: string;
@@ -244,7 +356,65 @@ export interface StartPipelineRequest {
   primaryColor?: string;
   accentColor?: string;
   scrapedData?: string | null;
+  gradient?: GradientInput;
+  dynamicSlotValues?: Record<string, string>;
 }
+
+/** Regenerate a single component on a page. */
+export const regenerateComponent = async (
+  projectId: string,
+  pageId: string,
+  componentName: string,
+  instruction?: string,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/pages/${pageId}/regenerate-component`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ componentName, instruction }),
+    },
+  );
+  if (!response.ok) throw new Error(`Failed to regenerate: ${response.statusText}`);
+  return response.json();
+};
+
+// =====================================================================
+// LAYOUTS PIPELINE
+// =====================================================================
+
+export interface LayoutsStatus {
+  status: "queued" | "generating" | "ready" | "failed" | "cancelled" | null;
+  progress: { total: number; completed: number; current_component: string } | null;
+  generated_at: string | null;
+  slot_values: Record<string, string>;
+  wrapper: string;
+  header: string;
+  footer: string;
+}
+
+/** Enqueue the Layouts generation job. */
+export const startLayoutGeneration = async (
+  projectId: string,
+  slotValues: Record<string, string>,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/generate-layouts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slotValues }),
+  });
+  if (!response.ok) throw new Error(`Failed to start layouts: ${response.statusText}`);
+  return response.json();
+};
+
+/** Poll layouts generation status. */
+export const fetchLayoutsStatus = async (
+  projectId: string,
+): Promise<{ success: boolean; data: LayoutsStatus }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/layouts-status`);
+  if (!response.ok) throw new Error(`Failed to fetch layouts status: ${response.statusText}`);
+  return response.json();
+};
 
 /**
  * Trigger the N8N pipeline to generate a website page
@@ -300,13 +470,20 @@ export const pollWebsiteStatus = async (
 // PAGE GENERATION STATUS
 // =====================================================================
 
-export type PageGenerationStatus = 'queued' | 'generating' | 'ready' | 'failed';
+export type PageGenerationStatus = 'queued' | 'generating' | 'ready' | 'failed' | 'cancelled';
+
+export interface GenerationProgress {
+  total: number;
+  completed: number;
+  current_component: string;
+}
 
 export interface PageGenerationStatusItem {
   id: string;
   path: string;
   status: string;
   generation_status: PageGenerationStatus;
+  generation_progress: GenerationProgress | null;
   template_page_name: string | null;
   updated_at: string;
 }
@@ -324,9 +501,211 @@ export const fetchPagesGenerationStatus = async (
   return response.json();
 };
 
+export interface PageProgressiveState {
+  pageId: string;
+  name: string | null;
+  path: string | null;
+  generation_status: string | null;
+  generation_progress: GenerationProgress | null;
+  template_sections: Array<{ name: string; content: string }>;
+  generated_sections: Array<{ name: string; content: string }>;
+  wrapper: string | null;
+  header: string | null;
+  footer: string | null;
+}
+
+/**
+ * Fetch the in-flight state of a single page — template section scaffolding
+ * plus whichever sections have been generated so far. Used by the
+ * ProgressivePagePreview during page generation.
+ */
+export const fetchPageProgressiveState = async (
+  projectId: string,
+  pageId: string,
+): Promise<{ success: boolean; data: PageProgressiveState }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/pages/${pageId}/progressive-state`,
+  );
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch page progressive state: ${response.statusText}`,
+    );
+  }
+  return response.json();
+};
+
+/**
+ * Cancel all in-progress page generation for a project
+ */
+export const cancelGeneration = async (
+  projectId: string,
+): Promise<{ success: boolean; cancelledPages: number }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/cancel-generation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to cancel generation: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+// =====================================================================
+// PROJECT IDENTITY
+// =====================================================================
+
+export type ScrapeStrategy = "fetch" | "browser" | "screenshot";
+
+export interface WarmupUrlInput {
+  url: string;
+  strategy?: ScrapeStrategy;
+}
+
+export interface WarmupInputs {
+  /** Primary GBP place_id. When `placeIds` is present, primary should match its first entry. */
+  placeId?: string;
+  /** Full set of GBP place_ids (one per physical location). First is treated as primary. */
+  placeIds?: string[];
+  practiceSearchString?: string;
+  /** String or object-with-strategy. Backend accepts both. */
+  urls?: Array<string | WarmupUrlInput>;
+  texts?: Array<{ label?: string; text: string }>;
+  logoUrl?: string;
+  primaryColor?: string;
+  accentColor?: string;
+  gradient?: {
+    enabled: boolean;
+    from?: string;
+    to?: string;
+    direction?: string;
+  };
+}
+
+/** Start the identity warmup for a project. */
+export const startIdentityWarmup = async (
+  projectId: string,
+  inputs: WarmupInputs,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/identity/warmup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(inputs),
+  });
+  if (!response.ok) throw new Error(`Failed to start warmup: ${response.statusText}`);
+  return response.json();
+};
+
+/** Fetch the full project identity. */
+export const fetchIdentity = async (
+  projectId: string,
+): Promise<{ success: boolean; data: ProjectIdentity | null }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/identity`);
+  if (!response.ok) throw new Error(`Failed to fetch identity: ${response.statusText}`);
+  return response.json();
+};
+
+/** Poll warmup status (lightweight). */
+export const fetchIdentityStatus = async (
+  projectId: string,
+): Promise<{
+  success: boolean;
+  data: { warmup_status: WarmupStatus; warmed_up_at: string | null };
+}> => {
+  const response = await fetch(`${API_BASE}/${projectId}/identity/status`);
+  if (!response.ok) throw new Error(`Failed to fetch identity status: ${response.statusText}`);
+  return response.json();
+};
+
+/** Replace identity with admin-edited JSON. */
+export const updateIdentity = async (
+  projectId: string,
+  identity: ProjectIdentity,
+): Promise<{ success: boolean; data: ProjectIdentity }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/identity`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identity }),
+  });
+  if (!response.ok) throw new Error(`Failed to update identity: ${response.statusText}`);
+  return response.json();
+};
+
+// =====================================================================
+// URL BLOCK DETECTION
+// =====================================================================
+
+export type BlockVendor =
+  | "cloudflare"
+  | "akamai"
+  | "sucuri"
+  | "datadome"
+  | "perimeterx"
+  | "imperva"
+  | "kasada"
+  | "aws_waf"
+  | "f5_bigip"
+  | "fastly"
+  | "generic_waf"
+  | "captcha"
+  | "rate_limit"
+  | "forbidden"
+  | "timeout"
+  | "empty"
+  | "unknown";
+
+export type BlockCheckResult =
+  | {
+      ok: true;
+      status: number;
+      preview_chars: number;
+      preview_text?: string;
+      /**
+       * True when the URL returned a successful response but the extracted text
+       * is under the 500-char threshold used by warmup. Rendered as an amber
+       * "Looks thin" warning in the URL Test UI (distinct from blocked).
+       */
+      thin_content?: boolean;
+    }
+  | {
+      ok: false;
+      block_type: BlockVendor;
+      status: number | null;
+      detail: string;
+      detected_signals: string[];
+    };
+
+/** Probe a URL to check if it is blocked by a WAF / anti-bot / CAPTCHA. */
+export const testUrl = async (
+  projectId: string,
+  url: string,
+): Promise<{ success: boolean; data: BlockCheckResult }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/test-url`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!response.ok) throw new Error(`Failed to test URL: ${response.statusText}`);
+  return response.json();
+};
+
 // =====================================================================
 // CREATE ALL FROM TEMPLATE
 // =====================================================================
+
+export interface GradientInput {
+  enabled: boolean;
+  from?: string;
+  to?: string;
+  direction?: "to-r" | "to-br" | "to-b" | "to-tr" | string;
+}
+
+export interface DynamicSlotDef {
+  key: string;
+  label: string;
+  type: "text" | "url";
+  description?: string;
+  placeholder?: string;
+}
 
 export interface CreateAllFromTemplateRequest {
   templateId: string;
@@ -347,10 +726,61 @@ export interface CreateAllFromTemplateRequest {
   practiceSearchString?: string;
   rating?: number;
   reviewCount?: number;
+  gradient?: GradientInput;
+  dynamicSlotValues?: Record<string, string>;
 }
 
+/** Fetch the dynamic_slots JSONB for a template page */
+export const fetchTemplatePageSlots = async (
+  templateId: string,
+  pageId: string,
+): Promise<{ success: boolean; data: DynamicSlotDef[] }> => {
+  const response = await fetch(
+    `${API_BASE}/templates/${templateId}/pages/${pageId}/slots`,
+  );
+  if (!response.ok) throw new Error(`Failed to fetch slots: ${response.statusText}`);
+  return response.json();
+};
+
+/** Fetch pre-filled slot values for a specific template page (derived from project_identity) */
+export const fetchSlotPrefill = async (
+  projectId: string,
+  opts: { templatePageId?: string; layout?: boolean },
+): Promise<{
+  success: boolean;
+  data: { slots: DynamicSlotDef[]; values: Record<string, string> };
+}> => {
+  const qs = opts.layout
+    ? "?layout=true"
+    : `?templatePageId=${encodeURIComponent(opts.templatePageId || "")}`;
+  const response = await fetch(`${API_BASE}/${projectId}/slot-prefill${qs}`);
+  if (!response.ok) throw new Error(`Failed to fetch slot prefill: ${response.statusText}`);
+  return response.json();
+};
+
+/** LLM-generate concrete text values for every text-type slot on a template page. */
+export const generateSlotValues = async (
+  projectId: string,
+  templatePageId: string,
+  pageContext?: string,
+): Promise<{
+  success: boolean;
+  data: { values: Record<string, string> };
+}> => {
+  const response = await fetch(`${API_BASE}/${projectId}/slot-generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ templatePageId, pageContext }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || err.error || `Failed to generate slot values: ${response.statusText}`);
+  }
+  return response.json();
+};
+
 /**
- * Create all pages from a template and kick off N8N pipeline per page
+ * Create all pages from a template and kick off the generation pipeline per page
  */
 export const createAllFromTemplate = async (
   projectId: string,
@@ -1461,5 +1891,347 @@ export const deleteAiCommandBatch = async (
     { method: "DELETE" },
   );
   if (!response.ok) throw new Error("Failed to delete AI command batch");
+  return response.json();
+};
+
+// =====================================================================
+// AI COSTS — per-project rollup of LLM spend
+// =====================================================================
+
+export interface AiCostEvent {
+  id: string;
+  event_type: string;
+  vendor: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_tokens: number | null;
+  cache_read_tokens: number | null;
+  estimated_cost_usd: number;
+  metadata: Record<string, unknown> | null;
+  parent_event_id: string | null;
+  created_at: string;
+}
+
+export interface ProjectCostsResponse {
+  success: boolean;
+  data: {
+    total_cost_usd: number;
+    total_events: number;
+    total_tokens: {
+      input: number;
+      output: number;
+      cache_creation: number;
+      cache_read: number;
+    };
+    events: AiCostEvent[];
+  };
+}
+
+/** Fetch the Anthropic cost rollup for a project (100 most-recent events). */
+export const fetchProjectCosts = async (
+  projectId: string,
+): Promise<ProjectCostsResponse> => {
+  const response = await fetch(`${API_BASE}/${projectId}/costs`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to fetch project costs");
+  }
+  return response.json();
+};
+
+// =====================================================================
+// IDENTITY LISTS + LOCATIONS — T7 / F3
+// Appended for plan
+// `plans/04182026-no-ticket-identity-enrichments-and-post-imports/spec.md`.
+// =====================================================================
+
+/** Light-weight list entry for doctors/services tracked in identity. */
+export interface ProjectIdentityListEntry {
+  name: string;
+  source_url: string | null;
+  short_blurb: string | null;
+  last_synced_at: string;
+  stale?: boolean;
+}
+
+/** Structured location entry stored in `identity.locations[]`. */
+export interface ProjectIdentityLocation {
+  place_id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  rating: number | null;
+  review_count: number | null;
+  category: string | null;
+  website_url: string | null;
+  hours: unknown;
+  last_synced_at: string;
+  is_primary: boolean;
+  warmup_status: "ready" | "failed" | "pending";
+  warmup_error?: string;
+  stale?: boolean;
+}
+
+export type IdentityListName = "doctors" | "services";
+
+/**
+ * Re-run extraction of the doctor/service list against the cached scraped
+ * pages on identity. Returns the merged list (fresh entries first, then
+ * carry-over entries marked `stale: true`).
+ */
+export const resyncProjectIdentityList = async (
+  projectId: string,
+  list: IdentityListName,
+): Promise<{
+  success: boolean;
+  data: {
+    list: IdentityListName;
+    entries: ProjectIdentityListEntry[];
+    refreshed_count: number;
+    stale_count: number;
+  };
+}> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/identity/resync-list`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ list }),
+    },
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to resync identity list");
+  }
+  return response.json();
+};
+
+/**
+ * Append a new GBP location to the project. Backend kicks off a targeted
+ * Apify scrape for the place_id and returns the updated locations array.
+ */
+export const addProjectLocation = async (
+  projectId: string,
+  placeId: string,
+): Promise<{
+  success: boolean;
+  data: {
+    locations: ProjectIdentityLocation[];
+    added: ProjectIdentityLocation;
+  };
+}> => {
+  const response = await fetch(`${API_BASE}/${projectId}/locations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ place_id: placeId }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to add location");
+  }
+  return response.json();
+};
+
+/**
+ * Switch the project's primary location. Backend rewrites identity.business
+ * from the new primary's data so existing consumers stay correct.
+ */
+export const setPrimaryLocation = async (
+  projectId: string,
+  placeId: string,
+): Promise<{
+  success: boolean;
+  data: { identity: ProjectIdentity; primary_place_id: string };
+}> => {
+  const response = await fetch(`${API_BASE}/${projectId}/locations/primary`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ place_id: placeId }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to set primary location");
+  }
+  return response.json();
+};
+
+/**
+ * Remove a non-primary location. Returns 409 from the API if the location
+ * is the project's primary.
+ */
+export const removeProjectLocation = async (
+  projectId: string,
+  placeId: string,
+): Promise<{
+  success: boolean;
+  data: { locations: ProjectIdentityLocation[] };
+}> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/locations/${encodeURIComponent(placeId)}`,
+    { method: "DELETE" },
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to remove location");
+  }
+  return response.json();
+};
+
+/** Re-scrape a single location's GBP data. */
+export const resyncProjectLocation = async (
+  projectId: string,
+  placeId: string,
+): Promise<{
+  success: boolean;
+  data: {
+    location: ProjectIdentityLocation;
+    locations: ProjectIdentityLocation[];
+  };
+}> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/locations/${encodeURIComponent(placeId)}/resync`,
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to re-sync location");
+  }
+  return response.json();
+};
+
+// =====================================================================
+// POST IMPORT FROM IDENTITY — T8 + F4
+// =====================================================================
+//
+// Appended for plan
+// `plans/04182026-no-ticket-identity-enrichments-and-post-imports/spec.md`
+// tasks T8 + F4. Frontend posts a list of entries (URLs for doctor/service,
+// place_ids for location) and polls the returned jobId for live status.
+
+/** Post type that can be imported from the identity blob. */
+export type ImportPostType = "doctor" | "service" | "location";
+
+export type PostImportEntryStatus =
+  | "created"
+  | "updated"
+  | "skipped"
+  | "failed";
+
+export interface PostImportEntryResult {
+  /** Echoed entry key — URL for doctor/service, place_id for location. */
+  key: string;
+  status: PostImportEntryStatus;
+  post_id?: string;
+  title?: string;
+  error?: string;
+  /** True when the URL scrape needed the browser/screenshot fallback. */
+  used_fallback?: boolean;
+}
+
+export interface PostImportResultSummary {
+  total: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  results: PostImportEntryResult[];
+}
+
+export interface PostImportProgress {
+  total: number;
+  completed: number;
+  results: PostImportEntryResult[];
+}
+
+export type PostImportJobState =
+  | "waiting"
+  | "active"
+  | "completed"
+  | "failed"
+  | "delayed"
+  | "paused"
+  | "stuck"
+  | "unknown";
+
+export interface PostImportStatusResponse {
+  success: boolean;
+  data: {
+    jobId: string;
+    state: PostImportJobState;
+    progress: PostImportProgress;
+    summary: PostImportResultSummary | null;
+    failedReason: string | null;
+  };
+}
+
+/** Enqueue an import-from-identity job. Returns the BullMQ jobId. */
+export const startPostImport = async (
+  projectId: string,
+  args: {
+    postType: ImportPostType;
+    entries: string[];
+    overwrite?: boolean;
+  },
+): Promise<{ success: boolean; data: { jobId: string; total: number } }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/posts/import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(args),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to start post import");
+  }
+  return response.json();
+};
+
+/** Poll job state + per-entry results for a running/finished post import. */
+export const fetchPostImportStatus = async (
+  projectId: string,
+  jobId: string,
+): Promise<PostImportStatusResponse> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/posts/import/${jobId}`,
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to fetch post import status");
+  }
+  return response.json();
+};
+
+// =====================================================================
+// IDENTITY SLICE PATCH
+// =====================================================================
+//
+// Appended for plan
+// `plans/04202026-no-ticket-identity-modal-cleanup-and-crud/spec.md` T3.
+// Backend allow-list: `content_essentials.doctors`, `.services`,
+// `.featured_testimonials`, `.core_values`, `.certifications`,
+// `.service_areas`, `.social_links`, `.unique_value_proposition`,
+// `.founding_story`, `.review_themes`, `locations`, `brand`,
+// `voice_and_tone`. Everything else returns 400 `INVALID_PATH`.
+
+/** Replace a single allow-listed slice of `project_identity`. */
+export const patchIdentitySlice = async (
+  projectId: string,
+  path: string,
+  value: unknown,
+): Promise<{ success: boolean; data: ProjectIdentity }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/identity/slice`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, value }),
+    },
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      error.message || `Failed to patch identity slice: ${response.statusText}`,
+    );
+  }
   return response.json();
 };

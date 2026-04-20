@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   BarChart3,
   Sparkles,
+  Download,
 } from "lucide-react";
 import MediaBrowser from "../PageEditor/MediaBrowser";
 import type { MediaItem } from "../PageEditor/MediaBrowser";
@@ -22,8 +23,13 @@ import RichTextEditor from "../ui/RichTextEditor";
 import { toast } from "react-hot-toast";
 import AnimatedSelect from "../ui/AnimatedSelect";
 import SeoPanel from "../PageEditor/SeoPanel";
-import type { SeoData } from "../../api/websites";
-import { updatePostSeo as defaultUpdatePostSeo, aiGeneratePostContent } from "../../api/websites";
+import type { SeoData, ProjectIdentity, ImportPostType } from "../../api/websites";
+import {
+  updatePostSeo as defaultUpdatePostSeo,
+  aiGeneratePostContent,
+  fetchIdentity,
+} from "../../api/websites";
+import ImportFromIdentityModal from "./ImportFromIdentityModal";
 import {
   fetchPosts as defaultFetchPosts,
   createPost as defaultCreatePost,
@@ -353,6 +359,33 @@ export default function PostsTab({
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterTag, setFilterTag] = useState<string>("all");
+
+  // Import-from-Identity (T9 / F4) — lazy-load identity blob the first time
+  // the admin opens the modal so we don't pay for it on every PostsTab mount.
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [identity, setIdentity] = useState<ProjectIdentity | null>(null);
+  const [identityLoading, setIdentityLoading] = useState(false);
+
+  const ensureIdentityLoaded = useCallback(async () => {
+    if (identity) return identity;
+    setIdentityLoading(true);
+    try {
+      const res = await fetchIdentity(projectId);
+      setIdentity(res.data);
+      return res.data;
+    } finally {
+      setIdentityLoading(false);
+    }
+  }, [identity, projectId]);
+
+  const openImportModal = async () => {
+    try {
+      await ensureIdentityLoaded();
+      setImportModalOpen(true);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to load identity");
+    }
+  };
 
   const loadData = useCallback(async () => {
     if (!templateId) return;
@@ -692,6 +725,17 @@ export default function PostsTab({
       ...tags.map((t) => ({ value: t.id, label: t.name })),
     ];
 
+    // T9: only the doctor / service / location post types support
+    // import-from-identity. We match by post-type slug (singular or plural).
+    const importablePostType = ((): ImportPostType | null => {
+      if (!selectedType) return null;
+      const slug = (selectedType.slug || "").toLowerCase();
+      if (slug === "doctor" || slug === "doctors") return "doctor";
+      if (slug === "service" || slug === "services") return "service";
+      if (slug === "location" || slug === "locations") return "location";
+      return null;
+    })();
+
     return (
       <div className="p-6">
         {/* Filter bar */}
@@ -725,6 +769,33 @@ export default function PostsTab({
                 placeholder="Tag"
                 size="sm"
               />
+            </div>
+          )}
+          {importablePostType && (
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={openImportModal}
+                disabled={identityLoading}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-alloro-orange hover:bg-orange-100 transition-colors disabled:opacity-50"
+                title={`Import ${importablePostType}s from identity`}
+              >
+                {identityLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                Import from Identity
+              </button>
+              <button
+                type="button"
+                onClick={() => openEditor()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-alloro-orange px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 transition-colors"
+                title="Create new post"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Create
+              </button>
             </div>
           )}
         </div>
@@ -1256,6 +1327,25 @@ export default function PostsTab({
     );
   };
 
+  /* ─── Import-from-Identity modal (T9 / F4) ─── */
+  // Compute on each render — selectedType + posts can change between toggles.
+  const importModalPostType: ImportPostType | null = (() => {
+    if (!selectedType) return null;
+    const slug = (selectedType.slug || "").toLowerCase();
+    if (slug === "doctor" || slug === "doctors") return "doctor";
+    if (slug === "service" || slug === "services") return "service";
+    if (slug === "location" || slug === "locations") return "location";
+    return null;
+  })();
+
+  const existingSourceUrls = new Set<string>(
+    selectedTypeId
+      ? posts
+          .filter((p) => p.post_type_id === selectedTypeId && !!p.source_url)
+          .map((p) => p.source_url as string)
+      : [],
+  );
+
   /* ─── Layout: 30/70 sidebar ─── */
   return (
     <div className={`flex bg-white overflow-hidden ${borderless ? "h-full" : "rounded-xl border border-gray-200 shadow-sm"}`} style={borderless ? undefined : { minHeight: 480 }}>
@@ -1279,6 +1369,20 @@ export default function PostsTab({
           )}
         </AnimatePresence>
       </div>
+
+      {importModalOpen && importModalPostType && (
+        <ImportFromIdentityModal
+          projectId={projectId}
+          postType={importModalPostType}
+          identity={identity}
+          existingSourceUrls={existingSourceUrls}
+          onClose={() => setImportModalOpen(false)}
+          onCompleted={() => {
+            // Refresh post list so newly imported draft posts appear.
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 }

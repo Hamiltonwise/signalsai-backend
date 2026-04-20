@@ -285,7 +285,6 @@ async function runSanitizationChunk(
     userMessage,
     model: MODEL,
     maxTokens: 4096,
-    prefill: "{",
   };
 
   const result = await runAgent(agentOptions);

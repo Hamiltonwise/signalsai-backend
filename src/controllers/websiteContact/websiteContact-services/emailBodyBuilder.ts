@@ -12,6 +12,10 @@ export function buildEmailBody(formName: string, contents: FormContents): string
     ? buildSectionsHtml(contents as FormSection[])
     : buildFlatHtml(contents as Record<string, string | FileValue>);
 
+  const filesNote = hasFiles(contents)
+    ? `<p style="margin-top:16px;font-size:12px;color:#9ca3af;text-align:center;">The attached files are accessible via your <a href="https://app.getalloro.com/dfy/website?view=submissions" style="color:#0e8988;text-decoration:underline;">Alloro dashboard</a>.</p>`
+    : "";
+
   return `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
       <div style="background:#0e8988;color:#fff;padding:24px 32px;border-radius:16px 16px 0 0;">
         <h1 style="margin:0;font-size:22px;">New Entry From ${formName}</h1>
@@ -21,8 +25,18 @@ export function buildEmailBody(formName: string, contents: FormContents): string
           ${emailTableHtml}
         </table>
       </div>
+      ${filesNote}
       <p style="margin-top:16px;font-size:12px;color:#9ca3af;text-align:center;">Sent via ${formName} form</p>
     </div>`;
+}
+
+function hasFiles(contents: FormContents): boolean {
+  if (Array.isArray(contents)) {
+    return contents.some((section) =>
+      section.fields.some(([, value]) => typeof value === "object" && value !== null),
+    );
+  }
+  return Object.values(contents).some((value) => typeof value === "object" && value !== null);
 }
 
 function buildSectionsHtml(sections: FormSection[]): string {

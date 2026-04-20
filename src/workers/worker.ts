@@ -17,6 +17,13 @@ import { processSchedulerTick } from "./processors/scheduler.processor";
 import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
 import { processAuditLeadgen } from "./processors/auditLeadgen.processor";
+import {
+  processProjectScrape,
+  processPageGenerate,
+} from "./processors/websiteGeneration.processor";
+import { processIdentityWarmup } from "./processors/identityWarmup.processor";
+import { processLayoutGenerate } from "./processors/websiteLayouts.processor";
+import { processPostImport } from "./processors/postImporter.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -220,6 +227,86 @@ const wbRestoreWorker = new Worker(
   }
 );
 
+// Website Builder — Layouts generation worker (admin-triggered from Layouts tab)
+const wbLayoutsWorker = new Worker(
+  "wb-layout-generate",
+  async (job) => {
+    await processLayoutGenerate(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000, // 10 min — 3 Claude calls with tool loops
+    prefix: '{wb}',
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 25 },
+  }
+);
+
+// Website Builder — Identity Warmup worker (admin-triggered)
+const wbIdentityWarmupWorker = new Worker(
+  "wb-identity-warmup",
+  async (job) => {
+    await processIdentityWarmup(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000, // 10 min — Apify + Claude calls can take a while
+    prefix: '{wb}',
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 25 },
+  }
+);
+
+// Website Builder — Project Scrape worker (Apify + website scrape + image analysis)
+const wbProjectScrapeWorker = new Worker(
+  "wb-project-scrape",
+  async (job) => {
+    await processProjectScrape(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000, // 10 min — Apify polling can be slow
+    prefix: '{wb}',
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 25 },
+  }
+);
+
+// Website Builder — Page Generate worker (component-by-component HTML generation)
+const wbPageGenerateWorker = new Worker(
+  "wb-page-generate",
+  async (job) => {
+    await processPageGenerate(job);
+  },
+  {
+    connection,
+    concurrency: 2,
+    lockDuration: 300000, // 5 min per page
+    prefix: '{wb}',
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 25 },
+  }
+);
+
+// Website Builder — Post Importer worker (admin-triggered from Posts tab)
+const wbPostImportWorker = new Worker(
+  "wb-post-import",
+  async (job) => {
+    return await processPostImport(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000, // 10 min — sequential URL scrapes can stack up
+    prefix: '{wb}',
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 25 },
+  }
+);
+
 // Audit Leadgen worker — long-running (3–5 min); higher lock duration.
 const auditLeadgenWorker = new Worker(
   "audit-leadgen",
@@ -237,7 +324,7 @@ const auditLeadgenWorker = new Worker(
 );
 
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, auditLeadgenWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbIdentityWarmupWorker, wbLayoutsWorker, wbProjectScrapeWorker, wbPageGenerateWorker, wbPostImportWorker, auditLeadgenWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -264,6 +351,11 @@ async function shutdown(): Promise<void> {
   await schedulerWorker.close();
   await wbBackupWorker.close();
   await wbRestoreWorker.close();
+  await wbIdentityWarmupWorker.close();
+  await wbLayoutsWorker.close();
+  await wbProjectScrapeWorker.close();
+  await wbPageGenerateWorker.close();
+  await wbPostImportWorker.close();
   await auditLeadgenWorker.close();
   await closeWbQueues();
   await connection.quit();

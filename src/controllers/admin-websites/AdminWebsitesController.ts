@@ -18,12 +18,12 @@
  */
 
 import { Request, Response } from "express";
+import { z } from "zod";
 import * as projectManager from "./feature-services/service.project-manager";
 import * as templateManager from "./feature-services/service.template-manager";
 import * as pageEditor from "./feature-services/service.page-editor";
 import * as hfcmManager from "./feature-services/service.hfcm-manager";
 import * as websiteScraper from "./feature-services/service.website-scraper";
-import * as deploymentPipeline from "./feature-services/service.deployment-pipeline";
 import * as customDomain from "./feature-services/service.custom-domain";
 import * as postTypeManager from "./feature-services/service.post-type-manager";
 import * as postBlockManager from "./feature-services/service.post-block-manager";
@@ -35,7 +35,16 @@ import * as reviewBlockManager from "./feature-services/service.review-block-man
 import * as aiCommand from "./feature-services/service.ai-command";
 import * as redirectsService from "./feature-services/service.redirects";
 import * as artifactUpload from "./feature-services/service.artifact-upload";
+import * as generationPipeline from "./feature-services/service.generation-pipeline";
+import * as identityWarmup from "./feature-services/service.identity-warmup";
+import * as slotPrefill from "./feature-services/service.slot-prefill";
+import { generateSlotValuesFromIdentity } from "./feature-services/service.slot-generator";
+import { detectBlock } from "./feature-utils/util.url-block-detector";
 import { db } from "../../database/connection";
+import { getWbQueue } from "../../workers/wb-queues";
+import type { ProjectScrapeJobData } from "../../workers/processors/websiteGeneration.processor";
+import type { IdentityWarmupJobData } from "../../workers/processors/identityWarmup.processor";
+import type { LayoutGenerateJobData } from "../../workers/processors/websiteLayouts.processor";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { generatePresignedUrl } from "../../utils/core/s3";
@@ -203,10 +212,25 @@ export async function getPagesGenerationStatus(
     return res.json({ success: true, data: pages });
   } catch (error: any) {
     console.error("[Admin Websites] Error fetching page generation status:", error);
-    return res.status(500).json({
+    return res.status(500).json({ success: false, error: "FETCH_ERROR" });
+  }
+}
+
+/** GET /:id/pages/:pageId/progressive-state — Template section scaffolding + generated sections so far */
+export async function getPageProgressiveState(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id, pageId } = req.params;
+    const data = await projectManager.getPageProgressiveState(id, pageId);
+    return res.json({ success: true, data });
+  } catch (error: any) {
+    const status = error?.message === "PAGE_NOT_FOUND" ? 404 : 500;
+    console.error("[Admin Websites] Error fetching page progressive state:", error);
+    return res.status(status).json({
       success: false,
-      error: "FETCH_ERROR",
-      message: error?.message || "Failed to fetch page generation status",
+      error: error?.message || "FETCH_ERROR",
     });
   }
 }
@@ -233,6 +257,8 @@ export async function createAllFromTemplate(
       practiceSearchString,
       rating,
       reviewCount,
+      gradient,
+      dynamicSlotValues,
     } = req.body;
 
     if (!placeId) {
@@ -250,6 +276,16 @@ export async function createAllFromTemplate(
         message: "pages array is required and must not be empty",
       });
     }
+
+    // Clear any stale cancel flag from a previous generation run. Without
+    // this, the worker's early `isCancelled` check will flip every new page
+    // to `cancelled` the moment it starts.
+    await db("website_builder.projects")
+      .where("id", id)
+      .update({
+        generation_cancel_requested: false,
+        updated_at: db.fn.now(),
+      });
 
     // Create all page rows as queued
     const createResult = await projectManager.createAllFromTemplate(id, {
@@ -277,35 +313,43 @@ export async function createAllFromTemplate(
       });
     }
 
-    // Fire N8N webhook per page (fire-and-forget — don't await all)
-    // Pass existingPageId so startPipeline skips pre-creating another row.
     const createdPages = createResult.pages!;
-    for (let i = 0; i < createdPages.length; i++) {
-      const createdPage = createdPages[i];
-      const pageConfig = pages[i];
-      deploymentPipeline.startPipeline({
-        projectId: id,
-        templateId,
-        templatePageId: createdPage.templatePageId,
-        path: createdPage.path,
-        placeId,
-        websiteUrl: pageConfig?.websiteUrl ?? undefined,
-        businessName,
-        formattedAddress,
-        city,
-        state,
-        phone,
-        category,
-        primaryColor,
-        accentColor,
-        practiceSearchString,
-        rating,
-        reviewCount,
-        existingPageId: createdPage.id,
-      }).catch((err: any) => {
-        console.error(`[Admin Websites] Pipeline fire failed for page ${createdPage.id}:`, err);
-      });
-    }
+
+    // Enqueue single BullMQ job for project scrape — fans out to per-page generation jobs
+    const jobData: ProjectScrapeJobData = {
+      projectId: id,
+      placeId,
+      practiceSearchString,
+      websiteUrl: pages[0]?.websiteUrl ?? undefined,
+      templateId,
+      pages: createdPages.map((cp: any) => ({
+        pageId: cp.id,
+        templatePageId: cp.templatePageId,
+        path: cp.path,
+      })),
+      primaryColor,
+      accentColor,
+      businessName,
+      formattedAddress,
+      city,
+      state,
+      phone,
+      category,
+      rating,
+      reviewCount,
+      gradientEnabled: gradient?.enabled,
+      gradientFrom: gradient?.from,
+      gradientTo: gradient?.to,
+      gradientDirection: gradient?.direction,
+      dynamicSlotValues,
+    };
+
+    const queue = getWbQueue("project-scrape");
+    await queue.add("scrape-project", jobData, {
+      removeOnComplete: { count: 50 },
+      removeOnFail: { count: 25 },
+    });
+    console.log(`[Admin Websites] Enqueued wb-project-scrape for project ${id}`);
 
     return res.status(201).json({ success: true, data: createdPages });
   } catch (error: any) {
@@ -451,32 +495,796 @@ export async function deleteProject(
   }
 }
 
-/** POST /start-pipeline — Trigger N8N webhook */
+/** POST /start-pipeline — Enqueue BullMQ generation job for a single page */
 export async function startPipeline(
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<Response> {
   try {
-    const { error } = await deploymentPipeline.startPipeline(req.body);
+    const {
+      projectId, templateId, templatePageId, path: pagePath, placeId,
+      websiteUrl, pageContext, practiceSearchString, businessName,
+      formattedAddress, city, state, phone, category, rating, reviewCount,
+      primaryColor, accentColor, scrapedData, existingPageId,
+      gradient, dynamicSlotValues,
+    } = req.body;
 
-    if (error) {
-      return res.status(error.status).json({
-        success: false,
-        error: error.code,
-        message: error.message,
+    if (!projectId) {
+      return res.status(400).json({
+        success: false, error: "INVALID_INPUT", message: "projectId is required",
       });
+    }
+
+    // Check project existence + cached data (identity OR legacy step_*)
+    const project = await db("website_builder.projects").where("id", projectId).first();
+    if (!project) {
+      return res.status(404).json({
+        success: false, error: "NOT_FOUND", message: "Project not found",
+      });
+    }
+
+    const identity = parseIdentityJson(project.project_identity);
+    const hasIdentity = !!identity?.business;
+    const hasCachedScrape = project.step_gbp_scrape != null || hasIdentity;
+
+    // placeId is only required when we actually need to scrape (no cached data + no identity)
+    if (!hasCachedScrape && !placeId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message:
+          "placeId is required for projects without cached data. Either run Identity warmup first, or provide a placeId to scrape.",
+      });
+    }
+
+    // Pre-create page row if not provided
+    let pageId = existingPageId;
+    if (!pageId) {
+      const [page] = await db("website_builder.pages")
+        .insert({
+          project_id: projectId,
+          path: pagePath || "/",
+          version: 1,
+          status: "draft",
+          generation_status: "queued",
+          template_page_id: templatePageId || null,
+        })
+        .returning("id");
+      pageId = page.id;
+
+      await db("website_builder.projects")
+        .where("id", projectId)
+        .where("status", "CREATED")
+        .update({ status: "IN_PROGRESS", updated_at: db.fn.now() });
+    }
+
+    const gradientParams = {
+      gradientEnabled: gradient?.enabled,
+      gradientFrom: gradient?.from,
+      gradientTo: gradient?.to,
+      gradientDirection: gradient?.direction,
+    };
+
+    if (hasCachedScrape) {
+      // Skip scrape, go straight to page generation (identity or legacy step_* data exists)
+      const pageQueue = getWbQueue("page-generate");
+      await pageQueue.add("generate-page", {
+        pageId, projectId, primaryColor, accentColor, pageContext,
+        businessName, formattedAddress, city, state, phone, category, rating, reviewCount,
+        ...gradientParams,
+        dynamicSlotValues,
+      }, { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } });
+      console.log(`[Admin Websites] Enqueued wb-page-generate for page ${pageId} (${hasIdentity ? "identity" : "legacy scrape"})`);
+    } else {
+      // No cached data — need to scrape first. placeId already required-guarded above.
+      const scrapeQueue = getWbQueue("project-scrape");
+      await scrapeQueue.add("scrape-project", {
+        projectId, placeId, practiceSearchString, websiteUrl, scrapedData, templateId,
+        pages: [{ pageId, templatePageId, path: pagePath || "/" }],
+        primaryColor, accentColor, pageContext, businessName,
+        formattedAddress, city, state, phone, category, rating, reviewCount,
+        ...gradientParams,
+        dynamicSlotValues,
+      } satisfies ProjectScrapeJobData, { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } });
+      console.log(`[Admin Websites] Enqueued wb-project-scrape for project ${projectId} (single page)`);
+    }
+
+    return res.json({ success: true, pageId, message: "Pipeline started successfully" });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error starting pipeline:", error);
+    return res.status(500).json({
+      success: false, error: "PIPELINE_ERROR", message: error?.message || "Failed to start pipeline",
+    });
+  }
+}
+
+/** POST /:id/test-url — Probe a URL for WAF / anti-bot / CAPTCHA blocks */
+export async function testUrl(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { url } = req.body;
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "url string required",
+      });
+    }
+    const result = await detectBlock(url);
+    return res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error testing URL:", error);
+    return res.status(500).json({
+      success: false,
+      error: "TEST_URL_ERROR",
+      message: error?.message || "Failed to test URL",
+    });
+  }
+}
+
+// =====================================================================
+// PROJECT IDENTITY
+// =====================================================================
+
+/** POST /:id/identity/warmup — Enqueue identity warmup job */
+export async function startIdentityWarmup(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const {
+      placeId,
+      placeIds,
+      practiceSearchString,
+      urls,
+      texts,
+      logoUrl,
+      primaryColor,
+      accentColor,
+      gradient,
+    } = req.body;
+
+    // Normalize multi-GBP selection. The frontend may send `placeIds` (full
+    // list) and optionally `placeId` (explicit primary). Fall back to the
+    // single-place legacy path when `placeIds` is absent.
+    const normalizedPlaceIds: string[] = Array.isArray(placeIds)
+      ? placeIds.filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0)
+      : [];
+    const resolvedPrimary: string | null =
+      (typeof placeId === "string" && placeId.trim()) ||
+      normalizedPlaceIds[0] ||
+      null;
+    const fullIdList: string[] =
+      normalizedPlaceIds.length > 0
+        ? normalizedPlaceIds
+        : resolvedPrimary
+          ? [resolvedPrimary]
+          : [];
+
+    // Reset cancel flag + persist selected_place_ids / primary_place_id BEFORE
+    // enqueueing the worker so F2's multi-location loop picks them up.
+    const projectUpdates: Record<string, unknown> = {
+      generation_cancel_requested: false,
+      updated_at: db.fn.now(),
+    };
+    if (fullIdList.length > 0) {
+      projectUpdates.selected_place_ids = fullIdList;
+      projectUpdates.primary_place_id = resolvedPrimary;
+      // Back-compat mirror for legacy consumers of the singular column.
+      projectUpdates.selected_place_id = resolvedPrimary;
+    }
+    await db("website_builder.projects").where("id", id).update(projectUpdates);
+
+    const jobData: IdentityWarmupJobData = {
+      projectId: id,
+      inputs: {
+        placeId: resolvedPrimary || undefined,
+        placeIds: fullIdList.length > 0 ? fullIdList : undefined,
+        practiceSearchString,
+        urls,
+        texts,
+        logoUrl,
+        primaryColor,
+        accentColor,
+        gradient,
+      },
+    };
+
+    const queue = getWbQueue("identity-warmup");
+    await queue.add("warmup", jobData, {
+      removeOnComplete: { count: 50 },
+      removeOnFail: { count: 25 },
+    });
+
+    // Set immediate status so polling reflects queued state
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("project_identity")
+      .first();
+    const identity = parseIdentityJson(project?.project_identity) || { version: 1 };
+    identity.meta = { ...(identity.meta || {}), warmup_status: "queued" };
+    await db("website_builder.projects").where("id", id).update({
+      project_identity: JSON.stringify(identity),
+      updated_at: db.fn.now(),
+    });
+
+    console.log(`[Admin Websites] Enqueued wb-identity-warmup for project ${id}`);
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error starting identity warmup:", error);
+    return res.status(500).json({
+      success: false,
+      error: "WARMUP_ERROR",
+      message: error?.message || "Failed to start warmup",
+    });
+  }
+}
+
+/** GET /:id/identity — Get full project identity JSON */
+export async function getIdentity(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("project_identity")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
     }
 
     return res.json({
       success: true,
-      message: "Pipeline started successfully",
+      data: parseIdentityJson(project.project_identity),
     });
   } catch (error: any) {
-    console.error("[Admin Websites] Error starting pipeline:", error);
+    console.error("[Admin Websites] Error fetching identity:", error);
     return res.status(500).json({
       success: false,
-      error: "PIPELINE_ERROR",
-      message: error?.message || "Failed to start pipeline",
+      error: "FETCH_ERROR",
+      message: error?.message,
+    });
+  }
+}
+
+/** GET /:id/identity/status — Lightweight polling for warmup progress */
+export async function getIdentityStatus(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("project_identity")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    const identity = parseIdentityJson(project.project_identity);
+
+    return res.json({
+      success: true,
+      data: {
+        warmup_status: identity?.meta?.warmup_status || null,
+        warmed_up_at: identity?.warmed_up_at || null,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching identity status:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR" });
+  }
+}
+
+/** PUT /:id/identity — Replace identity with admin-edited JSON */
+export async function updateIdentity(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { identity } = req.body;
+
+    if (!identity || typeof identity !== "object") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "identity object required",
+      });
+    }
+
+    if (!identity.version) identity.version = 1;
+    identity.last_updated_at = new Date().toISOString();
+
+    // Mirror brand colors to legacy columns
+    const primaryColor = identity.brand?.primary_color || null;
+    const accentColor = identity.brand?.accent_color || null;
+
+    await db("website_builder.projects").where("id", id).update({
+      project_identity: JSON.stringify(identity),
+      primary_color: primaryColor,
+      accent_color: accentColor,
+      updated_at: db.fn.now(),
+    });
+
+    return res.json({ success: true, data: identity });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating identity:", error);
+    return res.status(500).json({
+      success: false,
+      error: "UPDATE_ERROR",
+      message: error?.message,
+    });
+  }
+}
+
+/**
+ * POST /:id/identity/resync-list — Manual re-sync of identity.content_essentials.{doctors|services}.
+ *
+ * Body: `{ list: "doctors" | "services" }`.
+ * Query: `?rescrape=true` (optional) — currently logs a notice and continues with
+ * cached `raw_inputs.scraped_pages_raw`. Full re-scrape is a follow-up.
+ *
+ * Behavior:
+ *  - Re-runs the same distillation pipeline against the already-scraped content.
+ *  - Replaces the targeted list with freshly-stamped entries.
+ *  - Existing entries whose `name` (case-insensitive) is missing from the new set
+ *    are preserved with `stale: true` so admins retain history.
+ */
+export async function resyncIdentityList(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { list } = req.body || {};
+    const rescrape = String(req.query.rescrape || "") === "true";
+
+    if (list !== "doctors" && list !== "services") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: 'list must be "doctors" or "services"',
+      });
+    }
+
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("project_identity")
+      .first();
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    const identity = parseIdentityJson(project.project_identity);
+    if (!identity) {
+      return res.status(409).json({
+        success: false,
+        error: "NO_IDENTITY",
+        message: "Project has no identity — run warmup first.",
+      });
+    }
+
+    const rawInputs = identity.raw_inputs || {};
+    const scrapedPagesRaw: Record<string, string> =
+      rawInputs.scraped_pages_raw && typeof rawInputs.scraped_pages_raw === "object"
+        ? (rawInputs.scraped_pages_raw as Record<string, string>)
+        : {};
+    const userTextInputs: Array<{ label?: string; text: string }> = Array.isArray(
+      rawInputs.user_text_inputs,
+    )
+      ? rawInputs.user_text_inputs
+      : [];
+    const gbpRaw = rawInputs.gbp_raw || null;
+
+    const discoveredPages: Array<{ url?: string | null }> = Array.isArray(
+      identity.extracted_assets?.discovered_pages,
+    )
+      ? identity.extracted_assets.discovered_pages
+      : [];
+    const discoveredPageUrls = discoveredPages
+      .map((p) => p?.url)
+      .filter((u): u is string => typeof u === "string" && u.length > 0);
+
+    if (rescrape) {
+      console.warn(
+        `[Admin Websites] resync-list ?rescrape=true requested for project ${id} — re-scrape path not yet implemented; using cached pages.`,
+      );
+    }
+
+    if (Object.keys(scrapedPagesRaw).length === 0 && discoveredPageUrls.length === 0) {
+      return res.status(409).json({
+        success: false,
+        error: "NO_SOURCE_CONTENT",
+        message:
+          "No cached scraped pages or discovered pages on identity — re-run a full warmup before re-syncing this list.",
+      });
+    }
+
+    const identityLocations = Array.isArray(identity.locations)
+      ? identity.locations.filter(
+          (l: any) =>
+            l && typeof l.place_id === "string" && l.place_id.length > 0,
+        )
+      : [];
+
+    const { doctors, services } = await identityWarmup.extractDoctorsAndServices(
+      scrapedPagesRaw,
+      userTextInputs,
+      gbpRaw,
+      identityLocations,
+      discoveredPageUrls,
+      {
+        projectId: id,
+        eventType: "identity-resync",
+        metadata: { stage: "content-distill", list },
+      },
+    );
+
+    identity.content_essentials = identity.content_essentials || {};
+    const existingList: Array<{
+      name: string;
+      source_url: string | null;
+      short_blurb: string | null;
+      last_synced_at: string;
+      stale?: boolean;
+    }> = Array.isArray(identity.content_essentials[list])
+      ? identity.content_essentials[list]
+      : [];
+
+    const freshList = list === "doctors" ? doctors : services;
+    const freshNames = new Set(freshList.map((e) => e.name.trim().toLowerCase()));
+
+    // Carry over entries that dropped out of the fresh extraction, marked stale.
+    const stragglers = existingList
+      .filter((e) => e && typeof e.name === "string" && !freshNames.has(e.name.trim().toLowerCase()))
+      .map((e) => ({ ...e, stale: true }));
+
+    const merged = [...freshList, ...stragglers];
+
+    identity.content_essentials[list] = merged;
+    identity.last_updated_at = new Date().toISOString();
+
+    await db("website_builder.projects").where("id", id).update({
+      project_identity: JSON.stringify(identity),
+      updated_at: db.fn.now(),
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        list,
+        entries: merged,
+        refreshed_count: freshList.length,
+        stale_count: stragglers.length,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error re-syncing identity list:", error);
+    return res.status(500).json({
+      success: false,
+      error: "RESYNC_ERROR",
+      message: error?.message || "Failed to re-sync identity list",
+    });
+  }
+}
+
+// =====================================================================
+// PER-COMPONENT REGENERATE
+// =====================================================================
+
+/** POST /:id/pages/:pageId/regenerate-component — Regenerate a single section */
+export async function regeneratePageComponent(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id: projectId, pageId } = req.params;
+    const { componentName, instruction } = req.body;
+
+    if (!componentName || typeof componentName !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "componentName is required",
+      });
+    }
+
+    // Reset cancel flag
+    await db("website_builder.projects").where("id", projectId).update({
+      generation_cancel_requested: false,
+      updated_at: db.fn.now(),
+    });
+
+    // Mark page as generating so polling kicks in
+    await db("website_builder.pages").where("id", pageId).update({
+      generation_status: "generating",
+      updated_at: db.fn.now(),
+    });
+
+    const pageQueue = getWbQueue("page-generate");
+    await pageQueue.add(
+      "generate-page",
+      {
+        pageId,
+        projectId,
+        singleComponent: componentName,
+        regenerateInstruction: instruction || undefined,
+      },
+      { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } },
+    );
+
+    console.log(
+      `[Admin Websites] Enqueued regenerate for component "${componentName}" (page ${pageId})`,
+    );
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error regenerating component:", error);
+    return res.status(500).json({
+      success: false,
+      error: "REGENERATE_ERROR",
+      message: error?.message || "Failed to regenerate component",
+    });
+  }
+}
+
+// =====================================================================
+// LAYOUTS PIPELINE
+// =====================================================================
+
+/** POST /:id/generate-layouts — Enqueue layouts generation job */
+export async function startLayoutGeneration(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { slotValues } = req.body;
+
+    // Reset cancel flag
+    await db("website_builder.projects").where("id", id).update({
+      generation_cancel_requested: false,
+      updated_at: db.fn.now(),
+    });
+
+    // Set status immediately so polling reflects queued state
+    await db("website_builder.projects").where("id", id).update({
+      layouts_generation_status: "queued",
+      layouts_generation_progress: null,
+      updated_at: db.fn.now(),
+    });
+
+    const jobData: LayoutGenerateJobData = {
+      projectId: id,
+      slotValues: slotValues || {},
+    };
+
+    const queue = getWbQueue("layout-generate");
+    await queue.add("generate", jobData, {
+      removeOnComplete: { count: 50 },
+      removeOnFail: { count: 25 },
+    });
+
+    console.log(`[Admin Websites] Enqueued wb-layout-generate for project ${id}`);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error starting layouts generation:", error);
+    return res.status(500).json({
+      success: false,
+      error: "LAYOUTS_ERROR",
+      message: error?.message || "Failed to start layouts generation",
+    });
+  }
+}
+
+/** GET /:id/layouts-status — Poll layout generation status */
+export async function getLayoutsStatus(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const row = await db("website_builder.projects")
+      .where("id", id)
+      .select(
+        "layouts_generation_status",
+        "layouts_generation_progress",
+        "layouts_generated_at",
+        "layout_slot_values",
+        "wrapper",
+        "header",
+        "footer",
+      )
+      .first();
+
+    if (!row) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        status: row.layouts_generation_status || null,
+        progress: parseIdentityJson(row.layouts_generation_progress),
+        generated_at: row.layouts_generated_at || null,
+        slot_values: parseIdentityJson(row.layout_slot_values) || {},
+        wrapper: row.wrapper || "",
+        header: row.header || "",
+        footer: row.footer || "",
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching layouts status:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR" });
+  }
+}
+
+/** GET /templates/:templateId/pages/:pageId/slots — Return dynamic_slots for a template page */
+export async function getTemplatePageSlots(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { pageId } = req.params;
+    const row = await db("website_builder.template_pages")
+      .where("id", pageId)
+      .select("dynamic_slots")
+      .first();
+
+    if (!row) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    let slots = row.dynamic_slots;
+    if (typeof slots === "string") {
+      try { slots = JSON.parse(slots); } catch { slots = []; }
+    }
+
+    return res.json({ success: true, data: slots || [] });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching template page slots:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR" });
+  }
+}
+
+/** PATCH /templates/:templateId/pages/:pageId/slots — Update dynamic_slots (admin tool) */
+export async function updateTemplatePageSlots(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { pageId } = req.params;
+    const { slots } = req.body;
+
+    if (!Array.isArray(slots)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "slots must be an array",
+      });
+    }
+
+    const updated = await db("website_builder.template_pages")
+      .where("id", pageId)
+      .update({
+        dynamic_slots: JSON.stringify(slots),
+        updated_at: db.fn.now(),
+      });
+
+    if (updated === 0) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    return res.json({ success: true, data: slots });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating template page slots:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR" });
+  }
+}
+
+/** GET /:id/slot-prefill — Fetch pre-filled slot values for a template page OR layout */
+export async function getSlotPrefill(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { templatePageId, layout } = req.query as {
+      templatePageId?: string;
+      layout?: string;
+    };
+
+    if (layout === "true") {
+      const result = await slotPrefill.getLayoutSlotPrefill(id);
+      return res.json({ success: true, data: result });
+    }
+
+    if (!templatePageId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "Pass ?templatePageId=X or ?layout=true",
+      });
+    }
+
+    const result = await slotPrefill.getPageSlotPrefill(id, templatePageId);
+    return res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching slot prefill:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR" });
+  }
+}
+
+/** POST /:id/slot-generate — LLM-fill text slots using full identity context */
+export async function generateSlotValues(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { templatePageId, pageContext } = req.body || {};
+
+    if (typeof templatePageId !== "string" || !templatePageId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "templatePageId is required",
+      });
+    }
+
+    const result = await generateSlotValuesFromIdentity(
+      id,
+      templatePageId,
+      typeof pageContext === "string" ? pageContext : undefined,
+    );
+    return res.json({ success: true, data: result });
+  } catch (error: any) {
+    const code = error?.message === "IDENTITY_NOT_READY" ? 409 : 500;
+    console.error("[Admin Websites] Error generating slot values:", error);
+    return res.status(code).json({
+      success: false,
+      error: error?.message || "GENERATE_ERROR",
+    });
+  }
+}
+
+function parseIdentityJson(value: unknown): any {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** POST /:id/cancel-generation — Cancel all in-progress page generation */
+export async function cancelGeneration(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const result = await generationPipeline.cancelProjectGeneration(id);
+    return res.json({ success: true, cancelledPages: result.cancelledPages });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error cancelling generation:", error);
+    return res.status(500).json({
+      success: false,
+      error: "CANCEL_ERROR",
+      message: error?.message || "Failed to cancel generation",
     });
   }
 }
@@ -3500,5 +4308,871 @@ export async function deleteRedirect(req: Request, res: Response): Promise<Respo
   } catch (error: any) {
     console.error("[Admin Websites] Error deleting redirect:", error);
     return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
+// COSTS — per-project AI cost rollup (Anthropic only in MVP)
+// =====================================================================
+
+/** GET /:projectId/costs — Per-project AI cost events + totals */
+export async function getProjectCosts(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { projectId } = req.params;
+
+    // Confirm project exists so a typo returns 404 instead of an empty list.
+    const project = await db("website_builder.projects")
+      .where("id", projectId)
+      .select("id")
+      .first();
+    if (!project) {
+      return res
+        .status(404)
+        .json({ success: false, error: "NOT_FOUND", message: "Project not found" });
+    }
+
+    const events = await db("website_builder.ai_cost_events")
+      .where("project_id", projectId)
+      .orderBy("created_at", "desc")
+      .limit(100);
+
+    // Totals — sum across the per-project history (not just the visible page).
+    const totalsRow = await db("website_builder.ai_cost_events")
+      .where("project_id", projectId)
+      .select(
+        db.raw("COALESCE(SUM(estimated_cost_usd), 0)::float AS total_cost_usd"),
+        db.raw("COALESCE(SUM(input_tokens), 0)::int AS total_input"),
+        db.raw("COALESCE(SUM(output_tokens), 0)::int AS total_output"),
+        db.raw(
+          "COALESCE(SUM(cache_creation_tokens), 0)::int AS total_cache_creation",
+        ),
+        db.raw("COALESCE(SUM(cache_read_tokens), 0)::int AS total_cache_read"),
+        db.raw("COUNT(*)::int AS total_events"),
+      )
+      .first();
+
+    const shapedEvents = events.map((e: any) => ({
+      id: e.id,
+      event_type: e.event_type,
+      vendor: e.vendor,
+      model: e.model,
+      input_tokens: Number(e.input_tokens),
+      output_tokens: Number(e.output_tokens),
+      cache_creation_tokens:
+        e.cache_creation_tokens != null ? Number(e.cache_creation_tokens) : null,
+      cache_read_tokens:
+        e.cache_read_tokens != null ? Number(e.cache_read_tokens) : null,
+      estimated_cost_usd: Number(e.estimated_cost_usd),
+      metadata: e.metadata ?? null,
+      parent_event_id: e.parent_event_id ?? null,
+      created_at: e.created_at,
+    }));
+
+    return res.json({
+      success: true,
+      data: {
+        total_cost_usd: Number(totalsRow?.total_cost_usd || 0),
+        total_events: Number(totalsRow?.total_events || 0),
+        total_tokens: {
+          input: Number(totalsRow?.total_input || 0),
+          output: Number(totalsRow?.total_output || 0),
+          cache_creation: Number(totalsRow?.total_cache_creation || 0),
+          cache_read: Number(totalsRow?.total_cache_read || 0),
+        },
+        events: shapedEvents,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching project costs:", error);
+    return res
+      .status(500)
+      .json({ success: false, error: "FETCH_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
+// POST IMPORT FROM IDENTITY (T8 + F4)
+//
+// Admins import doctor / service / location entries discovered during identity
+// warmup into website_builder.posts. The HTTP layer enqueues a BullMQ job and
+// the client polls for status — see service.post-importer + postImporter.processor.
+// =====================================================================
+
+/**
+ * POST /:projectId/posts/import — enqueue an import-from-identity job.
+ * Body: { postType: "doctor"|"service"|"location", entries: string[], overwrite?: boolean }
+ */
+export async function startPostImport(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { projectId } = req.params;
+    const { postType, entries, overwrite } = req.body || {};
+
+    if (!projectId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "projectId is required",
+      });
+    }
+    if (!postType || !["doctor", "service", "location"].includes(postType)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "postType must be 'doctor' | 'service' | 'location'",
+      });
+    }
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "entries must be a non-empty array",
+      });
+    }
+    const project = await db("website_builder.projects")
+      .where("id", projectId)
+      .first();
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Project not found",
+      });
+    }
+
+    const queue = getWbQueue("post-import");
+    const job = await queue.add(
+      "import-from-identity",
+      {
+        projectId,
+        postType,
+        entries,
+        overwrite: !!overwrite,
+      },
+      {
+        removeOnComplete: { count: 50 },
+        removeOnFail: { count: 25 },
+      },
+    );
+
+    return res.status(202).json({
+      success: true,
+      data: { jobId: job.id, total: entries.length },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error starting post import:", error);
+    return res.status(500).json({
+      success: false,
+      error: "ENQUEUE_ERROR",
+      message: error?.message || "Failed to start import",
+    });
+  }
+}
+
+/**
+ * GET /:projectId/posts/import/:jobId — return live progress + final results.
+ *
+ * Response shape:
+ *   { state: "waiting"|"active"|"completed"|"failed"|"unknown",
+ *     progress: { total, completed, results }, summary?: ImportResultSummary }
+ */
+export async function getPostImportStatus(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { jobId } = req.params;
+    if (!jobId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "jobId is required",
+      });
+    }
+    const queue = getWbQueue("post-import");
+    const job = await queue.getJob(jobId);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Job not found (it may have been pruned).",
+      });
+    }
+    const state = await job.getState();
+    const progress = (job.progress as unknown) || {
+      total: 0,
+      completed: 0,
+      results: [],
+    };
+    const summary = job.returnvalue ?? null;
+    const failedReason = (job as any).failedReason || null;
+
+    return res.json({
+      success: true,
+      data: {
+        jobId: job.id,
+        state,
+        progress,
+        summary,
+        failedReason,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching post import status:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch import status",
+    });
+  }
+}
+
+// =====================================================================
+// LOCATIONS — F3 manage `identity.locations[]` + `selected_place_ids`
+// =====================================================================
+//
+// All four handlers below are appended for plan
+// `plans/04182026-no-ticket-identity-enrichments-and-post-imports/spec.md`
+// task F3. They share a small set of helpers kept local to this section so
+// existing handlers above are not modified.
+//
+// Reference implementation: `service.identity-warmup.ts:475` (`buildLocationEntryFromGbp`)
+// and `:433` (`buildBusinessFromGbp`). Those helpers are not exported so we
+// inline-construct the same shape here. `scrapeGbp` is the canonical Apify
+// caller, reused.
+
+import { scrapeGbp as locationsScrapeGbp } from "./feature-utils/util.gbp-scraper";
+
+interface LocationsIdentityLocation {
+  place_id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  rating: number | null;
+  review_count: number | null;
+  category: string | null;
+  website_url: string | null;
+  hours: unknown;
+  last_synced_at: string;
+  is_primary: boolean;
+  warmup_status: "ready" | "failed" | "pending";
+  warmup_error?: string;
+  stale?: boolean;
+}
+
+function buildLocationEntryFromGbpLocal(
+  placeId: string,
+  gbpData: any,
+  isPrimary: boolean,
+): LocationsIdentityLocation {
+  const g = gbpData || {};
+  return {
+    place_id: placeId,
+    name: g.title || g.name || "",
+    address: g.address || null,
+    phone: g.phone || null,
+    rating: (g.totalScore ?? g.rating ?? null) as number | null,
+    review_count: (g.reviewsCount ?? g.reviewCount ?? null) as number | null,
+    category: g.categoryName || g.category || null,
+    website_url: g.website || null,
+    hours: g.openingHours || null,
+    last_synced_at: new Date().toISOString(),
+    is_primary: isPrimary,
+    warmup_status: "ready",
+  };
+}
+
+function buildBusinessFromGbpLocal(gbpData: any, fallbackPlaceId: string): any {
+  const g = gbpData || {};
+  return {
+    name: g.title || g.name || null,
+    category: g.categoryName || g.category || null,
+    phone: g.phone || null,
+    address: g.address || null,
+    city: g.city || null,
+    state: g.state || null,
+    zip: g.postalCode || null,
+    hours: g.openingHours || null,
+    rating: g.totalScore ?? g.rating ?? null,
+    review_count: g.reviewsCount ?? g.reviewCount ?? null,
+    website_url: g.website || null,
+    place_id: fallbackPlaceId || g.placeId || null,
+  };
+}
+
+/** POST /:id/locations — Append a new location, scrape it, write into identity. */
+export async function addProjectLocation(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const placeId = (req.body?.place_id || req.body?.placeId || "").toString().trim();
+
+    if (!placeId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "place_id is required",
+      });
+    }
+
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select(
+        "id",
+        "project_identity",
+        "selected_place_ids",
+        "selected_place_id",
+        "primary_place_id",
+      )
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    const existingIds: string[] = Array.isArray(project.selected_place_ids)
+      ? (project.selected_place_ids as string[])
+      : [];
+
+    if (existingIds.includes(placeId)) {
+      // Already attached — surface a 409 with the current locations array so
+      // the UI can refresh without a confusing silent-success.
+      const identity = parseIdentityJson(project.project_identity) || {};
+      return res.status(409).json({
+        success: false,
+        error: "DUPLICATE_LOCATION",
+        message: "This location is already attached to the project.",
+        data: { locations: Array.isArray(identity.locations) ? identity.locations : [] },
+      });
+    }
+
+    // Hard cap per spec — 20 locations per project.
+    if (existingIds.length >= 20) {
+      return res.status(409).json({
+        success: false,
+        error: "LIMIT_EXCEEDED",
+        message: "Maximum of 20 locations per project.",
+      });
+    }
+
+    // Scrape the new location now (synchronously) so the UI can render the
+    // entry immediately. Failures still write a stale entry instead of 5xx-ing,
+    // matching the multi-location warmup behavior in F2.
+    let scraped: any = null;
+    let scrapeError: string | null = null;
+    try {
+      scraped = await locationsScrapeGbp(placeId);
+    } catch (err: any) {
+      scrapeError = err?.message || "Apify scrape failed";
+      console.warn(
+        `[Admin Websites] addProjectLocation: scrape failed for ${placeId}: ${scrapeError}`,
+      );
+    }
+
+    const identity = parseIdentityJson(project.project_identity) || { version: 1 };
+    const locations: LocationsIdentityLocation[] = Array.isArray(identity.locations)
+      ? identity.locations
+      : [];
+
+    // Brand-new location is never primary by default — admins flip it
+    // explicitly via PATCH /locations/primary.
+    const newEntry: LocationsIdentityLocation = scraped
+      ? buildLocationEntryFromGbpLocal(placeId, scraped, false)
+      : {
+          place_id: placeId,
+          name: "",
+          address: null,
+          phone: null,
+          rating: null,
+          review_count: null,
+          category: null,
+          website_url: null,
+          hours: null,
+          last_synced_at: new Date().toISOString(),
+          is_primary: false,
+          warmup_status: "failed",
+          warmup_error: scrapeError || "Unknown Apify error",
+          stale: true,
+        };
+
+    const updatedLocations = [...locations, newEntry];
+    identity.locations = updatedLocations;
+    identity.last_updated_at = new Date().toISOString();
+
+    const updatedSelectedIds = [...existingIds, placeId];
+
+    await db("website_builder.projects").where("id", id).update({
+      project_identity: JSON.stringify(identity),
+      selected_place_ids: updatedSelectedIds,
+      updated_at: db.fn.now(),
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        locations: updatedLocations,
+        added: newEntry,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error adding location:", error);
+    return res.status(500).json({
+      success: false,
+      error: "ADD_LOCATION_ERROR",
+      message: error?.message || "Failed to add location",
+    });
+  }
+}
+
+/** PATCH /:id/locations/primary — Switch the project's primary location. */
+export async function setPrimaryLocation(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const placeId = (req.body?.place_id || req.body?.placeId || "").toString().trim();
+
+    if (!placeId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "place_id is required",
+      });
+    }
+
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("id", "project_identity", "selected_place_ids", "primary_place_id")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    const existingIds: string[] = Array.isArray(project.selected_place_ids)
+      ? (project.selected_place_ids as string[])
+      : [];
+
+    if (!existingIds.includes(placeId)) {
+      return res.status(404).json({
+        success: false,
+        error: "LOCATION_NOT_FOUND",
+        message: "place_id is not attached to this project.",
+      });
+    }
+
+    const identity = parseIdentityJson(project.project_identity) || { version: 1 };
+    const locations: LocationsIdentityLocation[] = Array.isArray(identity.locations)
+      ? identity.locations
+      : [];
+
+    const newPrimary = locations.find((l) => l.place_id === placeId);
+    if (!newPrimary) {
+      // place_id is in selected_place_ids but missing from identity.locations[].
+      // This is an inconsistent state; we refuse rather than silently rebuilding.
+      return res.status(409).json({
+        success: false,
+        error: "INCONSISTENT_STATE",
+        message:
+          "Location is attached but missing from identity.locations[]. Re-sync the location first.",
+      });
+    }
+
+    const updatedLocations = locations.map((l) => ({
+      ...l,
+      is_primary: l.place_id === placeId,
+    }));
+
+    // Rewrite identity.business from the new primary's structured fields so
+    // all existing consumers of `identity.business` (prompts, slot prefill,
+    // generators) immediately reflect the switch without any refactor.
+    const rewrittenBusiness = {
+      name: newPrimary.name || null,
+      category: newPrimary.category || null,
+      phone: newPrimary.phone || null,
+      address: newPrimary.address || null,
+      city: (identity.business && (identity.business as any).city) || null,
+      state: (identity.business && (identity.business as any).state) || null,
+      zip: (identity.business && (identity.business as any).zip) || null,
+      hours: newPrimary.hours ?? null,
+      rating: newPrimary.rating ?? null,
+      review_count: newPrimary.review_count ?? null,
+      website_url: newPrimary.website_url ?? null,
+      place_id: newPrimary.place_id,
+    };
+
+    identity.locations = updatedLocations;
+    identity.business = rewrittenBusiness;
+    identity.last_updated_at = new Date().toISOString();
+
+    await db("website_builder.projects").where("id", id).update({
+      project_identity: JSON.stringify(identity),
+      primary_place_id: placeId,
+      // Keep the legacy convenience pointer in sync (back-compat with consumers
+      // that still read `selected_place_id`).
+      selected_place_id: placeId,
+      updated_at: db.fn.now(),
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        identity,
+        primary_place_id: placeId,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error setting primary location:", error);
+    return res.status(500).json({
+      success: false,
+      error: "SET_PRIMARY_ERROR",
+      message: error?.message || "Failed to set primary location",
+    });
+  }
+}
+
+/** DELETE /:id/locations/:place_id — Remove a non-primary location. */
+export async function removeProjectLocation(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id, place_id: rawPlaceId } = req.params;
+    const placeId = (rawPlaceId || "").toString().trim();
+
+    if (!placeId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "place_id path param is required",
+      });
+    }
+
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select(
+        "id",
+        "project_identity",
+        "selected_place_ids",
+        "selected_place_id",
+        "primary_place_id",
+      )
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    if (project.primary_place_id === placeId) {
+      return res.status(409).json({
+        success: false,
+        error: "CANNOT_REMOVE_PRIMARY",
+        message:
+          "Cannot remove the primary location. Set another location as primary first.",
+      });
+    }
+
+    const existingIds: string[] = Array.isArray(project.selected_place_ids)
+      ? (project.selected_place_ids as string[])
+      : [];
+
+    const identity = parseIdentityJson(project.project_identity) || { version: 1 };
+    const locations: LocationsIdentityLocation[] = Array.isArray(identity.locations)
+      ? identity.locations
+      : [];
+
+    const updatedLocations = locations.filter((l) => l.place_id !== placeId);
+    const updatedSelectedIds = existingIds.filter((p) => p !== placeId);
+
+    identity.locations = updatedLocations;
+    identity.last_updated_at = new Date().toISOString();
+
+    await db("website_builder.projects").where("id", id).update({
+      project_identity: JSON.stringify(identity),
+      selected_place_ids: updatedSelectedIds,
+      updated_at: db.fn.now(),
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        locations: updatedLocations,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error removing location:", error);
+    return res.status(500).json({
+      success: false,
+      error: "REMOVE_LOCATION_ERROR",
+      message: error?.message || "Failed to remove location",
+    });
+  }
+}
+
+/** POST /:id/locations/:place_id/resync — Re-scrape a single location. */
+export async function resyncProjectLocation(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id, place_id: rawPlaceId } = req.params;
+    const placeId = (rawPlaceId || "").toString().trim();
+
+    if (!placeId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "place_id path param is required",
+      });
+    }
+
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("id", "project_identity", "selected_place_ids", "primary_place_id")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    const existingIds: string[] = Array.isArray(project.selected_place_ids)
+      ? (project.selected_place_ids as string[])
+      : [];
+
+    if (!existingIds.includes(placeId)) {
+      return res.status(404).json({
+        success: false,
+        error: "LOCATION_NOT_FOUND",
+        message: "place_id is not attached to this project.",
+      });
+    }
+
+    const identity = parseIdentityJson(project.project_identity) || { version: 1 };
+    const locations: LocationsIdentityLocation[] = Array.isArray(identity.locations)
+      ? identity.locations
+      : [];
+
+    const wasPrimary = project.primary_place_id === placeId;
+
+    let scraped: any = null;
+    let scrapeError: string | null = null;
+    try {
+      scraped = await locationsScrapeGbp(placeId);
+    } catch (err: any) {
+      scrapeError = err?.message || "Apify scrape failed";
+      console.warn(
+        `[Admin Websites] resyncProjectLocation: scrape failed for ${placeId}: ${scrapeError}`,
+      );
+    }
+
+    const updatedEntry: LocationsIdentityLocation = scraped
+      ? buildLocationEntryFromGbpLocal(placeId, scraped, wasPrimary)
+      : {
+          place_id: placeId,
+          name: "",
+          address: null,
+          phone: null,
+          rating: null,
+          review_count: null,
+          category: null,
+          website_url: null,
+          hours: null,
+          last_synced_at: new Date().toISOString(),
+          is_primary: wasPrimary,
+          warmup_status: "failed",
+          warmup_error: scrapeError || "Unknown Apify error",
+          stale: true,
+        };
+
+    // Replace just this entry, preserve order.
+    const idx = locations.findIndex((l) => l.place_id === placeId);
+    const updatedLocations =
+      idx === -1 ? [...locations, updatedEntry] : locations.map((l, i) => (i === idx ? updatedEntry : l));
+
+    identity.locations = updatedLocations;
+
+    // If we re-synced the primary AND the scrape succeeded, refresh
+    // identity.business too so admins don't see stale primary data.
+    if (wasPrimary && scraped) {
+      identity.business = buildBusinessFromGbpLocal(scraped, placeId);
+    }
+
+    identity.last_updated_at = new Date().toISOString();
+
+    await db("website_builder.projects").where("id", id).update({
+      project_identity: JSON.stringify(identity),
+      updated_at: db.fn.now(),
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        location: updatedEntry,
+        locations: updatedLocations,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error re-syncing location:", error);
+    return res.status(500).json({
+      success: false,
+      error: "RESYNC_LOCATION_ERROR",
+      message: error?.message || "Failed to re-sync location",
+    });
+  }
+}
+
+// =====================================================================
+// IDENTITY — slice PATCH
+// =====================================================================
+//
+// `PATCH /:id/identity/slice` — surgical edit for a single allow-listed
+// section of `project_identity`. Replaces the slice wholesale (no deep merge)
+// after per-slice Zod validation.
+//
+// See `plans/04202026-no-ticket-identity-modal-cleanup-and-crud/spec.md` T3.
+
+const doctorSliceSchema = z
+  .object({
+    name: z.string().min(1),
+    source_url: z.string().nullable().optional(),
+    short_blurb: z.string().nullable().optional(),
+    credentials: z.array(z.string()).nullable().optional(),
+    location_place_ids: z.array(z.string()).nullable().optional(),
+    last_synced_at: z.string().nullable().optional(),
+    stale: z.boolean().optional(),
+  })
+  .strict();
+
+const serviceSliceSchema = z
+  .object({
+    name: z.string().min(1),
+    source_url: z.string().nullable().optional(),
+    short_blurb: z.string().nullable().optional(),
+    category: z.string().nullable().optional(),
+    location_place_ids: z.array(z.string()).nullable().optional(),
+    last_synced_at: z.string().nullable().optional(),
+    stale: z.boolean().optional(),
+  })
+  .strict();
+
+const looseObject = z.record(z.string(), z.unknown());
+
+const IDENTITY_SLICE_VALIDATORS: Record<string, z.ZodTypeAny> = {
+  "content_essentials.doctors": z.array(doctorSliceSchema),
+  "content_essentials.services": z.array(serviceSliceSchema),
+  "content_essentials.featured_testimonials": z.array(z.unknown()),
+  "content_essentials.core_values": z.array(z.unknown()),
+  "content_essentials.certifications": z.array(z.unknown()),
+  "content_essentials.service_areas": z.array(z.unknown()),
+  "content_essentials.social_links": z.array(z.unknown()),
+  "content_essentials.unique_value_proposition": z
+    .union([z.string(), z.null()]),
+  "content_essentials.founding_story": z.union([z.string(), z.null()]),
+  "content_essentials.review_themes": z.array(z.unknown()),
+  locations: z.array(z.unknown()),
+  brand: looseObject,
+  voice_and_tone: looseObject,
+};
+
+/** Deep-set a value at a dotted path in `target`, mutating intermediates. */
+function setAtPath(target: any, dottedPath: string, value: unknown): void {
+  const keys = dottedPath.split(".");
+  let cursor = target;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (
+      cursor[key] === null ||
+      cursor[key] === undefined ||
+      typeof cursor[key] !== "object"
+    ) {
+      cursor[key] = {};
+    }
+    cursor = cursor[key];
+  }
+  cursor[keys[keys.length - 1]] = value;
+}
+
+/** PATCH /:id/identity/slice — Surgical per-slice edit with Zod validation. */
+export async function patchIdentitySlice(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { path: slicePath, value } = req.body || {};
+
+    if (!slicePath || typeof slicePath !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "path string required",
+      });
+    }
+
+    const validator = IDENTITY_SLICE_VALIDATORS[slicePath];
+    if (!validator) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_PATH",
+        message: `path "${slicePath}" is not in the slice allow-list`,
+      });
+    }
+
+    const parsed = validator.safeParse(value);
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_SHAPE",
+        message: `value does not match the expected shape for "${slicePath}"`,
+        details: parsed.error.issues,
+      });
+    }
+
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("project_identity")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
+
+    const identity = parseIdentityJson(project.project_identity) || {
+      version: 1,
+    };
+
+    setAtPath(identity, slicePath, parsed.data);
+
+    if (!identity.version) identity.version = 1;
+    identity.last_updated_at = new Date().toISOString();
+
+    // Mirror brand colors to legacy columns if brand was the slice that changed.
+    const updatePayload: Record<string, unknown> = {
+      project_identity: JSON.stringify(identity),
+      updated_at: db.fn.now(),
+    };
+    if (slicePath === "brand") {
+      updatePayload.primary_color = identity.brand?.primary_color ?? null;
+      updatePayload.accent_color = identity.brand?.accent_color ?? null;
+    }
+
+    await db("website_builder.projects").where("id", id).update(updatePayload);
+
+    return res.json({ success: true, data: identity });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error patching identity slice:", error);
+    return res.status(500).json({
+      success: false,
+      error: "PATCH_SLICE_ERROR",
+      message: error?.message || "Failed to patch identity slice",
+    });
   }
 }

@@ -269,13 +269,21 @@ export default function WebsitesList() {
       .join(" ");
   };
 
-  // Extract business name from GBP data if available
+  // Extract business name — prefer project_identity.business.name, fall back to legacy step_gbp_scrape
   const getBusinessName = (website: WebsiteProject): string | null => {
+    const identity = website.project_identity as Record<string, unknown> | null | undefined;
+    const businessObj = identity && typeof identity === "object"
+      ? (identity as { business?: Record<string, unknown> }).business
+      : null;
+    const fromIdentity = businessObj && typeof businessObj === "object"
+      ? (businessObj.name as string | undefined)
+      : undefined;
+    if (fromIdentity) return fromIdentity;
+
     if (website.step_gbp_scrape && typeof website.step_gbp_scrape === "object") {
       const gbpData = website.step_gbp_scrape as Record<string, unknown>;
-      if (gbpData.name && typeof gbpData.name === "string") {
-        return gbpData.name;
-      }
+      if (gbpData.name && typeof gbpData.name === "string") return gbpData.name;
+      if (gbpData.title && typeof gbpData.title === "string") return gbpData.title as string;
     }
     return null;
   };

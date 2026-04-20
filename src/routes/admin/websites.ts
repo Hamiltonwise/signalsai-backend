@@ -101,6 +101,12 @@ router.patch("/templates/:templateId/pages/:pageId", controller.updateTemplatePa
 // DELETE /templates/:templateId/pages/:pageId — Delete template page
 router.delete("/templates/:templateId/pages/:pageId", controller.deleteTemplatePage);
 
+// GET   /templates/:templateId/pages/:pageId/slots — Template page dynamic_slots (Plan B)
+router.get("/templates/:templateId/pages/:pageId/slots", controller.getTemplatePageSlots);
+
+// PATCH /templates/:templateId/pages/:pageId/slots — Update dynamic_slots (admin tool)
+router.patch("/templates/:templateId/pages/:pageId/slots", controller.updateTemplatePageSlots);
+
 // =====================================================================
 // TEMPLATE POST TYPES (must come before /templates/:templateId)
 // =====================================================================
@@ -267,8 +273,54 @@ router.get("/:id/status", controller.getProjectStatus);
 // GET  /:id/pages/generation-status — Per-page generation status (before /:id/pages/:pageId)
 router.get("/:id/pages/generation-status", controller.getPagesGenerationStatus);
 
+// GET  /:id/pages/:pageId/progressive-state — Template scaffolding + generated sections so far
+router.get("/:id/pages/:pageId/progressive-state", controller.getPageProgressiveState);
+
 // POST /:id/create-all-from-template — Bulk create all pages from template
 router.post("/:id/create-all-from-template", controller.createAllFromTemplate);
+
+// POST /:id/cancel-generation — Cancel all in-progress page generation
+router.post("/:id/cancel-generation", controller.cancelGeneration);
+
+// =====================================================================
+// PROJECT IDENTITY
+// =====================================================================
+
+// POST /:id/test-url — Probe a URL for block/CAPTCHA signals
+router.post("/:id/test-url", controller.testUrl);
+
+// POST /:id/identity/warmup — Enqueue identity warmup job
+router.post("/:id/identity/warmup", controller.startIdentityWarmup);
+
+// GET  /:id/identity — Full project identity JSON
+router.get("/:id/identity", controller.getIdentity);
+
+// GET  /:id/identity/status — Lightweight warmup status polling
+router.get("/:id/identity/status", controller.getIdentityStatus);
+
+// PUT  /:id/identity — Replace identity with admin-edited JSON
+router.put("/:id/identity", controller.updateIdentity);
+
+// POST /:id/identity/resync-list — Re-run doctor/service extraction against cached pages
+router.post("/:id/identity/resync-list", controller.resyncIdentityList);
+
+// GET /:id/slot-prefill — Pre-filled slot values from project_identity
+router.get("/:id/slot-prefill", controller.getSlotPrefill);
+
+// POST /:id/slot-generate — LLM-fill text slots using identity context
+router.post("/:id/slot-generate", controller.generateSlotValues);
+
+// POST /:id/generate-layouts — Enqueue layouts generation
+router.post("/:id/generate-layouts", controller.startLayoutGeneration);
+
+// GET /:id/layouts-status — Layouts generation status polling
+router.get("/:id/layouts-status", controller.getLayoutsStatus);
+
+// POST /:id/pages/:pageId/regenerate-component — Regenerate a single section
+router.post(
+  "/:id/pages/:pageId/regenerate-component",
+  controller.regeneratePageComponent,
+);
 
 // PATCH /:id/link-organization — Link/unlink org
 router.patch("/:id/link-organization", controller.linkOrganization);
@@ -544,6 +596,13 @@ router.patch("/:id/ai-command/:batchId/recommendations/:recId", controller.updat
 router.post("/:id/ai-command/:batchId/execute", controller.executeAiCommandBatch);
 
 // =====================================================================
+// COSTS — per-project AI cost rollup
+// =====================================================================
+
+// GET /:projectId/costs — Cost events + totals for the Costs tab
+router.get("/:projectId/costs", controller.getProjectCosts);
+
+// =====================================================================
 // PROJECTS (parameterized — last to avoid matching other routes)
 // =====================================================================
 
@@ -555,6 +614,58 @@ router.patch("/:id", controller.updateProject);
 
 // DELETE /:id — Delete project (cascade pages)
 router.delete("/:id", controller.deleteProject);
+
+// =====================================================================
+// LOCATIONS — F3 (multi-location management for IdentityModal Locations tab)
+// =====================================================================
+//
+// Appended for plan
+// `plans/04182026-no-ticket-identity-enrichments-and-post-imports/spec.md`
+// task F3. Express's `/:id` matcher above does NOT swallow `/:id/locations`
+// (path-to-regexp anchors `/:id` to end-of-path), so registration order is
+// safe even after the `/:id` catch-all.
+
+// POST   /:id/locations               — Add + scrape a new place_id
+router.post("/:id/locations", controller.addProjectLocation);
+
+// PATCH  /:id/locations/primary       — Switch primary location (rewrites identity.business)
+router.patch("/:id/locations/primary", controller.setPrimaryLocation);
+
+// POST   /:id/locations/:place_id/resync — Re-scrape a single location
+router.post("/:id/locations/:place_id/resync", controller.resyncProjectLocation);
+
+// DELETE /:id/locations/:place_id     — Remove a non-primary location
+router.delete("/:id/locations/:place_id", controller.removeProjectLocation);
+
+// =====================================================================
+// POST IMPORT FROM IDENTITY — T8 + F4
+// =====================================================================
+//
+// Appended for plan
+// `plans/04182026-no-ticket-identity-enrichments-and-post-imports/spec.md`
+// tasks T8 + F4. The `/:projectId/posts/import` paths sit deeper than the
+// catch-all `/:id` GET above, so Express's path-to-regexp does not match them
+// against the project-detail handler.
+
+// POST /:projectId/posts/import            — Enqueue a BullMQ job to import
+//                                            doctor / service / location entries
+router.post("/:projectId/posts/import", controller.startPostImport);
+
+// GET  /:projectId/posts/import/:jobId     — Poll job state + per-entry results
+router.get("/:projectId/posts/import/:jobId", controller.getPostImportStatus);
+
+// =====================================================================
+// IDENTITY SLICE PATCH — T3
+// =====================================================================
+//
+// Appended for plan
+// `plans/04202026-no-ticket-identity-modal-cleanup-and-crud/spec.md` T3.
+// Surgical per-slice edit for `project_identity`. Accepts only the allow-list
+// enforced inside the handler. Path anchors after `/:id/identity/` so it does
+// not collide with the catch-all `/:id` matcher above.
+
+// PATCH /:id/identity/slice — Replace one allow-listed slice of identity
+router.patch("/:id/identity/slice", controller.patchIdentitySlice);
 
 // =====================================================================
 // EXPORTS

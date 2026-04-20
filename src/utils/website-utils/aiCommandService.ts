@@ -2,12 +2,49 @@
  * AI Command Service
  * Handles LLM-powered batch analysis and execution for the AI Command feature.
  * Uses Claude Sonnet for both analysis (recommendations) and execution (HTML editing).
+ *
+ * Direct SDK calls — instrumented manually via `safeLogAiCostEvent`. Each
+ * public function accepts an optional `costContext` carrying the project id
+ * and metadata; when omitted, no cost row is written.
+ *
+ * TODO (deferred — not in this MVP pass):
+ *   - Apify, Puppeteer, OpenAI embeddings, Google Places.
+ *   - See `src/services/ai-cost/pricing.ts`.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { loadPrompt } from "../../agents/service.prompt-loader";
+import { safeLogAiCostEvent } from "../../services/ai-cost/service.ai-cost";
 
 const MODEL = "claude-sonnet-4-6";
+
+/** Optional cost-accounting context passed by callers that have a project. */
+export interface AiCommandCostContext {
+  projectId: string;
+  eventType?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/** Internal helper — logs one row per Anthropic response. Never throws. */
+async function logAnthropicCost(
+  ctx: AiCommandCostContext | undefined,
+  defaultEventType: string,
+  response: { model?: string; usage?: { input_tokens?: number; output_tokens?: number } },
+  extraMetadata?: Record<string, unknown>,
+): Promise<void> {
+  if (!ctx?.projectId) return;
+  await safeLogAiCostEvent({
+    projectId: ctx.projectId,
+    eventType: ctx.eventType || defaultEventType,
+    vendor: "anthropic",
+    model: response.model || MODEL,
+    usage: {
+      input_tokens: response.usage?.input_tokens ?? 0,
+      output_tokens: response.usage?.output_tokens ?? 0,
+    },
+    metadata: { ...(ctx.metadata || {}), ...(extraMetadata || {}) },
+  });
+}
 
 // Load prompts from .md files (cached after first read)
 const getAnalysisPrompt = () => loadPrompt("websiteAgents/aiCommand/Analysis");
@@ -48,8 +85,9 @@ export async function analyzeHtmlContent(params: {
   prompt: string;
   targetLabel: string;
   currentHtml: string;
+  costContext?: AiCommandCostContext;
 }): Promise<AnalysisResult> {
-  const { prompt, targetLabel, currentHtml } = params;
+  const { prompt, targetLabel, currentHtml, costContext } = params;
   const ai = getClient();
 
   // Condense prompt for small sections to save tokens
@@ -81,6 +119,10 @@ ${currentHtml}`;
     system: getAnalysisPrompt(),
     messages,
   });
+  await logAnthropicCost(costContext, "ai-command", response, {
+    stage: "analyze",
+    target_label: targetLabel,
+  });
 
   let text = extractText(response);
   let parsed = tryParseJson(text);
@@ -102,6 +144,10 @@ ${currentHtml}`;
       max_tokens: 4096,
       system: getAnalysisPrompt(),
       messages,
+    });
+    await logAnthropicCost(costContext, "ai-command", response, {
+      stage: "analyze-retry",
+      target_label: targetLabel,
     });
 
     text = extractText(response);
@@ -190,8 +236,9 @@ export async function analyzeForStructuralChanges(params: {
   existingPostSlugs: string[];
   postTypes: string[];
   existingMenus: Array<{ menu_slug: string; items: Array<{ label: string; url: string }> }>;
+  costContext?: AiCommandCostContext;
 }): Promise<StructuralAnalysisResult> {
-  const { prompt, existingPaths, existingRedirects, existingPostSlugs, postTypes, existingMenus } = params;
+  const { prompt, existingPaths, existingRedirects, existingPostSlugs, postTypes, existingMenus, costContext } = params;
 
   console.log(`[AiCommand] Analyzing structural changes (3 parallel focused calls)...`);
 
@@ -201,17 +248,17 @@ export async function analyzeForStructuralChanges(params: {
       context: `## Existing Pages\n${existingPaths.join("\n") || "(none)"}\n\n## Existing Redirects\n${existingRedirects.join("\n") || "(none)"}`,
       responseFormat: `{ "redirects": [{ "from_path": "/old", "to_path": "/new", "type": 301, "recommendation": "reason" }], "deleteRedirects": [{ "from_path": "/duplicate", "recommendation": "reason to delete" }] }`,
       instruction: "Identify URL redirects needed AND existing redirects that should be deleted (duplicates, obsolete, pointing to non-existent targets). Check every old URL mentioned in the checklist. Do NOT include pages, posts, or menu changes.",
-    }),
+    }, costContext),
     analyzeStructuralFocused(prompt, "content", {
       context: `## Existing Pages\n${existingPaths.join("\n") || "(none)"}\n\n## Existing Posts\n${existingPostSlugs.join("\n") || "(none)"}\n\n## Available Post Types\n${postTypes.join("\n") || "(none)"}`,
       responseFormat: `{ "pages": [{ "path": "/pricing", "purpose": "description", "recommendation": "reason" }], "posts": [{ "post_type_slug": "services", "title": "Name", "slug": "slug", "purpose": "description", "recommendation": "Create as 'services' post because..." }] }`,
       instruction: "Identify ONLY new pages and posts to create. For EACH missing item in the checklist, create a separate entry. Posts go to the matching post_type. Pages are for standalone content. Be thorough — process EVERY item in the checklist that needs creation. This includes service posts, doctor posts, patient education posts, blog posts, and any other content type mentioned. If the checklist says 'create as post' or mentions a post type, it MUST be a create_post entry.",
-    }),
+    }, costContext),
     analyzeStructuralFocused(prompt, "menus", {
       context: `## Existing Pages\n${existingPaths.join("\n") || "(none)"}\n\n## Existing Menus & Items\n${existingMenus.length > 0 ? existingMenus.map((m) => `Menu "${m.menu_slug}":\n${m.items.map((i) => `  - ${i.label} → ${i.url}`).join("\n") || "  (empty)"}`).join("\n\n") : "(no menus)"}`,
       responseFormat: `{ "menuChanges": [{ "menu_slug": "main-menu", "action": "add", "label": "Name", "url": "/path", "target": "_self", "after_label": "Services", "recommendation": "reason" }], "newMenus": [{ "name": "Footer Menu", "slug": "footer-menu", "recommendation": "reason" }] }`,
       instruction: "Identify ONLY menu changes needed — new menus to create and items to add/remove/update. Study the existing menu structure and place items in the correct position.",
-    }),
+    }, costContext),
   ]);
 
   const result: StructuralAnalysisResult = {
@@ -263,7 +310,8 @@ export async function analyzeForStructuralChanges(params: {
 async function analyzeStructuralFocused(
   prompt: string,
   focusArea: string,
-  params: { context: string; responseFormat: string; instruction: string }
+  params: { context: string; responseFormat: string; instruction: string },
+  costContext?: AiCommandCostContext
 ): Promise<any> {
   const ai = getClient();
 
@@ -289,6 +337,10 @@ If nothing is needed, return the structure with empty arrays.`;
     system: getStructuralPrompt(),
     messages: [{ role: "user", content: userMessage }],
   });
+  await logAnthropicCost(costContext, "ai-command", response, {
+    stage: "structural",
+    focus_area: focusArea,
+  });
 
   let text = extractText(response);
 
@@ -309,6 +361,10 @@ If nothing is needed, return the structure with empty arrays.`;
         { role: "assistant", content: text },
         { role: "user", content: "Your response was not valid JSON. Return ONLY the JSON object." },
       ],
+    });
+    await logAnthropicCost(costContext, "ai-command", response, {
+      stage: "structural-retry",
+      focus_area: focusArea,
     });
     text = extractText(response);
     parsed = tryParseJson(text);
@@ -339,8 +395,9 @@ export async function editHtmlContent(params: {
   instruction: string;
   currentHtml: string;
   targetLabel: string;
+  costContext?: AiCommandCostContext;
 }): Promise<ExecutionResult> {
-  const { instruction, currentHtml, targetLabel } = params;
+  const { instruction, currentHtml, targetLabel, costContext } = params;
   const ai = getClient();
 
   const userMessage = `## Target: ${targetLabel}
@@ -366,6 +423,10 @@ ${currentHtml}`;
     system: getExecutionPrompt(),
     messages,
   });
+  await logAnthropicCost(costContext, "ai-command", response, {
+    stage: "execute",
+    target_label: targetLabel,
+  });
 
   let text = extractText(response);
   let html = cleanHtmlOutput(text);
@@ -386,6 +447,10 @@ ${currentHtml}`;
       max_tokens: 8192,
       system: getExecutionPrompt(),
       messages,
+    });
+    await logAnthropicCost(costContext, "ai-command", response, {
+      stage: "execute-retry",
+      target_label: targetLabel,
     });
 
     text = extractText(response);
@@ -418,7 +483,9 @@ export async function generatePostContent(params: {
   referenceContent: string;
   styleContext: string;
   customFieldsHint: string;
+  costContext?: AiCommandCostContext;
 }): Promise<{ html: string; inputTokens: number; outputTokens: number }> {
+  const { costContext } = params;
   const ai = getClient();
   const userMessage = [
     `## Post to Create`,
@@ -437,6 +504,10 @@ export async function generatePostContent(params: {
     max_tokens: 4096,
     system: getPostContentPrompt(),
     messages: [{ role: "user", content: userMessage }],
+  });
+  await logAnthropicCost(costContext, "ai-command", response, {
+    stage: "post-content",
+    title: params.title,
   });
 
   let html = cleanHtmlOutput(extractText(response));
@@ -469,8 +540,9 @@ export interface SectionPlan {
 export async function planPageSections(params: {
   purpose: string;
   existingSections: Array<{ name: string; summary: string }>;
+  costContext?: AiCommandCostContext;
 }): Promise<SectionPlan> {
-  const { purpose, existingSections } = params;
+  const { purpose, existingSections, costContext } = params;
   const ai = getClient();
 
   const userMessage = `## Page Purpose
@@ -486,6 +558,9 @@ ${existingSections.map((s) => `- ${s.name}: ${s.summary}`).join("\n")}`;
     max_tokens: 2048,
     system: getSectionPlannerPrompt(),
     messages: [{ role: "user", content: userMessage }],
+  });
+  await logAnthropicCost(costContext, "ai-command", response, {
+    stage: "plan-sections",
   });
 
   const text = extractText(response);
@@ -568,8 +643,9 @@ export async function generateSectionHtml(params: {
   pageContext: string;
   priorSections: string[];
   siteStyleContext: string;
+  costContext?: AiCommandCostContext;
 }): Promise<GeneratedSection> {
-  const { sectionName, sectionPurpose, tplId, pageContext, priorSections, siteStyleContext } = params;
+  const { sectionName, sectionPurpose, tplId, pageContext, priorSections, siteStyleContext, costContext } = params;
   const ai = getClient();
 
   const userMessage = `## Section to Generate
@@ -594,6 +670,11 @@ ${siteStyleContext.substring(0, 3000)}`;
     system: getSectionGeneratorPrompt(),
     messages: [{ role: "user", content: userMessage }],
   });
+  await logAnthropicCost(costContext, "ai-command", response, {
+    stage: "generate-section",
+    section_name: sectionName,
+    tpl_id: tplId,
+  });
 
   let text = extractText(response);
   let html = cleanHtmlOutput(text);
@@ -610,6 +691,10 @@ ${siteStyleContext.substring(0, 3000)}`;
         { role: "assistant", content: html },
         { role: "user", content: `The root element MUST have class="alloro-tpl-${tplId}-${sectionName}" and data-alloro-section="${sectionName}". Inner elements must have alloro-tpl-${tplId}-${sectionName}-component-* classes. Regenerate with these classes.` },
       ],
+    });
+    await logAnthropicCost(costContext, "ai-command", response, {
+      stage: "generate-section-retry",
+      section_name: sectionName,
     });
     text = extractText(response);
     html = cleanHtmlOutput(text);
@@ -693,8 +778,9 @@ export async function analyzeScreenshot(params: {
   viewport: string;
   pagePath: string;
   sectionHtml?: string;
+  costContext?: AiCommandCostContext;
 }): Promise<VisualIssue[]> {
-  const { screenshot, viewport, pagePath, sectionHtml } = params;
+  const { screenshot, viewport, pagePath, sectionHtml, costContext } = params;
   const ai = getClient();
 
   console.log(`[AiCommand] Analyzing screenshot: ${pagePath} (${viewport})${sectionHtml ? ` with ${sectionHtml.length} chars HTML` : ""}`);
@@ -731,6 +817,11 @@ export async function analyzeScreenshot(params: {
         ],
       },
     ],
+  });
+  await logAnthropicCost(costContext, "ai-command", response, {
+    stage: "visual-analysis",
+    page_path: pagePath,
+    viewport,
   });
 
   const text = extractText(response);

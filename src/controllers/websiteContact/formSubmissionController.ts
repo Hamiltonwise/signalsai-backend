@@ -82,12 +82,31 @@ function extractEmail(contents: Record<string, string>): string | null {
 
 /**
  * Get a display name for the business from the project.
+ * Prefers project_identity.business.name; falls back to legacy step_gbp_scrape.
  */
 function getBusinessName(project: any): string | undefined {
+  const identity = parseIdentity(project.project_identity);
+  const fromIdentity = identity?.business?.name;
+  if (fromIdentity) return fromIdentity;
+
   if (project.step_gbp_scrape && typeof project.step_gbp_scrape === "object") {
-    return (project.step_gbp_scrape as { name?: string }).name;
+    const legacy = project.step_gbp_scrape as { name?: string; title?: string };
+    return legacy.name || legacy.title;
   }
   return undefined;
+}
+
+function parseIdentity(value: unknown): any {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 /**
