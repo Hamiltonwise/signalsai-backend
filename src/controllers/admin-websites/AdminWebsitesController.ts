@@ -277,6 +277,16 @@ export async function createAllFromTemplate(
       });
     }
 
+    // Clear any stale cancel flag from a previous generation run. Without
+    // this, the worker's early `isCancelled` check will flip every new page
+    // to `cancelled` the moment it starts.
+    await db("website_builder.projects")
+      .where("id", id)
+      .update({
+        generation_cancel_requested: false,
+        updated_at: db.fn.now(),
+      });
+
     // Create all page rows as queued
     const createResult = await projectManager.createAllFromTemplate(id, {
       templateId,
