@@ -97,6 +97,22 @@ function readIdentityLocations(
   return Array.isArray(raw) ? (raw as ProjectIdentityLocation[]) : [];
 }
 
+/**
+ * `sources_used.urls[].url` shape drift: older identities store a bare
+ * string, newer ones wrap it as `{url: string, strategy: string}`. Narrow
+ * to a trimmed string either way.
+ */
+function extractSourceUrlString(entry: unknown): string {
+  if (!entry || typeof entry !== "object") return "";
+  const raw = (entry as { url?: unknown }).url;
+  if (typeof raw === "string") return raw.trim();
+  if (raw && typeof raw === "object") {
+    const inner = (raw as { url?: unknown }).url;
+    if (typeof inner === "string") return inner.trim();
+  }
+  return "";
+}
+
 export default function IdentityModal({
   projectId,
   onClose,
@@ -415,11 +431,12 @@ export default function IdentityModal({
         address: loc.address || "",
       }));
 
-    // URLs → urlInputs (strategy defaults to "fetch" — sources_used trace
-    // doesn't persist the admin's original strategy choice).
+    // URLs → urlInputs. Historically `sources_used.urls[].url` was a plain
+    // string; newer identities wrap it as `{url, strategy}`. Normalize both
+    // shapes before trimming.
     const sourceUrls = identity.sources_used?.urls || [];
     const rehydratedUrls: UrlInput[] = sourceUrls
-      .map((u) => (u.url ? u.url.trim() : ""))
+      .map((u) => extractSourceUrlString(u))
       .filter((url) => !!url)
       .map((url, idx) => ({
         id: `rehydrated-url-${Date.now()}-${idx}`,
@@ -466,7 +483,7 @@ export default function IdentityModal({
       (loc) => !!loc.place_id,
     );
     const hasUrls = (identity.sources_used?.urls || []).some(
-      (u) => !!u.url && u.url.trim().length > 0,
+      (u) => extractSourceUrlString(u).length > 0,
     );
     const hasTexts = (identity.raw_inputs?.user_text_inputs || []).some(
       (t) => typeof t?.text === "string" && t.text.trim().length > 0,
