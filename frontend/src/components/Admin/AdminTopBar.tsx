@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronDown, LogOut, User, RefreshCw, Layers, FolderKanban } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  User,
+  RefreshCw,
+  Layers,
+  FolderKanban,
+} from "lucide-react";
 import { queryClient } from "../../lib/queryClient";
 import { toast } from "react-hot-toast";
 
@@ -17,7 +24,9 @@ function getAdminDisplayName(): string {
     const payload = JSON.parse(atob(token.split(".")[1]));
     const email: string = payload.email || "";
     const name = email.split("@")[0];
-    return name ? name.charAt(0).toUpperCase() + name.slice(1) : "Admin Account";
+    return name
+      ? name.charAt(0).toUpperCase() + name.slice(1)
+      : "Admin Account";
   } catch {
     return "Admin Account";
   }
@@ -43,8 +52,8 @@ export function AdminTopBar() {
     localStorage.removeItem("user_role");
 
     // Clear cookie with shared domain for cross-app auth sync
-    const isProduction = window.location.hostname.includes('getalloro.com');
-    const domain = isProduction ? '; domain=.getalloro.com' : '';
+    const isProduction = window.location.hostname.includes("getalloro.com");
+    const domain = isProduction ? "; domain=.getalloro.com" : "";
     document.cookie = `auth_token=; path=/; max-age=0${domain}`;
 
     // Broadcast logout event to other tabs (same-origin only, but shared cookie handles cross-domain)
@@ -83,7 +92,10 @@ export function AdminTopBar() {
           <div className="flex justify-between h-16 items-center">
             {/* Logo and Brand */}
             <div className="flex items-center">
-              <Link to="/admin/action-items" className="flex items-center gap-3">
+              <Link
+                to="/admin/action-items"
+                className="flex items-center gap-3"
+              >
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   transition={{ duration: 0.2 }}
@@ -98,6 +110,7 @@ export function AdminTopBar() {
                 </motion.div>
                 <span className="font-bold text-xl text-white">
                   <span className="text-alloro-orange">Alloro</span> Admin
+                  Dashboard
                 </span>
               </Link>
             </div>
@@ -219,7 +232,12 @@ export function AdminTopBar() {
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              transition={{ duration: 0.2, type: "spring", stiffness: 300, damping: 25 }}
+              transition={{
+                duration: 0.2,
+                type: "spring",
+                stiffness: 300,
+                damping: 25,
+              }}
               className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-6 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
