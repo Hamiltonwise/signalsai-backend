@@ -1,0 +1,171 @@
+<!-- ========== LOCATIONS STRIP ==========
+  AI-INSTRUCTIONS (Locations Strip):
+  - This section appears ABOVE the main footer.
+  - It uses the location-footer-columns post block to display practice locations.
+  - Replace the heading with the business's service area (e.g., "Serving Northern Virginia").
+  - MAP BEHAVIOR (REQUIRED): Populate the `locations` array in the inline <script> with EVERY
+    location from the business identity — no subset, no sample data. The map MUST auto-center
+    via `fitBounds` when there are 2+ locations, and `setView` at zoom 14 when exactly 1.
+    Do not render the map if there are zero locations — hide the entire map div in that case.
+  - If the business has only one location, this section can be simplified but the pin MUST still
+    render at that single location's coordinates.
+-->
+<section class="alloro-tpl-v1-release-footer-locations bg-primary text-white pt-16 md:pt-24 px-6 md:px-12 lg:px-20">
+  <div class="max-w-7xl mx-auto">
+
+    <!-- AI-CONTENT: footer-map | Optional interactive map. Add location coordinates below.
+         To disable: remove this entire map div and its associated link/script/style tags.
+         To enable: update the locations array in the script with actual lat/lng coordinates. -->
+    <div class="rounded-3xl overflow-hidden mb-12 md:mb-16 h-[380px]">
+      <div id="footer-map" class="h-full w-full relative z-0"></div>
+    </div>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+      #footer-map .leaflet-pane,
+      #footer-map .leaflet-map-pane,
+      #footer-map .leaflet-tile-pane,
+      #footer-map .leaflet-overlay-pane,
+      #footer-map .leaflet-marker-pane,
+      #footer-map .leaflet-popup-pane { z-index: 1 !important; }
+      #footer-map .leaflet-top,
+      #footer-map .leaflet-bottom { z-index: 2 !important; }
+      #footer-map .leaflet-control-attribution { display: none !important; }
+      #footer-map .leaflet-control-zoom { border: none !important; }
+      #footer-map .leaflet-control-zoom a { background: #232323 !important; color: #fff !important; border: none !important; }
+    </style>
+
+    <script>
+    (function(){
+      var mapEl = document.getElementById('footer-map');
+      if (!mapEl) return;
+
+      var map = L.map('footer-map', {
+        scrollWheelZoom: false,
+        zoomControl: true,
+        attributionControl: false
+      });
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd',
+        maxZoom: 19
+      }).addTo(map);
+
+      /* AI-CONTENT: map-pin-color | Replace %23007693 with the business primary color hex (use %23 instead of #) */
+      var svgPin = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42"><path d="M16 0C7.163 0 0 7.163 0 16c0 10.5 16 26 16 26S32 26.5 32 16C32 7.163 24.837 0 16 0z" fill="%23007693"/><circle cx="16" cy="16" r="7" fill="%23ffffff"/></svg>';
+
+      var pinIcon = L.icon({
+        iconUrl: 'data:image/svg+xml,' + svgPin,
+        iconSize: [32, 42],
+        iconAnchor: [16, 42],
+        popupAnchor: [0, -44]
+      });
+
+      /* AI-CONTENT: map-locations | Replace the `locations` array with ALL locations from identity.locations[].
+         Each entry needs: name, full formatted address, exact lat/lng (geocode from place_id if missing),
+         and gmaps (Google Maps URL). Do not drop duplicates. Every physical location must have a pin.
+         The map will auto-fitBounds across all pins so all are visible and centered. */
+      var locations = [
+        {
+          name: 'Main Office',
+          address: '123 Main Street, Suite 100, Your City, ST 12345',
+          lat: 41.8781,
+          lng: -87.6298,
+          gmaps: 'https://maps.google.com'
+        }
+      ];
+
+      var bounds = [];
+      locations.forEach(function(loc){
+        bounds.push([loc.lat, loc.lng]);
+        var marker = L.marker([loc.lat, loc.lng], { icon: pinIcon }).addTo(map);
+        marker.bindPopup(
+          '<div style="font-family:sans-serif;min-width:180px;">' +
+            '<p style="font-weight:700;font-size:13px;margin:0 0 4px;color:#232323;">' + loc.name + '</p>' +
+            '<p style="font-size:11px;color:#555;margin:0 0 8px;line-height:1.5;">' + loc.address + '</p>' +
+            '<a href="' + loc.gmaps + '" target="_blank" rel="noopener noreferrer" style="font-size:11px;font-weight:600;color:#007693;text-decoration:none;">Open in Google Maps &rarr;</a>' +
+          '</div>'
+        );
+      });
+
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [20, 20] });
+      } else if (bounds.length === 1) {
+        map.setView(bounds[0], 14);
+      }
+    })();
+    </script>
+
+    <!-- AI-CONTENT: footer-locations-heading | Replace with the business service area (e.g., "Serving Northern Virginia", "Serving the Greater Chicago Area"). -->
+    <div class="mb-16 md:mb-20">
+      <h2 class="alloro-tpl-v1-release-footer-locations-component-heading font-serif text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight mb-8 md:mb-10 leading-tight">Serving Your Community</h2>
+      {{ post_block id='location-footer-columns' items='locations' }}
+    </div>
+
+  </div>
+</section>
+
+<!-- ========== FOOTER ==========
+  AI-INSTRUCTIONS (Footer):
+  - Replace footer tagline with scraped business description.
+  - Replace copyright year and business name.
+  - Services and Quick Links are loaded via shortcodes from the CMS.
+  - Update social media links with the business's actual social profiles.
+  - The 4th column can show doctors (post_block) or social links depending on the business.
+-->
+<footer class="alloro-tpl-v1-release-footer bg-slate-deep text-white pt-12 md:pt-16 pb-8 md:pb-12 px-6 md:px-12 lg:px-20">
+  <div class="max-w-7xl mx-auto">
+
+    <div class="border-t pt-12 md:pt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-12 text-sm font-sans border-white/10">
+
+      <!-- Column 1: Brand -->
+      <!-- AI-CONTENT: footer-brand | Replace logo src, alt text, tagline, and copyright with business info. -->
+      <div class="alloro-tpl-v1-release-footer-component-brand flex flex-col items-start">
+        <a href="/" class="alloro-tpl-v1-release-footer-component-brand-logo-link">
+          <!-- AI-IMAGE: footer-logo | Use business logo. For dark backgrounds, use a white/light version.
+               REQUIREMENTS: PNG or SVG, transparent background, max height 40px.
+               FALLBACK: Use business name as text. -->
+          <img src="https://picsum.photos/160/48?random=99" alt="Business Logo" class="alloro-tpl-v1-release-footer-component-brand-logo h-10 w-auto mb-4 md:mb-6 bg-white p-2 rounded-md" />
+        </a>
+        <p class="alloro-tpl-v1-release-footer-component-brand-tagline text-white leading-relaxed text-sm pr-4 opacity-80">Dedicated to providing compassionate, personalized dental care to your community. Your smile is our top priority.</p>
+        <div class="flex gap-3 mt-6">
+          <!-- AI-CONTENT: footer-social-links | Replace href="#" with actual social profile URLs. Remove unused platforms. -->
+          <a href="#" class="alloro-tpl-v1-release-footer-component-social-facebook w-9 h-9 rounded-full flex items-center justify-center transition-all bg-white/10" aria-label="Facebook">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+          </a>
+          <a href="#" class="alloro-tpl-v1-release-footer-component-social-instagram w-9 h-9 rounded-full flex items-center justify-center transition-all bg-white/10" aria-label="Instagram">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>
+          </a>
+          <a href="#" class="alloro-tpl-v1-release-footer-component-social-google w-9 h-9 rounded-full flex items-center justify-center transition-all bg-white/10" aria-label="Google">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>
+          </a>
+        </div>
+        <p class="alloro-tpl-v1-release-footer-component-copyright text-white text-xs mt-6 opacity-60"><!-- AI-CONTENT: footer-copyright | Replace year and business name. -->&copy; 2026 Your Practice Name. All rights reserved.</p>
+      </div>
+
+      <!-- Column 2: Services (shortcode) -->
+      <div class="alloro-tpl-v1-release-footer-component-services-list">
+        <h4 class="alloro-tpl-v1-release-footer-component-services-heading font-serif font-bold mb-4 md:mb-6 text-white text-lg">Services</h4>
+        {{ post_block id='services-list-dark' items='services' }}
+      </div>
+
+      <!-- Column 3: Quick Links (shortcode) -->
+      <div class="alloro-tpl-v1-release-footer-component-quick-links">
+        <h4 class="alloro-tpl-v1-release-footer-component-quick-links-heading font-serif font-bold mb-4 md:mb-6 text-white text-lg">Quick Links</h4>
+        {{ menu id='footer-menu' template='footer-quick-links-dark' }}
+      </div>
+
+      <!-- Column 4: Our Team (shortcode) -->
+      <!-- AI-CONTENT: footer-team-column | This column shows doctor/team names via shortcode.
+           Alternative: Replace with social links or contact info if preferred. -->
+      <div class="alloro-tpl-v1-release-footer-component-team-list">
+        <h4 class="alloro-tpl-v1-release-footer-component-team-heading font-serif font-bold mb-4 md:mb-6 text-white text-lg">Our Team</h4>
+        {{ post_block id='doctors-list-footer-dark' items='doctors' }}
+      </div>
+
+    </div>
+
+  </div>
+</footer>
