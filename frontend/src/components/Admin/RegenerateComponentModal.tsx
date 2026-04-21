@@ -9,6 +9,14 @@ interface RegenerateComponentModalProps {
   /** Optional section preselected */
   defaultSection?: string;
   /**
+   * Called SYNCHRONOUSLY before the API request fires so the parent can set
+   * the "regenerating" flag before the poll loop sees `gen=generating`.
+   * Without this, the poll can race ahead of `onRegenerated` and briefly
+   * mount the progressive-preview component, flashing a "Loading preview…"
+   * state before the flag gets set.
+   */
+  onWillRegenerate?: (sectionName: string) => void;
+  /**
    * Called after the regenerate request succeeds. Receives the name of the
    * section that was enqueued for regeneration so the caller can drive
    * per-section UI feedback (pulse/gray + toast on completion).
@@ -27,6 +35,7 @@ export default function RegenerateComponentModal({
   pageId,
   sectionNames,
   defaultSection,
+  onWillRegenerate,
   onRegenerated,
   onClose,
 }: RegenerateComponentModalProps) {
@@ -42,6 +51,9 @@ export default function RegenerateComponentModal({
     try {
       setSubmitting(true);
       setError(null);
+      // Flag the section as regenerating BEFORE the API fires so the parent's
+      // poll loop can't observe gen=generating before the flag is set.
+      onWillRegenerate?.(section);
       await regenerateComponent(projectId, pageId, section, instruction.trim() || undefined);
       onRegenerated(section);
     } catch (err: any) {

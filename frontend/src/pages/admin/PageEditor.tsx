@@ -575,19 +575,29 @@ function PageEditorInner() {
         const updatedPage = response.data;
         const updatedSections = normalizeSections(updatedPage.sections);
 
-        // Update sections and re-render preview
+        // Update sections state always; the iframe re-render is conditional.
         setSections(updatedSections);
-        const assembled = renderPage(
-          project.wrapper || "{{slot}}",
-          project.header || "",
-          project.footer || "",
-          updatedSections,
-          undefined,
-          undefined,
-          undefined,
-          projectId,
-        );
-        setHtmlContent(assembled);
+
+        // For SINGLE-SECTION regen (regenerateSnapshotsRef populated), do NOT
+        // rebuild the full iframe srcDoc on every tick — that reloads the
+        // iframe and resets the user's scroll position to the top. The
+        // completion block below swaps just the rebuilt section in place
+        // via replaceComponentInDom, preserving scroll.
+        const isSingleSectionRegen =
+          regenerateSnapshotsRef.current.size > 0;
+        if (!isSingleSectionRegen) {
+          const assembled = renderPage(
+            project.wrapper || "{{slot}}",
+            project.header || "",
+            project.footer || "",
+            updatedSections,
+            undefined,
+            undefined,
+            undefined,
+            projectId,
+          );
+          setHtmlContent(assembled);
+        }
         setPage(updatedPage);
 
         if (updatedPage.generation_progress) {
@@ -616,21 +626,34 @@ function PageEditorInner() {
               for (const name of finished) next.delete(name);
               return next;
             });
+            // Swap each finished section into the iframe's live DOM in
+            // place. This preserves scroll — unlike rebuilding srcDoc
+            // which reloads the iframe and resets the scrollbar.
+            const iframe = iframeRef.current;
+            const doc = iframe?.contentDocument;
             for (const name of finished) {
               snapshots.delete(name);
-              showSuccessToast("Section rebuilt", "Review changes");
-              // Scroll the rebuilt section into view inside the iframe. Run
-              // on the next tick so the srcDoc update has flushed.
-              setTimeout(() => {
-                const doc = iframeRef.current?.contentDocument;
-                if (!doc) return;
-                const el = doc.querySelector(
+              const fresh = updatedSections.find((s) => s.name === name);
+              if (doc && fresh?.content) {
+                // Best-effort: find the section root by data-alloro-section
+                // (renderPage tags each section with this during assembly).
+                const target = doc.querySelector(
                   `[data-alloro-section="${CSS.escape(name)}"]`,
-                );
-                if (el && "scrollIntoView" in el) {
-                  (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
+                ) as HTMLElement | null;
+                if (target) {
+                  const range = doc.createRange();
+                  range.selectNodeContents(target);
+                  const frag = range.createContextualFragment(fresh.content);
+                  // Replace the outer element so we keep the data-alloro-section
+                  // wrapper from the assembled HTML — the content is a full
+                  // <section> so we swap the section element itself.
+                  const newWrap = doc.createElement("div");
+                  newWrap.setAttribute("data-alloro-section", name);
+                  newWrap.appendChild(frag);
+                  target.replaceWith(newWrap);
                 }
-              }, 50);
+              }
+              showSuccessToast("Section rebuilt", "Review changes");
             }
           }
         }
@@ -652,17 +675,23 @@ function PageEditorInner() {
           const finalSections = normalizeSections(freshPage.data.sections);
           setSections(finalSections);
           setPage(freshPage.data);
-          const finalHtml = renderPage(
-            freshProject.data.wrapper || "{{slot}}",
-            freshProject.data.header || "",
-            freshProject.data.footer || "",
-            finalSections,
-            undefined,
-            undefined,
-            undefined,
-            projectId,
-          );
-          setHtmlContent(finalHtml);
+          // Skip the full-iframe rebuild if we were in single-section regen
+          // mode — the DOM was already swapped in place above, and
+          // re-setting htmlContent would reload the iframe and jump scroll
+          // back to the top.
+          if (!isSingleSectionRegen) {
+            const finalHtml = renderPage(
+              freshProject.data.wrapper || "{{slot}}",
+              freshProject.data.header || "",
+              freshProject.data.footer || "",
+              finalSections,
+              undefined,
+              undefined,
+              undefined,
+              projectId,
+            );
+            setHtmlContent(finalHtml);
+          }
 
           // Failsafe: clear any lingering regenerate overlays once the job
           // has finished. If content comparison didn't fire (e.g. retry that
@@ -1357,23 +1386,32 @@ function PageEditorInner() {
           projectId={projectId}
           pageId={draftPageId}
           sectionNames={sections.map((s) => s.name)}
-          onRegenerated={async (sectionName) => {
-            setRegenerateModalOpen(false);
-            // Snapshot the section's current content so the poll loop can
-            // detect when the new HTML replaces it.
+          onWillRegenerate={(sectionName) => {
+            // Snapshot + flag BEFORE the API fires so the poll loop can't
+            // observe gen=generating with an empty regeneratingSectionNames
+            // set (which would briefly mount ProgressivePagePreview and
+            // flash "Loading preview…").
             const target = sectionsRef.current.find((s) => s.name === sectionName);
             if (target) {
               regenerateSnapshotsRef.current.set(sectionName, target.content || "");
             }
-            // Flag the section as regenerating — drives pulse/gray + pill.
             setRegeneratingSectionNames((prev) => {
               const next = new Set(prev);
               next.add(sectionName);
               return next;
             });
-            // Re-fetch page to trigger the live-preview effect (page.generation_status === "generating")
+          }}
+          onRegenerated={async (sectionName) => {
+            setRegenerateModalOpen(false);
+            // Re-fetch page to trigger the live-preview effect
+            // (page.generation_status === "generating"). By now the "will"
+            // hook above has already set the flags, so the render path
+            // stays on the existing iframe + in-place pulse overlay.
             const freshPage = await fetchPage(projectId, draftPageId);
             setPage(freshPage.data);
+            // Suppress the next unused-var warning; sectionName is handled
+            // by onWillRegenerate but we keep the param for API stability.
+            void sectionName;
           }}
           onClose={() => setRegenerateModalOpen(false)}
         />
