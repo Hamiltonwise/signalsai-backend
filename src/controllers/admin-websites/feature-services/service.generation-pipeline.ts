@@ -233,6 +233,18 @@ export async function generatePageComponents(
     return;
   }
 
+  // Guard: single-component regen requires a linked template_page to
+  // resolve the source section markup. Without it, buildComponentList
+  // returns [] and the job would silently mark the page "ready" — the
+  // editor shows no toast, no error, nothing regenerates. Fail loudly.
+  if (generateParams.singleComponent && !templatePage) {
+    await markPageFailed(
+      pageId,
+      "NO_TEMPLATE_PAGE: regenerate requires template_page_id; page is unlinked",
+    );
+    return;
+  }
+
   const allComponents = buildComponentList(templatePage);
   const components = generateParams.singleComponent
     ? allComponents.filter((c) => c.name === generateParams.singleComponent)

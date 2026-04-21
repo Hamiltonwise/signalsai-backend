@@ -213,6 +213,9 @@ const SHORTCODE_TOKEN_BY_TYPE: Record<string, string> = {
   locations: "[post_block type=\"locations\"]",
 };
 
+const DIRECT_SHORTCODE_RE =
+  /(\{\{\s*(?:post_block|review_block|menu)[^}]*\}\}|\[(?:post_block|review_block)[^\]]*\])/;
+
 function enforceShortcodeMarkers($: cheerio.CheerioAPI): number {
   let enforced = 0;
 
@@ -220,21 +223,32 @@ function enforceShortcodeMarkers($: cheerio.CheerioAPI): number {
     const $el = $(el);
     const contents = $el.contents();
     let markerType: string | null = null;
+    let hasDirectShortcode = false;
     contents.each((_i, node) => {
-      if ((node as any).type !== "comment") return;
-      const data = String((node as any).data || "");
-      const m = data.match(/ALLORO_SHORTCODE\s*:\s*([a-z_]+)/i);
-      if (m) markerType = m[1].toLowerCase();
+      const n = node as any;
+      if (n.type === "comment") {
+        const data = String(n.data || "");
+        const m = data.match(/ALLORO_SHORTCODE\s*:\s*([a-z_]+)/i);
+        if (m) markerType = m[1].toLowerCase();
+        return;
+      }
+      if (n.type === "text") {
+        if (DIRECT_SHORTCODE_RE.test(String(n.data || ""))) {
+          hasDirectShortcode = true;
+        }
+      }
     });
     if (!markerType) return;
 
+    // Only enforce when the shortcode lives as a direct text child of the
+    // element holding the marker. A marker placed on a wider scope (e.g.
+    // at <section> level while the shortcode is nested inside a wrapper
+    // div) is treated as documentation — stripping there would wipe every
+    // legitimate sibling (heading, badges, CTA).
+    if (!hasDirectShortcode) return;
+
     const token = SHORTCODE_TOKEN_BY_TYPE[markerType];
     if (!token) return;
-
-    const innerHtml = $el.html() || "";
-    const hasToken =
-      innerHtml.includes(token) ||
-      /\[(post_block|review_block)[^\]]*\]/.test(innerHtml);
 
     const preserved: string[] = [];
     contents.each((_i, node) => {
@@ -255,7 +269,6 @@ function enforceShortcodeMarkers($: cheerio.CheerioAPI): number {
         }
       }
     });
-    if (!hasToken) preserved.push(token);
 
     $el.html(preserved.join("\n"));
     enforced++;

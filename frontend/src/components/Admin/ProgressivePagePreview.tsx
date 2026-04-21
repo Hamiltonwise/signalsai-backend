@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import {
   fetchPageProgressiveState,
@@ -37,6 +37,7 @@ export default function ProgressivePagePreview({
   onReady,
 }: ProgressivePagePreviewProps) {
   const [state, setState] = useState<PageProgressiveState | null>(null);
+  const [initialSrcDoc, setInitialSrcDoc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const firstLoadDoneRef = useRef(false);
@@ -83,15 +84,17 @@ export default function ProgressivePagePreview({
   }, [projectId, pageId, pollMs, onReady]);
 
   // Built ONCE from the first state snapshot that has wrapper + template.
-  // Every subsequent poll mutates the iframe DOM instead of re-rendering.
-  const initialSrcDoc = useMemo(() => {
-    if (!state || firstLoadDoneRef.current) return null;
+  // Stored in state so the value persists across renders; subsequent poll
+  // ticks mutate the iframe DOM in place instead of rebuilding srcDoc.
+  useEffect(() => {
+    if (firstLoadDoneRef.current) return;
+    if (!state) return;
     if (
       !state.template_sections ||
       state.template_sections.length === 0 ||
       !state.wrapper
     ) {
-      return null;
+      return;
     }
 
     const generatedByName = new Map(
@@ -226,7 +229,7 @@ export default function ProgressivePagePreview({
       state.generated_sections.map((s) => s.name),
     );
 
-    return prepareHtmlForPreview(assembled);
+    setInitialSrcDoc(prepareHtmlForPreview(assembled));
   }, [state, projectId]);
 
   // Mutate the live iframe DOM on subsequent ticks — do NOT rebuild srcDoc.

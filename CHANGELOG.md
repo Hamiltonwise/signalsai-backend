@@ -2,6 +2,71 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.25] - April 2026
+
+### Website Builder — Page Editor Preview & Regenerate Fixes
+
+Follow-up bug sweep after the progressive-preview + shortcode-marker work.
+Surfaces three issues hit during real use on the ARCS and One Endodontics
+projects and lands guardrails so the same silent failures can't repeat.
+
+**Progressive preview stayed stuck on "Loading preview…":**
+The `initialSrcDoc` memo in `ProgressivePagePreview.tsx` used a ref guard
+that made every render after the first return `null`, which re-triggered
+the loading state even once valid data had arrived. Moved the built
+srcDoc into component state so it persists across renders.
+
+**Regenerating a section wiped its body down to just the shortcode:**
+`enforceShortcodeMarkers` in the post-generation HTML normalizer would
+strip every non-heading/paragraph direct child of any element carrying
+the `<!-- ALLORO_SHORTCODE: doctors -->` marker. Section templates
+(Meet Our Team, Testimonials) place the marker at the `<section>` level
+while the shortcode lives two divs deep, so the wrapper div holding the
+credentials, CTA, and everything else got nuked. Normalizer now only
+enforces when the shortcode token is a **direct** text child of the
+marker's element — wider-scope markers are treated as documentation.
+
+**Regenerate silently no-op'd on legacy pages:**
+Pages whose `template_page_id` is null (common for projects whose v0
+kept the link but later revisions dropped it) would hit
+`buildComponentList(null) → []` and the worker marked the page "ready"
+without doing anything. The editor saw a 200 with no toast and no
+content change. Pipeline now fails loudly with `NO_TEMPLATE_PAGE` when
+a single-component regen lands on an unlinked page. Broader backfill
+script walks any sibling version (not just `published`) to inherit the
+link — fixed 69 homepage versions for the One Endodontics project.
+
+**Shortcode-only sections now render + overlay correctly in preview:**
+Sections whose content is just `{{ post_block … }}` used to render as
+raw text in the iframe, and because `tagSectionRoot` couldn't find a
+root HTML element they never received the `data-alloro-section` marker
+either — meaning the "Rebuilding section…" pulse + pill skipped them
+during regenerate. `renderPage()` now swaps shortcode tokens for a
+styled gray-bg placeholder div, which becomes the section's root and
+receives both the section marker and the regenerate overlay.
+
+**Commits:**
+- `frontend/src/components/Admin/ProgressivePagePreview.tsx` — srcDoc
+  held in state, not `useMemo` with a one-shot ref gate.
+- `frontend/src/utils/templateRenderer.ts` —
+  `renderShortcodePlaceholders` swaps `{{ post_block … }}`, `{{ review_block … }}`,
+  `{{ menu … }}`, and `[post_block …]` / `[review_block …]` tokens
+  with a centered placeholder before `tagSectionRoot` runs.
+- `src/controllers/admin-websites/feature-utils/util.html-normalizer.ts`
+  — `enforceShortcodeMarkers` checks for a **direct** shortcode text
+  child before stripping siblings; skips when the marker is at a wider
+  scope.
+- `src/controllers/admin-websites/feature-services/service.generation-pipeline.ts`
+  — guard marks the page failed with `NO_TEMPLATE_PAGE` instead of
+  silently flipping to ready on single-component regen against an
+  unlinked page.
+- `scripts/debug-warmup/fix-draft-template-link.ts` — backfill now
+  inherits `template_page_id` from any sibling version at the same
+  project+path, not just published.
+- `scripts/debug-warmup/diagnose-one-endo.ts`,
+  `scripts/debug-warmup/fix-one-endo-homepage.ts` — one-shot diagnostics
+  and targeted link for the One Endodontics homepage lineage.
+
 ## [0.0.24] - April 2026
 
 ### Website Builder — Agent Accuracy, Progressive Section Reveal, Shortcode Markers, Slot LLM-Fill
