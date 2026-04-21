@@ -18,6 +18,7 @@ import { processMondayEmail } from "./processors/mondayEmail.processor";
 import { generateAllSnapshots, generateSnapshotForOrg } from "../services/rankingsIntelligence";
 import { fetchAnalyticsForAllOrgs } from "../services/analyticsService";
 import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
+import { processSiteQa } from "./processors/siteQa.processor";
 import { runCROForAllOrgs } from "../services/croEngine";
 import { runDFYForAllOrgs } from "../services/dfyEngine";
 import { getMindsQueue } from "./queues";
@@ -107,6 +108,15 @@ const weeklyDFYWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// 10. Site QA (event-triggered on publish)
+// Runtime gate before any write to website_builder.pages.sections[].
+// Shadow mode per org.patientpath_qa_enabled. Blocks publish on defects.
+const siteQaWorker = new Worker(
+  "minds-site-qa",
+  async (job) => { return await processSiteQa(job); },
+  { connection, concurrency: 2, prefix: '{minds}' }
+);
+
 // ─── EVENT HANDLERS ───────────────────────────────────────────────
 
 const activeWorkers = [
@@ -119,6 +129,7 @@ const activeWorkers = [
   instantSnapshotWorker,
   weeklyCROWorker,
   weeklyDFYWorker,
+  siteQaWorker,
 ];
 
 for (const worker of activeWorkers) {

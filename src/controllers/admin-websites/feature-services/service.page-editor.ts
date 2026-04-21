@@ -7,6 +7,7 @@
 
 import { db } from "../../../database/connection";
 import { normalizeSections } from "../feature-utils/util.section-normalizer";
+import { runPublishQaHook, formatDefectsForTask } from "../../../services/siteQa/publishHook";
 
 const PROJECTS_TABLE = "website_builder.projects";
 const PAGES_TABLE = "website_builder.pages";
@@ -50,6 +51,26 @@ export async function createPage(
   console.log(
     `[Admin Websites] Creating page for project ID: ${projectId}, path: ${path}`
   );
+
+  // Site QA gate: when this createPage call is a direct publish, the agent
+  // runs first. Shadow mode when org.patientpath_qa_enabled=false.
+  if (publish && Array.isArray(sections) && sections.length > 0) {
+    const qa = await runSiteQaOrNull({
+      projectId,
+      pagePath: path,
+      sections,
+    });
+    if (qa && !qa.allowed) {
+      return {
+        page: null,
+        error: {
+          status: 422,
+          code: "SITE_QA_BLOCKED",
+          message: formatDefectsForTask(qa.report),
+        },
+      };
+    }
+  }
 
   // Get latest version for this project+path
   const latestPage = await db(PAGES_TABLE)
@@ -130,6 +151,24 @@ export async function publishPage(
     };
   }
 
+  // Site QA gate: every publish passes through the agent. Shadow mode when
+  // org.patientpath_qa_enabled=false (defects log only, publish proceeds).
+  const qa = await runSiteQaOrNull({
+    projectId: page.project_id,
+    pagePath: page.path,
+    sections: normalizeSections(page.sections),
+  });
+  if (qa && !qa.allowed) {
+    return {
+      page: null,
+      error: {
+        status: 422,
+        code: "SITE_QA_BLOCKED",
+        message: formatDefectsForTask(qa.report),
+      },
+    };
+  }
+
   // Unpublish any currently published page for this project+path
   await db(PAGES_TABLE)
     .where({
@@ -148,6 +187,39 @@ export async function publishPage(
   console.log(`[Admin Websites] \u2713 Published page ID: ${pageId}`);
 
   return { page: publishedPage };
+}
+
+// ---------------------------------------------------------------------------
+// Site QA wrapper -- resolves the org for the project, runs the publish hook.
+// Returns null on unexpected failure: a broken gate must fail open so a bug
+// in the QA path cannot lock a customer out of their own site.
+// ---------------------------------------------------------------------------
+
+async function runSiteQaOrNull(input: {
+  projectId: string;
+  pagePath: string;
+  sections: any[];
+}) {
+  try {
+    const project = await db(PROJECTS_TABLE)
+      .where({ id: input.projectId })
+      .first("id", "organization_id", "footer");
+    const orgId =
+      project && project.organization_id != null
+        ? Number(project.organization_id)
+        : undefined;
+
+    return await runPublishQaHook({
+      projectId: input.projectId,
+      pagePath: input.pagePath,
+      sections: input.sections,
+      orgId,
+      footer: project?.footer,
+    });
+  } catch (err: any) {
+    console.error(`[Admin Websites] Site QA hook failed:`, err?.message);
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
