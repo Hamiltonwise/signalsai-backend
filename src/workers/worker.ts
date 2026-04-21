@@ -19,6 +19,10 @@ import { generateAllSnapshots, generateSnapshotForOrg } from "../services/rankin
 import { fetchAnalyticsForAllOrgs } from "../services/analyticsService";
 import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
 import { processSiteQa } from "./processors/siteQa.processor";
+import { processNarratorJob } from "./processors/narrator.processor";
+import { processPatientPathOrchestratorJob } from "./patientpathBuildWorker";
+import { BUILD_QUEUE_NAME as PATIENTPATH_BUILD_QUEUE } from "../services/patientpath/orchestrator";
+import { processRevealChoreography } from "./processors/revealChoreography.processor";
 import { runCROForAllOrgs } from "../services/croEngine";
 import { runDFYForAllOrgs } from "../services/dfyEngine";
 import { getMindsQueue } from "./queues";
@@ -117,6 +121,39 @@ const siteQaWorker = new Worker(
   { connection, concurrency: 2, prefix: '{minds}' }
 );
 
+// 11. Narrator (Manifest v2 Card 3)
+// Subscribes to behavioral_events stream, routes to templates, applies
+// Theranos guardrail. Shadow mode per org.narrator_enabled; archives every
+// output to narrator_outputs regardless. Also handles the weekly Silent
+// Quitter sweep (emits its own success/churn events).
+const narratorWorker = new Worker(
+  "minds-narrator",
+  async (job) => { return await processNarratorJob(job); },
+  { connection, concurrency: 2, prefix: '{minds}' }
+);
+
+// 12. PatientPath Build Orchestrator (Manifest v2 Card 2)
+// Consumes clearpath.build_triggered events. Runs Research -> Copy -> QA
+// -> direct Adapter write to website_builder.pages.sections[]. N8N is
+// retired; this worker does the write. Shadow mode per
+// org.patientpath_build_enabled.
+const patientpathBuildWorker = new Worker(
+  PATIENTPATH_BUILD_QUEUE,
+  async (job) => { return await processPatientPathOrchestratorJob(job); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
+// 13. Reveal Choreography (Manifest v2 Card 4)
+// Consumes site.published events. Fans out reveal email + Lob postcard +
+// dashboard tiles in parallel. Shadow mode per org.reveal_choreography_enabled
+// (default false): composes everything, logs to reveal_log, but does NOT call
+// Mailgun or Lob. Idempotent per (org_id + site_published_event_id).
+const revealChoreographyWorker = new Worker(
+  "minds-reveal-choreography",
+  async (job) => { return await processRevealChoreography(job); },
+  { connection, concurrency: 2, prefix: '{minds}' }
+);
+
 // ─── EVENT HANDLERS ───────────────────────────────────────────────
 
 const activeWorkers = [
@@ -130,6 +167,9 @@ const activeWorkers = [
   weeklyCROWorker,
   weeklyDFYWorker,
   siteQaWorker,
+  narratorWorker,
+  patientpathBuildWorker,
+  revealChoreographyWorker,
 ];
 
 for (const worker of activeWorkers) {
