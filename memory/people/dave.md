@@ -21,6 +21,7 @@ CTO. Infrastructure, EC2, production deploys, merges to main. Based in Philippin
 - **Visual blast radius summary.** He builds his own report mapping what gets removed/added/updated and their blast radius before touching anything.
 - **Three validation criteria:** 1) design is consistent, not sloppy; 2) features and APIs not disrupted; 3) output code consistent with existing codebase.
 - **Panics when things don't make sense.** His words: "if something does not make sense even a little, we panic and get crazy." Ambiguity is his enemy.
+- **Validates via jargon-strip.** Dave validates technical output by asking his agents to strip jargon and produce What it is + How it works + What it achieves. If the plain version does not cohere, the technical version has hidden complexity. This is his quality control. Mirror it before any handoff ships.
 
 ## What Makes Him Pause (Deep Intel -- April 12, 2026)
 

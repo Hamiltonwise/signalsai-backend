@@ -215,9 +215,27 @@ If any of these happen, stop and fix the system, not the symptom:
 
 ## Canonical Examples
 
-**Dave-Ready Handoff:** The canonical example is the April 10, 2026 Migration Manifest, mirrored to Notion at https://www.notion.so/349fdaf120c4810aa045dfa4124ffa68 and described in detail in the Dave-Ready Handoff Format section above. Before producing any Dave-bound handoff, open the canonical example and match its shape: Card Sequence summary table at the top, detailed cards below with done gates between. Do not reason toward the format from principle. Open the artifact and modify it. Canonical until superseded by a dated replacement.
+**Rule One (shape):** The canonical example is the April 10, 2026 Migration Manifest, mirrored to Notion at https://www.notion.so/349fdaf120c4810aa045dfa4124ffa68 and described in detail in the Dave-Ready Handoff Format section above. Before producing any Dave-bound handoff, open the canonical example and match its shape: Card Sequence summary table at the top, detailed cards below with done gates between. Do not reason toward the format from principle. Open the artifact and modify it. Canonical until superseded by a dated replacement.
+
+**Rule Two (remove-jargon test):** Before any Dave-bound handoff is considered complete, strip the technical language and produce three sections in plain English: **What it is** (one sentence, no jargon), **How it works** (4-5 numbered steps), **What it achieves** (outcomes for the user and outcomes for the business). If the plain version does not cohere, the technical version has hidden complexity. Catch it before Dave's agents have to.
+
+Catalyst: Dave's April 20 PatientPath intake. He asked his agents to "remove the jargon and just give me its purpose, what needs to be built as a feature and how." His agents produced:
+
+- **What PatientPath is:** A feature inside Alloro that auto-builds a practice's website before the doctor ever logs in.
+- **How it works (4 steps):**
+  1. Scrape the practice's public data (Google Business Profile, reviews, competitors)
+  2. AI agent #1 turns that into a structured brief about the practice
+  3. AI agent #2 turns the brief into website copy
+  4. System publishes a preview site, then emails the doctor "your site is ready"
+- **What it achieves:**
+  - Doctor signs up and a working personalized site already exists. Removes the "build your site" friction from onboarding.
+  - Reuses the same pipeline across verticals later (rename to ClearPath, swap config, run for chiropractors/PT/optometry).
+
+Pass criterion: the plain version coheres on its own. A non-technical person reads it and understands the feature without referring to the technical spec. Failure mode: incoherent plain version means hidden complexity in the technical version.
+
+Rule One governs format. Rule Two governs underlying clarity. Both must pass before any handoff ships.
 
 ## Living Document
 
 This protocol evolves. When something doesn't work, update this doc.
-Last updated: April 20, 2026 (added Canonical Examples section from April 20 session diagnosis).
+Last updated: April 21, 2026 (added Rule Two remove-jargon test from Dave's April 20 PatientPath intake).
