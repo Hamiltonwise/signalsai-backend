@@ -132,15 +132,17 @@ function convertBadgeAnchorsToSpan($: cheerio.CheerioAPI): number {
 const PLACEHOLDER_URL = "app.getalloro.com/api/imports/placeholder.png";
 
 /**
- * Drop anchor wrappers whose only child is a placeholder <img>. Applies
- * only to "logo-wall" style sections — ones whose class namespace contains
- * `associations`, `affiliat`, `memberships`, `badges`, or `trust` — so we
- * don't accidentally strip a legitimate placeholder elsewhere (e.g. a
- * hero that's still loading a real image on refresh).
+ * Drop anchor/div wrappers whose only child is a placeholder <img>. Applies
+ * to variable-count multi-image sections — logo walls, affiliations, badge
+ * groups, gallery grids, photo strips — where the template authorizes an
+ * n-column reflow. The regex intentionally avoids single-image contexts
+ * (hero, single feature card) so legitimate placeholders while real images
+ * load don't get stripped.
  */
 function dropPlaceholderLogoSlots($: cheerio.CheerioAPI): number {
   let dropped = 0;
-  const groupHints = /(associations|affiliat|memberships|badges|trust-badges|logo-wall)/i;
+  const groupHints =
+    /(associations|affiliat|memberships|badges|trust-badges|logo-wall|gallery|photos|grid-gallery|photo-strip|inside-our)/i;
 
   // Collect candidate containers: any ancestor whose class string hints
   // at a logo-wall group.
@@ -159,19 +161,37 @@ function dropPlaceholderLogoSlots($: cheerio.CheerioAPI): number {
     if (!raw || seen.has(raw)) continue;
     seen.add(raw);
 
-    $container.find("a, div").each((_, el) => {
-      const $slot = $(el);
-      const $img = $slot.find("img").first();
-      if ($img.length === 0) return;
+    // Find every placeholder-src <img> inside this group, then walk up to
+    // the nearest card wrapper (an <a> or <div> sibling inside the grid
+    // container) and remove it. This handles both simple logo slots
+    // (`<a><img></a>`) and gallery cards (`<div class="group"><img>
+    // <div class="overlay">…</div></div>`).
+    $container.find("img").each((_, imgEl) => {
+      const $img = $(imgEl);
       const src = $img.attr("src") || "";
       if (!src.includes(PLACEHOLDER_URL)) return;
-      // Only strip if this element is a leaf-ish logo slot: contains just
-      // an <img> (plus whitespace), no heading / paragraph siblings inside.
-      const nonImgChildren = $slot
-        .children()
-        .filter((_i, c) => (c as any).tagName?.toLowerCase?.() !== "img");
-      if (nonImgChildren.length > 0) return;
-      $slot.remove();
+
+      // The slot to remove is the nearest ancestor that's a direct child
+      // of the container we matched on. Cap at 4 levels up to stay safe.
+      let $candidate = $img.parent();
+      for (let i = 0; i < 4; i++) {
+        if ($candidate.length === 0) break;
+        const parentOfCandidate = $candidate.parent();
+        if (parentOfCandidate.is($container)) break;
+        $candidate = parentOfCandidate;
+      }
+      if ($candidate.length === 0 || $candidate.is($container)) return;
+
+      // Safety: don't strip if the candidate contains heading/paragraph
+      // text that would be meaningful standalone (i.e. not a pure photo
+      // card).
+      const meaningfulText = $candidate
+        .find("h1, h2, h3, h4, h5, h6, p")
+        .toArray()
+        .some((n) => $(n).text().trim().length > 20);
+      if (meaningfulText) return;
+
+      $candidate.remove();
       dropped++;
     });
   }

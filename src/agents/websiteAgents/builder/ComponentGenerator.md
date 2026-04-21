@@ -25,8 +25,9 @@ The system provides you with an AVAILABLE IMAGES manifest listing images by id (
 
 Rules:
 - NEVER invent or guess image URLs. Any image in your output must come from a `select_image` tool call OR be the Alloro placeholder: `https://app.getalloro.com/api/imports/placeholder.png`
-- Call `select_image` at most 3 times per section. Pick the most useful images first.
-- If the manifest has no suitable match for a slot you need, use the placeholder URL or a `bg-gray-200` div — **except** when the slot is part of a variable-count group (logo wall, affiliations, badges, gallery) whose AI-CONTENT guidance authorizes removing empty items; in that case, omit the slot entirely instead of emitting a placeholder. See "Exception — Empty AI-IMAGE slots" below.
+- **Call `select_image` as many times as needed to fill the template's AI-IMAGE slots with real images, up to 10 calls per section.** For single-image sections (hero, single feature card), 1 call is fine. For galleries / logo walls / multi-image sections, call once per slot you intend to fill — don't stop at 3 and let the rest fall to placeholder. The manifest typically has more than enough images for a gallery; use them.
+- Pick the most useful manifest images for each slot (by `use_case` match, then by `usability_rank`).
+- If the manifest is genuinely out of suitable matches, use the placeholder URL or a `bg-gray-200` div — **except** when the slot is part of a variable-count group (logo wall, affiliations, badges, gallery) whose AI-CONTENT guidance authorizes removing empty items; in that case, omit the slot entirely instead of emitting a placeholder. See "Exception — Empty AI-IMAGE slots" below.
 
 ## Button System (MANDATORY)
 
