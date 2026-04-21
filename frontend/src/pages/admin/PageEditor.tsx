@@ -1189,6 +1189,11 @@ function PageEditorInner() {
         onUndo={handleUndo}
         onSave={handleSave}
         onPublish={handlePublish}
+        onRegenerate={
+          !isLivePreview && !loading && sections.length > 0 && activeView === "visual"
+            ? () => setRegenerateModalOpen(true)
+            : undefined
+        }
         canUndo={editHistory.length > 0}
         isSaving={isSaving}
         isPublishing={isPublishing}
@@ -1345,20 +1350,6 @@ function PageEditorInner() {
         buttonText="Continue Editing"
         autoDismiss={true}
       />
-
-      {/* Regenerate Component floating button (Plan B T14) */}
-      {!isLivePreview && !loading && sections.length > 0 && activeView === "visual" && (
-        <button
-          onClick={() => setRegenerateModalOpen(true)}
-          title="Regenerate a section with AI"
-          className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full bg-alloro-orange px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-orange-600 transition"
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2L14.09 8.26L20.5 8.27L15.45 12.14L17.54 18.4L12 14.53L6.46 18.4L8.55 12.14L3.5 8.27L9.91 8.26L12 2Z" />
-          </svg>
-          Regenerate Section
-        </button>
-      )}
 
       {/* Regenerate Component Modal */}
       {regenerateModalOpen && projectId && draftPageId && (
