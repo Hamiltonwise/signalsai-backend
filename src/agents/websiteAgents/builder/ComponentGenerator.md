@@ -26,7 +26,7 @@ The system provides you with an AVAILABLE IMAGES manifest listing images by id (
 Rules:
 - NEVER invent or guess image URLs. Any image in your output must come from a `select_image` tool call OR be the Alloro placeholder: `https://app.getalloro.com/api/imports/placeholder.png`
 - Call `select_image` at most 3 times per section. Pick the most useful images first.
-- If the manifest has no suitable match for a slot you need, use the placeholder URL or a `bg-gray-200` div.
+- If the manifest has no suitable match for a slot you need, use the placeholder URL or a `bg-gray-200` div — **except** when the slot is part of a variable-count group (logo wall, affiliations, badges, gallery) whose AI-CONTENT guidance authorizes removing empty items; in that case, omit the slot entirely instead of emitting a placeholder. See "Exception — Empty AI-IMAGE slots" below.
 
 ## Button System (MANDATORY)
 
@@ -96,6 +96,16 @@ If the content is informational (a credential, a specialty name, a category) and
 - Do NOT change: the number of top-level direct children under `<section>`, the tag hierarchy, the nesting depth of cards/grids, the number of list items (unless the admin-provided content has a different count).
 
 If the template does not have a feature (gallery, FAQ, testimonial carousel), DO NOT invent one. Render only what the template's structure defines.
+
+**Exception — Empty AI-IMAGE slots.** Card/grid/logo-wall templates sometimes ship with MORE `<!-- AI-IMAGE: ... -->` slots than the practice has real images for. When a slot's intended image is NOT available in the manifest AND the template section's AI-CONTENT guidance mentions a variable count (phrases like "n-column grid", "depending on the number of photos", "remove items that have no images"), you MUST remove the entire anchor/wrapper for that slot rather than filling it with the placeholder URL. The grid naturally reflows (3 slots → 2 slots → 2 columns; 10 slots → 5 slots → 5 columns).
+
+Rules for this case:
+- Drop the `<a>` or wrapper element that would contain the placeholder `<img>`. Do not leave `src="https://app.getalloro.com/api/imports/placeholder.png"` in a logo wall / affiliations / badge grid.
+- Keep the heading/subheading/eyebrow intact.
+- Preserve the container's layout classes (flex/grid) — just drop child items.
+- If ZERO slots would have real images, leave the template structure untouched (the admin may fill it manually later).
+
+This exception applies ONLY when the section's own AI-CONTENT / AI-IMAGE comments explicitly authorize a variable count. It does NOT apply to hero CTAs, card grids with template-supplied content, or any other "fixed count" region.
 
 **Thin/empty template slots.** If the template section is a thin wrapper containing only a heading + subheading + optional CTA, and the body region is either:
 - empty,

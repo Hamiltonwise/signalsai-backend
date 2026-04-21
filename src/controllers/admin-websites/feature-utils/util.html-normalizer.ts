@@ -129,6 +129,55 @@ function convertBadgeAnchorsToSpan($: cheerio.CheerioAPI): number {
   return converted;
 }
 
+const PLACEHOLDER_URL = "app.getalloro.com/api/imports/placeholder.png";
+
+/**
+ * Drop anchor wrappers whose only child is a placeholder <img>. Applies
+ * only to "logo-wall" style sections — ones whose class namespace contains
+ * `associations`, `affiliat`, `memberships`, `badges`, or `trust` — so we
+ * don't accidentally strip a legitimate placeholder elsewhere (e.g. a
+ * hero that's still loading a real image on refresh).
+ */
+function dropPlaceholderLogoSlots($: cheerio.CheerioAPI): number {
+  let dropped = 0;
+  const groupHints = /(associations|affiliat|memberships|badges|trust-badges|logo-wall)/i;
+
+  // Collect candidate containers: any ancestor whose class string hints
+  // at a logo-wall group.
+  const candidateContainers: cheerio.Cheerio<any>[] = [];
+  $("[class]").each((_, el) => {
+    const $el = $(el);
+    const cls = $el.attr("class") || "";
+    if (groupHints.test(cls)) {
+      candidateContainers.push($el);
+    }
+  });
+
+  const seen = new Set<any>();
+  for (const $container of candidateContainers) {
+    const raw = $container.get(0);
+    if (!raw || seen.has(raw)) continue;
+    seen.add(raw);
+
+    $container.find("a, div").each((_, el) => {
+      const $slot = $(el);
+      const $img = $slot.find("img").first();
+      if ($img.length === 0) return;
+      const src = $img.attr("src") || "";
+      if (!src.includes(PLACEHOLDER_URL)) return;
+      // Only strip if this element is a leaf-ish logo slot: contains just
+      // an <img> (plus whitespace), no heading / paragraph siblings inside.
+      const nonImgChildren = $slot
+        .children()
+        .filter((_i, c) => (c as any).tagName?.toLowerCase?.() !== "img");
+      if (nonImgChildren.length > 0) return;
+      $slot.remove();
+      dropped++;
+    });
+  }
+  return dropped;
+}
+
 /**
  * Enforce the `<!-- ALLORO_SHORTCODE: <type> -->` marker contract. For any
  * element containing the marker as a direct child comment, strip all of
@@ -244,6 +293,7 @@ export interface NormalizerReport {
   badgeAnchorsConverted: number;
   buttonRadiiRewritten: number;
   shortcodeMarkersEnforced: number;
+  placeholderSlotsDropped: number;
 }
 
 /**
@@ -262,6 +312,7 @@ export function normalizeComponentHtml(
         badgeAnchorsConverted: 0,
         buttonRadiiRewritten: 0,
         shortcodeMarkersEnforced: 0,
+        placeholderSlotsDropped: 0,
       },
     };
   }
@@ -272,6 +323,7 @@ export function normalizeComponentHtml(
   const inlineStylesStripped = stripInlineStyles($);
   const badgeAnchorsConverted = convertBadgeAnchorsToSpan($);
   const buttonRadiiRewritten = normalizeButtonRadius($);
+  const placeholderSlotsDropped = dropPlaceholderLogoSlots($);
 
   return {
     html: $.html() || html,
@@ -280,6 +332,7 @@ export function normalizeComponentHtml(
       badgeAnchorsConverted,
       buttonRadiiRewritten,
       shortcodeMarkersEnforced,
+      placeholderSlotsDropped,
     },
   };
 }
