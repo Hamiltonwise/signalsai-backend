@@ -1,0 +1,148 @@
+<!-- ========== NAVBAR ==========
+  AI-INSTRUCTIONS (Navbar):
+  - Replace the logo <img> src with the scraped business logo image URL.
+  - Update CTA button label if the business uses different booking language.
+  - Menu links are controlled via the main-menu shortcode in the CMS.
+  - Keep mobile menu structure intact - it is driven by data-mobile-menu-toggle in alloro-template.js.
+-->
+<nav class="w-full bg-white/95 backdrop-blur-sm py-4 md:py-5 px-6 md:px-12 lg:px-20 flex justify-between items-center sticky top-0 z-50 border-b border-gray-100 transition-all">
+  <div class="flex items-center gap-2 relative z-50">
+    <!-- AI-IMAGE: logo-image | Replace src with the scraped business logo.
+         SEARCH KEYWORDS: [business name] logo, [business name] brand mark.
+         REQUIREMENTS: PNG or SVG preferred, transparent background, minimum 200px wide, max height 48px.
+         FALLBACK: Use business name as text if no logo found.
+         DEFAULT: Keep placeholder if no image found. -->
+    <a href="/" class="alloro-tpl-v1-release-header-component-logo">
+      <img src="https://picsum.photos/160/48?random=99" alt="Business logo" class="alloro-tpl-v1-release-header-component-logo-image h-12 w-auto object-contain" />
+    </a>
+  </div>
+
+  <!-- Desktop Menu -->
+  <div class="hidden md:block">
+    {{ menu id='main-menu' template='main-menu-template' }}
+  </div>
+
+  <div class="hidden md:block">
+    <!-- AI-CONTENT: nav-cta | Replace button text with the business's primary call-to-action. -->
+
+    <!-- AI-CONTENT: cta-label | Choose label by business.category:
+       - Endodontist / Endodontics → "Book Appointment"
+       - Orthodontist / Orthodontics → "Schedule a Consultation"
+       - Default / other dental → "Request a Consultation"
+       Apply the same label consistently across header, body, and footer CTAs for this site. -->
+
+    <a href="/consultation" class="alloro-tpl-v1-release-header-component-cta-button px-6 py-3 rounded-full font-medium transition-colors duration-200 flex items-center justify-center text-sm md:text-base bg-primary text-white">Request a Consultation</a>
+  </div>
+
+  <!-- Mobile Menu Button -->
+  <button class="alloro-tpl-v1-release-header-component-mobile-toggle md:hidden text-gray-600 p-2 relative z-50" aria-expanded="false" aria-label="Toggle mobile menu" data-mobile-menu-toggle="">
+    <svg data-menu-icon-open="" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+    <svg data-menu-icon-close="" class="hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+  </button>
+</nav>
+
+<!-- Mobile Menu Overlay -->
+<div class="alloro-tpl-v1-release-header-component-mobile-menu fixed inset-0 bg-white z-40 flex flex-col pt-24 pb-10 px-6 overflow-y-auto transition-transform duration-300 md:hidden -translate-y-full opacity-0 pointer-events-none" data-mobile-menu="">
+
+  <style>
+    #mobile-nav-inner ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      width: 100%;
+    }
+    #mobile-nav-inner li {
+      border-bottom: 1px solid #f3f4f6;
+      width: 100%;
+    }
+    #mobile-nav-inner li > a {
+      display: block;
+      padding: 14px 0;
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #111827;
+      text-decoration: none;
+      width: 100%;
+    }
+    #mobile-nav-inner .nav-submenu {
+      display: none;
+      flex-direction: column;
+      padding: 0 0 8px 16px;
+      gap: 0;
+    }
+    #mobile-nav-inner .nav-submenu li {
+      border-bottom: none;
+    }
+    #mobile-nav-inner .nav-submenu a {
+      font-size: 0.95rem;
+      font-weight: 400;
+      color: #6b7280;
+      padding: 10px 0;
+    }
+    #mobile-nav-inner .nav-item-has-children > a {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #mobile-nav-inner .nav-item-has-children > a::after {
+      content: '+';
+      font-size: 1.3rem;
+      font-weight: 300;
+      color: #9ca3af;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+    #mobile-nav-inner .nav-item-has-children.open > a::after {
+      content: '\2212';
+    }
+    #mobile-nav-inner .nav-item-has-children.open > .nav-submenu {
+      display: flex;
+    }
+  </style>
+
+  <div id="mobile-nav-inner">
+    {{ menu id='main-menu' template='main-menu-vertical-template' }}
+  </div>
+
+  <div class="mt-8">
+
+    <!-- AI-CONTENT: cta-label | Choose label by business.category:
+       - Endodontist / Endodontics → "Book Appointment"
+       - Orthodontist / Orthodontics → "Schedule a Consultation"
+       - Default / other dental → "Request a Consultation"
+       Apply the same label consistently across header, body, and footer CTAs for this site. -->
+
+    <a href="/consultation" class="alloro-tpl-v1-release-header-component-mobile-cta-link">
+      <span class="alloro-tpl-v1-release-header-component-mobile-cta-button w-full px-8 py-4 rounded-full font-medium transition-colors duration-200 flex items-center justify-center text-base bg-primary text-white">Request a Consultation</span>
+    </a>
+  </div>
+</div>
+
+<script>
+  (function () {
+    document.querySelectorAll('#mobile-nav-inner .nav-item-has-children > a').forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        var parent = link.closest('.nav-item-has-children');
+        var submenu = parent.querySelector('.nav-submenu');
+        if (submenu) {
+          e.preventDefault();
+          var isOpen = parent.classList.contains('open');
+          parent.closest('ul').querySelectorAll('.nav-item-has-children').forEach(function (el) {
+            el.classList.remove('open');
+          });
+          if (!isOpen) parent.classList.add('open');
+        }
+      });
+    });
+  })();
+</script>

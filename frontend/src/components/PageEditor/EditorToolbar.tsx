@@ -1,4 +1,4 @@
-import { ArrowLeft, Undo2, Save, Upload, Monitor, Tablet, Smartphone, Loader2, Code, BarChart3 } from "lucide-react";
+import { ArrowLeft, Undo2, Save, Upload, Monitor, Tablet, Smartphone, Loader2, Code, BarChart3, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
 type EditorView = "visual" | "code" | "seo";
@@ -15,6 +15,7 @@ interface EditorToolbarProps {
   onUndo: () => void;
   onSave: () => void;
   onPublish: () => void;
+  onRegenerate?: () => void;
   canUndo: boolean;
   isSaving: boolean;
   isPublishing: boolean;
@@ -33,6 +34,7 @@ export default function EditorToolbar({
   onUndo,
   onSave,
   onPublish,
+  onRegenerate,
   canUndo,
   isSaving,
   isPublishing,
@@ -137,6 +139,17 @@ export default function EditorToolbar({
           <Undo2 className="w-3.5 h-3.5" />
           Undo
         </button>
+
+        {onRegenerate && (
+          <button
+            onClick={onRegenerate}
+            title="Regenerate a section with AI"
+            className="px-3 py-1.5 rounded-lg text-xs border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors flex items-center gap-1"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Regenerate
+          </button>
+        )}
 
         <button
           onClick={onSave}

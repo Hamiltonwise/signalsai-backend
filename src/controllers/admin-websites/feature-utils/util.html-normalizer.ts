@@ -61,20 +61,44 @@ function replaceRadius(cls: string, from: RadiusToken, to: RadiusToken): string 
 }
 
 /**
- * Strip LLM-emitted inline styles. Preserves only <section style="background: var(...)">
- * which the template itself may legitimately use.
+ * Strip LLM-emitted inline styles that the generator contract forbids.
+ *
+ * Allowed on ANY element (templates legitimately use these):
+ *   - `background:` / `background-image:` / `background-color:`
+ *     (hero sections ship with gradient-over-image backgrounds in the
+ *     template markup; stripping these kills the visual design)
+ *
+ * Stripped: everything else (opacity, color, width, positioning, etc.) —
+ * those are the drift signals we actually care about.
  */
 function stripInlineStyles($: cheerio.CheerioAPI): number {
   let stripped = 0;
   $("[style]").each((_, el) => {
     const $el = $(el);
-    const style = ($el.attr("style") || "").trim();
-    const tag = (el as any).tagName?.toLowerCase?.() || "";
-    const allowed =
-      tag === "section" && /^background\s*:\s*var\(/i.test(style);
-    if (!allowed) {
+    const raw = ($el.attr("style") || "").trim();
+    if (!raw) {
+      $el.removeAttr("style");
+      return;
+    }
+    // Keep only background-* declarations; drop everything else.
+    const kept = raw
+      .split(";")
+      .map((decl) => decl.trim())
+      .filter((decl) => decl.length > 0)
+      .filter((decl) => /^background(-image|-color|-position|-size|-repeat)?\s*:/i.test(decl));
+
+    if (kept.length === 0) {
       $el.removeAttr("style");
       stripped++;
+      return;
+    }
+
+    const next = kept.join("; ") + ";";
+    if (next !== raw) {
+      $el.attr("style", next);
+      if (kept.length < raw.split(";").filter((s) => s.trim()).length) {
+        stripped++;
+      }
     }
   });
   return stripped;
@@ -105,6 +129,75 @@ function convertBadgeAnchorsToSpan($: cheerio.CheerioAPI): number {
   return converted;
 }
 
+const PLACEHOLDER_URL = "app.getalloro.com/api/imports/placeholder.png";
+
+/**
+ * Drop anchor/div wrappers whose only child is a placeholder <img>. Applies
+ * to variable-count multi-image sections — logo walls, affiliations, badge
+ * groups, gallery grids, photo strips — where the template authorizes an
+ * n-column reflow. The regex intentionally avoids single-image contexts
+ * (hero, single feature card) so legitimate placeholders while real images
+ * load don't get stripped.
+ */
+function dropPlaceholderLogoSlots($: cheerio.CheerioAPI): number {
+  let dropped = 0;
+  const groupHints =
+    /(associations|affiliat|memberships|badges|trust-badges|logo-wall|gallery|photos|grid-gallery|photo-strip|inside-our)/i;
+
+  // Collect candidate containers: any ancestor whose class string hints
+  // at a logo-wall group.
+  const candidateContainers: cheerio.Cheerio<any>[] = [];
+  $("[class]").each((_, el) => {
+    const $el = $(el);
+    const cls = $el.attr("class") || "";
+    if (groupHints.test(cls)) {
+      candidateContainers.push($el);
+    }
+  });
+
+  const seen = new Set<any>();
+  for (const $container of candidateContainers) {
+    const raw = $container.get(0);
+    if (!raw || seen.has(raw)) continue;
+    seen.add(raw);
+
+    // Find every placeholder-src <img> inside this group, then walk up to
+    // the nearest card wrapper (an <a> or <div> sibling inside the grid
+    // container) and remove it. This handles both simple logo slots
+    // (`<a><img></a>`) and gallery cards (`<div class="group"><img>
+    // <div class="overlay">…</div></div>`).
+    $container.find("img").each((_, imgEl) => {
+      const $img = $(imgEl);
+      const src = $img.attr("src") || "";
+      if (!src.includes(PLACEHOLDER_URL)) return;
+
+      // The slot to remove is the nearest ancestor that's a direct child
+      // of the container we matched on. Cap at 4 levels up to stay safe.
+      let $candidate = $img.parent();
+      for (let i = 0; i < 4; i++) {
+        if ($candidate.length === 0) break;
+        const parentOfCandidate = $candidate.parent();
+        if (parentOfCandidate.is($container)) break;
+        $candidate = parentOfCandidate;
+      }
+      if ($candidate.length === 0 || $candidate.is($container)) return;
+
+      // Safety: don't strip if the candidate contains heading/paragraph
+      // text that would be meaningful standalone (i.e. not a pure photo
+      // card).
+      const meaningfulText = $candidate
+        .find("h1, h2, h3, h4, h5, h6, p")
+        .toArray()
+        .some((n) => $(n).text().trim().length > 20);
+      if (meaningfulText) return;
+
+      $candidate.remove();
+      dropped++;
+    });
+  }
+  return dropped;
+}
+
 /**
  * Enforce the `<!-- ALLORO_SHORTCODE: <type> -->` marker contract. For any
  * element containing the marker as a direct child comment, strip all of
@@ -120,6 +213,9 @@ const SHORTCODE_TOKEN_BY_TYPE: Record<string, string> = {
   locations: "[post_block type=\"locations\"]",
 };
 
+const DIRECT_SHORTCODE_RE =
+  /(\{\{\s*(?:post_block|review_block|menu)[^}]*\}\}|\[(?:post_block|review_block)[^\]]*\])/;
+
 function enforceShortcodeMarkers($: cheerio.CheerioAPI): number {
   let enforced = 0;
 
@@ -127,21 +223,32 @@ function enforceShortcodeMarkers($: cheerio.CheerioAPI): number {
     const $el = $(el);
     const contents = $el.contents();
     let markerType: string | null = null;
+    let hasDirectShortcode = false;
     contents.each((_i, node) => {
-      if ((node as any).type !== "comment") return;
-      const data = String((node as any).data || "");
-      const m = data.match(/ALLORO_SHORTCODE\s*:\s*([a-z_]+)/i);
-      if (m) markerType = m[1].toLowerCase();
+      const n = node as any;
+      if (n.type === "comment") {
+        const data = String(n.data || "");
+        const m = data.match(/ALLORO_SHORTCODE\s*:\s*([a-z_]+)/i);
+        if (m) markerType = m[1].toLowerCase();
+        return;
+      }
+      if (n.type === "text") {
+        if (DIRECT_SHORTCODE_RE.test(String(n.data || ""))) {
+          hasDirectShortcode = true;
+        }
+      }
     });
     if (!markerType) return;
 
+    // Only enforce when the shortcode lives as a direct text child of the
+    // element holding the marker. A marker placed on a wider scope (e.g.
+    // at <section> level while the shortcode is nested inside a wrapper
+    // div) is treated as documentation — stripping there would wipe every
+    // legitimate sibling (heading, badges, CTA).
+    if (!hasDirectShortcode) return;
+
     const token = SHORTCODE_TOKEN_BY_TYPE[markerType];
     if (!token) return;
-
-    const innerHtml = $el.html() || "";
-    const hasToken =
-      innerHtml.includes(token) ||
-      /\[(post_block|review_block)[^\]]*\]/.test(innerHtml);
 
     const preserved: string[] = [];
     contents.each((_i, node) => {
@@ -162,7 +269,6 @@ function enforceShortcodeMarkers($: cheerio.CheerioAPI): number {
         }
       }
     });
-    if (!hasToken) preserved.push(token);
 
     $el.html(preserved.join("\n"));
     enforced++;
@@ -220,6 +326,7 @@ export interface NormalizerReport {
   badgeAnchorsConverted: number;
   buttonRadiiRewritten: number;
   shortcodeMarkersEnforced: number;
+  placeholderSlotsDropped: number;
 }
 
 /**
@@ -238,6 +345,7 @@ export function normalizeComponentHtml(
         badgeAnchorsConverted: 0,
         buttonRadiiRewritten: 0,
         shortcodeMarkersEnforced: 0,
+        placeholderSlotsDropped: 0,
       },
     };
   }
@@ -248,6 +356,7 @@ export function normalizeComponentHtml(
   const inlineStylesStripped = stripInlineStyles($);
   const badgeAnchorsConverted = convertBadgeAnchorsToSpan($);
   const buttonRadiiRewritten = normalizeButtonRadius($);
+  const placeholderSlotsDropped = dropPlaceholderLogoSlots($);
 
   return {
     html: $.html() || html,
@@ -256,6 +365,7 @@ export function normalizeComponentHtml(
       badgeAnchorsConverted,
       buttonRadiiRewritten,
       shortcodeMarkersEnforced,
+      placeholderSlotsDropped,
     },
   };
 }

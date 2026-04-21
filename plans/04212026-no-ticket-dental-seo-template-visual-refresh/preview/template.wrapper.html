@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO meta tags injected by SEO generation system -->
+
+  <!-- AI-CONTENT: favicon | Use scraped business logo or generated icon.
+       FALLBACK: Use a generic industry-relevant favicon. -->
+  <link rel="icon" type="image/png" href="/favicon.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- AI-CONTENT: google-fonts | Update font families if the business uses different brand fonts. Default: Playfair Display (serif headings) + DM Sans (sans body). -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+
+  <!-- AI-CONTENT: primary-accent-colors | Update CSS custom properties with the site's primary and accent colors. Replace all hex values below. -->
+  <style>
+    :root {
+      --font-serif: 'Playfair Display', Georgia, "Times New Roman", serif;
+      --font-sans: 'DM Sans', system-ui, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    body {
+      font-family: var(--font-sans);
+    }
+
+    /* Headings use serif globally. Individual components should not override this with font-sans. */
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--font-serif, Georgia, "Times New Roman", serif) !important;
+    }
+
+    /* Brand color utilities */
+    .text-primary { color: #273A84 !important; }
+    .text-primary-subtle { color: #273A8499 !important; }
+    .bg-primary { background-color: #273A84 !important; }
+    .bg-primary-subtle { background-color: #273A8422 !important; }
+    .text-accent { color: #2675BF !important; }
+    .text-accent-subtle { color: #2675BF99 !important; }
+    .bg-accent { background-color: #2675BF !important; }
+    .bg-accent-subtle { background-color: #2675BF22 !important; }
+
+    .border-primary { border-color: #273A84; }
+    .border-accent { border-color: #2675BF; }
+    .ring-primary { --tw-ring-color: #273A84; }
+    .hover\:bg-primary:hover { background-color: #273A84 !important; }
+    .hover\:bg-accent:hover { background-color: #2675BF !important; }
+    .hover\:text-primary:hover { color: #273A84 !important; }
+    .hover\:text-accent:hover { color: #2675BF !important; }
+    .focus\:border-primary:focus { border-color: #273A84; }
+    .focus\:ring-primary:focus { --tw-ring-color: #273A84; }
+
+    /* Gradient utilities */
+    .bg-gradient-brand {
+      background: linear-gradient(to bottom right, #273A84 0%, #2675BF 100%) !important;
+      color: #FFFFFF;
+    }
+    .bg-gradient-brand * {
+      color: inherit;
+    }
+    /* Slate-deep surface + ivory text utilities (added 2026-04-21) */
+    .bg-slate-deep {
+      background-color: #0F172A !important;
+      color: #F8FAFC;
+    }
+    .bg-slate-deep * {
+      color: inherit;
+    }
+    .text-ivory { color: #F8FAFC; }
+    .text-slate-deep { color: #0F172A; }
+    .text-gradient-brand {
+      background: linear-gradient(to bottom right, #273A84 0%, #2675BF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="font-sans text-gray-800 bg-white min-h-screen">
+  {{slot}}
+
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4" defer></script>
+  <script src="https://app.getalloro.com/api/imports/alloro-template.js" defer></script>
+</body>
+</html>

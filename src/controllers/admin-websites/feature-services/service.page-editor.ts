@@ -433,13 +433,17 @@ export async function createDraft(
 
   const newVersion = latestPage ? latestPage.version + 1 : 1;
 
-  // Create the draft
+  // Create the draft — carry forward template_page_id so per-section
+  // regeneration can still resolve the source template. Without it,
+  // buildComponentList(templatePage=null) returns [] and the pipeline
+  // silently does nothing.
   const [draftPage] = await db(PAGES_TABLE)
     .insert({
       project_id: projectId,
       path: sourcePage.path,
       version: newVersion,
       status: "draft",
+      template_page_id: sourcePage.template_page_id || null,
       sections: JSON.stringify(normalizeSections(sourcePage.sections)),
       seo_data: sourcePage.seo_data ? JSON.stringify(sourcePage.seo_data) : null,
     })

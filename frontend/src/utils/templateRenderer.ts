@@ -156,6 +156,67 @@ function tagSectionRoot(sectionName: string, html: string): string {
   return html.replace(/^(\s*<\w+)/, `$1 data-alloro-section="${sectionName}"`);
 }
 
+const SHORTCODE_LABELS: Record<string, string> = {
+  post_block: "Post Block",
+  review_block: "Reviews",
+  menu: "Navigation Menu",
+};
+
+function prettyShortcodeLabel(type: string, raw: string): string {
+  const base = SHORTCODE_LABELS[type] || type;
+  if (type === "post_block") {
+    const m = raw.match(/items=['"]([a-z_-]+)['"]/i);
+    if (m) {
+      const word = m[1].replace(/[-_]/g, " ");
+      return `${word.charAt(0).toUpperCase()}${word.slice(1)} Block`;
+    }
+  }
+  return base;
+}
+
+/**
+ * Replace `{{ post_block … }}` / `{{ review_block … }}` / `{{ menu … }}` and
+ * `[post_block …]` / `[review_block …]` tokens with a styled preview
+ * placeholder. This is purely cosmetic — the canonical source keeps the
+ * shortcode; the backend resolver expands it when the site is published.
+ *
+ * A shortcode-only section becomes wrapped in a `<div>` which then receives
+ * `data-alloro-section` from tagSectionRoot, so regenerate overlays and
+ * section-extract logic continue to work.
+ */
+function renderShortcodePlaceholders(html: string): string {
+  const placeholder = (type: string, raw: string): string => {
+    const label = prettyShortcodeLabel(type, raw);
+    const escapedRaw = raw
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    return (
+      `<div data-alloro-shortcode="${type}" ` +
+      `style="background:#f3f4f6;border:1px dashed #d1d5db;border-radius:12px;` +
+      `padding:48px 24px;margin:24px auto;max-width:90%;text-align:center;` +
+      `font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;` +
+      `color:#6b7280;">` +
+      `<div style="font-weight:600;color:#374151;margin-bottom:8px;` +
+      `text-transform:uppercase;letter-spacing:0.08em;font-size:12px;` +
+      `font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;">` +
+      `${label}</div>` +
+      `<div style="font-size:13px;opacity:0.75;">${escapedRaw}</div>` +
+      `</div>`
+    );
+  };
+
+  let out = html.replace(
+    /\{\{\s*(post_block|review_block|menu)\b[^}]*\}\}/gi,
+    (match, type) => placeholder(String(type).toLowerCase(), match),
+  );
+  out = out.replace(
+    /\[(post_block|review_block)\b[^\]]*\]/gi,
+    (match, type) => placeholder(String(type).toLowerCase(), match),
+  );
+  return out;
+}
+
 /**
  * Assemble a full HTML page from template parts.
  *
@@ -182,8 +243,13 @@ export function renderPage(
 
   // Inject a data-alloro-section marker on each section's root element
   // so extractSectionsFromDom can reliably find them after DOM mutation.
+  // Shortcode tokens are first replaced with styled placeholders so that
+  // sections consisting only of `{{ post_block … }}` still have an HTML
+  // root for tagSectionRoot and the regenerate overlay.
   const mainContent = sectionsToRender
-    .map((s) => tagSectionRoot(s.name, s.content))
+    .map((s) =>
+      tagSectionRoot(s.name, renderShortcodePlaceholders(s.content)),
+    )
     .join("\n");
   const pageContent = [header, mainContent, footer].join("\n");
   let finalHtml = wrapper.replace("{{slot}}", pageContent);
