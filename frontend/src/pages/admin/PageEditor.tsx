@@ -1291,7 +1291,7 @@ function PageEditorInner() {
                   maxWidth: "100%",
                 }}
               >
-                {isLivePreview ? (
+                {isLivePreview && regeneratingSectionNames.size === 0 ? (
                   <ProgressivePagePreview
                     projectId={projectId || ""}
                     pageId={pageId || ""}

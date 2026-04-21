@@ -61,20 +61,44 @@ function replaceRadius(cls: string, from: RadiusToken, to: RadiusToken): string 
 }
 
 /**
- * Strip LLM-emitted inline styles. Preserves only <section style="background: var(...)">
- * which the template itself may legitimately use.
+ * Strip LLM-emitted inline styles that the generator contract forbids.
+ *
+ * Allowed on ANY element (templates legitimately use these):
+ *   - `background:` / `background-image:` / `background-color:`
+ *     (hero sections ship with gradient-over-image backgrounds in the
+ *     template markup; stripping these kills the visual design)
+ *
+ * Stripped: everything else (opacity, color, width, positioning, etc.) —
+ * those are the drift signals we actually care about.
  */
 function stripInlineStyles($: cheerio.CheerioAPI): number {
   let stripped = 0;
   $("[style]").each((_, el) => {
     const $el = $(el);
-    const style = ($el.attr("style") || "").trim();
-    const tag = (el as any).tagName?.toLowerCase?.() || "";
-    const allowed =
-      tag === "section" && /^background\s*:\s*var\(/i.test(style);
-    if (!allowed) {
+    const raw = ($el.attr("style") || "").trim();
+    if (!raw) {
+      $el.removeAttr("style");
+      return;
+    }
+    // Keep only background-* declarations; drop everything else.
+    const kept = raw
+      .split(";")
+      .map((decl) => decl.trim())
+      .filter((decl) => decl.length > 0)
+      .filter((decl) => /^background(-image|-color|-position|-size|-repeat)?\s*:/i.test(decl));
+
+    if (kept.length === 0) {
       $el.removeAttr("style");
       stripped++;
+      return;
+    }
+
+    const next = kept.join("; ") + ";";
+    if (next !== raw) {
+      $el.attr("style", next);
+      if (kept.length < raw.split(";").filter((s) => s.trim()).length) {
+        stripped++;
+      }
     }
   });
   return stripped;

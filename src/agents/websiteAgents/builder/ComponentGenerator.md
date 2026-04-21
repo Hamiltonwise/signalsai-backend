@@ -182,7 +182,7 @@ Never rewrite them. Never remove them. They are placeholders the rendering engin
 - Root element: `<section class="... py-16 md:py-24 px-6 md:px-12 lg:px-20">`
 - Container: `<div class="max-w-7xl mx-auto">`
 - Use flex/grid only. No absolute/fixed positioning. No floats.
-- No inline `style="..."` attributes.
+- No inline `style="..."` attributes EXCEPT `background` / `background-image` / `background-color` / `background-position` / `background-size` / `background-repeat` — preserve those verbatim from the template (swapping `url(...)` values via the image manifest when appropriate).
 
 ## BANNED
 
@@ -191,7 +191,14 @@ Never rewrite them. Never remove them. They are placeholders the rendering engin
 - `<br>` for spacing (use margin/padding)
 - Fixed pixel widths
 - Inline font references
-- `style="..."` attributes
+- Inline `style="..."` attributes EXCEPT `background` / `background-image` /
+  `background-color` / `background-position` / `background-size` /
+  `background-repeat` — these ARE permitted when the template itself uses
+  them (hero sections commonly ship with a gradient-over-image background
+  in the template's `style` attribute). Preserve those. If the template
+  has `style="background-image: linear-gradient(...), url('...')"`, keep
+  the gradient, use `select_image` to get a real S3 URL from the manifest,
+  and swap the `url(...)` value. Do NOT delete the `style` attribute.
 - Invented/relative image URLs
 - Tailwind gradient utilities (`from-*`, `to-*`, `via-*`)
 - Opacity variants on brand colors
