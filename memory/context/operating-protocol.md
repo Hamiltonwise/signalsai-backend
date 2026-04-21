@@ -213,7 +213,11 @@ If any of these happen, stop and fix the system, not the symptom:
 - Corey feels low ROI on time spent -> build-evaluate-reject loop. Stop building, lock the decision upstream.
 - Dave's agents produce inconsistent output -> they received brainstorm, not spec. Check for "alternatively" in the source doc.
 
+## Canonical Examples
+
+**Dave-Ready Handoff:** The canonical example is the April 10, 2026 Migration Manifest, mirrored to Notion at https://www.notion.so/349fdaf120c4810aa045dfa4124ffa68 and described in detail in the Dave-Ready Handoff Format section above. Before producing any Dave-bound handoff, open the canonical example and match its shape: Card Sequence summary table at the top, detailed cards below with done gates between. Do not reason toward the format from principle. Open the artifact and modify it. Canonical until superseded by a dated replacement.
+
 ## Living Document
 
 This protocol evolves. When something doesn't work, update this doc.
-Last updated: April 13, 2026 (added upstream session discipline from Corey-Dave transcript analysis).
+Last updated: April 20, 2026 (added Canonical Examples section from April 20 session diagnosis).

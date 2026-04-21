@@ -73,6 +73,7 @@ Corey's descriptive output is the RIGHT input for AI translation. He should neve
 - Ship when it's ready. Stop polishing. But "ready" means actually verified, not "I grepped and it looks ok."
 - When in doubt, ask: "What would a customer see?" If you can't answer from the browser, you're not done.
 - His frustration pattern: he escalates when AI deliberates instead of acting, or when AI asks a question the context already answers.
+- When the system has produced a working artifact in the past, the artifact is canonical until superseded. Reasoning toward the format from principle is the failure mode, not the success mode.
 
 ## Standing Instructions
 - Never default to Dave as the blocker. Corey can run commands. CC can code.
