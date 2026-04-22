@@ -39,6 +39,26 @@ export interface BuildTriggerEvent {
   triggerEventId: string;
   testMode?: boolean;
   refreshMode?: boolean;
+  /**
+   * When set to 'upgrade_existing', orchestrator dispatches to
+   * runUpgradeExisting (new Card 2 entry mode, Card 5 Run 4). Default 'new_build'.
+   */
+  mode?: "new_build" | "upgrade_existing";
+  /**
+   * Required when mode='upgrade_existing': the existing practice URL.
+   * Ignored when mode='new_build'.
+   */
+  existingUrl?: string;
+  /** Optional extras for upgrade_existing to pass through to the rewrite. */
+  upgradeContext?: {
+    practiceName?: string;
+    specialty?: string;
+    location?: string;
+    differentiator?: string;
+    doctorBackground?: string;
+    competitorUrls?: string[];
+    targetSections?: string[];
+  };
 }
 
 export interface OrchestratorStageSummary {
@@ -53,7 +73,8 @@ export interface OrchestratorResult {
     | "shadow_skipped"
     | "qa_escalated"
     | "research_skipped"
-    | "failed";
+    | "failed"
+    | "upgrade_existing_proposal_ready";
   orgId: number;
   idempotencyKey: string;
   stages: {
@@ -63,6 +84,11 @@ export interface OrchestratorResult {
     bake?: OrchestratorStageSummary & { shadow: boolean; pagesBaked: number };
     qa?: OrchestratorStageSummary & { attempts: number; passed: boolean };
     adapter?: OrchestratorStageSummary;
+    upgradeExisting?: OrchestratorStageSummary & {
+      shadow: boolean;
+      proposalEmitted: boolean;
+      sectionsPassed: number;
+    };
   };
   totalMs: number;
   error?: string;
@@ -86,6 +112,36 @@ export async function runBuildOrchestrator(
 
     if (!org) {
       throw new Error(`Org ${event.orgId} not found`);
+    }
+
+    // Card 5 Run 4: upgrade_existing mode. Short-circuits the normal build
+    // chain — crawls an existing URL, tri-scores, rewrites gap sections,
+    // emits a proposal. No auto-publish. Owner must approve via the
+    // approval endpoint before anything ships.
+    if (event.mode === "upgrade_existing") {
+      if (!event.existingUrl) {
+        throw new Error("upgrade_existing mode requires existingUrl");
+      }
+      const { runUpgradeExisting } = await import("./upgradeExisting");
+      const upgradeStart = Date.now();
+      const upgrade = await runUpgradeExisting({
+        orgId: event.orgId,
+        url: event.existingUrl,
+        ...(event.upgradeContext ?? {}),
+      });
+      stages.upgradeExisting = {
+        durationMs: Date.now() - upgradeStart,
+        shadow: upgrade.shadow,
+        proposalEmitted: upgrade.proposalEmitted,
+        sectionsPassed: upgrade.sectionDiffs.filter((d) => d.passed).length,
+      };
+      return {
+        status: "upgrade_existing_proposal_ready",
+        orgId: event.orgId,
+        idempotencyKey,
+        stages,
+        totalMs: Date.now() - start,
+      };
     }
 
     const buildEnabled = Boolean(org.patientpath_build_enabled);

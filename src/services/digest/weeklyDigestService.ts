@@ -211,6 +211,50 @@ export async function composeWeeklyDigest(
   // ── 5. Top 3 recommendations ──────────────────────────────────────
   const recommendations = deriveRecommendations(signals, triScore, currentScore);
 
+  // Card 5 Run 4: when practice is scoring below threshold, call the
+  // Copy Rewrite Service to surface a recommended rewrite. Shadow-safe —
+  // rewriteResult.contentReadyForPublish is always false unless the
+  // copy_rewrite_enabled flag is on for this org.
+  let rewriteProposal: {
+    hero?: string | null;
+    whatChanged?: string;
+    whyItMatters?: string;
+    passed: boolean;
+  } | null = null;
+  const compositeForRewrite = triScore.composite ?? 0;
+  if (compositeForRewrite > 0 && compositeForRewrite < 70 && meta.websiteUrl) {
+    try {
+      const { runCopyRewrite } = await import("../rewrite/copyRewriteService");
+      const rewrite = await runCopyRewrite({
+        url: meta.websiteUrl,
+        triScore: {
+          seo_composite: seo,
+          aeo_composite: aeo,
+          cro_composite: cro,
+        },
+        missingExamples: currentScore?.practice.missing_examples ?? [],
+        practiceContext: {
+          orgId,
+          practiceName: orgName,
+          specialty: meta.specialty ?? undefined,
+          location: meta.location ?? undefined,
+        },
+        targetSections: ["hero"],
+      });
+      const heroResult = rewrite.sectionResults[0];
+      if (heroResult) {
+        rewriteProposal = {
+          hero: heroResult.newContent,
+          whatChanged: heroResult.whatChanged,
+          whyItMatters: heroResult.whyItMatters,
+          passed: heroResult.passed,
+        };
+      }
+    } catch {
+      // Rewrite failure is observability, not a digest blocker.
+    }
+  }
+
   // ── 6. Patient quote (HIPAA-safe: first name only) ────────────────
   let patientQuote: DigestContent["patientQuote"] = null;
   if (currentScore?.practice.patient_quotes_not_on_site?.length) {
@@ -227,7 +271,7 @@ export async function composeWeeklyDigest(
     // Try to find a recent review from watcher data
     try {
       const recentReview = await db("website_builder.reviews")
-        .where("location_id", "in", function () {
+        .where("location_id", "in", function (this: any) {
           this.select("id").from("website_builder.locations").where({ org_id: orgId });
         })
         .where("stars", ">=", 4)
@@ -272,7 +316,7 @@ export async function composeWeeklyDigest(
       finding: `Your Recognition Score this week: SEO ${seo ?? "pending"}, AEO ${aeo ?? "pending"}, CRO ${cro ?? "pending"}.`,
       dollar: null,
       action: "Your Alloro team is monitoring your market.",
-      tier: "steady_state",
+      tier: "expected",
       template: "weeklyDigest",
       dataGapReason: null,
       confidence: 50,
@@ -326,6 +370,17 @@ export async function composeWeeklyDigest(
       id: "patient_quote",
       title: config.sectionTitles?.patient_quote ?? "What your patients said",
       body: `"${patientQuote.text}" — ${patientQuote.firstName}, ${patientQuote.rating}★`,
+    });
+  }
+
+  // Rewrite proposal (Card 5 Run 4): only surface when a gate-passing
+  // rewrite is available. Keeps the digest honest — we never recommend a
+  // rewrite that itself failed The Standard.
+  if (rewriteProposal?.passed && rewriteProposal.hero) {
+    sections.push({
+      id: "rewrite_proposal",
+      title: "Here is the rewrite we recommend",
+      body: `Current hero:\n${(rewriteProposal.whatChanged ?? "").slice(0, 200)}\n\nOur rewrite:\n${rewriteProposal.hero}\n\nWhy it helps: ${rewriteProposal.whyItMatters ?? ""}`,
     });
   }
 
