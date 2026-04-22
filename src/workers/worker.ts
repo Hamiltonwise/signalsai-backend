@@ -24,6 +24,7 @@ import { processPatientPathOrchestratorJob } from "./patientpathBuildWorker";
 import { BUILD_QUEUE_NAME as PATIENTPATH_BUILD_QUEUE } from "../services/patientpath/orchestrator";
 import { processRevealChoreography } from "./processors/revealChoreography.processor";
 import { processWatcherJob, WATCHER_QUEUE_NAME } from "./watcherWorker";
+import { processWeeklyDigest } from "./processors/weeklyDigest.processor";
 import { runCROForAllOrgs } from "../services/croEngine";
 import { runDFYForAllOrgs } from "../services/dfyEngine";
 import { getMindsQueue } from "./queues";
@@ -167,6 +168,16 @@ const watcherWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// 15. Weekly Digest (Manifest v2 Card 5 Run 3)
+// Monday 2 PM UTC (7 AM Pacific). Per-practice Recognition Tri-Score digest
+// composed via Narrator, gated by Freeform Concern Gate. Uses Card 4 email
+// stack. Shadow mode per weekly_digest_enabled flag (default false).
+const weeklyDigestWorker = new Worker(
+  "minds-weekly-digest",
+  async (job) => { return await processWeeklyDigest(job); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // ─── EVENT HANDLERS ───────────────────────────────────────────────
 
 const activeWorkers = [
@@ -184,6 +195,7 @@ const activeWorkers = [
   patientpathBuildWorker,
   revealChoreographyWorker,
   watcherWorker,
+  weeklyDigestWorker,
 ];
 
 for (const worker of activeWorkers) {
@@ -334,6 +346,19 @@ async function setupWatcherDailySchedule(): Promise<void> {
   }
 }
 
+async function setupWeeklyDigestSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("weekly-digest");
+    await queue.add("weekly-digest", {}, {
+      repeat: { pattern: "0 14 * * 1", tz: "UTC" }, // Monday 2 PM UTC = 7 AM Pacific
+      jobId: "weekly-digest",
+    });
+    console.log("[MINDS-WORKER] Weekly digest scheduled (Monday 2 PM UTC / 7 AM Pacific)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule weekly digest:", err);
+  }
+}
+
 // Start schedules
 setupReviewSyncSchedule();
 setupDailyAnalyticsSchedule();
@@ -344,8 +369,9 @@ setupWeeklyScoreRecalcSchedule();
 setupMondayEmailSchedule();
 setupWatcherHourlySchedule();
 setupWatcherDailySchedule();
+setupWeeklyDigestSchedule();
 
-console.log("[MINDS-WORKER] Essential 9 + Watcher workers running. Waiting for jobs...");
+console.log("[MINDS-WORKER] Essential 9 + Watcher + Digest workers running. Waiting for jobs...");
 
 // ─── DISABLED WORKERS ─────────────────────────────────────────────
 // These workers are not serving paying customers today.

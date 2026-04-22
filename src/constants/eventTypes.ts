@@ -225,6 +225,24 @@ export const WATCHER_DAILY_SCAN_COMPLETED = "watcher.daily_scan_completed";
 /** Watcher Agent detected a signal (review velocity, ranking, competitor, etc.) */
 export const WATCHER_SIGNAL_DETECTED = "watcher.signal_detected";
 
+// ── FACTORY ACTIVATION ───────────────────────────────────────────────
+
+/** Factory activation started across all clients */
+export const FACTORY_ACTIVATION_STARTED = "factory.activation_started";
+/** Factory activation completed */
+export const FACTORY_ACTIVATION_COMPLETED = "factory.activation_completed";
+/** Baseline Recognition Tri-Score seeded for a practice */
+export const FACTORY_BASELINE_SEEDED = "factory.baseline_seeded";
+
+// ── WEEKLY DIGEST ─���─────────────────────────────────────────────────
+
+/** Weekly digest composed for a practice */
+export const DIGEST_WEEKLY_COMPOSED = "digest.weekly_composed";
+/** Weekly digest sent to a practice */
+export const DIGEST_WEEKLY_SENT = "digest.weekly_sent";
+/** Weekly digest held (Freeform Concern Gate blocked) */
+export const DIGEST_HELD = "digest.held";
+
 // ── GP/REFERRAL ─────────────────────────────────────────────────────
 
 /** GP referral source went dark (no referrals in 60+ days) */
