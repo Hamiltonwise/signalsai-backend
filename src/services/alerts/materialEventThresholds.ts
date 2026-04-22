@@ -148,7 +148,7 @@ function fallback(): MaterialEventThresholdsConfig {
         severity: "critical",
         subjectTemplate: "{orgName} — new {stars}-star review needs your eye",
         summaryTemplate:
-          "A {stars}-star review was posted about {orgName} {relativeTime}. Here's what the reviewer said, and what Alloro already did about response-readiness.",
+          "{reviewerFirstName} left a {stars}-star review about {orgName} {relativeTime}. Before anything else: this one needs your eyes, not ours.",
       },
       recognition_regression: {
         enabled: true,
