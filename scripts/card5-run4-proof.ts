@@ -75,9 +75,24 @@ async function liveMissingForArtful(): Promise<MissingExample[]> {
       specialty: ARTFUL_SPECIALTY,
       location: ARTFUL_LOCATION,
     });
-    if (score.practice.missing_examples.length >= 3) {
-      return score.practice.missing_examples.slice(0, 3);
+    // Dedupe by source review — live extractor produces multiple candidate
+    // phrases per review, but for demo we only need one distinct anchor per
+    // reviewer. Pair live anchors with the curated fallback when live data
+    // is thin so the hero rewrite has varied voices to surface.
+    const byReview = new Map<string, MissingExample>();
+    for (const ex of score.practice.missing_examples) {
+      const key = ex.sourceReview.slice(0, 60).toLowerCase();
+      if (!byReview.has(key)) byReview.set(key, ex);
     }
+    const deduped = Array.from(byReview.values());
+    if (deduped.length >= 3) {
+      return deduped.slice(0, 3);
+    }
+    // Supplement with fallback voices so we have 3 distinct patient anchors.
+    const extras = ARTFUL_FALLBACK_MISSING.filter(
+      (f) => !deduped.some((d) => d.sourceReview.startsWith(f.sourceReview.slice(0, 40)))
+    );
+    return [...deduped, ...extras].slice(0, 3);
   } catch {
     // Fall through to fallback
   }

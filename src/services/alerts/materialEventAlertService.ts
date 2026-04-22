@@ -90,6 +90,54 @@ export interface MaterialAlertResult {
   oneClickActions: Array<{ label: string; action: string; href: string }>;
 }
 
+// ── Deterministic body composition per event type ───────────────────
+
+function composeMaterialEventBody(
+  eventType: MaterialEventType,
+  orgName: string,
+  data: Record<string, unknown>,
+  _spec: { severity: string }
+): { whyItMatters: string; whatAlloroDid: string } {
+  switch (eventType) {
+    case "low_rating_review": {
+      const stars = Number(data?.stars ?? 2);
+      return {
+        whyItMatters: `A low-rating review sits on your Google Business Profile where prospective patients see it first. Most patients scan the one-star and two-star reviews before they read anything else — unanswered, it reads as the practice not caring.`,
+        whatAlloroDid: `Alloro's response templates for ${stars}-star reviews are already drafted for you, calibrated to your voice. One click sends, one click defers, one click ignores.`,
+      };
+    }
+    case "recognition_regression": {
+      const dim = String(data?.dimension ?? "composite");
+      const drop = data?.dropPoints ?? "several";
+      return {
+        whyItMatters: `Your ${dim} Recognition Score dropped ${drop} points this week. That means fewer prospective patients are finding ${orgName} through the channel this score tracks — Google, AI assistants, or on-site conversion.`,
+        whatAlloroDid: `Alloro isolated the three likely drivers from your Watcher signals. Open the alert to review them in order of leverage.`,
+      };
+    }
+    case "competitor_overtake": {
+      const competitor = String(data?.competitorName ?? "A competitor");
+      const ranking = String(data?.ranking ?? "local pack");
+      return {
+        whyItMatters: `${competitor} moved ahead of ${orgName} in ${ranking} this week. For the queries your prospective patients run, they now see the competitor first.`,
+        whatAlloroDid: `Alloro has a short list of what changed on their side — review volume, site changes, GBP updates — ready for you to see.`,
+      };
+    }
+    case "gbp_critical_field_change": {
+      const field = String(data?.field ?? "profile field");
+      return {
+        whyItMatters: `Your Google Business Profile ${field} changed without your input. Patients who call the listed number or arrive at the listed address could be misdirected.`,
+        whatAlloroDid: `Alloro snapshotted the old value and has a one-click restore ready if the change wasn't intentional.`,
+      };
+    }
+    case "gbp_verification_loss": {
+      return {
+        whyItMatters: `Your Google Business Profile lost its verification badge. Until it's restored, ${orgName} won't surface in the local pack, and prospective patients searching for you may find competitors first.`,
+        whatAlloroDid: `Alloro prepared the reverification packet. One click initiates it.`,
+      };
+    }
+  }
+}
+
 // ── Debounce / batch state ───────────────────────────────────────────
 
 async function lastAlertWithin(
@@ -360,32 +408,31 @@ export async function runMaterialEventAlert(
   const subject = interpolate(spec.subjectTemplate, subjectValues);
   const whatHappened = interpolate(spec.summaryTemplate, subjectValues);
 
-  // Run the narrator so the "why it matters" / "what Alloro did" paragraphs
-  // are voice-calibrated and recipe-compliant. Failure falls back to
-  // deterministic defaults so the alert still ships with tolerable tone.
-  let whyItMatters = "This change affects how new patients find you right now.";
-  let whatAlloroDid = "Alloro is holding your response templates ready.";
-  try {
-    const narratorEvent = {
-      eventType: `material_event.${payload.eventType}`,
-      orgId: payload.orgId,
-      properties: {
-        subject,
-        what_happened: whatHappened,
-        data: payload.data,
-        severity: spec.severity,
-      },
-    };
-    const narratorResult = await processNarratorEvent(narratorEvent);
-    if (narratorResult?.output?.finding) {
-      whyItMatters = narratorResult.output.finding;
-    }
-    if (narratorResult?.output?.action) {
-      whatAlloroDid = narratorResult.output.action;
-    }
-  } catch {
-    warnings.push("Narrator compose failed; using deterministic alert body.");
-  }
+  // Material events are structured signals with known fields, so the
+  // alert body is composed deterministically against the event type rather
+  // than routed through the narrator. This keeps the tone calm, specific,
+  // and action-oriented by construction, without depending on a narrator
+  // template for every material event type. The narrator archives the
+  // event separately for observability (downstream listener).
+  const composed = composeMaterialEventBody(
+    payload.eventType,
+    payload.orgName,
+    payload.data,
+    spec
+  );
+  let whyItMatters = composed.whyItMatters;
+  let whatAlloroDid = composed.whatAlloroDid;
+  // Archive the event through narrator in the background for observability.
+  processNarratorEvent({
+    eventType: `material_event.${payload.eventType}`,
+    orgId: payload.orgId,
+    properties: {
+      subject,
+      what_happened: whatHappened,
+      data: payload.data,
+      severity: spec.severity,
+    },
+  }).catch(() => {});
 
   // Alert-level freeform gate. Retry with narrator until pass or blocked.
   // Because the narrator is deterministic for a given event shape, we
