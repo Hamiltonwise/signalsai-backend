@@ -250,6 +250,19 @@ export const GP_GONE_DARK = "gp.gone_dark";
 /** GP referral drift detected (declining trend) */
 export const GP_DRIFT_DETECTED = "gp.drift_detected";
 
+// ── SALES (Card 6 — Prospect Scanner + Candidate Flagger) ───────────
+
+/** Prospect identified by Sales Agent scan (new candidate URL inserted) */
+export const PROSPECT_IDENTIFIED = "sales.prospect_identified";
+/** Material Tri-Score shift (>10 pts on any dimension) on existing prospect */
+export const PROSPECT_SCORE_CHANGED = "sales.prospect_score_changed";
+/** Candidate transitioned to flagged status (ready for Card 7 pitch composer) */
+export const PROSPECT_FLAGGED_FOR_OUTREACH = "sales.prospect_flagged_for_outreach";
+/** Prospect Scanner daily job started */
+export const PROSPECT_SCANNER_STARTED = "sales.prospect_scanner_started";
+/** Prospect Scanner daily job completed */
+export const PROSPECT_SCANNER_COMPLETED = "sales.prospect_scanner_completed";
+
 // ── CONVENIENCE GROUPS ──────────────────────────────────────────────
 // Used by Morning Briefing and other aggregators
 

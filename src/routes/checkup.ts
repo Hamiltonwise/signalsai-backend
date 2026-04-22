@@ -1176,6 +1176,21 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       },
     }).catch(() => {});
 
+    // Card 6 (Sales Agent Brick 1): warm-prospect path. When the checked-up
+    // practice has a website AND we have a candidate_flagger_enabled flag
+    // turned on, insert/promote the URL as a self-serve warm prospect.
+    // Self-serve intent overrides Tri-Score threshold.
+    if (enrichedWebsite) {
+      import("../services/sales/candidateFlagger")
+        .then(({ runFlaggerOnCheckupCompleted }) =>
+          runFlaggerOnCheckupCompleted({
+            url: enrichedWebsite,
+            location: city,
+          })
+        )
+        .catch(() => {});
+    }
+
     console.log(
       `[Checkup] Score: ${compositeScore} (${scoreLabel}) | Trust:${trustSignal} Impression:${firstImpression} Response:${responsiveness} Edge:${competitiveEdge} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: yes" : ""}${ozMoments.length > 0 ? ` | Oz: ${ozMoments.length}` : ""}${surpriseFindings.length > 0 ? ` | Surprise: ${surpriseFindings.length}` : ""}`
     );

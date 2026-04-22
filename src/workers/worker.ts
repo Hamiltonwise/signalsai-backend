@@ -25,6 +25,10 @@ import { BUILD_QUEUE_NAME as PATIENTPATH_BUILD_QUEUE } from "../services/patient
 import { processRevealChoreography } from "./processors/revealChoreography.processor";
 import { processWatcherJob, WATCHER_QUEUE_NAME } from "./watcherWorker";
 import { processWeeklyDigest } from "./processors/weeklyDigest.processor";
+import {
+  processProspectScannerJob,
+  PROSPECT_SCANNER_QUEUE_NAME,
+} from "./prospectScannerWorker";
 import { runCROForAllOrgs } from "../services/croEngine";
 import { runDFYForAllOrgs } from "../services/dfyEngine";
 import { getMindsQueue } from "./queues";
@@ -178,6 +182,18 @@ const weeklyDigestWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// 16. Prospect Scanner (Manifest v2 Card 6 — Sales Agent Brick 1)
+// Daily prospect discovery + Tri-Score evaluation against ICP Definition v1.
+// Inserts new candidates, rescans every 7 days, hands flaggable matches to
+// candidateFlagger. Per-instance scope (one scanner, not per-practice).
+// Shadow mode per prospect_scanner_enabled flag (default false): discovers
+// + scores but does NOT write prospects or emit downstream events.
+const prospectScannerWorker = new Worker(
+  PROSPECT_SCANNER_QUEUE_NAME,
+  async (job) => { return await processProspectScannerJob(job); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // ─── EVENT HANDLERS ───────────────────────────────────────────────
 
 const activeWorkers = [
@@ -196,6 +212,7 @@ const activeWorkers = [
   revealChoreographyWorker,
   watcherWorker,
   weeklyDigestWorker,
+  prospectScannerWorker,
 ];
 
 for (const worker of activeWorkers) {
@@ -359,6 +376,23 @@ async function setupWeeklyDigestSchedule(): Promise<void> {
   }
 }
 
+async function setupProspectScannerSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("prospect-scanner");
+    await queue.add(
+      "daily-prospect-scan",
+      { type: "daily-prospect-scan" },
+      {
+        repeat: { pattern: "0 7 * * *", tz: "UTC" }, // Daily 7 AM UTC = 2 AM ET
+        jobId: "prospect-scanner-daily",
+      }
+    );
+    console.log("[MINDS-WORKER] Prospect scanner scheduled (7 AM UTC daily)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule prospect scanner:", err);
+  }
+}
+
 // Start schedules
 setupReviewSyncSchedule();
 setupDailyAnalyticsSchedule();
@@ -370,8 +404,9 @@ setupMondayEmailSchedule();
 setupWatcherHourlySchedule();
 setupWatcherDailySchedule();
 setupWeeklyDigestSchedule();
+setupProspectScannerSchedule();
 
-console.log("[MINDS-WORKER] Essential 9 + Watcher + Digest workers running. Waiting for jobs...");
+console.log("[MINDS-WORKER] Essential 9 + Watcher + Digest + Prospect Scanner workers running. Waiting for jobs...");
 
 // ─── DISABLED WORKERS ─────────────────────────────────────────────
 // These workers are not serving paying customers today.
