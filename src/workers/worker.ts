@@ -23,6 +23,7 @@ import { processNarratorJob } from "./processors/narrator.processor";
 import { processPatientPathOrchestratorJob } from "./patientpathBuildWorker";
 import { BUILD_QUEUE_NAME as PATIENTPATH_BUILD_QUEUE } from "../services/patientpath/orchestrator";
 import { processRevealChoreography } from "./processors/revealChoreography.processor";
+import { processWatcherJob, WATCHER_QUEUE_NAME } from "./watcherWorker";
 import { runCROForAllOrgs } from "../services/croEngine";
 import { runDFYForAllOrgs } from "../services/dfyEngine";
 import { getMindsQueue } from "./queues";
@@ -154,6 +155,18 @@ const revealChoreographyWorker = new Worker(
   { connection, concurrency: 2, prefix: '{minds}' }
 );
 
+// 14. Watcher Agent (Manifest v2 Card 5)
+// Hourly per-practice scan: review velocity, GBP completeness, ranking moves,
+// competitor activity, Recognition Score regressions.
+// Daily cross-practice scan: collisions, milestones, patterns.
+// Shadow mode per watcher_agent_enabled flag (default false): scans and archives
+// signals but does NOT emit behavioral_events to downstream consumers.
+const watcherWorker = new Worker(
+  WATCHER_QUEUE_NAME,
+  async (job) => { return await processWatcherJob(job); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // ─── EVENT HANDLERS ───────────────────────────────────────────────
 
 const activeWorkers = [
@@ -170,6 +183,7 @@ const activeWorkers = [
   narratorWorker,
   patientpathBuildWorker,
   revealChoreographyWorker,
+  watcherWorker,
 ];
 
 for (const worker of activeWorkers) {
@@ -294,6 +308,32 @@ async function setupWeeklyDFYSchedule(): Promise<void> {
   }
 }
 
+async function setupWatcherHourlySchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("watcher");
+    await queue.add("hourly-practice-scan", { type: "hourly-practice-scan" }, {
+      repeat: { pattern: "0 * * * *", tz: "UTC" }, // Every hour on the hour
+      jobId: "watcher-hourly-scan",
+    });
+    console.log("[MINDS-WORKER] Watcher hourly scan scheduled (every hour)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule watcher hourly scan:", err);
+  }
+}
+
+async function setupWatcherDailySchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("watcher");
+    await queue.add("daily-cross-practice-scan", { type: "daily-cross-practice-scan" }, {
+      repeat: { pattern: "0 6 * * *", tz: "UTC" }, // Daily 6 AM UTC = 1 AM ET
+      jobId: "watcher-daily-scan",
+    });
+    console.log("[MINDS-WORKER] Watcher daily scan scheduled (6 AM UTC daily)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule watcher daily scan:", err);
+  }
+}
+
 // Start schedules
 setupReviewSyncSchedule();
 setupDailyAnalyticsSchedule();
@@ -302,8 +342,10 @@ setupWeeklyDFYSchedule();
 setupWeeklyRankingSnapshotSchedule();
 setupWeeklyScoreRecalcSchedule();
 setupMondayEmailSchedule();
+setupWatcherHourlySchedule();
+setupWatcherDailySchedule();
 
-console.log("[MINDS-WORKER] Essential 9 workers running. Waiting for jobs...");
+console.log("[MINDS-WORKER] Essential 9 + Watcher workers running. Waiting for jobs...");
 
 // ─── DISABLED WORKERS ─────────────────────────────────────────────
 // These workers are not serving paying customers today.

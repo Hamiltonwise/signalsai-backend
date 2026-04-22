@@ -203,6 +203,28 @@ export const LEGAL_TRADEMARK_SCAN = "legal.trademark_scan";
 /** Audit test event */
 export const AUDIT_TEST = "audit.test";
 
+// ── DATA GAP RESOLVER ───────────────────────────────────────────────
+
+/** Data Gap Resolver started for an org */
+export const DATA_GAP_RESOLVER_STARTED = "data_gap_resolver.started";
+/** Data Gap Resolver completed for an org */
+export const DATA_GAP_RESOLVER_COMPLETED = "data_gap_resolver.completed";
+/** Data Gap Resolver resolved a single field from a public source */
+export const DATA_GAP_RESOLVER_FIELD_RESOLVED = "data_gap_resolver.field_resolved";
+
+// ── WATCHER ─────────────────────────────────────────────────────────
+
+/** Watcher Agent hourly per-practice scan started */
+export const WATCHER_HOURLY_SCAN_STARTED = "watcher.hourly_scan_started";
+/** Watcher Agent hourly per-practice scan completed */
+export const WATCHER_HOURLY_SCAN_COMPLETED = "watcher.hourly_scan_completed";
+/** Watcher Agent daily cross-practice scan started */
+export const WATCHER_DAILY_SCAN_STARTED = "watcher.daily_scan_started";
+/** Watcher Agent daily cross-practice scan completed */
+export const WATCHER_DAILY_SCAN_COMPLETED = "watcher.daily_scan_completed";
+/** Watcher Agent detected a signal (review velocity, ranking, competitor, etc.) */
+export const WATCHER_SIGNAL_DETECTED = "watcher.signal_detected";
+
 // ── GP/REFERRAL ─────────────────────────────────────────────────────
 
 /** GP referral source went dark (no referrals in 60+ days) */

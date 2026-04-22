@@ -24,10 +24,12 @@
 
 import { db } from "../../database/connection";
 import { BehavioralEventModel } from "../../models/BehavioralEventModel";
+import { runDataGapResolver } from "./stages/dataGapResolver";
 import { runResearchStage } from "./stages/research";
 import { runCopyStage } from "./stages/copy";
 import { runQaStage } from "./stages/qa";
 import { runAdapterStage } from "./stages/adapter";
+import { runDiscoverabilityBakeStage } from "./stages/discoverabilityBake";
 
 export const BUILD_QUEUE_NAME = "minds-patientpath-build";
 export const MAX_QA_RETRIES = 3;
@@ -55,8 +57,10 @@ export interface OrchestratorResult {
   orgId: number;
   idempotencyKey: string;
   stages: {
+    dataGapResolver?: OrchestratorStageSummary;
     research?: OrchestratorStageSummary;
     copy?: OrchestratorStageSummary;
+    bake?: OrchestratorStageSummary & { shadow: boolean; pagesBaked: number };
     qa?: OrchestratorStageSummary & { attempts: number; passed: boolean };
     adapter?: OrchestratorStageSummary;
   };
@@ -132,6 +136,19 @@ export async function runBuildOrchestrator(
       };
     }
 
+    // Card 5: Data Gap Resolver runs BEFORE Research to fill missing practice data
+    const dataGapResult = await runDataGapResolver({
+      orgId: event.orgId,
+      idempotencyKey,
+    });
+    stages.dataGapResolver = {
+      durationMs: dataGapResult.durationMs,
+      fieldsResolved: dataGapResult.fieldsResolved,
+      fieldsMissing: dataGapResult.fieldsMissing,
+      mode: dataGapResult.mode,
+      skipped: dataGapResult.skipped,
+    };
+
     const research = await runResearchStage({
       orgId: event.orgId,
       idempotencyKey,
@@ -157,6 +174,26 @@ export async function runBuildOrchestrator(
         : 0,
       reused: copy.reused,
     };
+
+    // Discoverability Bake — new stage AFTER Copy, BEFORE QA. Attaches
+    // schema.org markup, FAQ, review schema, internal linking, and CTAs so
+    // every site wins SEO + AEO + CRO from the first build. Shadow mode
+    // (flag off) attaches the artifact without stamping sections.
+    const practiceMetadata = extractPracticeMetadata(org, research.brief, copy.copy);
+    const bake = await runDiscoverabilityBakeStage({
+      orgId: event.orgId,
+      copyId: copy.copyId,
+      copy: copy.copy,
+      practice: practiceMetadata.practice,
+      practitioner: practiceMetadata.practitioner,
+      reviews: practiceMetadata.reviews,
+    });
+    stages.bake = {
+      durationMs: bake.durationMs,
+      shadow: bake.shadow,
+      pagesBaked: bake.artifact.pages.length,
+    };
+    copy.copy = bake.copy;
 
     let qaPassed = false;
     let qaAttempts = 0;
@@ -242,6 +279,83 @@ export async function runBuildOrchestrator(
       error: message,
     };
   }
+}
+
+function extractPracticeMetadata(
+  org: { name?: string; id?: number },
+  brief: any,
+  _copy: any
+): {
+  practice: Parameters<typeof runDiscoverabilityBakeStage>[0]["practice"];
+  practitioner?: Parameters<typeof runDiscoverabilityBakeStage>[0]["practitioner"];
+  reviews: Parameters<typeof runDiscoverabilityBakeStage>[0]["reviews"];
+} {
+  const profile = brief?.practiceProfile ?? {};
+  const direction = brief?.copyDirection ?? {};
+  const practitioner = brief?.practitioner ?? profile?.practitioner ?? null;
+  const rawReviews: any[] = Array.isArray(brief?.reviews)
+    ? brief.reviews
+    : Array.isArray(direction?.socialProofQuotes)
+      ? direction.socialProofQuotes.map((q: any) => ({
+          author: typeof q === "string" ? "Patient" : q?.author ?? "Patient",
+          text: typeof q === "string" ? q : q?.text ?? "",
+          rating: typeof q?.rating === "number" ? q.rating : 5,
+          reviewDate: q?.reviewDate,
+        }))
+      : [];
+
+  return {
+    practice: {
+      name: org.name ?? profile.name ?? "",
+      specialty: profile.specialty,
+      practiceType: profile.practiceType ?? profile.category,
+      phone: profile.phone,
+      email: profile.email,
+      websiteUrl: profile.websiteUrl,
+      address: profile.address
+        ? {
+            streetAddress: profile.address.streetAddress ?? profile.address.address,
+            city: profile.address.city ?? profile.city,
+            region: profile.address.state ?? profile.state,
+            postalCode: profile.address.zip ?? profile.address.postalCode,
+            country: profile.address.country ?? "US",
+          }
+        : profile.city || profile.state
+          ? {
+              city: profile.city,
+              region: profile.state,
+              country: "US",
+            }
+          : undefined,
+      lat: profile.lat,
+      lng: profile.lng,
+      hours: Array.isArray(profile.hours) ? profile.hours : undefined,
+    },
+    practitioner:
+      practitioner && typeof practitioner === "object"
+        ? {
+            fullName: practitioner.fullName ?? practitioner.name ?? "",
+            credentials: Array.isArray(practitioner.credentials)
+              ? practitioner.credentials
+              : undefined,
+            education: Array.isArray(practitioner.education)
+              ? practitioner.education
+              : undefined,
+            specialty: practitioner.specialty ?? profile.specialty,
+            yearsInPractice: practitioner.yearsInPractice,
+            bio: practitioner.bio,
+          }
+        : undefined,
+    reviews: rawReviews
+      .filter((r: any) => r && typeof r.text === "string" && r.text.length > 0)
+      .slice(0, 5)
+      .map((r: any) => ({
+        author: r.author ?? "Patient",
+        text: r.text,
+        rating: typeof r.rating === "number" ? r.rating : 5,
+        reviewDate: r.reviewDate,
+      })),
+  };
 }
 
 async function escalateQaFailure(
