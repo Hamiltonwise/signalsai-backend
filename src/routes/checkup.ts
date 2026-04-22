@@ -33,6 +33,7 @@ import { REVIEW_VOLUME_BENCHMARKS, COMPETITIVE_RADII_MILES, getScoreLabel } from
 import { getAvgCaseValue, getConversionRate } from "../config/verticalProfiles";
 import { calculateClarityScore } from "../services/clarityScoring";
 import { cleanCompetitorName } from "../utils/textCleaning";
+import { computeCheckupTriScore } from "../services/checkup/checkupTriScoreUpgrade";
 
 /**
  * Derive the real specialty from the business name.
@@ -1176,8 +1177,22 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       },
     }).catch(() => {});
 
+    // ─── Recognition Tri-Score (Card 5): prospect-facing rubric output ───
+    // Runs in parallel with response assembly. When checkup_tri_score_enabled
+    // is ON, the tri-score becomes the primary output section. When OFF, the
+    // existing Clarity Score output is returned unchanged.
+    const websiteUrl = enrichedWebsite || req.body.websiteUri || null;
+    const triScoreResult = await computeCheckupTriScore({
+      practiceUrl: websiteUrl,
+      practiceName: name,
+      specialty: specialty || category || undefined,
+      location: marketLocation,
+      placeId: placeId || undefined,
+      sessionId: session_id || undefined,
+    }).catch(() => ({ enabled: false, prospectFraming: null, rawResult: null, eventEmitted: false }));
+
     console.log(
-      `[Checkup] Score: ${compositeScore} (${scoreLabel}) | Trust:${trustSignal} Impression:${firstImpression} Response:${responsiveness} Edge:${competitiveEdge} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: yes" : ""}${ozMoments.length > 0 ? ` | Oz: ${ozMoments.length}` : ""}${surpriseFindings.length > 0 ? ` | Surprise: ${surpriseFindings.length}` : ""}`
+      `[Checkup] Score: ${compositeScore} (${scoreLabel}) | Trust:${trustSignal} Impression:${firstImpression} Response:${responsiveness} Edge:${competitiveEdge} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: yes" : ""}${ozMoments.length > 0 ? ` | Oz: ${ozMoments.length}` : ""}${surpriseFindings.length > 0 ? ` | Surprise: ${surpriseFindings.length}` : ""}${triScoreResult.enabled ? ` | TriScore: ${triScoreResult.prospectFraming?.triScore?.composite ?? "n/a"}` : ""}`
     );
 
     return res.json({
@@ -1266,6 +1281,9 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         customerVoiceSummary: reviewThemes.customerVoiceSummary,
         topThemes: reviewThemes.topThemes,
       } : null,
+      // Recognition Tri-Score (Card 5): when enabled, this is the primary output
+      // section for the prospect. When disabled, null (existing output unchanged).
+      recognitionTriScore: triScoreResult.enabled ? triScoreResult.prospectFraming : null,
     });
   } catch (error: any) {
     console.error("[Checkup] Analysis error:", error.message);

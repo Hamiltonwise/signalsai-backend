@@ -42,6 +42,8 @@ export const CHECKUP_ACCOUNT_CREATED = "checkup.account_created";
 export const CHECKUP_GATE_VIEWED = "checkup.gate_viewed";
 /** Checkup started (marketing tracker) */
 export const CHECKUP_STARTED = "checkup.started";
+/** Checkup Recognition Tri-Score completed — Sales Agent trigger */
+export const CHECKUP_TRI_SCORE_COMPLETED = "checkup.tri_score_completed";
 
 // ── CLIENT ──────────────────────────────────────────────────────────
 
