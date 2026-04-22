@@ -243,10 +243,23 @@ export async function runRevealChoreography(
   const composedLob: ComposedLobPostcard = composeRevealPostcard(org);
   const composedTiles: ComposedDashboardTiles = composeRevealTiles(org, impact);
 
+  // Freeform Concern Gate — score the composed email + postcard against The
+  // Standard BEFORE send. Shadow mode (flag off) records the score but never
+  // alters dispatch. Live mode force-skips dispatch when the gate blocks.
+  const concernOutcome = await scoreRevealWithFreeformConcernGate(
+    org.id,
+    composedEmail,
+    composedLob
+  );
+  const concernBlocksEmail = concernOutcome.email?.blocked ?? false;
+  const concernBlocksLob = concernOutcome.lob?.blocked ?? false;
+  const emailDispatchMode: RevealMode = concernBlocksEmail ? "dry_run" : mode;
+  const lobDispatchMode: RevealMode = concernBlocksLob ? "dry_run" : mode;
+
   // Fan-out in parallel
   const [emailResult, lobResult, dashboardResult] = await Promise.all([
-    emailSender(org, composedEmail, mode),
-    lobSender(composedLob, mode),
+    emailSender(org, composedEmail, emailDispatchMode),
+    lobSender(composedLob, lobDispatchMode),
     tileRenderer(org, composedTiles, mode),
   ]);
 
@@ -306,6 +319,10 @@ export async function runRevealChoreography(
       address_valid: composedLob.addressValid,
       voice_check_passed: composedEmail.voiceCheck.passed,
       voice_violations: composedEmail.voiceCheck.violations,
+      concern_gate_email_composite: concernOutcome.email?.composite ?? null,
+      concern_gate_email_blocked: concernBlocksEmail,
+      concern_gate_lob_composite: concernOutcome.lob?.composite ?? null,
+      concern_gate_lob_blocked: concernBlocksLob,
     },
   }).catch(() => {});
 
@@ -337,6 +354,64 @@ function emptyFanOut() {
     lobPostcardId: null,
     dashboardRenderedAt: null,
   };
+}
+
+interface ConcernGateOutcome {
+  composite: number | null;
+  blocked: boolean;
+}
+
+interface RevealConcernOutcome {
+  email: ConcernGateOutcome | null;
+  lob: ConcernGateOutcome | null;
+}
+
+/**
+ * Score the composed email body and postcard description against The
+ * Standard BEFORE dispatch. Shadow (flag off) records composite but never
+ * blocks. Live mode returns blocked=true so the caller downgrades that
+ * channel to dry_run.
+ */
+async function scoreRevealWithFreeformConcernGate(
+  orgId: number,
+  email: ComposedEmail,
+  lob: ComposedLobPostcard
+): Promise<RevealConcernOutcome> {
+  try {
+    const { runFreeformConcernGate } = await import(
+      "../siteQa/gates/freeformConcernGate"
+    );
+    const emailText = `${email.subject}\n\n${email.bodyText}`;
+    const lobText = lob.description ?? "";
+
+    const [emailResult, lobResult] = await Promise.all([
+      emailText.trim().length > 0
+        ? runFreeformConcernGate({
+            content: emailText,
+            orgId,
+            surface: "revealEmail",
+          })
+        : null,
+      lobText.trim().length > 0
+        ? runFreeformConcernGate({
+            content: lobText,
+            orgId,
+            surface: "revealLob",
+          })
+        : null,
+    ]);
+
+    return {
+      email: emailResult
+        ? { composite: emailResult.score.composite, blocked: emailResult.blocked }
+        : null,
+      lob: lobResult
+        ? { composite: lobResult.score.composite, blocked: lobResult.blocked }
+        : null,
+    };
+  } catch {
+    return { email: null, lob: null };
+  }
 }
 
 // Re-export for convenience

@@ -60,6 +60,24 @@ export async function processNarratorEvent(
   const nowIso = new Date().toISOString();
   const output = template({ event, org, nowIso });
 
+  // Freeform Concern Gate — runtime rubric pass BEFORE emission. Shadow mode
+  // (flag off or per-org gate disabled) runs the score for observability but
+  // does not alter the output. Live mode downgrades emit=false when the gate
+  // blocks, so the owner never sees copy that didn't clear The Standard.
+  if (output.emit) {
+    try {
+      const concern = await maybeRunFreeformConcernGateForNarrator(event, output, org);
+      if (concern && concern.blocked) {
+        output.emit = false;
+        output.dataGapReason =
+          output.dataGapReason ??
+          `freeform_concern_gate blocked (composite ${concern.score.composite})`;
+      }
+    } catch {
+      // Concern gate must never break the narrator pipeline.
+    }
+  }
+
   const mode = !output.emit
     ? "internal-noop"
     : org.narratorEnabled
@@ -69,6 +87,30 @@ export async function processNarratorEvent(
   const archivedId = await archiveOutput(event, output, mode);
 
   return { output, archivedId, mode };
+}
+
+async function maybeRunFreeformConcernGateForNarrator(
+  event: NarratorEvent,
+  output: NarratorOutput,
+  org: OrgSnapshotWithFlag
+): Promise<{ blocked: boolean; score: { composite: number } } | null> {
+  const { runFreeformConcernGate } = await import(
+    "../siteQa/gates/freeformConcernGate"
+  );
+  const content = [output.finding, output.dollar, output.action]
+    .filter((x) => typeof x === "string" && (x as string).length > 0)
+    .join("\n\n");
+  if (!content.trim()) return null;
+  const result = await runFreeformConcernGate({
+    content,
+    orgId: event.orgId ?? undefined,
+    surface: "narrator",
+    metadata: {
+      practice: org.name,
+      specialty: org.vertical ?? undefined,
+    },
+  });
+  return { blocked: result.blocked, score: { composite: result.score.composite } };
 }
 
 export interface OrgSnapshotWithFlag extends OrgSnapshot {
