@@ -2,6 +2,27 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.27] - April 2026
+
+### Post Editor Custom Fields — Linear-Inspired Redesign
+
+Replaces the cluttered, grid-based custom-fields panel in the post editor with an inline-edit vertical list. Each field type now has a dedicated editor component under a new `postEditor/` module; framer-motion drives add/remove/reorder transitions; `@dnd-kit` powers sortable gallery items. Click-to-edit is the default interaction on simple fields (text, textarea, number, date, select); complex items (gallery) are compact rows by default with per-item expand affordances for link/caption. Zero new npm dependencies. Desktop-only scope; backend untouched.
+
+**Key Changes:**
+- New module `frontend/src/components/Admin/postEditor/` with `types.ts`, `index.ts` barrel, three primitives (`FieldTypeIcon`, `InlineEditRow`, `BulkPasteDialog`), three hooks (`useInlineEdit`, `useClipboardRow`, `useBulkPaste`), eight field editors (text, textarea, number, date, boolean, select, media_url, gallery), a gallery item card, and the `CustomFieldsPanel` composer.
+- `PostsTab.tsx` custom-fields panel (~109 lines of inline switchboard) replaced with a single `<CustomFieldsPanel />` render; state management (`formCustomFields`, `setFormCustomFields`) stays in `PostsTab` so save semantics are unchanged.
+- Gallery items gain an optional `id: string` (UUID, synthesized lazily on mount) as stable key for framer-motion exits and `@dnd-kit` sort. Backwards-compatible: extra key in JSONB, ignored by the render path.
+- Drag-to-reorder for gallery items via `@dnd-kit` pointer + keyboard sensors. Copy row / paste row via namespaced clipboard (`__alloro_clipboard: "gallery-item"`). Bulk-paste dialog parses newline/comma-separated URL lists into N items.
+- Animation budget: 180ms enter, ease-out; exits via `AnimatePresence`. Subtle, no bounce.
+- Visible focus rings on every interactive element. Full keyboard navigation inside the panel.
+- `MediaPickerArrayField.tsx` deleted — gallery editing lives entirely in `postEditor/fieldEditors/GalleryFieldEditor` + `GalleryItemCard` now.
+- `MediaPickerField` helper kept inline in `PostsTab.tsx` (still consumed by the Featured Image row) with a TODO to extract later.
+
+**Commits:**
+- `frontend/src/components/Admin/postEditor/` — new module (16 files)
+- `frontend/src/components/Admin/PostsTab.tsx` — switchboard IIFE replaced with `<CustomFieldsPanel />`; `MediaPickerArrayField` import removed; TODO comment added above the retained `MediaPickerField` helper
+- `frontend/src/components/Admin/MediaPickerArrayField.tsx` — deleted; behavior absorbed into `GalleryFieldEditor` + `GalleryItemCard`
+
 ## [0.0.26] - April 2026
 
 ### Gallery Custom-Field Type + Doctor Affiliations
