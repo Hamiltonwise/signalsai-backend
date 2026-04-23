@@ -1,0 +1,12 @@
+-- -----------------------------------------------------------------------------
+-- MSSQL scaffold — N/A for this migration
+--
+-- Alloro runs on PostgreSQL only (see src/database/config.ts). This migration
+-- operates exclusively on PostgreSQL JSONB columns
+-- (website_builder.post_types.schema, website_builder.post_types.single_template,
+--  website_builder.posts.custom_fields). These operations have no MSSQL
+-- equivalent because the column type itself does not exist on MSSQL.
+--
+-- The file is included to satisfy CLAUDE.md's migrations-folder convention.
+-- No MSSQL execution is planned or required.
+-- -----------------------------------------------------------------------------

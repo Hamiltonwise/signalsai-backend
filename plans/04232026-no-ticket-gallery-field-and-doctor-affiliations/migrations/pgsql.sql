@@ -1,0 +1,72 @@
+-- -----------------------------------------------------------------------------
+-- PostgreSQL reference script for: add_affiliations_gallery_field_and_prefill_one_endo
+--
+-- This is a planning scaffold only. The executed migration is the Knex file at
+--   src/database/migrations/<timestamp>_add_affiliations_gallery_field_and_prefill_one_endo.ts
+--
+-- The SQL below documents the target state transitions. Do not run these
+-- statements directly against prod — Step 2 (markup rewrite) must be done
+-- in JS because the substitution is structural (parse JSONB, locate the
+-- specific <div> block, replace with subloop HTML, write back).
+-- -----------------------------------------------------------------------------
+
+-- Step 1 — Append 'affiliations' gallery field to the doctors post-type schema
+-- (idempotency: check the slug is not already present)
+
+-- TODO: fill during execution
+-- UPDATE website_builder.post_types
+-- SET schema = schema || '[{
+--   "name": "Professional Affiliations",
+--   "slug": "affiliations",
+--   "type": "gallery",
+--   "required": false,
+--   "default_value": null
+-- }]'::jsonb
+-- WHERE id = 'f9e028e1-d753-4257-9bb6-306f50322e2b'
+--   AND NOT EXISTS (
+--     SELECT 1
+--     FROM jsonb_array_elements(schema) AS e
+--     WHERE e ->> 'slug' = 'affiliations'
+--   );
+
+
+-- Step 2 — Rewrite single_template 'single-post' section content
+-- NOT executable as raw SQL — must be done in Knex/JS because the replacement
+-- is structural (locate the <div class="w-full pt-6 border-t border-gray-100">
+-- affiliations block and swap for the subloop). See knexmigration.js.
+
+
+-- Step 3 — Prefill custom_fields.affiliations for the 8 One Endodontics doctors
+-- (idempotency: only set if key not present)
+
+-- TODO: fill during execution
+-- UPDATE website_builder.posts
+-- SET custom_fields = custom_fields || jsonb_build_object(
+--   'affiliations', jsonb_build_array(
+--     jsonb_build_object(
+--       'url',     'https://alloro-main-bucket.s3.us-east-1.amazonaws.com/uploads/0dcad678-2845-4c20-a298-e9c62aed9ebc/7fb760c0-ABE_BoardCertifiedLogo_HIGH_RGB.webp.webp',
+--       'link',    'https://www.aae.org/board/about-the-abe/',
+--       'alt',     'American Board of Endodontics',
+--       'caption', ''
+--     ),
+--     jsonb_build_object(
+--       'url',     'https://alloro-main-bucket.s3.us-east-1.amazonaws.com/uploads/0dcad678-2845-4c20-a298-e9c62aed9ebc/88125724-VDA.webp.webp',
+--       'link',    'https://www.vadental.org/',
+--       'alt',     'Virginia Dental Association',
+--       'caption', ''
+--     )
+--   )
+-- )
+-- WHERE id IN (
+--   'd9ebfc01-2698-43c1-85f3-805e9e22b273',
+--   '3e7605ca-b4be-48de-8522-b142171042bf',
+--   'f3f35bfa-a1c3-4554-b166-be139638a741',
+--   '7337246c-0390-4919-b016-2f5b5adad0bd',
+--   '9635ce07-c599-4dcf-8b3d-96c1873d6589',
+--   '4681d152-a438-4413-b24b-9eedf5f87290',
+--   '25ab7a3a-f9c4-4031-a279-3128174d6593',
+--   'edfd3e5b-9dc6-4a79-bbe2-186e5e5a76a8'
+-- )
+--   AND project_id = '0dcad678-2845-4c20-a298-e9c62aed9ebc'
+--   AND post_type_id = 'f9e028e1-d753-4257-9bb6-306f50322e2b'
+--   AND NOT (custom_fields ? 'affiliations');

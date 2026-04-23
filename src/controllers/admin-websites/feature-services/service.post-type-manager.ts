@@ -32,6 +32,7 @@ const VALID_FIELD_TYPES = new Set([
   "date",
   "boolean",
   "select",
+  "gallery",
 ]);
 
 interface SchemaField {
@@ -80,6 +81,9 @@ function validateSchema(
         };
       }
     }
+
+    // gallery has no additional schema config — value shape is validated at
+    // post create/update time in service.post-manager.ts (must be an array).
 
     // Normalize: ensure slug is present
     schema[i] = {

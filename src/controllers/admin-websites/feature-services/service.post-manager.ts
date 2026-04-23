@@ -24,6 +24,39 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Boundary check for `gallery`-typed custom fields. The resolver expects
+ * gallery values to be arrays of `{ url, link?, alt, caption? }`. If an
+ * incoming value for a schema-declared gallery field is present but not an
+ * array, reject with a 400 so the renderer never sees malformed data.
+ *
+ * Item-shape validation is intentionally shallow — the admin UI is trusted
+ * to produce well-formed items; malformed items render as empty strings via
+ * the resolver's skip-non-primitive rule.
+ */
+function validateGalleryFields(
+  schema: unknown,
+  customFields: Record<string, unknown> | undefined
+): { valid: true } | { valid: false; message: string } {
+  if (!customFields || !Array.isArray(schema)) return { valid: true };
+  for (const field of schema as Array<Record<string, unknown>>) {
+    if (!field || typeof field !== "object") continue;
+    if (field.type !== "gallery") continue;
+    const slug = typeof field.slug === "string" ? field.slug : undefined;
+    if (!slug) continue;
+    if (!(slug in customFields)) continue;
+    const value = customFields[slug];
+    if (value === undefined || value === null) continue;
+    if (!Array.isArray(value)) {
+      return {
+        valid: false,
+        message: `Custom field "${slug}" is declared as a gallery and must be an array`,
+      };
+    }
+  }
+  return { valid: true };
+}
+
 async function invalidatePostsCache(projectId: string) {
   try {
     const redis = getRedisConnection();
@@ -162,6 +195,19 @@ export async function createPost(
     };
   }
 
+  // Boundary check: gallery-typed custom fields must be arrays.
+  const ptSchema =
+    typeof postType.schema === "string"
+      ? JSON.parse(postType.schema || "[]")
+      : postType.schema;
+  const galleryCheck = validateGalleryFields(ptSchema, custom_fields);
+  if (!galleryCheck.valid) {
+    return {
+      post: null,
+      error: { status: 400, code: "INVALID_CUSTOM_FIELD", message: galleryCheck.message },
+    };
+  }
+
   let slug = slugify(title);
 
   // Ensure slug uniqueness within project + post type
@@ -256,6 +302,24 @@ export async function updatePost(
   delete fieldUpdates.project_id;
   delete fieldUpdates.post_type_id;
   delete fieldUpdates.created_at;
+
+  // Boundary check for gallery fields before serialization.
+  if (fieldUpdates.custom_fields !== undefined) {
+    const postType = await db(POST_TYPES_TABLE).where("id", existing.post_type_id).first();
+    if (postType) {
+      const ptSchema =
+        typeof postType.schema === "string"
+          ? JSON.parse(postType.schema || "[]")
+          : postType.schema;
+      const galleryCheck = validateGalleryFields(ptSchema, fieldUpdates.custom_fields);
+      if (!galleryCheck.valid) {
+        return {
+          post: null,
+          error: { status: 400, code: "INVALID_CUSTOM_FIELD", message: galleryCheck.message },
+        };
+      }
+    }
+  }
 
   // Serialize JSONB fields if provided
   if (fieldUpdates.custom_fields !== undefined) {
