@@ -126,20 +126,30 @@ function extractAlloroClass(sectionContent: string): string | null {
  */
 /**
  * Restore original shortcode tokens in an HTML string.
- * Finds `<div data-alloro-shortcode-original="ENCODED_TOKEN" ...>...resolved...</div>`
- * markers and replaces the entire wrapper with the decoded original shortcode token.
+ * Finds any element with `data-alloro-shortcode-original="ENCODED_TOKEN"`
+ * and replaces the entire element (with all children) with the decoded token
+ * as text. DOM-based so nested `<div>` children in the wrapper body don't
+ * break the match — a regex with lazy `</div>` stops at the first closer.
  */
 function restoreShortcodeTokens(html: string): string {
-  return html.replace(
-    /<div\s+data-alloro-shortcode-original="([^"]*)"[^>]*>[\s\S]*?<\/div>/g,
-    (_match, encoded: string) => {
-      return encoded
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"')
-        .replace(/&amp;/g, "&");
-    }
-  );
+  if (!html.includes("data-alloro-shortcode-original")) return html;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<body>${html}</body>`, "text/html");
+  const wrappers = doc.querySelectorAll("[data-alloro-shortcode-original]");
+  if (wrappers.length === 0) return html;
+
+  wrappers.forEach((el) => {
+    const encoded = el.getAttribute("data-alloro-shortcode-original") ?? "";
+    const token = encoded
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, "&");
+    el.replaceWith(doc.createTextNode(token));
+  });
+
+  return doc.body.innerHTML;
 }
 
 export function extractSectionsFromDom(
