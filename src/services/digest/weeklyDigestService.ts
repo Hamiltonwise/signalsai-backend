@@ -1,19 +1,19 @@
 /**
- * Manifest v2 Card 5 Run 3 — Weekly Digest Service.
+ * Manifest v2 Card 5 Run 3 — Weekly Digest Service (Card J vocab-aware).
  *
- * Per practice, composes a weekly digest containing:
+ * Per org, composes a weekly digest containing:
  *   1. Recognition Tri-Score this week (SEO, AEO, CRO, composite)
  *   2. Change since last week (first digest: baseline only)
  *   3. Top 3 Watcher signals from the past 7 days
  *   4. Top 3 actions Alloro took on their behalf
  *   5. Top 3 recommendations from Watcher patterns
- *   6. One "what your patients said about you this week" quote (HIPAA-safe)
+ *   6. One customer-voice quote (privacy-safe: first name only)
  *
  * All content composed via narrator (NOT static templates).
  * Freeform Concern Gate runs on every digest. Fail 3x = hold + escalate.
  * No generic copy ships. Ever.
  *
- * Feature flag: weekly_digest_enabled, default false, per-practice scope.
+ * Feature flag: weekly_digest_enabled, default false, per-org scope.
  */
 
 import { db } from "../../database/connection";
@@ -27,6 +27,7 @@ import {
 import { scoreRecognition } from "../checkup/recognitionScorer";
 import type { RecognitionScorerResult } from "../checkup/recognitionScorer";
 import type { NarratorOutput } from "../narrator/types";
+import { getVocab } from "../vocabulary/vocabLoader";
 import { loadDigestStructureConfig } from "./digestNotionConfig";
 import crypto from "crypto";
 
@@ -81,6 +82,7 @@ export async function composeWeeklyDigest(
   orgId: number
 ): Promise<DigestComposeResult> {
   const config = await loadDigestStructureConfig();
+  const vocab = await getVocab(orgId);
   const org = await db("organizations").where({ id: orgId }).first();
 
   if (!org) {
@@ -92,7 +94,7 @@ export async function composeWeeklyDigest(
     };
   }
 
-  const orgName = org.name ?? `Practice ${orgId}`;
+  const orgName = org.name ?? `Business ${orgId}`;
 
   // ── 1. Current Recognition Tri-Score ──────────��───────────────────
   const meta = extractOrgMetadata(org);
@@ -197,7 +199,7 @@ export async function composeWeeklyDigest(
 
   const topActions = actions.map((a: any) => ({
     title: formatActionTitle(a.event_type),
-    detail: formatActionDetail(a.event_type, a.properties),
+    detail: formatActionDetail(a.event_type, a.properties, vocab),
   }));
 
   // If no actions, use monitoring variant
@@ -209,7 +211,7 @@ export async function composeWeeklyDigest(
   }
 
   // ── 5. Top 3 recommendations ──────────────────────────────────────
-  const recommendations = deriveRecommendations(signals, triScore, currentScore);
+  const recommendations = deriveRecommendations(signals, triScore, currentScore, vocab);
 
   // Card 5 Run 4: when practice is scoring below threshold, call the
   // Copy Rewrite Service to surface a recommended rewrite. Shadow-safe —
@@ -255,16 +257,17 @@ export async function composeWeeklyDigest(
     }
   }
 
-  // ── 6. Patient quote (HIPAA-safe: first name only) ────────────────
+  // ── 6. Customer quote (privacy-safe: first name only) ──────────────
+  const customerFallback = `A ${vocab.customerTerm}`;
   let patientQuote: DigestContent["patientQuote"] = null;
   if (currentScore?.practice.patient_quotes_not_on_site?.length) {
     const quote = currentScore.practice.patient_quotes_not_on_site[0];
-    const firstName = (quote.reviewerName ?? "A patient")
+    const firstName = (quote.reviewerName ?? customerFallback)
       .split(" ")[0]
       .replace(/[^a-zA-Z]/g, "");
     patientQuote = {
       text: quote.text.slice(0, 300),
-      firstName: firstName || "A patient",
+      firstName: firstName || customerFallback,
       rating: quote.rating,
     };
   } else {
@@ -278,12 +281,12 @@ export async function composeWeeklyDigest(
         .orderBy("review_created_at", "desc")
         .first();
       if (recentReview?.text) {
-        const firstName = (recentReview.reviewer_name ?? "A patient")
+        const firstName = (recentReview.reviewer_name ?? customerFallback)
           .split(" ")[0]
           .replace(/[^a-zA-Z]/g, "");
         patientQuote = {
           text: recentReview.text.slice(0, 300),
-          firstName: firstName || "A patient",
+          firstName: firstName || customerFallback,
           rating: recentReview.stars,
         };
       }
@@ -364,11 +367,13 @@ export async function composeWeeklyDigest(
     });
   }
 
-  // Patient quote section
+  // Customer quote section — section id stays stable for downstream consumers
+  // (emails, config), but the default copy swaps to the per-org term.
   if (patientQuote) {
     sections.push({
       id: "patient_quote",
-      title: config.sectionTitles?.patient_quote ?? "What your patients said",
+      title:
+        config.sectionTitles?.patient_quote ?? `What your ${vocab.customerTermPlural} said`,
       body: `"${patientQuote.text}" — ${patientQuote.firstName}, ${patientQuote.rating}★`,
     });
   }
@@ -546,44 +551,48 @@ function formatActionTitle(eventType: string): string {
   return titles[eventType] ?? "Took action";
 }
 
-function formatActionDetail(eventType: string, properties: any): string {
+function formatActionDetail(
+  eventType: string,
+  properties: any,
+  vocab: { customerTermPlural: string }
+): string {
   const props =
     typeof properties === "string" ? JSON.parse(properties) : properties ?? {};
   switch (eventType) {
     case "site.published":
-      return "Your practice site was updated with new content.";
+      return "Your site was updated with new content.";
     case "data_gap_resolver.field_resolved":
-      return `Resolved missing ${props.field ?? "practice"} data from ${props.source ?? "public sources"}.`;
+      return `Resolved missing ${props.field ?? "business"} data from ${props.source ?? "public sources"}.`;
     case "watcher.signal_detected":
       return props.detail ?? "Detected a change in your market.";
     default:
-      return "Working behind the scenes for your practice.";
+      return `Working behind the scenes for your ${vocab.customerTermPlural}.`;
   }
 }
 
 function deriveRecommendations(
   signals: any[],
   triScore: DigestContent["triScore"],
-  currentScore: RecognitionScorerResult | null
+  currentScore: RecognitionScorerResult | null,
+  vocab: { customerTerm: string; customerTermPlural: string }
 ): Array<{ title: string; detail: string }> {
   const recs: Array<{ title: string; detail: string }> = [];
+  const plural = vocab.customerTermPlural;
 
   // Low CRO score → recommend updating fear-acknowledgment copy
   if (triScore.cro != null && triScore.cro < 50) {
     recs.push({
-      title: "Strengthen patient connection",
-      detail:
-        "Your CRO score suggests your site could better acknowledge what patients feel before listing services. Alloro is preparing updated copy.",
+      title: `Strengthen ${vocab.customerTerm} connection`,
+      detail: `Your CRO score suggests your site could better acknowledge what ${plural} feel before listing services. Alloro is preparing updated copy.`,
     });
   }
 
-  // Missing examples → recommend adding patient language
+  // Missing examples → recommend adding customer language
   if (currentScore?.practice.missing_examples.length) {
     const count = currentScore.practice.missing_examples.length;
     recs.push({
-      title: `${count} patient phrases missing from your site`,
-      detail:
-        "Your patients describe your care in ways your website doesn't mention yet. Adding their language builds trust with new patients.",
+      title: `${count} ${vocab.customerTerm} phrases missing from your site`,
+      detail: `Your ${plural} describe your work in ways your website doesn't mention yet. Adding their language builds trust with new ${plural}.`,
     });
   }
 
@@ -596,8 +605,7 @@ function deriveRecommendations(
   if (droughtSignal) {
     recs.push({
       title: "Review velocity slowing",
-      detail:
-        "Consider asking satisfied patients for a quick Google review. Consistent review flow signals trust to both Google and AI assistants.",
+      detail: `Consider asking satisfied ${plural} for a quick Google review. Consistent review flow signals trust to both Google and AI assistants.`,
     });
   }
 
@@ -611,7 +619,7 @@ function deriveRecommendations(
     recs.push({
       title: "Competitor movement detected",
       detail:
-        "A nearby practice showed notable activity this week. Alloro is tracking the impact on your market position.",
+        "A nearby business showed notable activity this week. Alloro is tracking the impact on your market position.",
     });
   }
 

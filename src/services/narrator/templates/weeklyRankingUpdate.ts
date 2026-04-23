@@ -1,7 +1,11 @@
 import type { TemplateContext, NarratorOutput } from "../types";
 import { composeOutput, readProp } from "./_shared";
+import { getVocab } from "../../vocabulary/vocabLoader";
 
-export function weeklyRankingUpdateTemplate(ctx: TemplateContext): NarratorOutput {
+export async function weeklyRankingUpdateTemplate(
+  ctx: TemplateContext
+): Promise<NarratorOutput> {
+  await getVocab(ctx.org.id ?? null);
   const direction = readProp<string>(ctx.event, "direction") ?? "held";
   const rank = readProp<number>(ctx.event, "rank");
   const totalTracked = readProp<number>(ctx.event, "totalTracked");

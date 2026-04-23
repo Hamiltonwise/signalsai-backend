@@ -1,8 +1,10 @@
 import type { TemplateContext, NarratorOutput } from "../types";
 import { composeOutput } from "./_shared";
+import { getVocab } from "../../vocabulary/vocabLoader";
 
-export function cleanWeekTemplate(ctx: TemplateContext): NarratorOutput {
-  const finding = `Nothing moved against you this week. Your rankings held. Your referrers engaged. The quiet here means Alloro is working.`;
+export async function cleanWeekTemplate(ctx: TemplateContext): Promise<NarratorOutput> {
+  const vocab = await getVocab(ctx.org.id ?? null);
+  const finding = `Nothing moved against you this week. Your rankings held. Your ${vocab.referralSourceTerm}s engaged. The quiet here means Alloro is working.`;
 
   return composeOutput({
     templateName: "cleanWeek",

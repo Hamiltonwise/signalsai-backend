@@ -50,6 +50,25 @@ import {
 } from "./copyRewriteConfig";
 import { fetchPage, extractText } from "../webFetch";
 import type { MissingExample } from "../checkup/recognitionScorer";
+import { getCapabilities, type Capabilities } from "../vocabulary/vocabLoader";
+
+const HIPAA_PRIVACY_INSTRUCTION =
+  "First name only for HIPAA.";
+const GENERIC_PRIVACY_INSTRUCTION =
+  "Use first name only for a personal touch. No full names in published content.";
+
+function stripHipaaReferences(text: string): string {
+  return text
+    .replace(/first name only for HIPAA/gi, "first name only")
+    .replace(/\(first name only, HIPAA\)/gi, "(first name only)")
+    .replace(/\(HIPAA\)/gi, "")
+    .replace(/for HIPAA\b/gi, "")
+    .replace(/\bHIPAA\b/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/ +\n/g, "\n")
+    .replace(/\( +\)/g, "")
+    .trim();
+}
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -223,7 +242,8 @@ function assemblePrompt(
   input: CopyRewriteInput,
   targetDimensions: string[],
   config: CopyRewriteConfig,
-  repairContext: string
+  repairContext: string,
+  capabilities: Capabilities
 ): string {
   const dimensionsLabel = targetDimensions
     .map((d) => `${d} (${config.targetDimensionMap[d] ?? ""})`)
@@ -253,22 +273,36 @@ function assemblePrompt(
     prompt += `\n\nThis is a retry. Prior attempt failed the rubric for these reasons — fix them:\n${repairContext}`;
   }
 
+  // Vertical Capability Model (Card K): when an org is not under HIPAA, strip
+  // HIPAA-specific wording from the rendered prompt and prepend the generic
+  // privacy instruction. The loaded Notion config (and the local fallback)
+  // contains HIPAA language for the healthcare beachhead; this normalization
+  // keeps the same templates usable for verticals where HIPAA doesn't apply.
+  if (!capabilities.hipaa_mode) {
+    prompt = stripHipaaReferences(prompt);
+    prompt = `${GENERIC_PRIVACY_INSTRUCTION}\n\n${prompt}`;
+  }
+
   return prompt;
 }
 
 async function composeSectionContent(
-  prompt: string
+  prompt: string,
+  capabilities: Capabilities
 ): Promise<string | null> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return null;
   }
+  const privacyClause = capabilities.hipaa_mode
+    ? HIPAA_PRIVACY_INSTRUCTION
+    : GENERIC_PRIVACY_INSTRUCTION;
+  const systemPrompt = `You rewrite copy for local service practices so it passes The Standard rubric: the recipient feels understood before they feel informed. Plain English. No marketing language. Surface one specific detail from customer reviews. ${privacyClause}`;
   try {
     const response = await getAnthropic().messages.create({
       model: COMPOSE_MODEL,
       max_tokens: COMPOSE_MAX_TOKENS,
       temperature: COMPOSE_TEMPERATURE,
-      system:
-        "You rewrite copy for local service practices so it passes The Standard rubric: the recipient feels understood before they feel informed. Plain English. No marketing language. Surface one specific detail from patient reviews. First name only for HIPAA.",
+      system: systemPrompt,
       messages: [{ role: "user", content: prompt }],
     });
     const text = response.content[0]?.type === "text" ? response.content[0].text : "";
@@ -324,7 +358,8 @@ function deriveWhatChanged(
 async function rewriteOneSection(
   sectionId: string,
   input: CopyRewriteInput,
-  config: CopyRewriteConfig
+  config: CopyRewriteConfig,
+  capabilities: Capabilities
 ): Promise<SectionRewriteResult> {
   const template = config.sectionPromptTemplates[sectionId];
   const currentContent = await resolveSectionContent(sectionId, input);
@@ -359,8 +394,8 @@ async function rewriteOneSection(
 
   while (attempt < (config.maxRetries ?? FREEFORM_CONCERN_GATE_MAX_RETRIES)) {
     attempt += 1;
-    const prompt = assemblePrompt(template, input, targetDimensions, config, repairContext);
-    newContent = await composeSectionContent(prompt);
+    const prompt = assemblePrompt(template, input, targetDimensions, config, repairContext, capabilities);
+    newContent = await composeSectionContent(prompt, capabilities);
     if (!newContent) {
       // Compose failed (missing API key, parse error, etc.). Count as attempt,
       // retry the loop with no repair context (no gate feedback yet).
@@ -509,10 +544,11 @@ export async function runCopyRewrite(
 
   const shadow = !(await isCopyRewriteEnabled(input.practiceContext.orgId));
   const targets = input.targetSections ?? config.defaultTargetSections;
+  const capabilities = await getCapabilities(input.practiceContext.orgId ?? null);
 
   const sectionResults: SectionRewriteResult[] = [];
   for (const sectionId of targets) {
-    const result = await rewriteOneSection(sectionId, input, config);
+    const result = await rewriteOneSection(sectionId, input, config, capabilities);
     sectionResults.push(result);
   }
 

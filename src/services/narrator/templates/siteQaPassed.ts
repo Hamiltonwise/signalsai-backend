@@ -1,7 +1,14 @@
 import type { TemplateContext, NarratorOutput } from "../types";
 import { composeOutput, readProp } from "./_shared";
+import { getVocab } from "../../vocabulary/vocabLoader";
 
-export function siteQaPassedTemplate(ctx: TemplateContext): NarratorOutput {
+export async function siteQaPassedTemplate(
+  ctx: TemplateContext
+): Promise<NarratorOutput> {
+  // Resolve vocab so this template respects per-org terminology even though
+  // the current finding copy is vertical-neutral. Keeps the pattern uniform
+  // across all 7 templates and protects against future wording regressions.
+  await getVocab(ctx.org.id ?? null);
   const pagePath = readProp<string>(ctx.event, "pagePath") ?? "your new page";
   const gatesRun = readProp<number>(ctx.event, "gatesRun") ?? 10;
 

@@ -1,5 +1,11 @@
-import { getBenchmark, inferVertical, type Vertical } from "./industryBenchmarks";
+import { getBenchmark, inferVertical } from "./industryBenchmarks";
 import { applyGuardrail, type GuardrailedImpact } from "./confidenceThreshold";
+
+/**
+ * Vertical is a free-form string keyed against industry_benchmarks_config.
+ * Adding a vertical is a DB insert, not a type change.
+ */
+export type Vertical = string;
 
 /**
  * Economic Calculation Service
@@ -30,7 +36,7 @@ export interface OrgSnapshot {
   hasGbpData?: boolean;
   hasCheckupData?: boolean;
   knownAverageCaseValueUsd?: number | null;
-  knownMonthlyNewPatients?: number | null;
+  knownMonthlyNewCustomers?: number | null;
 }
 
 export interface ImpactEstimate extends GuardrailedImpact {
@@ -41,71 +47,71 @@ export interface ImpactEstimate extends GuardrailedImpact {
 // Documented economic formulas per event type. Missing entry = -10 confidence.
 const EVENT_FORMULAS: Record<string, (ctx: {
   caseValue: number;
-  monthlyPatients: number;
+  monthlyCustomers: number;
   referralDependency: number;
 }) => { dollar30d: number; dollar90d: number; dollar365d: number }> = {
-  "site.qa_passed": ({ caseValue, monthlyPatients }) => {
+  "site.qa_passed": ({ caseValue, monthlyCustomers }) => {
     // Site passed QA = publish can proceed. Value = one week of kept momentum.
-    const perWeek = (caseValue * monthlyPatients * 0.04) / 1;
+    const perWeek = (caseValue * monthlyCustomers * 0.04) / 1;
     return {
       dollar30d: Math.round(perWeek * 4),
       dollar90d: Math.round(perWeek * 13),
       dollar365d: Math.round(perWeek * 52),
     };
   },
-  "site.qa_blocked": ({ caseValue, monthlyPatients }) => {
+  "site.qa_blocked": ({ caseValue, monthlyCustomers }) => {
     // Defect caught before ship. Value = avoided-cost of one bad page.
-    const avoided = caseValue * monthlyPatients * 0.06;
+    const avoided = caseValue * monthlyCustomers * 0.06;
     return {
       dollar30d: Math.round(avoided),
       dollar90d: Math.round(avoided * 2.5),
       dollar365d: Math.round(avoided * 8),
     };
   },
-  "site.published": ({ caseValue, monthlyPatients }) => {
+  "site.published": ({ caseValue, monthlyCustomers }) => {
     // New site live. Value = conservative year-one referral/web lift.
-    const monthly = caseValue * monthlyPatients * 0.1;
+    const monthly = caseValue * monthlyCustomers * 0.1;
     return {
       dollar30d: Math.round(monthly),
       dollar90d: Math.round(monthly * 3),
       dollar365d: Math.round(monthly * 12),
     };
   },
-  clean_week: ({ caseValue, monthlyPatients }) => {
+  clean_week: ({ caseValue, monthlyCustomers }) => {
     // Nothing moved against you. Value = retained weekly run-rate.
-    const week = (caseValue * monthlyPatients) / 4;
+    const week = (caseValue * monthlyCustomers) / 4;
     return {
       dollar30d: Math.round(week * 4),
       dollar90d: Math.round(week * 13),
       dollar365d: Math.round(week * 52),
     };
   },
-  "milestone.achieved": ({ caseValue, monthlyPatients }) => {
-    const quarterly = caseValue * monthlyPatients * 0.25;
+  "milestone.achieved": ({ caseValue, monthlyCustomers }) => {
+    const quarterly = caseValue * monthlyCustomers * 0.25;
     return {
       dollar30d: Math.round(quarterly * 0.33),
       dollar90d: Math.round(quarterly),
       dollar365d: Math.round(quarterly * 4),
     };
   },
-  "gp.drift_detected": ({ caseValue, monthlyPatients, referralDependency }) => {
-    const atRisk = caseValue * monthlyPatients * referralDependency * 0.15;
+  "gp.drift_detected": ({ caseValue, monthlyCustomers, referralDependency }) => {
+    const atRisk = caseValue * monthlyCustomers * referralDependency * 0.15;
     return {
       dollar30d: Math.round(atRisk),
       dollar90d: Math.round(atRisk * 3),
       dollar365d: Math.round(atRisk * 12),
     };
   },
-  "gp.gone_dark": ({ caseValue, monthlyPatients, referralDependency }) => {
-    const lost = caseValue * monthlyPatients * referralDependency * 0.25;
+  "gp.gone_dark": ({ caseValue, monthlyCustomers, referralDependency }) => {
+    const lost = caseValue * monthlyCustomers * referralDependency * 0.25;
     return {
       dollar30d: Math.round(lost),
       dollar90d: Math.round(lost * 3),
       dollar365d: Math.round(lost * 12),
     };
   },
-  "ranking.weekly_update": ({ caseValue, monthlyPatients }) => {
-    const week = caseValue * monthlyPatients * 0.05;
+  "ranking.weekly_update": ({ caseValue, monthlyCustomers }) => {
+    const week = caseValue * monthlyCustomers * 0.05;
     return {
       dollar30d: Math.round(week * 4),
       dollar90d: Math.round(week * 13),
@@ -120,7 +126,7 @@ export function calculateImpact(
   org: OrgSnapshot
 ): ImpactEstimate {
   const vertical = inferVertical(org.vertical);
-  const benchmark = getBenchmark(vertical);
+  const benchmark = getBenchmark(vertical, org.id ?? null);
 
   const usingOrgCaseValue =
     typeof org.knownAverageCaseValueUsd === "number" &&
@@ -129,12 +135,12 @@ export function calculateImpact(
     ? (org.knownAverageCaseValueUsd as number)
     : benchmark.averageCaseValueUsd;
 
-  const usingOrgPatients =
-    typeof org.knownMonthlyNewPatients === "number" &&
-    org.knownMonthlyNewPatients > 0;
-  const monthlyPatients = usingOrgPatients
-    ? (org.knownMonthlyNewPatients as number)
-    : benchmark.averageMonthlyNewPatients;
+  const usingOrgCustomers =
+    typeof org.knownMonthlyNewCustomers === "number" &&
+    org.knownMonthlyNewCustomers > 0;
+  const monthlyCustomers = usingOrgCustomers
+    ? (org.knownMonthlyNewCustomers as number)
+    : benchmark.averageMonthlyNewCustomers;
 
   const referralDependency = benchmark.referralDependencyPct;
 
@@ -148,10 +154,10 @@ export function calculateImpact(
     missing.push("org_case_value (using benchmark)");
   }
 
-  if (usingOrgPatients) inputsUsed.push("org_monthly_patients");
+  if (usingOrgCustomers) inputsUsed.push("org_monthly_customers");
   else {
     confidence -= 10;
-    missing.push("org_monthly_patients (using benchmark)");
+    missing.push("org_monthly_customers (using benchmark)");
   }
 
   if (vertical === "unknown") {
@@ -192,11 +198,11 @@ export function calculateImpact(
     confidence -= 10;
     missing.push(`no_formula_for_${eventType}`);
     dataGapReason = `No documented economic formula for event "${eventType}"`;
-  } else if (caseValue === 0 || monthlyPatients === 0) {
+  } else if (caseValue === 0 || monthlyCustomers === 0) {
     dataGapReason = `Missing benchmark and org data for vertical "${vertical}"`;
     confidence = Math.min(confidence, 50);
   } else {
-    const out = formula({ caseValue, monthlyPatients, referralDependency });
+    const out = formula({ caseValue, monthlyCustomers, referralDependency });
     dollar30d = out.dollar30d;
     dollar90d = out.dollar90d;
     dollar365d = out.dollar365d;

@@ -1,4 +1,19 @@
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, beforeAll } from "vitest";
+import { _seedBenchmarkCacheForTests } from "../../src/services/economic/industryBenchmarks";
+
+beforeAll(() => {
+  _seedBenchmarkCacheForTests([
+    { vertical: "endodontics", avg_case_value_usd: 1800, avg_monthly_new_customers: 45, referral_dependency_pct: 0.85, source: "ADA endodontic specialty report, 3-year average" },
+    { vertical: "orthodontics", avg_case_value_usd: 5000, avg_monthly_new_customers: 18, referral_dependency_pct: 0.55, source: "AAO practice economics survey, category average" },
+    { vertical: "oral_surgery", avg_case_value_usd: 2400, avg_monthly_new_customers: 30, referral_dependency_pct: 0.9, source: "AAOMS category survey" },
+    { vertical: "general_dentistry", avg_case_value_usd: 850, avg_monthly_new_customers: 35, referral_dependency_pct: 0.25, source: "ADA general dentistry survey" },
+    { vertical: "physical_therapy", avg_case_value_usd: 1200, avg_monthly_new_customers: 25, referral_dependency_pct: 0.6, source: "APTA practice report" },
+    { vertical: "chiropractic", avg_case_value_usd: 700, avg_monthly_new_customers: 20, referral_dependency_pct: 0.35, source: "ACA practice economics benchmark" },
+    { vertical: "veterinary", avg_case_value_usd: 550, avg_monthly_new_customers: 40, referral_dependency_pct: 0.2, source: "AVMA practice benchmark" },
+    { vertical: "unknown", avg_case_value_usd: 0, avg_monthly_new_customers: 0, referral_dependency_pct: 0, source: "No vertical known; defer to org data" },
+  ]);
+});
+
 import { siteQaPassedTemplate } from "../../src/services/narrator/templates/siteQaPassed";
 import { siteQaBlockedTemplate } from "../../src/services/narrator/templates/siteQaBlocked";
 import { sitePublishedTemplate } from "../../src/services/narrator/templates/sitePublished";
@@ -20,7 +35,7 @@ function estOrg(partial: Partial<TemplateContext["org"]> = {}) {
     hasGbpData: true,
     hasCheckupData: true,
     knownAverageCaseValueUsd: 1950,
-    knownMonthlyNewPatients: 55,
+    knownMonthlyNewCustomers: 55,
     ...partial,
   };
 }
@@ -38,62 +53,81 @@ function mkCtx(
 }
 
 describe("Template voice check — every template passes on happy path", () => {
-  const cases: Array<{ name: string; out: ReturnType<typeof siteQaPassedTemplate> }> = [
-    { name: "siteQaPassed", out: siteQaPassedTemplate(mkCtx("site.qa_passed", { pagePath: "/services" })) },
+  const cases: Array<{
+    name: string;
+    run: () => Awaited<ReturnType<typeof siteQaPassedTemplate>>;
+  }> = [
+    {
+      name: "siteQaPassed",
+      run: () => siteQaPassedTemplate(mkCtx("site.qa_passed", { pagePath: "/services" })),
+    },
     {
       name: "siteQaBlocked",
-      out: siteQaBlockedTemplate(
-        mkCtx("site.qa_blocked", { defectCount: 3, gateFailures: ["bannedPhrase"], pagePath: "/" })
-      ),
+      run: () =>
+        siteQaBlockedTemplate(
+          mkCtx("site.qa_blocked", { defectCount: 3, gateFailures: ["bannedPhrase"], pagePath: "/" })
+        ),
     },
     {
       name: "sitePublished",
-      out: sitePublishedTemplate(
-        mkCtx("site.published", { siteUrl: "https://coastal.alloro.site", pageCount: 7 })
-      ),
+      run: () =>
+        sitePublishedTemplate(
+          mkCtx("site.published", { siteUrl: "https://coastal.alloro.site", pageCount: 7 })
+        ),
     },
-    { name: "cleanWeek", out: cleanWeekTemplate(mkCtx("clean_week")) },
+    { name: "cleanWeek", run: () => cleanWeekTemplate(mkCtx("clean_week")) },
     {
       name: "milestoneDetected anniversary",
-      out: milestoneDetectedTemplate(mkCtx("milestone.achieved", { kind: "anniversary", years: 5 })),
+      run: () => milestoneDetectedTemplate(mkCtx("milestone.achieved", { kind: "anniversary", years: 5 })),
     },
     {
       name: "milestoneDetected year_over_year",
-      out: milestoneDetectedTemplate(
-        mkCtx("first_win.achieved", { kind: "year_over_year_growth", delta: "12%" })
-      ),
+      run: () =>
+        milestoneDetectedTemplate(
+          mkCtx("first_win.achieved", { kind: "year_over_year_growth", delta: "12%" })
+        ),
     },
     {
       name: "referralSignal gp.gone_dark",
-      out: referralSignalTemplate(
-        mkCtx("gp.gone_dark", { gpName: "Dr. Patel", daysSilent: 75 })
-      ),
+      run: () =>
+        referralSignalTemplate(
+          mkCtx("gp.gone_dark", { gpName: "Dr. Patel", daysSilent: 75 })
+        ),
     },
     {
       name: "referralSignal positive",
-      out: referralSignalTemplate(
-        mkCtx("referral.positive_signal", { gpName: "Dr. Patel", referralCount: 4 })
-      ),
+      run: () =>
+        referralSignalTemplate(
+          mkCtx("referral.positive_signal", { gpName: "Dr. Patel", referralCount: 4 })
+        ),
     },
     {
       name: "weeklyRankingUpdate held",
-      out: weeklyRankingUpdateTemplate(
-        mkCtx("ranking.weekly_update", { direction: "held", rank: 2, totalTracked: 8 })
-      ),
+      run: () =>
+        weeklyRankingUpdateTemplate(
+          mkCtx("ranking.weekly_update", { direction: "held", rank: 2, totalTracked: 8 })
+        ),
     },
     {
       name: "weeklyRankingUpdate down",
-      out: weeklyRankingUpdateTemplate(
-        mkCtx("ranking.weekly_update", { direction: "down", rank: 3, totalTracked: 8, topCompetitor: "Peluso Ortho" })
-      ),
+      run: () =>
+        weeklyRankingUpdateTemplate(
+          mkCtx("ranking.weekly_update", {
+            direction: "down",
+            rank: 3,
+            totalTracked: 8,
+            topCompetitor: "Peluso Ortho",
+          })
+        ),
     },
   ];
 
   for (const c of cases) {
-    test(`voice check passes for ${c.name}`, () => {
-      expect(c.out.voiceCheckPassed, `${c.name}: ${c.out.voiceViolations.join("; ")}`).toBe(true);
-      expect(c.out.finding.length).toBeGreaterThan(10);
-      expect(c.out.action.length).toBeGreaterThan(3);
+    test(`voice check passes for ${c.name}`, async () => {
+      const out = await c.run();
+      expect(out.voiceCheckPassed, `${c.name}: ${out.voiceViolations.join("; ")}`).toBe(true);
+      expect(out.finding.length).toBeGreaterThan(10);
+      expect(out.action.length).toBeGreaterThan(3);
     });
   }
 });
@@ -152,15 +186,15 @@ describe("Guidara 95/5 tier tagger", () => {
 });
 
 describe("Internal events no-op", () => {
-  test("internal events do not emit", () => {
-    const out = internalEventTemplate(mkCtx("research_brief.created"));
+  test("internal events do not emit", async () => {
+    const out = await internalEventTemplate(mkCtx("research_brief.created"));
     expect(out.emit).toBe(false);
   });
 });
 
 describe("Theranos guardrail proof — fresh org falls into data-gap path", () => {
-  test("org < 14 days with no data → dollar null, action is data-gap", () => {
-    const out = siteQaPassedTemplate(
+  test("org < 14 days with no data → dollar null, action is data-gap", async () => {
+    const out = await siteQaPassedTemplate(
       mkCtx(
         "site.qa_passed",
         { pagePath: "/" },
@@ -170,7 +204,7 @@ describe("Theranos guardrail proof — fresh org falls into data-gap path", () =
           hasGbpData: false,
           vertical: null,
           knownAverageCaseValueUsd: null,
-          knownMonthlyNewPatients: null,
+          knownMonthlyNewCustomers: null,
         }
       )
     );

@@ -6,7 +6,9 @@ import { tagOutput } from "../guidara95_5";
  * but never emits to any owner-facing surface. Used for research_brief.created,
  * copy.draft_ready, agent lifecycle events, and similar operational traffic.
  */
-export function internalEventTemplate(ctx: TemplateContext): NarratorOutput {
+export async function internalEventTemplate(
+  ctx: TemplateContext
+): Promise<NarratorOutput> {
   return {
     emit: false,
     finding: `Internal event received: ${ctx.event.eventType}`,

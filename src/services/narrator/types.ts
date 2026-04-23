@@ -36,4 +36,4 @@ export interface NarratorOutput {
   };
 }
 
-export type TemplateFn = (ctx: TemplateContext) => NarratorOutput;
+export type TemplateFn = (ctx: TemplateContext) => Promise<NarratorOutput>;

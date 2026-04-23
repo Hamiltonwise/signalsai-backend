@@ -1,5 +1,6 @@
 import { db } from "../../database/connection";
 import type { OrgSnapshot } from "../economic/economicCalc";
+import { getCapabilities } from "../vocabulary/vocabLoader";
 import type { NarratorEvent, NarratorOutput, TemplateFn } from "./types";
 import { siteQaPassedTemplate } from "./templates/siteQaPassed";
 import { siteQaBlockedTemplate } from "./templates/siteQaBlocked";
@@ -7,6 +8,7 @@ import { sitePublishedTemplate } from "./templates/sitePublished";
 import { cleanWeekTemplate } from "./templates/cleanWeek";
 import { milestoneDetectedTemplate } from "./templates/milestoneDetected";
 import { referralSignalTemplate } from "./templates/referralSignal";
+import { churnRiskTemplate } from "./templates/churnRisk";
 import { weeklyRankingUpdateTemplate } from "./templates/weeklyRankingUpdate";
 import { internalEventTemplate, INTERNAL_EVENT_TYPES } from "./templates/_internal";
 
@@ -22,13 +24,21 @@ const TEMPLATE_ROUTES: Record<string, TemplateFn> = {
   "referral.positive_signal": referralSignalTemplate,
   "ranking.weekly_update": weeklyRankingUpdateTemplate,
   "success.relief_of_knowing": cleanWeekTemplate,
-  "churn.silent_quitter_risk": referralSignalTemplate,
+  "churn.silent_quitter_risk": churnRiskTemplate,
 };
+
+const REFERRAL_TRACKING_EVENTS = new Set<string>([
+  "gp.gone_dark",
+  "gp.drift_detected",
+  "referral.positive_signal",
+]);
 
 export interface ProcessEventResult {
   output: NarratorOutput;
   archivedId: string | null;
-  mode: "shadow" | "live" | "internal-noop";
+  mode: "shadow" | "live" | "internal-noop" | "suppressed";
+  suppressed?: boolean;
+  suppressionReason?: string;
 }
 
 /**
@@ -40,11 +50,33 @@ export interface ProcessEventResult {
  * In Shadow mode (narrator_enabled=false, the default) nothing reaches the
  * owner. Shadow lets us watch the signal and voice-check quality before
  * any output goes live.
+ *
+ * Vertical Capability Model (Card K): referral-tracking events are gated on
+ * capabilities.referral_tracking. When the org has opted out of the referral
+ * network, the template call is skipped entirely and a behavioral_event of
+ * type 'narrator.event_suppressed' is emitted instead — the owner never sees
+ * an output that assumes a GP network.
  */
 export async function processNarratorEvent(
   event: NarratorEvent
 ): Promise<ProcessEventResult> {
   const org = await loadOrgSnapshot(event.orgId);
+
+  // Capability gate — skip referral-tracking templates for orgs without one.
+  if (REFERRAL_TRACKING_EVENTS.has(event.eventType)) {
+    const capabilities = await getCapabilities(event.orgId ?? null);
+    if (capabilities.referral_tracking === false) {
+      const suppressedOutput = buildSuppressedOutput(event.eventType);
+      await emitSuppressionEvent(event.eventType, event.orgId ?? null);
+      return {
+        output: suppressedOutput,
+        archivedId: null,
+        mode: "suppressed",
+        suppressed: true,
+        suppressionReason: "referral_tracking_disabled",
+      };
+    }
+  }
 
   // Internal events get a no-op template that records nothing owner-facing
   let template: TemplateFn = internalEventTemplate;
@@ -58,7 +90,7 @@ export async function processNarratorEvent(
   }
 
   const nowIso = new Date().toISOString();
-  const output = template({ event, org, nowIso });
+  const output = await template({ event, org, nowIso });
 
   // Freeform Concern Gate — runtime rubric pass BEFORE emission. Shadow mode
   // (flag off or per-org gate disabled) runs the score for observability but
@@ -127,7 +159,7 @@ async function loadOrgSnapshot(orgId: number | null): Promise<OrgSnapshotWithFla
       hasGbpData: false,
       hasCheckupData: false,
       knownAverageCaseValueUsd: null,
-      knownMonthlyNewPatients: null,
+      knownMonthlyNewCustomers: null,
       narratorEnabled: false,
     };
   }
@@ -182,7 +214,7 @@ async function loadOrgSnapshot(orgId: number | null): Promise<OrgSnapshotWithFla
       hasGbpData,
       hasCheckupData,
       knownAverageCaseValueUsd: null,
-      knownMonthlyNewPatients: null,
+      knownMonthlyNewCustomers: null,
       narratorEnabled: Boolean(org.narrator_enabled),
     };
   } catch {
@@ -193,6 +225,42 @@ async function loadOrgSnapshot(orgId: number | null): Promise<OrgSnapshotWithFla
       hasGbpData: false,
       hasCheckupData: false,
     };
+  }
+}
+
+function buildSuppressedOutput(eventType: string): NarratorOutput {
+  return {
+    emit: false,
+    finding: `Event ${eventType} suppressed: org does not track a referral network.`,
+    dollar: null,
+    action: "No owner-facing output. Archived for audit.",
+    tier: "expected",
+    template: "_capability_suppressed",
+    dataGapReason: "referral_tracking_disabled",
+    confidence: 100,
+    voiceCheckPassed: true,
+    voiceViolations: [],
+    surfaces: { dashboard: false, email: false, notification: false },
+  };
+}
+
+async function emitSuppressionEvent(
+  eventType: string,
+  orgId: number | null
+): Promise<void> {
+  try {
+    const { BehavioralEventModel } = await import("../../models/BehavioralEventModel");
+    await BehavioralEventModel.create({
+      event_type: "narrator.event_suppressed",
+      org_id: orgId,
+      properties: {
+        eventType,
+        orgId,
+        reason: "referral_tracking_disabled",
+      },
+    });
+  } catch {
+    // Observability only — never block the pipeline.
   }
 }
 
