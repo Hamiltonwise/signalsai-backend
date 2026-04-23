@@ -2,6 +2,33 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.26] - April 2026
+
+### Gallery Custom-Field Type + Doctor Affiliations
+
+Introduces the first composite custom-field type in the CMS. Posts can now store ordered arrays of image items (each with optional link, alt text, and caption), and templates can iterate them inline via a new `{{start_gallery_loop}}…{{end_gallery_loop}}` shortcode grammar with per-item `{{if item.X}}` conditionals. Ships alongside a data migration that replaces the hardcoded AAE + VDA affiliation logos on the dental SEO template's single-doctor page with the new subloop, and prefills both logos onto the 8 One Endodontics doctors so their rendered pages stay visually identical. Other practices using the same template (six projects including orthodontic and non-VA endodontic sites) now correctly render no affiliations section until the practice authors its own list per doctor, fixing a long-standing accuracy bug where AAE + VDA were showing on sites those logos did not apply to.
+
+**Key Changes:**
+- New `gallery` field type registered in the custom-field system; value shape `{ url, link?, alt, caption? }[]`
+- Shortcode grammar: `{{start_gallery_loop field='X'}}…{{end_gallery_loop}}` with `{{item.url/link/alt/caption}}` and `{{if item.X}}…{{endif}}` inside the loop body
+- `isConditionalValueEmpty` now treats empty arrays as empty, so `{{if post.custom.X}}` correctly hides sections when a gallery field has zero items
+- Scalar `{{post.custom.<slug>}}` replacement hardened — non-primitive values return empty string instead of coercing to `[object Object]`
+- New `MediaPickerArrayField` admin component (Browse Library / Upload / Paste URL + link/alt/caption + reorder/remove), modelled on the existing single-image `MediaPickerField`
+- `Gallery` appears as a selectable field type in the post-type schema editor dropdown
+- Cross-repo shortcode-logic sync: alloro resolver, website-builder-rebuild's `src/utils/shortcodes.ts`, and the admin-preview iframe in `PostBlocksTab.tsx` all updated in lockstep to keep HTML output byte-identical
+- Data migration: adds `affiliations` gallery field to the Doctors post-type schema on the dental SEO template, rewrites the single-doctor template markup to use the subloop, prefills both logos for the 8 One Endodontics doctors; fully idempotent with a symmetric down migration
+
+**Commits:**
+- `src/controllers/admin-websites/feature-services/service.post-type-manager.ts` — `gallery` added to `VALID_FIELD_TYPES`
+- `src/controllers/admin-websites/feature-services/service.post-manager.ts` — schema-aware boundary check rejects non-array gallery values on post create/update
+- `src/controllers/user-website/user-website-services/shortcodeResolver.service.ts` — new `renderGalleryLoops` + `processItemConditionals` passes, ordered before `processConditionals` in `renderPostBlock`; empty-array fix; scalar hardening; NOTE updated for three-location sync
+- `src/models/website-builder/PostTypeModel.ts` — documented gallery field shape
+- `src/database/migrations/20260423000001_add_affiliations_gallery_field_and_prefill_one_endo.ts` — new migration (3 linked JSONB updates with idempotency guards + symmetric down)
+- `frontend/src/components/Admin/MediaPickerArrayField.tsx` — new component
+- `frontend/src/components/Admin/PostsTab.tsx` — gallery branch in custom-field switchboard; import of new component
+- `frontend/src/components/Admin/PostBlocksTab.tsx` — `Gallery` in `FIELD_TYPES` dropdown; admin-preview mirror of gallery-loop stripping so tokens don't leak in the iframe preview
+- `website-builder-rebuild/src/utils/shortcodes.ts` (separate repo) — gallery-loop + item-conditional grammar mirror; `isEmptyField` empty-array fix; scalar hardening
+
 ## [0.0.25] - April 2026
 
 ### Website Builder — Page Editor Preview & Regenerate Fixes
