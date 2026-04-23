@@ -1,5 +1,19 @@
 import { BaseModel, QueryContext } from "../BaseModel";
 
+/**
+ * Post Type schema field shape (stored inside `schema` as JSONB).
+ *
+ * A field is `{ name, slug, type, required, default_value, options? }`
+ * where `type` is one of: `text | textarea | media_url | number | date |
+ * boolean | select | gallery`.
+ *
+ * `select` fields require a non-empty `options` string array.
+ * `gallery` fields have no extra schema-level config. The corresponding
+ * post's `custom_fields[slug]` must be an ordered array of items shaped
+ * like `{ url: string; link?: string; alt: string; caption?: string }`.
+ * The boundary check in `service.post-manager.ts` enforces array-ness;
+ * the renderer tolerates missing item keys as empty strings.
+ */
 export interface IPostType {
   id: string;
   template_id: string;

@@ -30,6 +30,7 @@ import {
   fetchIdentity,
 } from "../../api/websites";
 import ImportFromIdentityModal from "./ImportFromIdentityModal";
+import MediaPickerArrayField from "./MediaPickerArrayField";
 import {
   fetchPosts as defaultFetchPosts,
   createPost as defaultCreatePost,
@@ -1189,6 +1190,15 @@ export default function PostsTab({
                             value={String(value)}
                             onChange={(url) =>
                               setFormCustomFields((prev) => ({ ...prev, [slug]: url }))
+                            }
+                            label=""
+                          />
+                        ) : field.type === "gallery" ? (
+                          <MediaPickerArrayField
+                            projectId={projectId}
+                            value={Array.isArray(value) ? (value as Array<{ url: string; link?: string; alt: string; caption?: string }>) : []}
+                            onChange={(arr) =>
+                              setFormCustomFields((prev) => ({ ...prev, [slug]: arr }))
                             }
                             label=""
                           />

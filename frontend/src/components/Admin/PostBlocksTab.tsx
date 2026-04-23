@@ -39,6 +39,7 @@ const FIELD_TYPES = [
   { value: "date", label: "Date" },
   { value: "boolean", label: "Boolean" },
   { value: "select", label: "Select" },
+  { value: "gallery", label: "Gallery" },
 ];
 
 type DeviceMode = "desktop" | "tablet" | "mobile";
@@ -118,14 +119,17 @@ const PREVIEW_POSTS = [
 // Strip {{if post.X}}...{{endif}} and {{if_not post.X}}...{{endif}} blocks
 // based on whether the named field is empty in the placeholder dict.
 //
-// Empty = key absent in placeholder dict OR value is empty string.
+// Empty = key absent in placeholder dict, value is empty string, or
+// value is an empty array.
 // Flat only — nesting aborts with console.warn and leaves HTML unchanged.
 //
 // PREVIEW LIMITATION: custom field tokens (`post.custom.X`) are almost
 // never in PLACEHOLDER_POST, so conditional blocks referencing them will
 // be stripped in preview. Live site uses actual post data.
 //
-// NOTE: This logic is duplicated in two other locations. Keep in sync:
+// NOTE: This logic is duplicated in two other locations. Keep in sync.
+// The gallery-loop pass (renderGalleryLoops below) must ALSO stay in
+// sync across all three:
 //   - website-builder-rebuild/src/utils/shortcodes.ts (processConditionals)
 //   - alloro/src/controllers/user-website/user-website-services/shortcodeResolver.service.ts
 // =====================================================================
@@ -135,6 +139,9 @@ const CONDITIONAL_BLOCK_RE =
 const ORPHAN_CONDITIONAL_RE =
   /\{\{\s*(?:if|if_not)\s+[^}]*\}\}|\{\{\s*endif\s*\}\}/g;
 const NESTED_PROBE_RE = /\{\{\s*(?:if|if_not)\s+/;
+
+const GALLERY_LOOP_RE =
+  /\{\{\s*start_gallery_loop\s+field='([a-z0-9_-]+)'\s*\}\}([\s\S]*?)\{\{\s*end_gallery_loop\s*\}\}/gi;
 
 function processConditionals(
   html: string,
@@ -159,7 +166,12 @@ function processConditionals(
       // Resolve field by looking up the literal token string in the dict.
       const token = `{{post.${field}}}`;
       const value = placeholderPost[token];
-      const empty = value === undefined || value === "";
+      // Empty: undefined, "", or "[]" (serialized empty array marker, if
+      // a future caller ever chooses to pass one). Arrays as raw values
+      // aren't representable in this token-string dict, so treat an
+      // explicit empty-array marker literal as empty for parity with the
+      // server resolver's empty-array fix.
+      const empty = value === undefined || value === "" || value === "[]";
       const keep = kind === "if" ? !empty : empty;
       return keep ? body : "";
     }
@@ -170,16 +182,34 @@ function processConditionals(
   return result;
 }
 
+// Minimal gallery-loop pass for admin preview.
+//
+// The PLACEHOLDER_POST dict is keyed by literal token strings, so we have
+// no structured per-item data to iterate. The right preview behavior is
+// to strip the block (consistent with the empty-array case on the server)
+// so authors don't see the raw {{start_gallery_loop ...}} / {{item.X}}
+// tokens leaking through. Authors preview gallery rendering on the live
+// site / admin post editor; the structured-editor preview is for
+// markup-level tweaks, not data-level previewing.
+function renderGalleryLoops(html: string): string {
+  if (!html.includes("start_gallery_loop")) return html;
+  return html.replace(GALLERY_LOOP_RE, () => "");
+}
+
 function replacePlaceholders(html: string): string {
+  // Step A: strip gallery-loop blocks for preview (no structured data
+  // available in the token-string dict — mirrors server empty-array case).
+  const afterGallery = renderGalleryLoops(html);
+
   const startMarker = "{{start_post_loop}}";
   const endMarker = "{{end_post_loop}}";
-  const startIdx = html.indexOf(startMarker);
-  const endIdx = html.indexOf(endMarker);
+  const startIdx = afterGallery.indexOf(startMarker);
+  const endIdx = afterGallery.indexOf(endMarker);
 
   if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    const before = html.slice(0, startIdx);
-    const template = html.slice(startIdx + startMarker.length, endIdx);
-    const after = html.slice(endIdx + endMarker.length);
+    const before = afterGallery.slice(0, startIdx);
+    const template = afterGallery.slice(startIdx + startMarker.length, endIdx);
+    const after = afterGallery.slice(endIdx + endMarker.length);
 
     const rendered = PREVIEW_POSTS.map((post) => {
       // Conditional pass first — per-post so different preview posts can
@@ -195,7 +225,7 @@ function replacePlaceholders(html: string): string {
   }
 
   // Fallback: no loop markers — single post replacement
-  let result = processConditionals(html, PLACEHOLDER_POST);
+  let result = processConditionals(afterGallery, PLACEHOLDER_POST);
   for (const [token, value] of Object.entries(PLACEHOLDER_POST)) {
     result = result.replaceAll(token, value);
   }
