@@ -2,6 +2,24 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.28] - April 2026
+
+### Page Editor — Stop Shortcode Pill From Leaking to Public Sites
+
+Fixes a regression introduced in 0.0.25 where editor-only "DOCTORS BLOCK" / "SERVICES BLOCK" / "REVIEWS" pill labels were rendering on published sites (first spotted on ARCS / calm-clinic-3597). The preview pill writer and the save-path restorer were keyed to two different attribute names, so the pill wrapper was being persisted verbatim into `website_builder.pages.sections[].content` on every save. The public site renderer then served the wrapper as-is, and the post/review/menu resolver expanded the raw token that still sat inside the wrapper — resulting in the label + dashed border appearing around the real cards.
+
+**Key Changes:**
+- `renderShortcodePlaceholders` now emits `data-alloro-shortcode-original="<encoded-token>"` on the pill's outer div, matching the contract that `wrapResolved` (admin-side shortcode resolver) has always followed.
+- `restoreShortcodeTokens` rewritten with `DOMParser` instead of a lazy `[\s\S]*?</div>` regex. The old regex stopped at the first `</div>`, which (a) silently no-op'd on the new pill because the attribute didn't match and (b) was already subtly broken for multi-div resolved content from `wrapResolved`. Both call paths now unwrap correctly, including nested wrapper children.
+- One-shot cleanup script `scripts/debug-warmup/unpollute-shortcode-pills.ts`: pre-filters via `sections::text LIKE '%data-alloro-shortcode%'` to only fetch candidate rows, walks each section with cheerio, strips `<div data-alloro-shortcode="…">…</div>` pills via fixed-point loop (handles pill-inside-pill from repeated saves), restoring either the `data-alloro-shortcode-original` token (post-fix pills) or the raw token text in the inner div (pre-fix pills). Dry-run by default; `--apply` required to write. Forces blocking stdio so progress lines flush under piped stdout.
+- One-shot applied: 12 polluted pages across 2 projects (ARCS + one other), 38 pill wrappers removed. Post-apply dry-run confirms zero remaining candidate rows.
+
+**Commits:**
+- `frontend/src/utils/templateRenderer.ts` — add `data-alloro-shortcode-original="<encoded-token>"` to the pill outer div; use a separate attribute-safe encoding that escapes `"` as `&quot;` on top of the text encoding.
+- `frontend/src/utils/htmlReplacer.ts` — `restoreShortcodeTokens` rewritten to parse with `DOMParser`, query all `[data-alloro-shortcode-original]` elements, and replace each (including children) with a text node holding the decoded token. Short-circuits when the marker string is absent so non-polluted HTML pays zero cost.
+- `scripts/debug-warmup/unpollute-shortcode-pills.ts` — new one-shot cleanup script.
+- `plans/04232026-no-ticket-fix-shortcode-pill-leak/spec.md` — spec + risk assessment + task breakdown.
+
 ## [0.0.27] - April 2026
 
 ### Post Editor Custom Fields — Linear-Inspired Redesign
