@@ -191,8 +191,16 @@ function renderShortcodePlaceholders(html: string): string {
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
+    // Attribute-safe encoding: adds `"` escape on top of the text encoding
+    // so the pill wrapper can carry the original token in
+    // data-alloro-shortcode-original. The save-path extractor
+    // (restoreShortcodeTokens) reads this attribute to unwrap the pill back
+    // to its raw token before persisting — without it, the pill leaks into
+    // the DB and renders on the public site.
+    const escapedRawAttr = escapedRaw.replace(/"/g, "&quot;");
     return (
       `<div data-alloro-shortcode="${type}" ` +
+      `data-alloro-shortcode-original="${escapedRawAttr}" ` +
       `style="background:#f3f4f6;border:1px dashed #d1d5db;border-radius:12px;` +
       `padding:48px 24px;margin:24px auto;max-width:90%;text-align:center;` +
       `font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;` +
