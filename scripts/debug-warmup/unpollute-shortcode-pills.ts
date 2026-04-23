@@ -26,6 +26,15 @@ dotenv.config({ path: "/Users/rustinedave/Desktop/alloro/.env" });
 import * as cheerio from "cheerio";
 import db from "../../src/database/connection";
 
+// Force synchronous stdio so progress lines flush in real time when this
+// script is run under a background launcher that pipes stdout to a file
+// (Node block-buffers piped stdout by default).
+type HandleWithSetBlocking = { setBlocking?: (blocking: boolean) => void };
+const stdoutHandle = (process.stdout as unknown as { _handle?: HandleWithSetBlocking })._handle;
+const stderrHandle = (process.stderr as unknown as { _handle?: HandleWithSetBlocking })._handle;
+stdoutHandle?.setBlocking?.(true);
+stderrHandle?.setBlocking?.(true);
+
 const APPLY = process.argv.includes("--apply");
 
 interface Section {
@@ -164,17 +173,16 @@ function wrapLikeOriginal(original: unknown, cleaned: Section[]): unknown {
     "(unknown — check .env)";
   console.log(`[unpollute] DB target: ${dbHost}`);
   console.log(`[unpollute] Mode: ${APPLY ? "APPLY (writing)" : "DRY-RUN"}`);
+  console.log("[unpollute] Fetching rows…");
 
-  const rows: PageRow[] = await db("website_builder.pages").select(
-    "id",
-    "project_id",
-    "path",
-    "status",
-    "sections",
-    "updated_at",
-  );
+  // Only fetch candidate rows (sections text contains the pill marker).
+  // Scanning the full 1087-row jsonb blob proved unreliable over the VPN —
+  // this narrows transfer to ~12 rows.
+  const rows: PageRow[] = await db("website_builder.pages")
+    .select("id", "project_id", "path", "status", "sections", "updated_at")
+    .whereRaw("sections::text LIKE ?", ["%data-alloro-shortcode%"]);
 
-  console.log(`[unpollute] Scanned ${rows.length} page rows`);
+  console.log(`[unpollute] Candidate rows: ${rows.length}`);
 
   let pollutedPages = 0;
   let totalPillsStripped = 0;
