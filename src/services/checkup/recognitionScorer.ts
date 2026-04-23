@@ -27,6 +27,11 @@ import { fetchPage, extractText } from "../webFetch";
 import { textSearch, getPlaceDetails, isApiKeyConfigured } from "../../controllers/places/feature-services/GooglePlacesApiService";
 import { score as runRubric } from "../rubric/standardRubric";
 import type { ScoreResult } from "../rubric/types";
+import {
+  getVocab,
+  HEALTHCARE_DEFAULT_VOCAB,
+  type VocabConfig,
+} from "../vocabulary/vocabLoader";
 
 export interface RecognitionScorerInput {
   practiceUrl: string;
@@ -35,6 +40,10 @@ export interface RecognitionScorerInput {
   competitorUrls?: string[];
   /** Optional: hand in a placeId if already known, else we textSearch by domain. */
   placeId?: string;
+  /** Optional org id — resolves vertical-aware about-page candidates. */
+  orgId?: number;
+  /** Optional practice name — used to derive /about-dr-[firstword] for healthcare. */
+  practiceName?: string;
 }
 
 export interface MissingExample {
@@ -98,11 +107,67 @@ function normalizeUrl(url: string): string {
 }
 
 /**
+ * Healthcare / non-healthcare about-page candidates.
+ *
+ * Healthcare (hipaa_mode=true OR schemaSubType=Dentist):
+ *   /meet-the-doctor and /about-dr-[first word of practiceName lowercased],
+ *   plus the generic /about, /about-us. The per-doctor URL is derived from
+ *   the practice name at call time — never hardcoded.
+ *
+ * Non-healthcare:
+ *   /about, /about-us, /our-team, /meet-the-team, /who-we-are.
+ *
+ * The per-doctor about path is derived at call time from practiceName. No
+ * literal doctor-name path strings live in the codebase — a grep assertion
+ * in the recognitionScorer test enforces this.
+ */
+export function getAboutCandidates(
+  vocab: VocabConfig,
+  baseUrl: string,
+  practiceName: string | undefined
+): string[] {
+  const base = baseUrl.replace(/\/$/, "");
+  const isHealthcare =
+    vocab.capabilities.hipaa_mode === true || vocab.schemaSubType === "Dentist";
+
+  if (isHealthcare) {
+    const firstWord = (practiceName ?? "")
+      .trim()
+      .split(/\s+/)[0]
+      ?.toLowerCase()
+      .replace(/[^a-z0-9-]/g, "");
+    const candidates = [
+      `${base}/about`,
+      `${base}/about-us`,
+      `${base}/meet-the-doctor`,
+      `${base}/our-team`,
+      `${base}/team`,
+    ];
+    if (firstWord) {
+      candidates.splice(2, 0, `${base}/about-dr-${firstWord}`);
+    }
+    return candidates;
+  }
+
+  return [
+    `${base}/about`,
+    `${base}/about-us`,
+    `${base}/our-team`,
+    `${base}/meet-the-team`,
+    `${base}/who-we-are`,
+  ];
+}
+
+/**
  * Fetch homepage and about page as plain text. Falls back to homepage-only
  * if about is not found. The `about` variants we try mirror what the
  * InstantWebsiteGenerator emits (broad coverage across template systems).
  */
-async function fetchSiteContent(practiceUrl: string): Promise<{
+async function fetchSiteContent(
+  practiceUrl: string,
+  vocab: VocabConfig,
+  practiceName: string | undefined
+): Promise<{
   content: string;
   pageFetched: boolean;
   pageFetchError?: string;
@@ -122,15 +187,7 @@ async function fetchSiteContent(practiceUrl: string): Promise<{
   pagesFetched.push(baseUrl);
   const homeText = await extractText(home.html);
 
-  // Try common about-page URL patterns. Stop after the first 200 OK.
-  const aboutCandidates = [
-    `${baseUrl}/about`,
-    `${baseUrl}/about-us`,
-    `${baseUrl}/about-dr-olson`,
-    `${baseUrl}/our-team`,
-    `${baseUrl}/team`,
-    `${baseUrl}/meet-the-doctor`,
-  ];
+  const aboutCandidates = getAboutCandidates(vocab, baseUrl, practiceName);
   let aboutText = "";
   for (const candidate of aboutCandidates) {
     const result = await fetchPage(candidate);
@@ -357,9 +414,15 @@ async function scoreEntry(
   url: string,
   specialty: string | undefined,
   location: string | undefined,
-  placeIdHint: string | undefined
+  placeIdHint: string | undefined,
+  vocab: VocabConfig,
+  practiceName: string | undefined
 ): Promise<RecognitionScoreEntry> {
-  const { content, pageFetched, pageFetchError } = await fetchSiteContent(url);
+  const { content, pageFetched, pageFetchError } = await fetchSiteContent(
+    url,
+    vocab,
+    practiceName
+  );
 
   const entry: RecognitionScoreEntry = {
     url,
@@ -445,11 +508,20 @@ export async function scoreRecognition(
 ): Promise<RecognitionScorerResult> {
   const warnings: string[] = [];
 
+  // Resolve vocab once per run. Competitor scoring reuses the same vocab —
+  // the about-candidate shape reflects the org the run was commissioned for,
+  // not whatever vertical the competitor happens to be in.
+  const vocab = input.orgId != null
+    ? await getVocab(input.orgId)
+    : { ...HEALTHCARE_DEFAULT_VOCAB, capabilities: { ...HEALTHCARE_DEFAULT_VOCAB.capabilities } };
+
   const practice = await scoreEntry(
     input.practiceUrl,
     input.specialty,
     input.location,
-    input.placeId
+    input.placeId,
+    vocab,
+    input.practiceName
   );
 
   if (!practice.pageFetched) {
@@ -466,7 +538,9 @@ export async function scoreRecognition(
       competitorUrl,
       input.specialty,
       input.location,
-      undefined
+      undefined,
+      vocab,
+      input.practiceName
     );
     competitors.push(entry);
   }

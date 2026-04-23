@@ -50,7 +50,12 @@ import {
 } from "./copyRewriteConfig";
 import { fetchPage, extractText } from "../webFetch";
 import type { MissingExample } from "../checkup/recognitionScorer";
-import { getCapabilities, type Capabilities } from "../vocabulary/vocabLoader";
+import {
+  getCapabilities,
+  getVocab,
+  type Capabilities,
+  type VocabConfig,
+} from "../vocabulary/vocabLoader";
 
 const HIPAA_PRIVACY_INSTRUCTION =
   "First name only for HIPAA.";
@@ -243,7 +248,8 @@ function assemblePrompt(
   targetDimensions: string[],
   config: CopyRewriteConfig,
   repairContext: string,
-  capabilities: Capabilities
+  capabilities: Capabilities,
+  vocab: VocabConfig
 ): string {
   const dimensionsLabel = targetDimensions
     .map((d) => `${d} (${config.targetDimensionMap[d] ?? ""})`)
@@ -251,16 +257,25 @@ function assemblePrompt(
   const tone = template.defaultTone ?? "warm";
   const toneGuidance = config.toneVariants[tone] ?? config.toneVariants["warm"] ?? "";
 
+  // Card J placeholders: hipaaInstruction is populated from capabilities.hipaa_mode.
+  const hipaaInstruction = capabilities.hipaa_mode
+    ? HIPAA_PRIVACY_INSTRUCTION
+    : GENERIC_PRIVACY_INSTRUCTION;
+
   let prompt = template.promptTemplate;
   const replacements: Record<string, string> = {
-    practiceName: input.practiceContext.practiceName ?? "the practice",
+    practiceName: input.practiceContext.practiceName ?? "the business",
     specialty: input.practiceContext.specialty ?? "the specialty",
     location: input.practiceContext.location ?? "the city",
     differentiator: input.practiceContext.differentiator ?? "(differentiator not provided)",
-    doctorBackground: input.practiceContext.doctorBackground ?? "(doctor background not provided)",
+    doctorBackground: input.practiceContext.doctorBackground ?? `(${vocab.providerTerm} background not provided)`,
     patientQuotes: formatPatientQuotes(input.missingExamples),
     targetDimensions: dimensionsLabel || "(use The Standard's defaults)",
     tone: `${tone} — ${toneGuidance}`,
+    customerTerm: vocab.customerTerm,
+    customerTermPlural: vocab.customerTermPlural,
+    providerTerm: vocab.providerTerm,
+    hipaaInstruction,
   };
   for (const [k, v] of Object.entries(replacements)) {
     prompt = prompt.split(`{${k}}`).join(v);
@@ -273,14 +288,14 @@ function assemblePrompt(
     prompt += `\n\nThis is a retry. Prior attempt failed the rubric for these reasons — fix them:\n${repairContext}`;
   }
 
-  // Vertical Capability Model (Card K): when an org is not under HIPAA, strip
-  // HIPAA-specific wording from the rendered prompt and prepend the generic
-  // privacy instruction. The loaded Notion config (and the local fallback)
-  // contains HIPAA language for the healthcare beachhead; this normalization
-  // keeps the same templates usable for verticals where HIPAA doesn't apply.
+  // Safety net: if a user-supplied Notion config still carries raw HIPAA
+  // wording even though hipaa_mode is off, strip it and ensure the generic
+  // privacy instruction is present exactly once in the final prompt.
   if (!capabilities.hipaa_mode) {
     prompt = stripHipaaReferences(prompt);
-    prompt = `${GENERIC_PRIVACY_INSTRUCTION}\n\n${prompt}`;
+    if (!prompt.includes(GENERIC_PRIVACY_INSTRUCTION)) {
+      prompt = `${GENERIC_PRIVACY_INSTRUCTION}\n\n${prompt}`;
+    }
   }
 
   return prompt;
@@ -359,7 +374,8 @@ async function rewriteOneSection(
   sectionId: string,
   input: CopyRewriteInput,
   config: CopyRewriteConfig,
-  capabilities: Capabilities
+  capabilities: Capabilities,
+  vocab: VocabConfig
 ): Promise<SectionRewriteResult> {
   const template = config.sectionPromptTemplates[sectionId];
   const currentContent = await resolveSectionContent(sectionId, input);
@@ -394,7 +410,7 @@ async function rewriteOneSection(
 
   while (attempt < (config.maxRetries ?? FREEFORM_CONCERN_GATE_MAX_RETRIES)) {
     attempt += 1;
-    const prompt = assemblePrompt(template, input, targetDimensions, config, repairContext, capabilities);
+    const prompt = assemblePrompt(template, input, targetDimensions, config, repairContext, capabilities, vocab);
     newContent = await composeSectionContent(prompt, capabilities);
     if (!newContent) {
       // Compose failed (missing API key, parse error, etc.). Count as attempt,
@@ -545,10 +561,11 @@ export async function runCopyRewrite(
   const shadow = !(await isCopyRewriteEnabled(input.practiceContext.orgId));
   const targets = input.targetSections ?? config.defaultTargetSections;
   const capabilities = await getCapabilities(input.practiceContext.orgId ?? null);
+  const vocab = await getVocab(input.practiceContext.orgId ?? null);
 
   const sectionResults: SectionRewriteResult[] = [];
   for (const sectionId of targets) {
-    const result = await rewriteOneSection(sectionId, input, config, capabilities);
+    const result = await rewriteOneSection(sectionId, input, config, capabilities, vocab);
     sectionResults.push(result);
   }
 

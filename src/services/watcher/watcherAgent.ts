@@ -9,8 +9,9 @@
  *      competitor activity, Recognition Score regressions.
  *   2. Daily cross-practice: collisions, milestones, patterns.
  *
- * Pattern detection rules are config-driven via Notion page
- * "Watcher Agent — Pattern Rules v1".
+ * Pattern detection rules run from DEFAULT_PATTERN_RULES. A Notion-driven
+ * config loader is intentionally not wired on this path — see
+ * `loadPatternRules` below.
  *
  * Feature flag: watcher_agent_enabled (default false).
  *
@@ -166,14 +167,10 @@ async function loadPatternRules(): Promise<PatternRulesConfig> {
     return cachedRules;
   }
 
-  try {
-    // TODO: Load from Notion page "Watcher Agent — Pattern Rules v1"
-    // when the page has a fenced JSON block tagged `alloro:pattern-rules`.
-    // For now, fall back to defaults.
-  } catch {
-    // Notion unavailable — use defaults
-  }
-
+  // NOT IMPLEMENTED -- runs DEFAULT_PATTERN_RULES only. Notion loader is
+  // deliberately out of scope for Card J. When wired, follow the
+  // copyRewriteConfig.ts pattern (search by page title, parse fenced JSON
+  // tagged `alloro:pattern-rules`, fall back to defaults on any failure).
   cachedRules = DEFAULT_PATTERN_RULES;
   rulesCacheExpiry = Date.now() + RULES_CACHE_TTL;
   return cachedRules;

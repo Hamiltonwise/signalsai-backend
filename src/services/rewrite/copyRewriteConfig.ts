@@ -147,35 +147,38 @@ function fallbackConfig(): CopyRewriteConfig {
         "Acknowledge the common fear — anxiety, prior bad experience, cost worry — then factual what-happens-next without reassurance-speak.",
     },
     sectionPromptTemplates: {
+      // Section keys (hero, proofline_carousel, doctor_story, about_intro)
+      // are intentionally unchanged — renaming them is a separate design
+      // decision. The per-vertical vocabulary is injected via placeholders.
       hero: {
         purpose:
-          "First sentence the visitor reads. Must acknowledge their emotional state before listing anything the practice does.",
+          "First sentence the visitor reads. Must acknowledge their emotional state before listing anything the business does.",
         promptTemplate:
-          "Rewrite the hero for {practiceName} in {specialty} in {location}. Open by acknowledging what a patient in pain, scared, or distrustful of past providers is feeling. Then in one sentence name the irreplaceable thing about this practice: {differentiator}. Use one concrete detail pulled from these actual patient words (first name only for HIPAA): {patientQuotes}. Banned: 'advanced', 'state-of-the-art', 'comprehensive', 'cutting-edge', 'world-class', 'utilizing', 'best-in-class'. Target rubric dimensions to improve: {targetDimensions}. Target tone: {tone}.",
+          "Rewrite the hero for {practiceName} in {specialty} in {location}. Open by acknowledging what a {customerTerm} in pain, scared, or distrustful of past providers is feeling. Then in one sentence name the irreplaceable thing about this business: {differentiator}. Use one concrete detail pulled from these actual {customerTerm} words ({hipaaInstruction}): {patientQuotes}. Banned: 'advanced', 'state-of-the-art', 'comprehensive', 'cutting-edge', 'world-class', 'utilizing', 'best-in-class'. Target rubric dimensions to improve: {targetDimensions}. Target tone: {tone}.",
         lengthWords: [35, 85],
         defaultTone: "warm",
       },
       proofline_carousel: {
         purpose:
-          "3-5 short proof statements, each anchored in one patient's actual words. First name only. No aggregate review count.",
+          "3-5 short proof statements, each anchored in one customer's actual words. First name only. No aggregate review count.",
         promptTemplate:
-          "Write 3-5 proofline statements for {practiceName}. Each statement is 1-2 short sentences, anchored in one patient's actual words from these quotes: {patientQuotes}. Attribute with first name only (HIPAA). Never aggregate ('our patients love us') — always one voice at a time. Target rubric dimensions: {targetDimensions}. Target tone: {tone}.",
+          "Write 3-5 proofline statements for {practiceName}. Each statement is 1-2 short sentences, anchored in one {customerTerm}'s actual words from these quotes: {patientQuotes}. Attribute with {hipaaInstruction}. Never aggregate ('our {customerTermPlural} love us') — always one voice at a time. Target rubric dimensions: {targetDimensions}. Target tone: {tone}.",
         lengthWords: [80, 200],
         defaultTone: "direct",
       },
       doctor_story: {
         purpose:
-          "Two-paragraph story of the doctor that a longtime patient or spouse would read and say 'that's him'. Not a CV.",
+          "Two-paragraph story of the {providerTerm} that a longtime {customerTerm} or spouse would read and say 'that's them'. Not a CV.",
         promptTemplate:
-          "Write a two-paragraph story about the doctor at {practiceName} — not a CV. The goal: someone who knows this doctor intimately reads it and says 'that's exactly him'. Facts to draw from: {doctorBackground}. Patient descriptions of the doctor (first name only): {patientQuotes}. Target rubric dimensions: {targetDimensions}. Target tone: {tone}. Banned: 'board-certified', 'expert', 'leading', 'renowned', any credential string without context.",
+          "Write a two-paragraph story about the {providerTerm} at {practiceName} — not a CV. The goal: someone who knows this {providerTerm} intimately reads it and says 'that's exactly them'. Facts to draw from: {doctorBackground}. {hipaaInstruction} {customerTermPlural} descriptions of the {providerTerm}: {patientQuotes}. Target rubric dimensions: {targetDimensions}. Target tone: {tone}. Banned: 'board-certified', 'expert', 'leading', 'renowned', any credential string without context.",
         lengthWords: [120, 250],
         defaultTone: "warm",
       },
       about_intro: {
         purpose:
-          "Opening of the about section that frames the practice's point of view on the work, not the services.",
+          "Opening of the about section that frames the business's point of view on the work, not the services.",
         promptTemplate:
-          "Write the opening of {practiceName}'s about section. Frame their point of view on the work — not a services list. Ground in {differentiator} and the community context: {location}. Reference patient language: {patientQuotes}. Target rubric dimensions: {targetDimensions}. Target tone: {tone}.",
+          "Write the opening of {practiceName}'s about section. Frame their point of view on the work — not a services list. Ground in {differentiator} and the community context: {location}. Reference {customerTerm} language ({hipaaInstruction}): {patientQuotes}. Target rubric dimensions: {targetDimensions}. Target tone: {tone}.",
         lengthWords: [80, 180],
         defaultTone: "warm",
       },

@@ -28,8 +28,9 @@
 
 import { BehavioralEventModel } from "../../../models/BehavioralEventModel";
 import { isDiscoverabilityBakeEnabled } from "../../rubric/gateFlag";
+import { getVocab } from "../../vocabulary/vocabLoader";
 import {
-  buildDentistSchema,
+  buildLocalBusinessSchema,
   buildFaqSchema,
   buildInternalLinkPlan,
   buildPersonSchema,
@@ -127,7 +128,8 @@ export async function runDiscoverabilityBakeStage(
     warnings.push("Schema templates loaded from local fallback — Notion unavailable.");
   }
 
-  const artifact = bakePages(input, templates);
+  const vocab = await getVocab(input.orgId);
+  const artifact = bakePages(input, templates, vocab.schemaSubType);
 
   // Attach artifact to the copy JSON. Always present (runtime observability);
   // the adapter reads it only when the flag is on.
@@ -168,13 +170,15 @@ export async function runDiscoverabilityBakeStage(
 
 function bakePages(
   input: BakeInput,
-  templates: BakeTemplates
+  templates: BakeTemplates,
+  schemaSubType: string
 ): BakedSchemaArtifact {
   const sections: Array<{ name?: string; headline?: string; body?: string }> = Array.isArray(input.copy?.sections)
     ? input.copy.sections
     : [];
 
-  const localBusiness = buildDentistSchema(
+  const localBusiness = buildLocalBusinessSchema(
+    schemaSubType,
     input.practice,
     templates,
     input.reviews ?? []

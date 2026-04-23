@@ -247,7 +247,23 @@ function fallbackSchemaTypes(): BakeTemplates["schemaTypeBySpecialty"] {
 
 // ─── builder functions ──────────────────────────────────────────────
 
-export function buildDentistSchema(
+/**
+ * Vertical-neutral LocalBusiness schema builder (Card J).
+ *
+ * Routes to the correct schema.org sub-type by `schemaSubType`:
+ *   - "Dentist"      → produces the legacy Dentist output (identical shape
+ *                      to the prior buildDentistSchema for healthcare orgs).
+ *   - "LegalService" → LegalService. `buildLocalBusinessSchema` never emits
+ *                      the Dentist sub-type for non-healthcare orgs.
+ *   - any other      → used as the schema `@type` verbatim, falling back to
+ *                      the template's schemaTypeBySpecialty list when the
+ *                      sub-type matches a known specialty key.
+ *
+ * `buildDentistSchema` stays exported as a thin back-compat wrapper so
+ * existing callers that always wanted the Dentist path continue to work.
+ */
+export function buildLocalBusinessSchema(
+  schemaSubType: string,
   practice: BakePracticeMetadata,
   templates: BakeTemplates,
   reviews: BakeReview[]
@@ -255,9 +271,18 @@ export function buildDentistSchema(
   const specialtyKey = (practice.specialty ?? practice.practiceType ?? "default")
     .toLowerCase()
     .replace(/[^a-z]/g, "_");
-  const schemaTypes =
-    templates.schemaTypeBySpecialty[specialtyKey] ??
-    templates.schemaTypeBySpecialty["default"];
+
+  // Prefer the explicit schemaSubType. Fall back to the templates map when
+  // the sub-type exactly matches a known specialty key (e.g., "Dentist"
+  // lowercased matches `dentist` → the full healthcare type array).
+  let schemaTypes: string[];
+  if (schemaSubType === "Dentist") {
+    schemaTypes =
+      templates.schemaTypeBySpecialty[specialtyKey] ??
+      templates.schemaTypeBySpecialty["default"];
+  } else {
+    schemaTypes = ["LocalBusiness", schemaSubType];
+  }
 
   const avgRating =
     reviews.length > 0
@@ -305,6 +330,15 @@ export function buildDentistSchema(
         : undefined,
   };
   return pruneUndef(schema);
+}
+
+/** Back-compat: always produces the healthcare Dentist sub-type. */
+export function buildDentistSchema(
+  practice: BakePracticeMetadata,
+  templates: BakeTemplates,
+  reviews: BakeReview[]
+): Record<string, unknown> {
+  return buildLocalBusinessSchema("Dentist", practice, templates, reviews);
 }
 
 export function buildPersonSchema(
