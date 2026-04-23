@@ -30,7 +30,7 @@ import {
   fetchIdentity,
 } from "../../api/websites";
 import ImportFromIdentityModal from "./ImportFromIdentityModal";
-import MediaPickerArrayField from "./MediaPickerArrayField";
+import CustomFieldsPanel from "./postEditor/CustomFieldsPanel";
 import {
   fetchPosts as defaultFetchPosts,
   createPost as defaultCreatePost,
@@ -112,6 +112,8 @@ function quickPostSeoScore(seoData: SeoData | null): {
 }
 
 /* ─── Media Picker Field ─── */
+// TODO: extract to a shared file; still consumed by the Featured Image row.
+// See plans/04232026-no-ticket-post-editor-custom-fields-redesign/spec.md.
 function MediaPickerField({
   projectId,
   value,
@@ -1111,114 +1113,13 @@ export default function PostsTab({
             label="Featured Image"
           />
 
-          {/* Custom Fields (dynamic from post type schema) */}
-          {(() => {
-            const activeType = postTypes.find((pt) => pt.id === formPostTypeId);
-            const schema = Array.isArray(activeType?.schema) ? activeType.schema : [];
-            if (schema.length === 0) return null;
-            return (
-              <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Custom Fields</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {schema.map((field: any) => {
-                    const slug = field.slug || field.name;
-                    const value = formCustomFields[slug] ?? field.default_value ?? "";
-                    return (
-                      <div key={slug}>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          {field.name}
-                          {field.required && <span className="text-red-500 ml-0.5">*</span>}
-                        </label>
-                        {field.type === "textarea" ? (
-                          <textarea
-                            value={String(value)}
-                            onChange={(e) =>
-                              setFormCustomFields((prev) => ({ ...prev, [slug]: e.target.value }))
-                            }
-                            rows={3}
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                          />
-                        ) : field.type === "boolean" ? (
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={!!value}
-                              onChange={(e) =>
-                                setFormCustomFields((prev) => ({ ...prev, [slug]: e.target.checked }))
-                              }
-                              className="rounded"
-                            />
-                            {value ? "Yes" : "No"}
-                          </label>
-                        ) : field.type === "select" ? (
-                          <AnimatedSelect
-                            options={(field.options || []).map((opt: string) => ({
-                              value: opt,
-                              label: opt,
-                            }))}
-                            value={String(value)}
-                            onChange={(val) =>
-                              setFormCustomFields((prev) => ({ ...prev, [slug]: val }))
-                            }
-                            placeholder="Select..."
-                            size="sm"
-                          />
-                        ) : field.type === "number" ? (
-                          <input
-                            type="number"
-                            value={String(value)}
-                            onChange={(e) =>
-                              setFormCustomFields((prev) => ({
-                                ...prev,
-                                [slug]: e.target.value ? Number(e.target.value) : "",
-                              }))
-                            }
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                          />
-                        ) : field.type === "date" ? (
-                          <input
-                            type="date"
-                            value={String(value)}
-                            onChange={(e) =>
-                              setFormCustomFields((prev) => ({ ...prev, [slug]: e.target.value }))
-                            }
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                          />
-                        ) : field.type === "media_url" ? (
-                          <MediaPickerField
-                            projectId={projectId}
-                            value={String(value)}
-                            onChange={(url) =>
-                              setFormCustomFields((prev) => ({ ...prev, [slug]: url }))
-                            }
-                            label=""
-                          />
-                        ) : field.type === "gallery" ? (
-                          <MediaPickerArrayField
-                            projectId={projectId}
-                            value={Array.isArray(value) ? (value as Array<{ url: string; link?: string; alt: string; caption?: string }>) : []}
-                            onChange={(arr) =>
-                              setFormCustomFields((prev) => ({ ...prev, [slug]: arr }))
-                            }
-                            label=""
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            value={String(value)}
-                            onChange={(e) =>
-                              setFormCustomFields((prev) => ({ ...prev, [slug]: e.target.value }))
-                            }
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
+          <CustomFieldsPanel
+            projectId={projectId}
+            postTypes={postTypes}
+            formPostTypeId={formPostTypeId}
+            formCustomFields={formCustomFields}
+            setFormCustomFields={setFormCustomFields}
+          />
 
           {/* Categories */}
           <div>
