@@ -120,6 +120,9 @@ jobs:
             nvm use node
             cd ${{ secrets.SANDBOX_TARGET_DIR }}
             npm install --production --include=optional
+            # package-lock.json is macOS-generated and doesn't list
+            # @img/sharp-linux-x64. Force-install the linux-x64 binary.
+            npm install --os=linux --cpu=x64 --no-save sharp || true
             # One-shot idempotent rename: knex_migrations rows were recorded with
             # .ts filenames when migrations ran locally via ts-node. After first
             # run, all names end in .js and the WHERE clause matches nothing.
