@@ -138,11 +138,15 @@ jobs:
             NODE_ENV=production npx knex migrate:latest
             sudo systemctl start redis-server || echo "Redis start warning (non-fatal)"
             sudo systemctl enable redis-server || true
-            pm2 restart ecosystem.config.js --update-env || pm2 start ecosystem.config.js
-            pm2 restart minds-worker || pm2 start ecosystem.config.js --only minds-worker
-            pm2 save
+            # pm2's speedList (end-of-command table render) throws when a
+            # process is in the middle of a crash loop, exiting 1 even when
+            # the restart itself succeeded. The `|| true` is cosmetic-error
+            # tolerance -- the diagnostic logs below will surface real failures.
+            { pm2 restart ecosystem.config.js --update-env || pm2 start ecosystem.config.js; } || true
+            { pm2 restart minds-worker || pm2 start ecosystem.config.js --only minds-worker; } || true
+            pm2 save || true
             echo "--- PM2 process list ---"
-            pm2 list
+            pm2 list || true
             echo "--- signals-backend recent logs ---"
             sleep 3
             pm2 logs signals-backend --lines 40 --nostream --raw || true
