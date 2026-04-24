@@ -63,6 +63,9 @@ interface IntelligenceData {
   topReferrers: Referrer[];
   driftAlerts: DriftAlert[];
   recommendedAction: RecommendedAction | null;
+  // TODO: type compensationAlerts once the backend shape is locked. Known fields
+  // from JSX usage: { narrative: string; annual_value_at_risk: number }.
+  compensationAlerts?: any[];
 }
 
 interface DiscoveredGP {
