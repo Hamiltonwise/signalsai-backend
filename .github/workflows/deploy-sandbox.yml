@@ -119,7 +119,7 @@ jobs:
             [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
             nvm use node
             cd ${{ secrets.SANDBOX_TARGET_DIR }}
-            npm install --production
+            npm install --production --include=optional
             # One-shot idempotent rename: knex_migrations rows were recorded with
             # .ts filenames when migrations ran locally via ts-node. After first
             # run, all names end in .js and the WHERE clause matches nothing.
