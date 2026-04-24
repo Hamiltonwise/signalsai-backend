@@ -123,16 +123,16 @@ jobs:
             # One-shot idempotent rename: knex_migrations rows were recorded with
             # .ts filenames when migrations ran locally via ts-node. After first
             # run, all names end in .js and the WHERE clause matches nothing.
-            # DATABASE_URL comes from the bundle's .env (same value the backend uses).
-            node -e "
-              require('dotenv').config();
-              const { Client } = require('pg');
+            # Reuses the generated knexfile so the connection resolves exactly
+            # as knex migrate would (supports both DATABASE_URL and DB_HOST env).
+            NODE_ENV=production node -e "
+              const knex = require('knex');
+              const config = require('./knexfile.js').production;
+              const db = knex(config);
               (async () => {
-                const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-                await c.connect();
-                const r = await c.query(\"UPDATE knex_migrations SET name = REGEXP_REPLACE(name, '\\\\.ts\$', '.js') WHERE name LIKE '%.ts'\");
+                const r = await db.raw(\"UPDATE knex_migrations SET name = REGEXP_REPLACE(name, '\\\\.ts\$', '.js') WHERE name LIKE '%.ts'\");
                 console.log('[knex_migrations rename] rows affected:', r.rowCount);
-                await c.end();
+                await db.destroy();
               })().catch(e => { console.error('[knex_migrations rename] FAILED:', e.message); process.exit(1); });
             "
             NODE_ENV=production npx knex migrate:latest
