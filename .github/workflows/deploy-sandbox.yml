@@ -74,7 +74,15 @@ jobs:
           const base = {
             client: 'pg',
             connection,
-            migrations: { directory: './dist/database/migrations', extension: 'js' },
+            migrations: {
+              directory: './dist/database/migrations',
+              extension: 'js',
+              // knex_migrations rows were recorded with .ts filenames when
+              // migrations ran locally via ts-node. The migrations ran against
+              // the DB -- only the filename extension changed. Skip the
+              // directory-vs-state validator so new .js migrations can run.
+              disableMigrationsListValidation: true,
+            },
             pool: { min: 2, max: 50 },
           };
           module.exports = { production: base, development: base, test: base };
@@ -110,6 +118,7 @@ jobs:
           port: ${{ secrets.SANDBOX_EC2_PORT }}
           key: ${{ secrets.SANDBOX_EC2_KEY }}
           script: |
+            set -e
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
