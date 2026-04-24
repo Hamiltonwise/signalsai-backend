@@ -14,6 +14,7 @@ and current test results. If code contradicts that document, the code is wrong.
 
 Path: ~/Desktop/alloro
 Branch: sandbox (never touch main directly)
+Never create a new branch. If sandbox is the wrong branch for a task, stop and ask Corey before proceeding.
 Frontend: frontend/ (React 18+, TypeScript, Vite, Tailwind CSS, shadcn/ui)
 Backend: src/ (Node.js, Express, Knex, PostgreSQL)
 
