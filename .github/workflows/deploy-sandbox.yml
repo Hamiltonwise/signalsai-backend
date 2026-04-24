@@ -77,11 +77,6 @@ jobs:
             migrations: {
               directory: './dist/database/migrations',
               extension: 'js',
-              // knex_migrations rows were recorded with .ts filenames when
-              // migrations ran locally via ts-node. The migrations ran against
-              // the DB -- only the filename extension changed. Skip the
-              // directory-vs-state validator so new .js migrations can run.
-              disableMigrationsListValidation: true,
             },
             pool: { min: 2, max: 50 },
           };
@@ -125,6 +120,21 @@ jobs:
             nvm use node
             cd ${{ secrets.SANDBOX_TARGET_DIR }}
             npm install --production
+            # One-shot idempotent rename: knex_migrations rows were recorded with
+            # .ts filenames when migrations ran locally via ts-node. After first
+            # run, all names end in .js and the WHERE clause matches nothing.
+            # DATABASE_URL comes from the bundle's .env (same value the backend uses).
+            node -e "
+              require('dotenv').config();
+              const { Client } = require('pg');
+              (async () => {
+                const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+                await c.connect();
+                const r = await c.query(\"UPDATE knex_migrations SET name = REGEXP_REPLACE(name, '\\\\.ts\$', '.js') WHERE name LIKE '%.ts'\");
+                console.log('[knex_migrations rename] rows affected:', r.rowCount);
+                await c.end();
+              })().catch(e => { console.error('[knex_migrations rename] FAILED:', e.message); process.exit(1); });
+            "
             NODE_ENV=production npx knex migrate:latest
             sudo systemctl start redis-server || echo "Redis start warning (non-fatal)"
             sudo systemctl enable redis-server || true
