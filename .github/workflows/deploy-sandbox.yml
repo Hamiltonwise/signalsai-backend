@@ -143,3 +143,6 @@ jobs:
             pm2 save
             echo "--- PM2 process list ---"
             pm2 list
+            echo "--- signals-backend recent logs ---"
+            sleep 3
+            pm2 logs signals-backend --lines 40 --nostream --raw || true
