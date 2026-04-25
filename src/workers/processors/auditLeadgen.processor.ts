@@ -53,9 +53,16 @@ import {
   type PillarOnlyResult,
 } from "../../controllers/audit/audit-utils/gbpAnalysisAggregator";
 
-// Claude's hard limit is 8000px per dimension; their recommended sweet spot
-// is ~1568px (1.15MP). Anything larger is downscaled server-side anyway.
-const CLAUDE_MAX_DIMENSION = 1568;
+// Claude's hard limit is 8000px per dimension. Their recommended sweet spot
+// is ~1568px (1.15MP), but 1024px preserves all layout/hierarchy/CTA-prominence
+// signals the website-analysis vision call needs while halving the JPEG size
+// (~80kB → ~30-40kB) and the input-image token cost. Override with
+// CLAUDE_MAX_DIMENSION env var if scoring drifts noticeably (don't go below
+// 1024 — finer granularity yields diminishing returns and risks layout loss).
+const CLAUDE_MAX_DIMENSION = parseInt(
+  process.env.CLAUDE_MAX_DIMENSION || "1024",
+  10
+);
 
 // Haiku is 3-5x faster than Sonnet for these prompts. Quality is lower but
 // acceptable for a first pass. Override with AUDIT_LLM_MODEL env var if
