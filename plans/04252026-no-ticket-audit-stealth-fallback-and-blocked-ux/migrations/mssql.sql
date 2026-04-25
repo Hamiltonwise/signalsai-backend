@@ -1,0 +1,13 @@
+-- Migration: add website_blocked flag to audit_processes
+-- Target DB: Microsoft SQL Server (NOT used by this app — alloro is Postgres-only)
+-- Included for spec compliance per CLAUDE.md migrations folder requirement.
+-- If the team ever ports to MSSQL, this scaffold is ready.
+
+-- TODO: fill during execution if MSSQL ever becomes a target. Expected DDL:
+--
+-- ALTER TABLE audit_processes
+--   ADD website_blocked BIT NOT NULL CONSTRAINT DF_audit_processes_website_blocked DEFAULT 0;
+--
+-- Rollback:
+--   ALTER TABLE audit_processes DROP CONSTRAINT DF_audit_processes_website_blocked;
+--   ALTER TABLE audit_processes DROP COLUMN website_blocked;

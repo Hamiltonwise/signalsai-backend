@@ -86,6 +86,11 @@ export interface IAuditProcess {
   step_self_gbp?: GbpMinimized | null;
   step_competitors?: { competitors: GbpMinimized[] } | null;
   step_gbp_analysis?: GbpAnalysisResult | null;
+  // Set to true when the homepage scrape was blocked by bot protection
+  // (Cloudflare etc.) and both default + stealth methods exhausted. Drives
+  // the frontend's "Your website blocks Alloro scanners" placeholder and
+  // tells the GBP analysis prompts to skip website-related advice.
+  website_blocked?: boolean;
   [key: string]: unknown;
   created_at: Date;
   updated_at: Date;

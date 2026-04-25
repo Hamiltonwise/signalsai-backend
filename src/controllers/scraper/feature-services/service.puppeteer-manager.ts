@@ -77,19 +77,41 @@ export async function setMobileViewport(page: Page): Promise<void> {
 }
 
 /**
+ * Result of a navigation attempt. `ok=true` means the page loaded; the
+ * caller can read `page.content()` etc. `blocked=true` is set when the
+ * failure looks like a bot-protection block (Cloudflare etc.) — caller
+ * should skip retries on the default path and either escalate to a
+ * stealth fallback or signal the audit as `website_blocked`.
+ */
+export interface NavigationResult {
+  ok: boolean;
+  blocked: boolean;
+  error?: string;
+}
+
+// Errors that indicate bot-protection (vs transient network failure).
+// On these, retrying with the same browser fingerprint will fail the same
+// way — no point spending the second 30s timeout. Caller should escalate.
+const BLOCKED_ERROR_REGEX =
+  /ERR_BLOCKED_BY_CLIENT|ERR_HTTP2_PROTOCOL_ERROR|ERR_TOO_MANY_REDIRECTS/i;
+
+/**
  * Navigate to a URL with retry logic.
  *
  * Attempts navigation up to `maxRetries` times with a 1-second delay
  * between attempts. Uses `domcontentloaded` wait condition with a
  * 30-second timeout per attempt.
  *
- * Returns `true` if navigation succeeded, `false` if all retries failed.
+ * On the FIRST failure that matches `BLOCKED_ERROR_REGEX`, fails fast —
+ * no retry. Other transient failures (timeout, DNS) keep the full retry
+ * budget. This shaves ~5s off bot-blocked audits on the default path
+ * before the orchestrator can escalate to the stealth fallback.
  */
 export async function navigateWithRetry(
   page: Page,
   url: string,
   maxRetries: number = 2
-): Promise<boolean> {
+): Promise<NavigationResult> {
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -103,9 +125,22 @@ export async function navigateWithRetry(
       break;
     } catch (navError: any) {
       lastError = navError;
+      const msg = navError?.message || String(navError);
+      const isBlocked = BLOCKED_ERROR_REGEX.test(msg);
+
       log("WARN", `Navigation attempt ${attempt} failed`, {
-        error: navError.message,
+        error: msg,
+        blocked: isBlocked,
       });
+
+      if (isBlocked) {
+        // Don't waste retries — same browser fingerprint, same block.
+        log("ERROR", "Bot-block detected — failing fast (no further retries)", {
+          error: msg,
+        });
+        return { ok: false, blocked: true, error: msg };
+      }
+
       if (attempt < maxRetries) {
         log("DEBUG", "Retrying navigation...");
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -117,10 +152,14 @@ export async function navigateWithRetry(
     log("ERROR", "All navigation attempts failed", {
       error: (lastError as Error).message,
     });
-    return false;
+    return {
+      ok: false,
+      blocked: false,
+      error: (lastError as Error).message,
+    };
   }
 
-  return true;
+  return { ok: true, blocked: false };
 }
 
 /**
