@@ -89,23 +89,31 @@ export async function uploadPmsData(req: Request, res: Response) {
       });
     }
 
-    const result = await uploadService.processFileUpload(req.file, domain, organizationId, locationId);
+    const useMappingFlow = req.body?.useMappingFlow === "true" || req.body?.useMappingFlow === true;
+    const result = await uploadService.processFileUpload(req.file, domain, organizationId, locationId, { useMappingFlow });
 
+    // Mapping preview path -- caller must POST confirmed mapping next.
+    if ((result as any).requiresMapping) {
+      return res.json({ success: true, data: result });
+    }
+
+    const ingestion = result as Awaited<ReturnType<typeof uploadService.processConfirmedMapping>>;
     return res.json({
       success: true,
       data: {
-        recordsProcessed: result.recordsProcessed,
-        recordsStored: result.recordsStored,
-        entryType: result.entryType,
-        jobId: result.jobId,
-        instantFinding: result.instantFinding,
-        parserFailed: result.parserFailed ?? false,
-        parserMessage: (result as any).parserMessage ?? undefined,
-        hipaaReport: (result as any).hipaaReport ?? null,
-        referralSummary: (result as any).referralSummary ?? null,
-        stats: (result as any).stats ?? null,
+        recordsProcessed: ingestion.recordsProcessed,
+        recordsStored: ingestion.recordsStored,
+        entryType: ingestion.entryType,
+        jobId: ingestion.jobId,
+        instantFinding: ingestion.instantFinding,
+        parserFailed: ingestion.parserFailed ?? false,
+        parserMessage: (ingestion as any).parserMessage ?? undefined,
+        hipaaReport: (ingestion as any).hipaaReport ?? null,
+        referralSummary: (ingestion as any).referralSummary ?? null,
+        stats: (ingestion as any).stats ?? null,
+        plainEnglishSummary: (ingestion as any).plainEnglishSummary ?? null,
       },
-      message: `Successfully processed file ${result.originalName} with ${result.recordsProcessed} records`,
+      message: `Successfully processed file ${ingestion.originalName} with ${ingestion.recordsProcessed} records`,
     });
   } catch (error: any) {
     console.error("Error in /pms/upload:", error?.message || error);
@@ -113,6 +121,98 @@ export async function uploadPmsData(req: Request, res: Response) {
       success: false,
       error: `Failed to process PMS upload: ${error.message}`,
     });
+  }
+}
+
+/**
+ * POST /pms/upload/confirm-mapping
+ * Confirm a Haiku-suggested column mapping for a draft pms_job and run
+ * the full ingestion pipeline. Stores the mapping on the organization
+ * so future uploads with the same header structure auto-apply it.
+ *
+ * Body: { jobId: number, mapping: ColumnMapping }
+ */
+export async function confirmReferralMapping(req: Request, res: Response) {
+  try {
+    const rbacReq = req as RBACRequest;
+    const organizationId = rbacReq.organizationId;
+    if (!organizationId) {
+      return res.status(401).json({ success: false, error: "Authentication required" });
+    }
+    const { jobId, mapping } = req.body || {};
+    if (typeof jobId !== "number" || !Number.isFinite(jobId)) {
+      return res.status(400).json({ success: false, error: "jobId is required" });
+    }
+    if (!mapping || typeof mapping !== "object") {
+      return res.status(400).json({ success: false, error: "mapping is required" });
+    }
+    const result = await uploadService.processConfirmedMapping(jobId, mapping, organizationId);
+    return res.json({
+      success: true,
+      data: {
+        recordsProcessed: result.recordsProcessed,
+        recordsStored: result.recordsStored,
+        jobId: result.jobId,
+        instantFinding: result.instantFinding,
+        parserFailed: result.parserFailed ?? false,
+        plainEnglishSummary: (result as any).plainEnglishSummary ?? null,
+        referralSummary: (result as any).referralSummary ?? null,
+        stats: (result as any).stats ?? null,
+      },
+      message: (result as any).plainEnglishSummary || "Mapping confirmed and data ingested.",
+    });
+  } catch (error: any) {
+    return handleError(res, error, "confirmReferralMapping");
+  }
+}
+
+/**
+ * GET /pms/system-notifications
+ * Returns un-dismissed system notifications for the authenticated org
+ * (e.g. retroactive cleanup notices).
+ */
+export async function getSystemNotifications(req: Request, res: Response) {
+  try {
+    const rbacReq = req as RBACRequest;
+    const organizationId = rbacReq.organizationId;
+    if (!organizationId) {
+      return res.status(401).json({ success: false, error: "Authentication required" });
+    }
+    const { db } = await import("../../database/connection");
+    const row = await db("organizations").where({ id: organizationId }).select("system_notifications").first();
+    const stored = row?.system_notifications;
+    const all = Array.isArray(stored) ? stored : (typeof stored === "string" ? JSON.parse(stored) : []);
+    const active = all.filter((n: any) => !n.dismissedAt);
+    return res.json({ success: true, data: active });
+  } catch (error: any) {
+    return handleError(res, error, "getSystemNotifications");
+  }
+}
+
+/**
+ * POST /pms/system-notifications/:id/dismiss
+ * Marks a single notification dismissed.
+ */
+export async function dismissSystemNotification(req: Request, res: Response) {
+  try {
+    const rbacReq = req as RBACRequest;
+    const organizationId = rbacReq.organizationId;
+    if (!organizationId) {
+      return res.status(401).json({ success: false, error: "Authentication required" });
+    }
+    const id = String(req.params.id || "");
+    if (!id) {
+      return res.status(400).json({ success: false, error: "id is required" });
+    }
+    const { db } = await import("../../database/connection");
+    const row = await db("organizations").where({ id: organizationId }).select("system_notifications").first();
+    const stored = row?.system_notifications;
+    const all = Array.isArray(stored) ? stored : (typeof stored === "string" ? JSON.parse(stored) : []);
+    const updated = all.map((n: any) => n.id === id ? { ...n, dismissedAt: new Date().toISOString() } : n);
+    await db("organizations").where({ id: organizationId }).update({ system_notifications: JSON.stringify(updated) });
+    return res.json({ success: true });
+  } catch (error: any) {
+    return handleError(res, error, "dismissSystemNotification");
   }
 }
 

@@ -29,6 +29,7 @@ import { apiGet, apiPost } from "@/api/index";
 import { useLocationContext } from "@/contexts/locationContext";
 import { useAuth } from "@/hooks/useAuth";
 import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
+import { SystemNotificationsBanner } from "@/components/dashboard/SystemNotificationsBanner";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -637,6 +638,9 @@ export default function ReferralIntelligence() {
       {!isLoading && !isError && !hasData && (
         <EmptyState onUpload={() => setShowUploadWizard(true)} />
       )}
+
+      {/* System notifications (cleanup notices, etc.) */}
+      {!isLoading && <SystemNotificationsBanner />}
 
       {/* Data present */}
       {!isLoading && hasData && data && (

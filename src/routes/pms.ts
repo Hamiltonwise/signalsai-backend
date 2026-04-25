@@ -13,6 +13,9 @@ const pmsRoutes = express.Router();
 
 // Upload & Processing
 pmsRoutes.post("/upload", authenticateToken, rbacMiddleware, upload.single("csvFile"), controller.uploadPmsData);
+pmsRoutes.post("/upload/confirm-mapping", authenticateToken, rbacMiddleware, controller.confirmReferralMapping);
+pmsRoutes.get("/system-notifications", authenticateToken, rbacMiddleware, controller.getSystemNotifications);
+pmsRoutes.post("/system-notifications/:id/dismiss", authenticateToken, rbacMiddleware, controller.dismissSystemNotification);
 pmsRoutes.post("/parse-paste", authenticateToken, rbacMiddleware, controller.parsePaste);
 pmsRoutes.post("/sanitize-paste", authenticateToken, rbacMiddleware, controller.sanitizePaste);
 pmsRoutes.post("/summary", authenticateToken, rbacMiddleware, controller.getPmsSummary);

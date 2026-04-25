@@ -174,11 +174,49 @@ export interface PMSUploadRequest {
   file: File;
   pmsType?: string;
   locationId?: number | null;
+  /** Opt the upload into the column-mapping confirmation flow. */
+  useMappingFlow?: boolean;
+}
+
+export type ReferralMappingTarget =
+  | "source" | "date" | "amount" | "count" | "patient" | "procedure" | "provider";
+
+export interface ReferralColumnMapping {
+  source: string | null;
+  date: string | null;
+  amount: string | null;
+  count: string | null;
+  patient: string | null;
+  procedure: string | null;
+  provider: string | null;
+}
+
+export interface ReferralMappingSuggestion {
+  mapping: ReferralColumnMapping;
+  confidence: Partial<Record<ReferralMappingTarget, number>>;
+  rationale: Partial<Record<ReferralMappingTarget, string>>;
+  warnings: string[];
+}
+
+export interface MappingPreviewData {
+  requiresMapping: true;
+  reason: "first_upload" | "structure_changed";
+  jobId: number;
+  headers: string[];
+  sampleRows: Record<string, unknown>[];
+  suggestion: ReferralMappingSuggestion;
+  fingerprint: string;
+  previousMapping?: (ReferralColumnMapping & { headersFingerprint?: string; mappedAt?: string }) | null;
+}
+
+/** Narrows a PMSUploadResponse.data to the mapping-preview branch. */
+export function isMappingPreview(d: unknown): d is MappingPreviewData {
+  return !!d && typeof d === "object" && (d as { requiresMapping?: unknown }).requiresMapping === true;
 }
 
 export interface PMSUploadResponse {
   success: boolean;
-  data?: {
+  data?: MappingPreviewData | {
     recordsProcessed: number;
     recordsStored: number;
     entryType?: "csv" | "manual";
@@ -196,9 +234,45 @@ export interface PMSUploadResponse {
       zeroSourcesDetected?: boolean;
       headersSeen?: string[];
     };
+    plainEnglishSummary?: string | null;
   };
   error?: string;
   message?: string;
+}
+
+export interface ConfirmMappingRequest {
+  jobId: number;
+  mapping: ReferralColumnMapping;
+}
+
+export interface ConfirmMappingResponse {
+  success: boolean;
+  data?: {
+    recordsProcessed: number;
+    recordsStored: number;
+    jobId: number;
+    instantFinding?: { totalRecords: number; topSource?: string; topSourceCount?: number } | null;
+    parserFailed?: boolean;
+    plainEnglishSummary?: string | null;
+  };
+  error?: string;
+  message?: string;
+}
+
+export interface SystemNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  dismissedAt: string | null;
+}
+
+export interface SystemNotificationsResponse {
+  success: boolean;
+  data?: SystemNotification[];
+  error?: string;
 }
 
 // =====================================================================
@@ -323,6 +397,9 @@ export async function uploadPMSData(
     if (request.locationId) {
       formData.append("locationId", String(request.locationId));
     }
+    if (request.useMappingFlow) {
+      formData.append("useMappingFlow", "true");
+    }
 
     // Use apiPost with FormData support
     const result = await apiPost({
@@ -340,6 +417,54 @@ export async function uploadPMSData(
       success: false,
       error: "Failed to upload PMS data. Please try again.",
     };
+  }
+}
+
+/**
+ * Confirm a Haiku-suggested column mapping for a draft pms_job. Triggers
+ * the full ingestion pipeline against the saved raw data.
+ */
+export async function confirmReferralMapping(
+  request: ConfirmMappingRequest,
+): Promise<ConfirmMappingResponse> {
+  try {
+    const result = await apiPost({
+      path: "/pms/upload/confirm-mapping",
+      passedData: request,
+      additionalHeaders: { "Content-Type": "application/json", Accept: "application/json" },
+    });
+    return result;
+  } catch (error) {
+    console.error("Confirm mapping API error:", error);
+    return { success: false, error: "Failed to confirm column mapping." };
+  }
+}
+
+/**
+ * Fetch active (un-dismissed) system notifications for the current org.
+ */
+export async function fetchSystemNotifications(): Promise<SystemNotificationsResponse> {
+  try {
+    return await apiGet({ path: "/pms/system-notifications" });
+  } catch (error) {
+    console.error("System notifications fetch error:", error);
+    return { success: false, error: "Failed to load notifications." };
+  }
+}
+
+/**
+ * Dismiss a single system notification by id.
+ */
+export async function dismissSystemNotification(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    return await apiPost({
+      path: `/pms/system-notifications/${encodeURIComponent(id)}/dismiss`,
+      passedData: {},
+      additionalHeaders: { "Content-Type": "application/json", Accept: "application/json" },
+    });
+  } catch (error) {
+    console.error("Dismiss notification error:", error);
+    return { success: false, error: "Failed to dismiss notification." };
   }
 }
 

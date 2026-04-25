@@ -13,6 +13,16 @@ import { detectSelfSufficientOperator } from "../../../services/operatorDetectio
 import { preprocessPmsData, type PreprocessResult } from "./pms-preprocessor.service";
 import { needsVisionParsing, parseWithVision } from "./pms-vision-parser.service";
 import { syncReferralSourcesFromPmsJob } from "../../../services/referralSourceSync";
+import {
+  applyMapping,
+  computeHeadersFingerprint,
+  getStoredMapping,
+  suggestColumnMapping,
+  storeMapping,
+  type ColumnMapping,
+  type MappingSuggestion,
+  type StoredMapping,
+} from "../../../services/referralColumnMapping";
 
 /**
  * Process a manual PMS data entry.
@@ -232,52 +242,76 @@ function extractInstantFinding(jsonData: any[]): {
 }
 
 /**
- * Process a file upload (CSV, XLS, XLSX, TXT).
- * Converts to JSON, creates job, sends to n8n parser webhook.
- * @param authOrganizationId - Organization ID from JWT/RBAC (authoritative). Falls back to domain lookup if null.
+ * Resolve organizationId from auth context or domain.
  */
-export async function processFileUpload(
-  file: Express.Multer.File,
-  domain: string,
-  authOrganizationId?: number | null,
-  passedLocationId?: number | null
-) {
-  // Route to vision parser for images/PDFs, CSV converter for everything else
-  let jsonData: Record<string, unknown>[];
-  let visionConfidence: string | null = null;
-  let visionDescription: string | null = null;
+async function resolveOrgId(domain: string, authOrganizationId?: number | null): Promise<number | null> {
+  if (authOrganizationId) return authOrganizationId;
+  if (!domain) return null;
+  const numericId = parseInt(domain, 10);
+  if (!isNaN(numericId) && String(numericId) === domain.trim()) {
+    const org = await OrganizationModel.findById(numericId);
+    return org?.id ?? null;
+  }
+  const org = await OrganizationModel.findByDomain(domain);
+  return org?.id ?? null;
+}
 
-  if (needsVisionParsing(file)) {
-    console.log(`[PMS] Image/PDF detected: ${file.originalname}. Using vision parser.`);
-    const visionResult = await parseWithVision(file);
+/**
+ * Build the plain-English confirmation summary that users see after a successful
+ * mapped ingestion. "We found X referrals from Y sources covering [date range]."
+ */
+function buildPlainEnglishSummary(jsonData: Record<string, unknown>[], preprocessResult: PreprocessResult | null): string {
+  if (!preprocessResult) {
+    return `We received ${jsonData.length} rows. Analysis in progress.`;
+  }
+  const sources = preprocessResult.referralSummary.filter((s) => s.name !== "Self / Direct" && s.name !== "Unknown");
+  const referralCount = sources.reduce((sum, s) => sum + s.uniquePatients, 0);
+  const sourceCount = sources.length;
 
-    if (!visionResult.success || visionResult.rows.length === 0) {
-      // Vision parsing failed, but don't block. Return what we have.
-      return {
-        recordsProcessed: 0,
-        recordsStored: 0,
-        entryType: "csv" as const,
-        jobId: undefined,
-        originalName: file.originalname,
-        instantFinding: { totalRecords: 0 },
-        parserFailed: true,
-        parserMessage: visionResult.error ||
-          "We couldn't read the data from this image clearly enough. Try a photo with better lighting, or use the manual entry option to type your numbers in directly.",
-      };
+  const allDates = preprocessResult.referralSummary
+    .flatMap((s) => s.details.map((d) => d.date))
+    .filter((d): d is string => typeof d === "string" && d.length > 0)
+    .sort();
+
+  let dateRange = "";
+  if (allDates.length > 0) {
+    const first = allDates[0];
+    const last = allDates[allDates.length - 1];
+    if (first === last) {
+      dateRange = ` in ${first}`;
+    } else {
+      dateRange = ` covering ${first} through ${last}`;
     }
-
-    jsonData = visionResult.rows;
-    visionConfidence = visionResult.confidence;
-    visionDescription = visionResult.description;
-    console.log(`[PMS] Vision extracted ${jsonData.length} rows (confidence: ${visionConfidence})`);
-  } else {
-    jsonData = await convertFileToJson(file);
   }
 
+  if (referralCount === 0 || sourceCount === 0) {
+    return `We received your file but couldn't find referral sources we recognize. Confirm or adjust the column mapping above and try again.`;
+  }
+  return `We found ${referralCount} referrals from ${sourceCount} ${sourceCount === 1 ? "source" : "sources"}${dateRange}. Does this look right?`;
+}
+
+interface IngestionPipelineOptions {
+  jsonData: Record<string, unknown>[];
+  organizationId: number;
+  locationId: number | null;
+  originalName: string;
+  /** When set, reuse this draft job instead of creating a new one. */
+  existingJobId?: number;
+}
+
+/**
+ * Run the post-mapping ingestion pipeline. Called by both processFileUpload
+ * (when no confirmation is needed) and processConfirmedMapping (when the
+ * user has confirmed the mapping for a draft job).
+ *
+ * Does: HIPAA scrub, dedup, create-or-update pms_job, POST to n8n parser,
+ * fall back to local preprocessor if n8n fails, run referralSourceSync.
+ */
+async function runIngestionPipeline(opts: IngestionPipelineOptions) {
+  const { jsonData, organizationId, locationId, originalName, existingJobId } = opts;
   const recordsProcessed = jsonData.length;
 
   // HIPAA scrub + patient deduplication + referral aggregation
-  // Runs BEFORE data goes to n8n or gets stored
   let preprocessResult: PreprocessResult | null = null;
   try {
     preprocessResult = preprocessPmsData(jsonData);
@@ -295,75 +329,50 @@ export async function processFileUpload(
     }
   } catch (preprocessError: any) {
     console.warn(`[PMS] Preprocessor warning (non-blocking): ${preprocessError.message}`);
-    // Non-blocking: if preprocessor fails, fall through to original flow
   }
 
-  // Use scrubbed data for n8n (HIPAA safe) if available
   const dataForParser = preprocessResult?.scrubbedData ?? jsonData;
-
-  // Use authenticated org ID if available, fall back to domain lookup for backward compat
-  let organizationId = authOrganizationId ?? null;
-  if (!organizationId && domain) {
-    const numericId = parseInt(domain, 10);
-    if (!isNaN(numericId) && String(numericId) === domain.trim()) {
-      const org = await OrganizationModel.findById(numericId);
-      organizationId = org?.id ?? null;
-    } else {
-      const org = await OrganizationModel.findByDomain(domain);
-      organizationId = org?.id ?? null;
-    }
-  }
-
-  if (!organizationId) {
-    throw new Error("Could not determine your organization. Please complete onboarding or contact support.");
-  }
-
-  // Use passed locationId if available, otherwise resolve from org
-  const locationId = passedLocationId ?? await resolveLocationId(organizationId);
 
   // Track sync result for customer feedback on unrecognized formats
   let syncResult: { synced: number; skipped: number; zeroSourcesDetected?: boolean; headersSeen?: string[] } | null = null;
 
-  // Run self-sufficient operator detection (fire-and-forget)
-  if (organizationId && jsonData.length > 0) {
+  // Self-sufficient operator detection (fire-and-forget)
+  if (jsonData.length > 0) {
     const headers = Object.keys(jsonData[0] || {});
     detectSelfSufficientOperator(organizationId, headers, jsonData as Record<string, string>[]).catch(() => {});
   }
 
-  // Create the job record
-  const job = await PmsJobModel.create({
-    time_elapsed: 0,
-    status: "pending",
-    response_log: null,
-    organization_id: organizationId,
-    location_id: locationId,
-  } as any);
-
-  const jobId = job.id;
-
-  if (!jobId) {
-    throw new Error("Failed to create PMS job record");
+  // Create or reuse the job record
+  let jobId: number;
+  if (existingJobId) {
+    jobId = existingJobId;
+    await PmsJobModel.updateById(jobId, {
+      status: "pending",
+      response_log: null,
+      raw_input_data: dataForParser,
+    } as any);
+  } else {
+    const job = await PmsJobModel.create({
+      time_elapsed: 0,
+      status: "pending",
+      response_log: null,
+      organization_id: organizationId,
+      location_id: locationId,
+    } as any);
+    if (!job.id) throw new Error("Failed to create PMS job record");
+    jobId = job.id;
   }
 
-  // Initialize automation status tracking
   await initializeAutomationStatus(jobId);
-
-  // Update status: file received
   await updateAutomationStatus(jobId, {
     step: "file_upload",
     stepStatus: "processing",
     customMessage: "Processing uploaded file...",
   });
-
-  // Save the raw input data for retry (scrubbed version if available)
-  await PmsJobModel.updateById(jobId, {
-    raw_input_data: dataForParser,
-  } as any);
-
-  // Complete file_upload step and start pms_parser step
+  if (!existingJobId) {
+    await PmsJobModel.updateById(jobId, { raw_input_data: dataForParser } as any);
+  }
   await completeStep(jobId, "file_upload", "pms_parser");
-
-  // Update status: sending to parser
   await updateAutomationStatus(jobId, {
     step: "pms_parser",
     stepStatus: "processing",
@@ -379,7 +388,7 @@ export async function processFileUpload(
     const response = await axios.post(
       PMS_PARSER_WEBHOOK,
       {
-        report_data: dataForParser, // HIPAA-scrubbed data
+        report_data: dataForParser,
         jobId,
         preprocessed: preprocessResult ? {
           uniquePatients: preprocessResult.stats.uniquePatients,
@@ -387,25 +396,15 @@ export async function processFileUpload(
           referralSummary: preprocessResult.referralSummary,
         } : undefined,
       },
-      {
-        headers: { "Content-Type": "application/json" },
-        timeout: 120_000, // 2 minute timeout
-      }
+      { headers: { "Content-Type": "application/json" }, timeout: 120_000 }
     );
-
     console.log(`[PMS] Parser webhook responded for job ${jobId}:`, response.status);
-
-    // Auto-approve: the customer uploaded data and the parser processed it.
-    // No admin gate needed -- the intelligence page should show results immediately.
     try {
       await PmsJobModel.updateById(jobId, { is_approved: true, status: "approved" } as any);
-      console.log(`[PMS] Job ${jobId}: auto-approved after successful webhook processing`);
     } catch (approveErr: any) {
       console.error(`[PMS] Job ${jobId}: auto-approve failed (non-blocking):`, approveErr.message);
     }
-
-    // Sync referral sources to referral_sources table (powers Monday email, GP discovery, drift detection)
-    if (organizationId && jsonData.length > 0) {
+    if (jsonData.length > 0) {
       try {
         syncResult = await syncReferralSourcesFromPmsJob(organizationId, jsonData as Record<string, string>[]);
       } catch (err) {
@@ -414,11 +413,7 @@ export async function processFileUpload(
     }
   } catch (webhookError: any) {
     console.error(`[PMS] Parser webhook failed for job ${jobId}:`, webhookError.message);
-
-    // Store preprocessor results directly so the client gets immediate value
-    // even when the n8n webhook is unavailable. The preprocessor already did
-    // deduplication, referral source aggregation, and HIPAA scrubbing locally.
-    if (preprocessResult?.referralSummary?.length && organizationId) {
+    if (preprocessResult?.referralSummary?.length) {
       try {
         await PmsJobModel.updateById(jobId, {
           response_log: JSON.stringify({
@@ -428,16 +423,13 @@ export async function processFileUpload(
             note: "Processed locally. Full n8n analysis pending retry.",
           }),
           status: "pending_retry",
-          is_approved: true, // Auto-approve: customer gets immediate value from local processing
+          is_approved: true,
         } as any);
-
         await updateAutomationStatus(jobId, {
           step: "pms_parser",
           stepStatus: "processing",
           customMessage: "Your referral data was analyzed locally. Full analysis will complete when our processing system reconnects.",
         });
-
-        console.log(`[PMS] Job ${jobId}: stored local preprocessor results (${preprocessResult.stats.uniqueSources} sources, ${preprocessResult.stats.uniquePatients} patients)`);
       } catch (storeErr: any) {
         console.error(`[PMS] Failed to store preprocessor results for job ${jobId}:`, storeErr.message);
       }
@@ -450,25 +442,16 @@ export async function processFileUpload(
           : `Parser unavailable: ${webhookError.message}. Try again or use manual entry.`,
       });
     }
-
-    console.warn(`[PMS] Job ${jobId} marked for retry. Customer sees preprocessor results immediately.`);
-
-    // Sync referral sources even on webhook failure (the data is local, pipe it through)
-    if (organizationId && jsonData.length > 0) {
+    if (jsonData.length > 0) {
       syncReferralSourcesFromPmsJob(organizationId, jsonData as Record<string, string>[]).catch((err) => {
         console.error(`[PMS] Referral source sync failed for job ${jobId} (n8n fallback, non-blocking):`, err instanceof Error ? err.message : err);
       });
     }
-
-    // Auto-approve on local processing too -- customer uploaded data, give them value
     try {
       await PmsJobModel.updateById(jobId, { is_approved: true } as any);
-      console.log(`[PMS] Job ${jobId}: auto-approved after local preprocessing`);
     } catch {
       // non-blocking
     }
-
-    // Use preprocessor results for instant finding when available (more accurate than raw extraction)
     const instantFinding = preprocessResult?.referralSummary?.length
       ? {
           totalRecords: preprocessResult.stats.uniquePatients,
@@ -480,22 +463,21 @@ export async function processFileUpload(
             : preprocessResult.referralSummary[1]?.uniquePatients || preprocessResult.referralSummary[0]?.uniquePatients,
         }
       : extractInstantFinding(jsonData);
-
     return {
       recordsProcessed,
       recordsStored: recordsProcessed,
       entryType: "csv" as const,
       jobId,
-      originalName: file.originalname,
+      originalName,
       instantFinding,
       parserFailed: true,
       parserMessage: instantFinding?.topSource
         ? `Your referral data was analyzed. Top source: ${instantFinding.topSource} (${instantFinding.topSourceCount} cases). Full analysis completing shortly.`
         : "Your data was received. Our full processing system is temporarily unavailable, but we'll process it shortly.",
+      plainEnglishSummary: buildPlainEnglishSummary(jsonData, preprocessResult),
     };
   }
 
-  // Use preprocessor results for instant finding if available (more accurate)
   const instantFinding = preprocessResult?.referralSummary?.length
     ? {
         totalRecords: preprocessResult.stats.uniquePatients,
@@ -513,13 +495,184 @@ export async function processFileUpload(
     recordsStored: recordsProcessed,
     entryType: "csv" as const,
     jobId,
-    originalName: file.originalname,
+    originalName,
     instantFinding,
     parserFailed: false,
     hipaaReport: preprocessResult?.hipaaReport ?? null,
     referralSummary: preprocessResult?.referralSummary ?? null,
     stats: preprocessResult?.stats ?? null,
-    // Customer feedback: did we find referral sources in their data?
     referralSyncResult: syncResult ?? undefined,
+    plainEnglishSummary: buildPlainEnglishSummary(jsonData, preprocessResult),
   };
+}
+
+export interface MappingPreviewResponse {
+  requiresMapping: true;
+  reason: "first_upload" | "structure_changed";
+  jobId: number;
+  headers: string[];
+  sampleRows: Record<string, unknown>[];
+  suggestion: MappingSuggestion;
+  fingerprint: string;
+  previousMapping?: StoredMapping | null;
+}
+
+/**
+ * Process a file upload (CSV, XLS, XLSX, TXT).
+ *
+ * If the org has a stored mapping with a matching headers fingerprint, the
+ * mapping is auto-applied and ingestion runs to completion. If the headers
+ * have changed, or this is a first upload and the caller opted into the
+ * mapping flow (useMappingFlow=true), the function returns a preview
+ * response with a Haiku-suggested mapping and a draft job. The caller then
+ * POSTs to /pms/upload/confirm-mapping with the confirmed mapping.
+ *
+ * @param authOrganizationId - Organization ID from JWT/RBAC (authoritative).
+ */
+export async function processFileUpload(
+  file: Express.Multer.File,
+  domain: string,
+  authOrganizationId?: number | null,
+  passedLocationId?: number | null,
+  options?: { useMappingFlow?: boolean }
+) {
+  // Route to vision parser for images/PDFs, CSV converter for everything else
+  let jsonData: Record<string, unknown>[];
+
+  if (needsVisionParsing(file)) {
+    console.log(`[PMS] Image/PDF detected: ${file.originalname}. Using vision parser.`);
+    const visionResult = await parseWithVision(file);
+
+    if (!visionResult.success || visionResult.rows.length === 0) {
+      return {
+        recordsProcessed: 0,
+        recordsStored: 0,
+        entryType: "csv" as const,
+        jobId: undefined,
+        originalName: file.originalname,
+        instantFinding: { totalRecords: 0 },
+        parserFailed: true,
+        parserMessage: visionResult.error ||
+          "We couldn't read the data from this image clearly enough. Try a photo with better lighting, or use the manual entry option to type your numbers in directly.",
+      };
+    }
+    jsonData = visionResult.rows;
+    console.log(`[PMS] Vision extracted ${jsonData.length} rows (confidence: ${visionResult.confidence})`);
+  } else {
+    jsonData = await convertFileToJson(file);
+  }
+
+  const organizationId = await resolveOrgId(domain, authOrganizationId);
+  if (!organizationId) {
+    throw new Error("Could not determine your organization. Please complete onboarding or contact support.");
+  }
+  const locationId = passedLocationId ?? await resolveLocationId(organizationId);
+
+  // ============================================================
+  // Mapping preflight
+  // ============================================================
+  const headers = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
+  const fingerprint = computeHeadersFingerprint(headers);
+  const stored = jsonData.length > 0 ? await getStoredMapping(organizationId) : null;
+
+  if (stored && stored.headersFingerprint === fingerprint) {
+    // Stored mapping matches current upload structure. Auto-apply, ingest.
+    const mapped = applyMapping(jsonData, stored);
+    return runIngestionPipeline({
+      jsonData: mapped,
+      organizationId,
+      locationId,
+      originalName: file.originalname,
+    });
+  }
+
+  const headersChanged = !!stored && stored.headersFingerprint !== fingerprint;
+  const firstUploadNeedsMapping = !stored && options?.useMappingFlow === true;
+
+  if (jsonData.length > 0 && (headersChanged || firstUploadNeedsMapping)) {
+    // Save raw data to a draft job, ask Haiku for a mapping suggestion, return preview.
+    const draftJob = await PmsJobModel.create({
+      time_elapsed: 0,
+      status: "pending_mapping",
+      response_log: null,
+      organization_id: organizationId,
+      location_id: locationId,
+    } as any);
+    if (!draftJob.id) throw new Error("Failed to create draft PMS job for mapping review");
+
+    await PmsJobModel.updateById(draftJob.id, { raw_input_data: jsonData } as any);
+
+    let suggestion: MappingSuggestion;
+    try {
+      suggestion = await suggestColumnMapping(headers, jsonData.slice(0, 10));
+    } catch (err) {
+      console.error(`[PMS] Mapping suggestion failed for job ${draftJob.id}:`, err instanceof Error ? err.message : err);
+      suggestion = {
+        mapping: { source: null, date: null, amount: null, count: null, patient: null, procedure: null, provider: null },
+        confidence: {},
+        rationale: {},
+        warnings: ["Mapping suggestion service unavailable. Please pick the columns manually."],
+      };
+    }
+
+    const response: MappingPreviewResponse = {
+      requiresMapping: true,
+      reason: headersChanged ? "structure_changed" : "first_upload",
+      jobId: draftJob.id,
+      headers,
+      sampleRows: jsonData.slice(0, 10),
+      suggestion,
+      fingerprint,
+      previousMapping: stored,
+    };
+    return response;
+  }
+
+  // Legacy path: no stored mapping, useMappingFlow not opted in. Run heuristics
+  // as before -- existing surfaces keep working until they migrate.
+  return runIngestionPipeline({
+    jsonData,
+    organizationId,
+    locationId,
+    originalName: file.originalname,
+  });
+}
+
+/**
+ * Apply a confirmed mapping to a draft pms_job's raw_input_data and run
+ * the full ingestion pipeline. Stores the mapping on the organization so
+ * future uploads with the same fingerprint apply it automatically.
+ */
+export async function processConfirmedMapping(
+  jobId: number,
+  confirmedMapping: ColumnMapping,
+  authOrganizationId: number,
+): Promise<ReturnType<typeof runIngestionPipeline>> {
+  const job = await PmsJobModel.findById(jobId);
+  if (!job) throw new Error(`PMS job ${jobId} not found`);
+  if (job.organization_id !== authOrganizationId) {
+    throw new Error("This job does not belong to your organization");
+  }
+  if (!job.raw_input_data) throw new Error(`PMS job ${jobId} has no raw input data to remap`);
+
+  const rawData = job.raw_input_data as unknown as Record<string, unknown>[];
+  if (!Array.isArray(rawData) || rawData.length === 0) {
+    throw new Error(`PMS job ${jobId} raw input data is empty or malformed`);
+  }
+
+  const headers = Object.keys(rawData[0]);
+  const fingerprint = computeHeadersFingerprint(headers);
+
+  // Persist mapping for future auto-application
+  await storeMapping(authOrganizationId, confirmedMapping, fingerprint, "user");
+
+  const mapped = applyMapping(rawData, confirmedMapping);
+
+  return runIngestionPipeline({
+    jsonData: mapped,
+    organizationId: authOrganizationId,
+    locationId: job.location_id ?? null,
+    originalName: `job-${jobId}-mapped`,
+    existingJobId: jobId,
+  });
 }

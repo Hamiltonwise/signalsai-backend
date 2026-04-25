@@ -11,8 +11,9 @@ import {
   PenLine,
   ArrowLeft,
 } from "lucide-react";
-import { uploadPMSData } from "../../api/pms";
+import { uploadPMSData, type MappingPreviewData } from "../../api/pms";
 import { PMSManualEntryModal } from "./PMSManualEntryModal";
+import { MappingConfirmStep } from "./MappingConfirmStep";
 import { useVocab } from "../../contexts/vocabularyContext";
 
 interface PMSUploadWizardModalProps {
@@ -56,6 +57,8 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
     topSource?: string;
     topSourceCount?: number;
   } | null>(null);
+  const [mappingPreview, setMappingPreview] = useState<MappingPreviewData | null>(null);
+  const [plainEnglishSummary, setPlainEnglishSummary] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processingStorageKey = useMemo(
@@ -129,16 +132,28 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
         file,
         pmsType: "auto-detect",
         locationId,
+        useMappingFlow: true,
       });
 
+      // Mapping confirmation required: jump into the mapping step.
+      if (result.success && result.data && (result.data as MappingPreviewData).requiresMapping) {
+        setMappingPreview(result.data as MappingPreviewData);
+        setIsUploading(false);
+        return;
+      }
+
       if (result.success) {
+        const ingested = result.data as Exclude<typeof result.data, MappingPreviewData | undefined>;
         setUploadStatus("success");
-        if (result.data?.instantFinding) {
-          setInstantFinding(result.data.instantFinding);
+        if (ingested?.instantFinding) {
+          setInstantFinding(ingested.instantFinding);
+        }
+        if (ingested?.plainEnglishSummary) {
+          setPlainEnglishSummary(ingested.plainEnglishSummary);
         }
 
         // Check if the sync found referral sources or not
-        const syncFailed = result.data?.referralSyncResult?.zeroSourcesDetected;
+        const syncFailed = ingested?.referralSyncResult?.zeroSourcesDetected;
 
         if (syncFailed) {
           setMessage(
@@ -199,6 +214,8 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
     setIsDragOver(false);
     setShowManualEntry(false);
     setInstantFinding(null);
+    setMappingPreview(null);
+    setPlainEnglishSummary(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -349,7 +366,26 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
           >
             <CheckCircle className="w-10 h-10 text-emerald-600" />
           </motion.div>
-          {instantFinding ? (
+          {plainEnglishSummary ? (
+            <>
+              <motion.h4
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-xl font-semibold text-slate-900 mb-2"
+              >
+                {plainEnglishSummary}
+              </motion.h4>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="text-sm text-slate-500"
+              >
+                Full analysis is running now. Check your dashboard in a moment.
+              </motion.p>
+            </>
+          ) : instantFinding ? (
             <>
               <motion.h4
                 initial={{ opacity: 0, y: 10 }}
@@ -496,8 +532,41 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
             {/* Content */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
               <AnimatePresence mode="wait">
+                {/* Mapping confirmation step (overrides regular flow) */}
+                {mappingPreview && (
+                  <MappingConfirmStep
+                    key="mapping-confirm"
+                    preview={mappingPreview}
+                    onCancel={() => {
+                      setMappingPreview(null);
+                      setUploadStatus("idle");
+                      setIsUploading(false);
+                    }}
+                    onConfirmed={(result) => {
+                      setMappingPreview(null);
+                      setUploadStatus("success");
+                      setPlainEnglishSummary(result.plainEnglishSummary || null);
+                      setInstantFinding({ totalRecords: result.recordsProcessed });
+                      showUploadToast(
+                        "Mapping confirmed",
+                        result.plainEnglishSummary || "Your referral data is being analyzed."
+                      );
+                      if (typeof window !== "undefined") {
+                        try {
+                          window.localStorage.setItem(processingStorageKey, String(Date.now()));
+                          const event = new CustomEvent("pms:job-uploaded", { detail: { clientId } });
+                          window.dispatchEvent(event);
+                        } catch (storageError) {
+                          console.warn("Unable to persist PMS processing flag:", storageError);
+                        }
+                      }
+                      setTimeout(() => onSuccess?.(), 2000);
+                    }}
+                  />
+                )}
+
                 {/* Step 1: Gate Question */}
-                {step === "gate" && (
+                {!mappingPreview && step === "gate" && (
                   <motion.div
                     key="gate"
                     initial={{ opacity: 0, x: 20 }}
@@ -537,7 +606,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                 )}
 
                 {/* Step 2A: Direct Upload */}
-                {step === "direct-upload" && (
+                {!mappingPreview && step === "direct-upload" && (
                   <motion.div
                     key="direct-upload"
                     initial={{ opacity: 0, x: 20 }}
@@ -557,7 +626,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                 )}
 
                 {/* Step 2B: Alternative Options */}
-                {step === "alternatives" && (
+                {!mappingPreview && step === "alternatives" && (
                   <motion.div
                     key="alternatives"
                     initial={{ opacity: 0, x: 20 }}
@@ -682,7 +751,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                 )}
 
                 {/* Template Upload Step */}
-                {step === "template-upload" && (
+                {!mappingPreview && step === "template-upload" && (
                   <motion.div
                     key="template-upload"
                     initial={{ opacity: 0, x: 20 }}

@@ -106,15 +106,18 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
 
 
       if (result.success) {
-        const finding = result.data?.instantFinding;
-        const parserFailed = result.data?.parserFailed;
-        setUploadResult(result.data);
+        // Legacy modal: never opts into the mapping flow, so result.data is the
+        // ingestion shape, not MappingPreviewData. Narrow defensively.
+        const ingested = result.data && !("requiresMapping" in result.data) ? result.data : undefined;
+        const finding = ingested?.instantFinding;
+        const parserFailed = ingested?.parserFailed;
+        setUploadResult(ingested);
 
         if (parserFailed) {
           // Parser failed but preprocessor ran locally. Show what we found, be honest about status.
           setUploadStatus("success");
           setMessage(
-            result.data?.parserMessage ||
+            ingested?.parserMessage ||
             "Your data was received. We're still processing the full analysis."
           );
           showUploadToast(
