@@ -30,6 +30,7 @@ import { useLocationContext } from "@/contexts/locationContext";
 import { useAuth } from "@/hooks/useAuth";
 import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 import { SystemNotificationsBanner } from "@/components/dashboard/SystemNotificationsBanner";
+import { AllReferrersTab } from "@/components/PMS/AllReferrersTab";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -563,6 +564,7 @@ export default function ReferralIntelligence() {
   const clientId = selectedDomain?.domain || userProfile?.domainName || "";
 
   const [showUploadWizard, setShowUploadWizard] = useState(false);
+  const [activeTab, setActiveTab] = useState<"intelligence" | "all-referrers">("intelligence");
 
   // Refetch when PMS data is uploaded -- the customer just landed here expecting to see results
   useEffect(() => {
@@ -642,8 +644,39 @@ export default function ReferralIntelligence() {
       {/* System notifications (cleanup notices, etc.) */}
       {!isLoading && <SystemNotificationsBanner />}
 
-      {/* Data present */}
-      {!isLoading && hasData && data && (
+      {/* Tabs */}
+      {!isLoading && hasData && (
+        <div className="flex gap-2 border-b border-stone-200/60 -mb-2">
+          <button
+            onClick={() => setActiveTab("intelligence")}
+            className={`px-4 py-2 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+              activeTab === "intelligence"
+                ? "text-[#1A1D23] border-[#D56753]"
+                : "text-[#1A1D23]/60 border-transparent hover:text-[#1A1D23]"
+            }`}
+          >
+            Intelligence
+          </button>
+          <button
+            onClick={() => setActiveTab("all-referrers")}
+            className={`px-4 py-2 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+              activeTab === "all-referrers"
+                ? "text-[#1A1D23] border-[#D56753]"
+                : "text-[#1A1D23]/60 border-transparent hover:text-[#1A1D23]"
+            }`}
+          >
+            All Referrers
+          </button>
+        </div>
+      )}
+
+      {/* All Referrers tab */}
+      {!isLoading && hasData && activeTab === "all-referrers" && (
+        <AllReferrersTab locationId={locationId} />
+      )}
+
+      {/* Intelligence tab (default, existing surfaces) */}
+      {!isLoading && hasData && data && activeTab === "intelligence" && (
         <>
           {/* This Week's Move -- always visible */}
           <ThisWeeksMove action={data.recommendedAction} />

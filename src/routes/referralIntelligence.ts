@@ -251,6 +251,114 @@ referralIntelligenceRoutes.get(
   },
 );
 
+// ─── GET /api/referral-intelligence/all-referrers ───────────────────
+//
+// Returns the full list of referral_sources rows for the org, with
+// monthly_breakdown extracted into a flat months array for filtering.
+// Powers the "All Referrers" tab on the referral hub. Org-scoped only:
+// referral_sources isn't location-keyed today, so the location_id query
+// param is accepted (and acknowledged) but doesn't filter the result set.
+
+interface AllReferrersRow {
+  name: string;
+  referralCount: number;
+  totalProduction: number;
+  lastReferralDate: string | null;
+  recentReferralCount: number;
+  monthlyAverage: number;
+  prior3MonthAvg: number;
+  sourceType: string;
+  trend: "up" | "flat" | "down";
+  monthlyBreakdown: Record<string, { count: number; production: number }>;
+}
+
+referralIntelligenceRoutes.get(
+  "/all-referrers",
+  authenticateToken,
+  async (req: any, res) => {
+    try {
+      const orgId = req.user?.organizationId || req.user?.organization_id;
+      if (!orgId) {
+        return res.json({ success: true, data: { rows: [], months: [] } });
+      }
+
+      // location_id accepted for forward compat; not filterable yet because
+      // referral_sources is org-keyed (no location_id column).
+      const _locationId = req.query.location_id ? parseInt(String(req.query.location_id), 10) : undefined;
+      void _locationId;
+
+      const sources = await db("referral_sources")
+        .where({ organization_id: orgId })
+        .select(
+          "name",
+          "referral_count",
+          "total_referrals",
+          "total_production",
+          "recent_referral_count",
+          "monthly_average",
+          "prior_3_month_avg",
+          "last_referral_date",
+          "source_type",
+          "monthly_breakdown",
+        );
+
+      const monthsSet = new Set<string>();
+      const rows: AllReferrersRow[] = sources
+        .filter((s: any) => {
+          const n = String(s.name || "").trim();
+          return n.length > 0 && n !== "Self / Direct" && n !== "Unknown";
+        })
+        .map((s: any) => {
+          let monthly: Record<string, { count: number; production: number }> = {};
+          if (s.monthly_breakdown) {
+            try {
+              monthly = typeof s.monthly_breakdown === "string"
+                ? JSON.parse(s.monthly_breakdown)
+                : s.monthly_breakdown;
+            } catch {
+              monthly = {};
+            }
+          }
+          for (const m of Object.keys(monthly)) {
+            if (m && m.length === 7) monthsSet.add(m);
+          }
+
+          const recent = Number(s.recent_referral_count || 0);
+          const prior = Number(s.prior_3_month_avg || 0);
+          const trend: "up" | "flat" | "down" =
+            recent > prior * 1.2 ? "up" : recent < prior * 0.8 ? "down" : "flat";
+
+          const totalRefs = Number(s.total_referrals || s.referral_count || 0);
+
+          return {
+            name: String(s.name),
+            referralCount: totalRefs,
+            totalProduction: Number(s.total_production || 0),
+            lastReferralDate: s.last_referral_date
+              ? new Date(s.last_referral_date).toISOString()
+              : null,
+            recentReferralCount: recent,
+            monthlyAverage: Number(s.monthly_average || 0),
+            prior3MonthAvg: prior,
+            sourceType: String(s.source_type || "partner"),
+            trend,
+            monthlyBreakdown: monthly,
+          };
+        });
+
+      // Default sort: referral count desc
+      rows.sort((a, b) => b.referralCount - a.referralCount);
+
+      const months = Array.from(monthsSet).sort();
+
+      return res.json({ success: true, data: { rows, months } });
+    } catch (error: any) {
+      console.error("[ReferralIntelligence/all-referrers] Error:", error.message);
+      return res.status(500).json({ success: false, error: "Failed to load all referrers." });
+    }
+  },
+);
+
 // ─── POST /api/referral-intelligence/thank-you-draft — Generate a thank-you note ──
 
 referralIntelligenceRoutes.post(
