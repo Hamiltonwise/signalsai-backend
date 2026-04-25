@@ -2,6 +2,41 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.29] - April 2026
+
+### Audit Pipeline — Stealth Scrape Fallback + Branch-B Perf Tightening
+
+Two related changes shipped to make the leadgen audit work on Cloudflare-protected sites and finish faster on every site. Before this release, dental sites behind CF Bot Fight Mode (which our EC2 IP isn't whitelisted for) failed at the homepage scrape and the audit dead-ended at "Heavier traffic than usual." The default Puppeteer scraper was also wasting input tokens on framework boilerplate that Claude was throwing away anyway.
+
+**Key Changes — CF stealth fallback:**
+- New `service.playwright-stealth-manager.ts` runs Playwright + `puppeteer-extra-plugin-stealth` as a fallback when the default Puppeteer path hits `ERR_BLOCKED_BY_CLIENT`. Returns the same `ScrapingResult` shape so downstream consumers don't care which method won.
+- `service.puppeteer-manager.ts navigateWithRetry` now returns `{ok, blocked, error?}` and fails fast on bot-block patterns (`ERR_BLOCKED_BY_CLIENT`, `ERR_HTTP2_PROTOCOL_ERROR`, `ERR_TOO_MANY_REDIRECTS`) — no wasted second retry. Saves ~5s per blocked audit before the fallback even starts.
+- `service.scraping-orchestrator.ts scrapeHomepage` now returns `ScrapeOutcome = {result, blocked}` and orchestrates the chain: default → (on bot-block, if `AUDIT_USE_STEALTH_FALLBACK !== "false"`) stealth → null. All paths log `[CHAIN]` lines for grep-able prod telemetry.
+- New `audit_processes.website_blocked` boolean column threaded through the API response and the GBP analysis pillar prompts. ProfileIntegrity prompt updated to NEVER recommend "site is down / migrate to dedicated website" when the user message indicates `(BLOCKED — bot protection — ...)` — the user has a working website that we just couldn't scan.
+- Migration `20260425000000_add_website_blocked_to_audit_processes.ts` — additive nullable boolean default false. Must run before deploy.
+- Feature flag `AUDIT_USE_STEALTH_FALLBACK` env var (default true). Set to `"false"` to instantly disable the stealth fallback if the plugin starts hurting more than helping.
+
+**Key Changes — Branch B input tightening:**
+- `markupStripper.ts` extended with five new rules: drop framework-utility class strings (>60 chars OR >5 space-separated tokens), drop generated `id` values (>30 chars), drop most `data-*` attributes (kept: `data-type`, `data-role`, `data-cy`), drop `<head><link>` tags except `canonical` and `alternate`, drop `aria-hidden="true"` subtrees. Strip ratio improved from 39–66% → 51–80% across test targets.
+- `CLAUDE_MAX_DIMENSION` lowered from 1568 px → 1024 px and made env-overridable via `process.env.CLAUDE_MAX_DIMENSION`. Halves the JPEG fed to Claude (~80kB → ~24–38kB) without losing layout/CTA-prominence signal.
+- Combined effect on `[B] WebsiteAnalysis LLM` duration: -13% on Artful (clean baseline, 26.6s → 23.2s), -27% on Coastal Endo (CF target, 34.5s → 25.1s). Total audit wall-clock down ~9 seconds on the harder targets.
+- Quality validated empirically: `overall_grade` and `overall_score` on website_analysis identical pre/post on Artful (C+/78 → C+/78); GBP analysis grade identical on Coastal Endo (B/85 → B/85). Aggressive stripping is NOT removing content the LLM relied on for grading.
+
+**Commits:**
+- `package.json` / `package-lock.json` — add `playwright-extra` + `puppeteer-extra-plugin-stealth`.
+- `src/agents/auditAgents/gbp/ProfileIntegrity.md` — bot-blocked-website rules added.
+- `src/controllers/audit/audit-services/auditRetrievalService.ts` — expose `website_blocked` in status response.
+- `src/controllers/scraper/ScraperController.ts` — consume new `ScrapeOutcome` shape.
+- `src/controllers/scraper/feature-services/service.puppeteer-manager.ts` — `NavigationResult`, fail-fast on bot-block.
+- `src/controllers/scraper/feature-services/service.scraping-orchestrator.ts` — chain wiring + telemetry.
+- `src/controllers/scraper/feature-services/service.playwright-stealth-manager.ts` — new stealth path.
+- `src/controllers/audit/audit-utils/markupStripper.ts` — five new stripping rules.
+- `src/models/AuditProcessModel.ts` — `website_blocked?: boolean` on `IAuditProcess`.
+- `src/workers/processors/auditLeadgen.processor.ts` — `let hasWebsite` + `websiteBlocked` flag, three-state prompt context, env-overridable `CLAUDE_MAX_DIMENSION` default 1024.
+- `src/database/migrations/20260425000000_add_website_blocked_to_audit_processes.ts` — new migration.
+- `plans/04252026-no-ticket-audit-stealth-fallback-and-blocked-ux/spec.md` — full spec with revision log.
+- `plans/04252026-no-ticket-audit-perf-and-stage-copy/spec.md` — perf-tightening spec.
+
 ## [0.0.28] - April 2026
 
 ### Page Editor — Stop Shortcode Pill From Leaking to Public Sites
