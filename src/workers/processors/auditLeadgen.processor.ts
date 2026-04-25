@@ -107,7 +107,17 @@ export async function processAuditLeadgen(
 
   let stage = "init";
   const timings: Record<string, number> = {};
-  const hasWebsite = !!(domain && domain.trim());
+  // `hasWebsite` may flip from true→false inside Branch A if the scrape is
+  // blocked (Cloudflare etc). We then re-use the existing no-website path
+  // for the GBP-only analysis instead of failing the whole audit.
+  //
+  // `websiteBlocked` distinguishes "user provided a website but bot-protection
+  // prevented analysis" (true) from "user didn't provide a website at all" or
+  // "scrape failed for some non-block reason" (false). This drives both the
+  // GBP prompt context (don't recommend "site is down") and the frontend
+  // "Your website blocks Alloro scanners" placeholder.
+  let hasWebsite = !!(domain && domain.trim());
+  let websiteBlocked = false;
 
   try {
     stage = "load-row";
@@ -153,11 +163,33 @@ export async function processAuditLeadgen(
       ? (async () => {
           const scrapeTimer = stageTimer();
           stage = "scrape-homepage";
-          const scrape = await scrapeHomepage(domain);
-          if (!scrape) {
-            throw new Error("Homepage scrape failed: cannot load page");
+          const outcome = await scrapeHomepage(domain);
+          if (outcome.result === null) {
+            // Both default + stealth (if enabled) exhausted. `outcome.blocked`
+            // distinguishes bot-protection from generic failure (timeout, DNS).
+            // Degrade into the existing no-website path so Branch C still
+            // produces a useful GBP-only report instead of failing the
+            // whole audit. The `website_blocked` flag (T4) is what tells
+            // the frontend + GBP prompts the difference between "no website"
+            // and "site is bot-protected".
+            timings["scrapeHomepage"] = scrapeTimer();
+            log(
+              `⚠ scrapeHomepage failed (${timings["scrapeHomepage"]}ms, blocked=${outcome.blocked}) — ` +
+                `degrading to no-website path; GBP/competitor analysis continues`
+            );
+            hasWebsite = false;
+            websiteBlocked = outcome.blocked;
+            await updateAuditFields(auditId, {
+              step_screenshots: null,
+              step_website_analysis: null,
+              realtime_status: 2,
+              website_blocked: outcome.blocked,
+            });
+            await recordAuditMilestone(auditId, "stage_viewed_1");
+            return null;
           }
           timings["scrapeHomepage"] = scrapeTimer();
+          const scrape = outcome.result;
           const { desktopScreenshot, homepageMarkup, metrics, brokenLinks } =
             scrape;
           const markupKB = Math.round(homepageMarkup.length / 1024);
@@ -368,6 +400,19 @@ export async function processAuditLeadgen(
 
     // Each pillar gets ONLY the data it needs. Tighter prompts, smaller
     // outputs, run in parallel.
+    //
+    // Three site_markup states:
+    //   1. hasWebsite=true  → real stripped HTML
+    //   2. websiteBlocked   → marker tells the agent the site IS live but
+    //                         blocks automated scans. Suppresses the
+    //                         "recommend migration" path entirely.
+    //   3. neither          → user provided no website at all.
+    const siteMarkupBlock = websiteBlocked
+      ? "site_markup: (BLOCKED — bot protection — the website is live and accessible to humans, but blocks automated scanners (Cloudflare etc.). Do NOT recommend migration, do NOT flag the site as down/outdated/missing/broken. Treat NAP cross-check as unverifiable: set sync_audit.nap_match=null. Skip ALL website-related recommendations; focus on GBP-only optimizations.)"
+      : hasWebsite
+        ? "site_markup (semantically stripped):"
+        : "site_markup: (no website provided — score Profile Integrity from GBP fields only; treat NAP cross-check as unverifiable, set sync_audit.nap_match=null)";
+
     const piMsg = [
       "client_gbp:",
       JSON.stringify({
@@ -377,10 +422,8 @@ export async function processAuditLeadgen(
         website: condensedClient.website,
       }),
       "",
-      hasWebsite
-        ? "site_markup (semantically stripped):"
-        : "site_markup: (no website provided — score Profile Integrity from GBP fields only; treat NAP cross-check as unverifiable, set sync_audit.nap_match=null)",
-      hasWebsite ? strippedHtml : "",
+      siteMarkupBlock,
+      hasWebsite && !websiteBlocked ? strippedHtml : "",
     ].join("\n");
 
     const teMsg = [

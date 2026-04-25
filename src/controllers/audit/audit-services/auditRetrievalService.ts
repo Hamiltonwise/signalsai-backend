@@ -35,6 +35,14 @@ export async function getAuditByIdWithStatus(auditId: string) {
       audit.step_self_gbp
     ),
     gbp_analysis: normalizeGBPAnalysis(audit.step_gbp_analysis),
+
+    // True when the homepage scrape was bot-blocked (Cloudflare etc.) and
+    // both default + stealth methods exhausted. Frontend uses this to render
+    // the "Your website blocks Alloro scanners" placeholder instead of the
+    // generic "NO WEBSITE" placeholder. Defaults to false on legacy rows
+    // via the column default, so always boolean (never undefined) in the
+    // response.
+    website_blocked: audit.website_blocked ?? false,
   };
 }
 

@@ -1,0 +1,16 @@
+-- Migration: add website_blocked flag to audit_processes
+-- Target DB: PostgreSQL (RDS — sandbox + prod alloro-pgsql)
+-- Direction: forward (additive, nullable-with-default → safe online)
+
+-- TODO: fill during execution. Expected DDL:
+--
+-- ALTER TABLE audit_processes
+--   ADD COLUMN website_blocked BOOLEAN NOT NULL DEFAULT false;
+--
+-- (Optional, defer to T4 execution decision)
+-- CREATE INDEX IF NOT EXISTS idx_audit_processes_website_blocked
+--   ON audit_processes (website_blocked)
+--   WHERE website_blocked = true;
+--
+-- Rollback:
+--   ALTER TABLE audit_processes DROP COLUMN website_blocked;

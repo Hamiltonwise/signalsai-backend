@@ -59,20 +59,25 @@ export async function captureHomepage(
   logOperationStart(domain, url);
 
   try {
-    const result = await scrapeHomepage(domain);
+    const outcome = await scrapeHomepage(domain);
 
-    // Orchestrator returns null when navigation fails after all retries
-    if (result === null) {
+    // Orchestrator returns { result: null } when both default + stealth
+    // paths exhaust. `blocked` is informational here; the public scraper
+    // endpoint reports the same generic error either way.
+    if (outcome.result === null) {
       const durationMs = Date.now() - startTime;
       logOperationComplete(domain, durationMs, false);
 
       res.json({
         error: true,
-        error_message: "cannot load page",
+        error_message: outcome.blocked
+          ? "cannot load page (bot-protected)"
+          : "cannot load page",
       });
       return;
     }
 
+    const result = outcome.result;
     const durationMs = Date.now() - startTime;
     logOperationComplete(domain, durationMs, true);
 
