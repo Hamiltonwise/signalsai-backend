@@ -10,6 +10,8 @@
  * to these schemas.
  */
 
+import { z } from "zod";
+
 // =====================================================================
 // PROOFLINE AGENT (DAILY)
 // =====================================================================
@@ -193,3 +195,105 @@ export interface ReferralEngineAgentOutput {
   data_quality_flags?: string[];
   confidence?: number;
 }
+
+// ---------------------------------------------------------------------
+// Zod schema for ReferralEngineAgentOutput
+// ---------------------------------------------------------------------
+//
+// Mirrors the TS interface above. The top-level object is `.strict()` so
+// unknown keys at the root fail validation. Nested objects are NOT strict,
+// so minor LLM verbosity inside matrix rows / nested blocks does not cause
+// hard validation failures (those are the most common drift points).
+//
+// Enums are tightened past the TS interface for `priority` and
+// `source_type` to match the prompt's JSON output spec
+// (`ReferralEngineAnalysis.md` lines 130-194). The TS interface keeps
+// `priority: string` for backward compat with already-stored agent_results
+// rows; this schema is the forward-going contract.
+
+const trendLabelSchema = z.enum([
+  "increasing",
+  "decreasing",
+  "new",
+  "dormant",
+  "stable",
+]);
+
+const prioritySchema = z.enum(["low", "medium", "high"]);
+
+const sourceTypeSchema = z.enum(["digital", "patient", "other"]);
+
+const referralTopFixSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  impact: z.string(),
+});
+
+const referralGrowthSummarySchema = z.object({
+  top_three_fixes: z.array(referralTopFixSchema),
+  estimated_additional_annual_revenue: z.number(),
+});
+
+const referralDoctorReferralSchema = z.object({
+  referrer_name: z.string(),
+  referred: z.number(),
+  net_production: z.number(),
+  avg_production_per_referral: z.number(),
+  trend_label: trendLabelSchema,
+  notes: z.string(),
+});
+
+const referralNonDoctorReferralSchema = z.object({
+  source_label: z.string(),
+  source_key: z.string(),
+  source_type: sourceTypeSchema,
+  referred: z.number(),
+  net_production: z.number(),
+  avg_production_per_referral: z.number(),
+  trend_label: trendLabelSchema,
+  notes: z.string(),
+});
+
+const referralAutomationOpportunitySchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  priority: prioritySchema,
+  impact: z.string(),
+  effort: z.string(),
+  category: z.string(),
+  due_date: z.string().optional(),
+});
+
+const referralPracticeActionSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  priority: prioritySchema,
+  impact: z.string(),
+  effort: z.string(),
+  category: z.string(),
+  owner: z.string(),
+  due_date: z.string().optional(),
+});
+
+export const ReferralEngineAgentOutputSchema = z
+  .object({
+    executive_summary: z.array(z.string()).optional(),
+    growth_opportunity_summary: referralGrowthSummarySchema,
+    doctor_referral_matrix: z.array(referralDoctorReferralSchema),
+    non_doctor_referral_matrix: z.array(referralNonDoctorReferralSchema),
+    alloro_automation_opportunities: z.array(referralAutomationOpportunitySchema),
+    practice_action_plan: z.array(referralPracticeActionSchema),
+    observed_period: z
+      .object({
+        start_date: z.string(),
+        end_date: z.string(),
+      })
+      .optional(),
+    data_quality_flags: z.array(z.string()).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+  })
+  .strict();
+
+export type ReferralEngineAgentOutputZ = z.infer<
+  typeof ReferralEngineAgentOutputSchema
+>;

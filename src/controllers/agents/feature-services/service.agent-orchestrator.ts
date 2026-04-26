@@ -49,6 +49,8 @@ import type {
   CroOptimizerAgentOutput,
   ReferralEngineAgentOutput,
 } from "../types/agent-output-schemas";
+import { ReferralEngineAgentOutputSchema } from "../types/agent-output-schemas";
+import type { ZodTypeAny } from "zod";
 
 // =====================================================================
 // DAILY AGENT PROCESSING
@@ -230,6 +232,10 @@ async function runMonthlyAgent(opts: {
     dateStart: string;
     dateEnd: string;
   };
+  /** When true, enable Anthropic prompt cache for the system prompt. */
+  enableCache?: boolean;
+  /** Optional Zod schema; runner runs safeParse + corrective retry on failure. */
+  outputSchema?: ZodTypeAny;
 }): Promise<{ agentOutput: any; agentResultId: number }> {
   const systemPrompt = loadPrompt(opts.promptPath);
   const userMessage = JSON.stringify(opts.payload, null, 2);
@@ -240,6 +246,10 @@ async function runMonthlyAgent(opts: {
     systemPrompt,
     userMessage,
     maxTokens: 16384,
+    // Empty array enables caching of the auto-appended systemPrompt block
+    // without duplicating it as a prefix block. See service.llm-runner.ts.
+    ...(opts.enableCache ? { cachedSystemBlocks: [] } : {}),
+    ...(opts.outputSchema ? { outputSchema: opts.outputSchema } : {}),
   });
 
   log(
@@ -385,6 +395,7 @@ export async function processMonthlyAgents(
           sources_summary: aggregated.sources,
           totals: aggregated.totals,
           patient_records: aggregated.patientRecords,
+          data_quality_flags: aggregated.dataQualityFlags,
         };
         log(
           `  [MONTHLY] \u2713 Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources, ${aggregated.patientRecords.length} patient records)`,
@@ -567,6 +578,8 @@ export async function processMonthlyAgents(
           startDate,
           endDate,
           pmsData,
+          gbpData: monthData,
+          websiteAnalytics: websiteAnalyticsMonthly,
         });
 
         const referralResult = await runMonthlyAgent({
@@ -574,6 +587,8 @@ export async function processMonthlyAgents(
           payload: referralPayload,
           agentName: "Referral Engine",
           meta: { ...agentMeta, agentType: "referral_engine" },
+          enableCache: true,
+          outputSchema: ReferralEngineAgentOutputSchema,
         });
 
         referralEngineOutput = referralResult.agentOutput;

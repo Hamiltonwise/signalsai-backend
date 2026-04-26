@@ -9,6 +9,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import type { ZodTypeAny } from "zod";
 import { safeLogAiCostEvent } from "../services/ai-cost/service.ai-cost";
 
 const DEFAULT_MODEL = process.env.AGENTS_LLM_MODEL || "claude-sonnet-4-6";
@@ -66,6 +67,18 @@ export interface LlmRunnerOptions {
    * `safeLogAiCostEvent` after a successful call. Never throws.
    */
   costContext?: CostContext;
+  /**
+   * Optional Zod schema. When provided, the runner runs `safeParse` on the
+   * extracted JSON. On failure, it issues ONE corrective follow-up call
+   * (same model/system/cache/temperature/maxTokens) embedding the schema
+   * errors and asks for a strictly valid JSON object. On success, the
+   * second parsed object is returned. On second failure, the first parsed
+   * object is returned and a `[zod-retry] failed both attempts` line is
+   * logged so the outer caller's legacy validation still gets a chance.
+   *
+   * Backward compat: when undefined, behaviour is identical to pre-Zod.
+   */
+  outputSchema?: ZodTypeAny;
 }
 
 export interface LlmRunnerResult {
@@ -104,6 +117,7 @@ export async function runAgent(
     images,
     cachedSystemBlocks,
     costContext,
+    outputSchema,
   } = options;
 
   const messages: Anthropic.MessageParam[] = [];
@@ -154,7 +168,7 @@ export async function runAgent(
   // Build system param. If cachedSystemBlocks provided, structure system as
   // an array of blocks with cache_control: ephemeral on the cached prefix.
   let systemParam: any;
-  if (cachedSystemBlocks && cachedSystemBlocks.length > 0) {
+  if (cachedSystemBlocks !== undefined) {
     systemParam = [
       ...cachedSystemBlocks.map((text) => ({
         type: "text",
@@ -179,7 +193,7 @@ export async function runAgent(
         system: systemParam,
         messages,
       },
-      cachedSystemBlocks && cachedSystemBlocks.length > 0
+      cachedSystemBlocks !== undefined
         ? { headers: { "anthropic-beta": "prompt-caching-2024-07-31" } }
         : undefined,
     );
@@ -201,14 +215,17 @@ export async function runAgent(
     (b: any): b is Anthropic.TextBlock => b.type === "text"
   );
 
-  const raw = textBlock?.text || "";
+  let raw = textBlock?.text || "";
 
   // prefill was stripped earlier for Claude 4.x compat — extractJson handles
   // unprefilled JSON via direct parse, fence strip, and brace matching.
-  const parsed = extractJson(raw);
+  let parsed = extractJson(raw);
 
-  const cacheCreationTokens = response.usage?.cache_creation_input_tokens ?? 0;
-  const cacheReadTokens = response.usage?.cache_read_input_tokens ?? 0;
+  let cacheCreationTokens = response.usage?.cache_creation_input_tokens ?? 0;
+  let cacheReadTokens = response.usage?.cache_read_input_tokens ?? 0;
+  let inputTokensTotal = response.usage.input_tokens;
+  let outputTokensTotal = response.usage.output_tokens;
+  let responseModel = response.model;
   const cacheSuffix = cacheCreationTokens || cacheReadTokens
     ? ` cacheWrite=${cacheCreationTokens} cacheRead=${cacheReadTokens}`
     : "";
@@ -236,14 +253,143 @@ export async function runAgent(
     });
   }
 
+  // ---------------------------------------------------------------
+  // Optional Zod validation + corrective single-retry.
+  //
+  // Cap: ONE corrective retry per outer attempt. If the second
+  // response still fails Zod, return the first parsed object and
+  // let the outer caller's existing legacy `isValidAgentOutput`
+  // fallback handle it.
+  // ---------------------------------------------------------------
+  if (outputSchema && parsed !== null) {
+    const firstResult = outputSchema.safeParse(parsed);
+    if (!firstResult.success) {
+      const issues = JSON.stringify(firstResult.error.issues, null, 2).slice(
+        0,
+        2000,
+      );
+      console.warn(
+        `[zod-retry] first attempt failed schema validation. issues: ${issues}`,
+      );
+
+      const correctiveMessage =
+        `Your previous response failed schema validation. Errors:\n` +
+        `${issues}\n\n` +
+        `Respond again with ONLY a valid JSON object matching the schema ` +
+        `described in the system prompt. No markdown fences, no ` +
+        `explanation, no text before or after.`;
+
+      const retryMessages: Anthropic.MessageParam[] = [
+        { role: "user", content: userMessage },
+        { role: "assistant", content: raw },
+        { role: "user", content: correctiveMessage },
+      ];
+
+      const retryStart = Date.now();
+      let retryResponse: any;
+      try {
+        retryResponse = await (getClient() as any).messages.create(
+          {
+            model,
+            max_tokens: maxTokens,
+            temperature,
+            system: systemParam,
+            messages: retryMessages,
+          },
+          cachedSystemBlocks !== undefined
+            ? { headers: { "anthropic-beta": "prompt-caching-2024-07-31" } }
+            : undefined,
+        );
+      } catch (err: any) {
+        const status = err?.status ?? err?.response?.status ?? "?";
+        console.error(
+          `[zod-retry] ✗ API error (${Date.now() - retryStart}ms) status=${status} message="${err?.message}"`,
+        );
+        // Swallow retry errors — we still have a usable first parsed payload.
+        retryResponse = null;
+      }
+
+      if (retryResponse) {
+        const retryTextBlock = retryResponse.content.find(
+          (b: any): b is Anthropic.TextBlock => b.type === "text",
+        );
+        const raw2 = retryTextBlock?.text || "";
+        const retryCacheCreation =
+          retryResponse.usage?.cache_creation_input_tokens ?? 0;
+        const retryCacheRead =
+          retryResponse.usage?.cache_read_input_tokens ?? 0;
+        const retryCacheSuffix = retryCacheCreation || retryCacheRead
+          ? ` cacheWrite=${retryCacheCreation} cacheRead=${retryCacheRead}`
+          : "";
+        const parsed2 = extractJson(raw2);
+
+        console.log(
+          `[LLM] ✓ ${retryResponse.model} (${Date.now() - retryStart}ms) ` +
+            `tokens=${retryResponse.usage.input_tokens}/${retryResponse.usage.output_tokens}${retryCacheSuffix} ` +
+            `parsed=${parsed2 ? "ok" : "null"} raw=${raw2.length}ch [zod-retry]`,
+        );
+
+        if (costContext) {
+          await safeLogAiCostEvent({
+            projectId: costContext.projectId,
+            eventType: costContext.eventType,
+            vendor: "anthropic",
+            model: retryResponse.model,
+            usage: {
+              input_tokens: retryResponse.usage.input_tokens,
+              output_tokens: retryResponse.usage.output_tokens,
+              cache_creation_tokens: retryCacheCreation,
+              cache_read_tokens: retryCacheRead,
+            },
+            metadata: {
+              ...(costContext.metadata ?? {}),
+              zod_retry: true,
+            },
+            parentEventId: costContext.parentEventId ?? null,
+          });
+        }
+
+        if (parsed2 !== null) {
+          const secondResult = outputSchema.safeParse(parsed2);
+          if (secondResult.success) {
+            console.log(`[zod-retry] succeeded on second attempt`);
+            // Promote second-attempt outputs as the canonical result.
+            raw = raw2;
+            parsed = parsed2;
+            cacheCreationTokens = retryCacheCreation;
+            cacheReadTokens = retryCacheRead;
+            inputTokensTotal = retryResponse.usage.input_tokens;
+            outputTokensTotal = retryResponse.usage.output_tokens;
+            responseModel = retryResponse.model;
+          } else {
+            const issues2 = JSON.stringify(
+              secondResult.error.issues,
+              null,
+              2,
+            ).slice(0, 2000);
+            console.warn(
+              `[zod-retry] failed both attempts: ${issues2}`,
+            );
+            // Fall through with first parsed — outer caller's
+            // legacy `isValidAgentOutput` will run on it.
+          }
+        } else {
+          console.warn(
+            `[zod-retry] second response did not yield parseable JSON; falling back to first attempt`,
+          );
+        }
+      }
+    }
+  }
+
   return {
     cacheCreationInputTokens: cacheCreationTokens,
     cacheReadInputTokens: cacheReadTokens,
     raw,
     parsed,
-    model: response.model,
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
+    model: responseModel,
+    inputTokens: inputTokensTotal,
+    outputTokens: outputTokensTotal,
   };
 }
 
@@ -349,7 +495,7 @@ export async function runWithTools(
 
   // System param with optional cached blocks
   let systemParam: any;
-  if (cachedSystemBlocks && cachedSystemBlocks.length > 0) {
+  if (cachedSystemBlocks !== undefined) {
     systemParam = [
       ...cachedSystemBlocks.map((text) => ({
         type: "text",
@@ -386,7 +532,7 @@ export async function runWithTools(
   try {
     response = await (getClient() as any).beta.tools.messages.create(
       requestBody,
-      cachedSystemBlocks && cachedSystemBlocks.length > 0
+      cachedSystemBlocks !== undefined
         ? { headers: { "anthropic-beta": "prompt-caching-2024-07-31,tools-2024-04-04" } }
         : undefined,
     );

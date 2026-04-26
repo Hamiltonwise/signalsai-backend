@@ -247,6 +247,8 @@ export function buildReferralEnginePayload(params: {
   startDate: string;
   endDate: string;
   pmsData?: any;
+  gbpData?: any;
+  websiteAnalytics?: any;
 }): any {
   return {
     agent: "referral_engine",
@@ -257,7 +259,9 @@ export function buildReferralEnginePayload(params: {
       end: params.endDate,
     },
     additional_data: {
-      pms: params.pmsData || null,
+      pms: params.pmsData ?? null,
+      gbp: params.gbpData ?? null,
+      website_analytics: params.websiteAnalytics ?? null,
     },
   };
 }
