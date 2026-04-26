@@ -121,6 +121,22 @@ organizationsRoutes.delete(
   controller.deleteOrg
 );
 
+// GET /api/admin/organizations/:id/reset-data/preview — Row counts per reset group
+organizationsRoutes.get(
+  "/:id/reset-data/preview",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.previewResetData
+);
+
+// POST /api/admin/organizations/:id/reset-data — Hard-delete selected reset groups
+organizationsRoutes.post(
+  "/:id/reset-data",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.resetOrgData
+);
+
 // POST /api/admin/organizations/users/:userId/set-password — Admin sets temp password for a user
 organizationsRoutes.post(
   "/users/:userId/set-password",

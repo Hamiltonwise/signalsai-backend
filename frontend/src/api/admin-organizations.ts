@@ -174,6 +174,87 @@ export async function adminDeleteOrganization(orgId: number): Promise<{ success:
 }
 
 /**
+ * Reset Org Data — admin destructive feature
+ *
+ * Two reset groups in v1:
+ * - `pms_ingestion`  → wipes pms_jobs for the org
+ * - `agent_referral` → wipes agent_results (and dependent agent_recommendations)
+ *                      where agent_type = 'referral_engine'
+ *
+ * The cascade rule "PMS reset also clears Referral Engine output" is enforced
+ * client-side in the modal — backend deletes literally what's in `groups`.
+ */
+export type ResetGroupKey = "pms_ingestion" | "agent_referral";
+
+export const RESET_GROUP_KEYS: readonly ResetGroupKey[] = [
+  "pms_ingestion",
+  "agent_referral",
+] as const;
+
+export interface ResetPreviewData {
+  orgId: number;
+  orgName: string;
+  counts: Record<ResetGroupKey, number>;
+}
+
+export interface ResetResultData {
+  success: true;
+  groupsExecuted: ResetGroupKey[];
+  deletedCounts: Record<string, number>;
+}
+
+interface ResetPreviewEnvelope {
+  success: boolean;
+  data?: ResetPreviewData;
+  error?: string;
+  errorMessage?: string;
+}
+
+interface ResetResultEnvelope {
+  success: boolean;
+  data?: ResetResultData;
+  error?: string;
+  errorMessage?: string;
+}
+
+/**
+ * Fetch row counts per reset group for preview in the modal.
+ */
+export async function adminPreviewResetData(
+  orgId: number
+): Promise<ResetPreviewData> {
+  const res: ResetPreviewEnvelope = await apiGet({
+    path: `/admin/organizations/${orgId}/reset-data/preview`,
+  });
+  if (!res.success || !res.data) {
+    throw new Error(
+      res.error || res.errorMessage || "Failed to load reset preview"
+    );
+  }
+  return res.data;
+}
+
+/**
+ * Execute the reset. Body must include the exact org name (server-validated)
+ * and the list of groups to wipe.
+ */
+export async function adminResetOrgData(
+  orgId: number,
+  body: { groups: ResetGroupKey[]; confirmName: string }
+): Promise<ResetResultData> {
+  const res: ResetResultEnvelope = await apiPost({
+    path: `/admin/organizations/${orgId}/reset-data`,
+    passedData: body,
+  });
+  if (!res.success || !res.data) {
+    throw new Error(
+      res.error || res.errorMessage || "Failed to reset organization data"
+    );
+  }
+  return res.data;
+}
+
+/**
  * Get all locations for an organization with their Google Properties
  */
 export async function adminGetOrganizationLocations(
