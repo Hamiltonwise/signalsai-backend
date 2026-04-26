@@ -42,6 +42,25 @@ export function getAuditQueue(name: string): Queue {
   return queues[queueName];
 }
 
+/**
+ * CRM queue helper. Returns a queue per platform so HubSpot, Salesforce, etc.
+ * each get isolated rate-limit/retry behavior. v1: 'hubspot-push' only.
+ *
+ * Examples:
+ *   getCrmQueue('hubspot-push')  // hot-path submission push
+ *   getCrmQueue('mapping-validation')  // daily token + form validation
+ */
+export function getCrmQueue(name: string): Queue {
+  const queueName = `crm-${name}`;
+  if (!queues[queueName]) {
+    queues[queueName] = new Queue(queueName, {
+      connection: getRedisConnection(),
+      prefix: '{crm}',
+    });
+  }
+  return queues[queueName];
+}
+
 export async function closeQueues(): Promise<void> {
   for (const queue of Object.values(queues)) {
     await queue.close();

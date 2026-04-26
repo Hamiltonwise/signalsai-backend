@@ -11,6 +11,7 @@ import express from "express";
 import multer from "multer";
 import * as controller from "../../controllers/admin-websites/AdminWebsitesController";
 import * as backupController from "../../controllers/admin-websites/BackupController";
+import * as integrationsController from "../../controllers/admin-websites/WebsiteIntegrationsController";
 import importsRouter from "./imports";
 
 const router = express.Router();
@@ -372,6 +373,88 @@ router.post("/:id/form-submissions/:submissionId/send-email", controller.sendFor
 
 // DELETE /:id/form-submissions/:submissionId — Delete a submission
 router.delete("/:id/form-submissions/:submissionId", controller.deleteFormSubmission);
+
+// =====================================================================
+// WEBSITE INTEGRATIONS (CRM connectors — non-parameterized first)
+// =====================================================================
+
+// GET    /:id/integrations — List integrations for a project
+router.get("/:id/integrations", integrationsController.listIntegrations);
+
+// POST   /:id/integrations — Create + validate a new integration
+router.post("/:id/integrations", integrationsController.createIntegration);
+
+// GET    /:id/detected-forms — List website forms derived from submissions
+router.get("/:id/detected-forms", integrationsController.listDetectedForms);
+
+// GET    /:id/detected-forms/:formName/field-shape — Field shape sample for a form
+router.get(
+  "/:id/detected-forms/:formName/field-shape",
+  integrationsController.getDetectedFormFieldShape,
+);
+
+// GET    /:id/integrations/:integrationId — Get integration detail (SAFE)
+router.get("/:id/integrations/:integrationId", integrationsController.getIntegration);
+
+// PUT    /:id/integrations/:integrationId — Update label / credentials
+router.put("/:id/integrations/:integrationId", integrationsController.updateIntegration);
+
+// DELETE /:id/integrations/:integrationId — Hard delete (sync logs survive via SET NULL)
+router.delete("/:id/integrations/:integrationId", integrationsController.deleteIntegration);
+
+// POST   /:id/integrations/:integrationId/revoke — Soft revoke (status='revoked')
+router.post(
+  "/:id/integrations/:integrationId/revoke",
+  integrationsController.revokeIntegration,
+);
+
+// GET    /:id/integrations/:integrationId/vendor-forms — Live vendor forms list
+router.get(
+  "/:id/integrations/:integrationId/vendor-forms",
+  integrationsController.listVendorForms,
+);
+
+// POST   /:id/integrations/:integrationId/validate-mappings — Re-validate token + form existence
+router.post(
+  "/:id/integrations/:integrationId/validate-mappings",
+  integrationsController.validateMappings,
+);
+
+// POST   /:id/integrations/:integrationId/infer-mapping — Auto-default field mapping suggestion
+router.post(
+  "/:id/integrations/:integrationId/infer-mapping",
+  integrationsController.inferMapping,
+);
+
+// GET    /:id/integrations/:integrationId/sync-logs — Recent push attempts (paginated)
+router.get(
+  "/:id/integrations/:integrationId/sync-logs",
+  integrationsController.listSyncLogs,
+);
+
+// GET    /:id/integrations/:integrationId/mappings — List mappings
+router.get(
+  "/:id/integrations/:integrationId/mappings",
+  integrationsController.listMappings,
+);
+
+// POST   /:id/integrations/:integrationId/mappings — Create a mapping
+router.post(
+  "/:id/integrations/:integrationId/mappings",
+  integrationsController.createMapping,
+);
+
+// PUT    /:id/integrations/:integrationId/mappings/:mappingId — Update a mapping
+router.put(
+  "/:id/integrations/:integrationId/mappings/:mappingId",
+  integrationsController.updateMapping,
+);
+
+// DELETE /:id/integrations/:integrationId/mappings/:mappingId — Delete a mapping
+router.delete(
+  "/:id/integrations/:integrationId/mappings/:mappingId",
+  integrationsController.deleteMapping,
+);
 
 // =====================================================================
 // REVIEW SYNC (project-scoped)

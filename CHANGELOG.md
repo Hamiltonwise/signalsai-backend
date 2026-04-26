@@ -2,6 +2,66 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.30] - April 2026
+
+### Website Integrations — HubSpot Form-to-Contact Mapping (v1)
+
+New per-website **Integrations** tab in the admin dashboard. Connect a HubSpot Private App token, see website forms detected from existing submissions, map their fields to a HubSpot form via per-row dropdowns, and every non-flagged submission automatically pushes to HubSpot via the Forms Submissions API. Schema, controller, and worker are vendor-agnostic from day one — Salesforce/Pipedrive drop in as additional adapters without restructure. Existing Make.com "new contact" automation keeps firing because HubSpot's form-submit path emits the same `contact.creation` webhook as direct contact creates.
+
+**Architecture:**
+- New `website_builder.website_integrations` (per-project credentials, AES-256-GCM encrypted, vendor metadata in JSONB), `website_integration_form_mappings` (N→1 fan-in: many website forms to one HubSpot form), and `crm_sync_logs` (audit trail with `ON DELETE SET NULL` + denormalized `platform`/`vendor_form_id` so logs survive integration deletion).
+- Vendor-agnostic adapter layer at `src/services/integrations/` (`ICrmAdapter` interface + HubSpot impl). v1 uses raw `fetch` — no `@hubspot/api-client` dependency added.
+- New `crm-hubspot-push` queue (concurrency 3, prefix `{crm}`) on the existing single-process worker. Idempotent via `jobId === submissionId` (BullMQ refuses duplicate jobIds, so retries on transient errors don't create duplicate HubSpot contacts).
+- New `crm-mapping-validation` daily job at 4:30 AM UTC: validates each integration's token AND cross-references mapped vendor form IDs against HubSpot's current form list. Tokens revoked on the HubSpot side flip to `status='revoked'` within 24h without needing a real submission to expose the failure.
+- Form-detection feature service derives website forms from `form_submissions` GROUP BY `form_name` and unions field keys across the last 20 submissions per form — handles BOTH the legacy flat shape AND the sectioned `FormSection[]` shape via a shared `flattenSubmissionContents` util.
+
+**Hot-path hook (T0 audit corrected the placement):**
+- T0 audit of `formSubmissionController.ts` found that `FormSubmissionModel.create()` always writes `is_flagged: false`; the AI block UPDATEs to flagged=true LATER. Hooking after `create()` (the original spec wording) would have pushed AI-caught spam to HubSpot. Corrected hook lives AFTER the AI block (after line 475), gates on the local `flagged` boolean, and is wrapped in an inner try/catch so a Redis hiccup never breaks form submissions.
+- AI-flagged submissions skip the push and write a `skipped_flagged` log row (only if an integration exists — write-amplification rule).
+- Submissions on websites with no integration write nothing to `crm_sync_logs` at all.
+
+**Frontend (per-website dashboard):**
+- `IntegrationsTab.tsx` follows the PostsTab 30/70 sidebar+main layout. State machine: not connected → connect modal; connected → connection panel + detected-forms list + (when a form is selected) field-mapping dropdown editor + recent activity panel; revoked → red banner + reconnect CTA.
+- `FieldMappingDropdown` is per-row `<select>` (NOT drag-drop — explicit decision to halve the build cost; required HubSpot fields show red asterisk). "Auto-fill defaults" calls the inference service and merges suggestions over empty rows only — never overwrites user choices.
+- `RecentActivityPanel` shows the last 10 sync attempts with outcome badges so customers can self-diagnose "why didn't this push?"
+
+**Security:**
+- Tokens encrypted at rest with AES-256-GCM via existing `src/utils/encryption.ts` (requires `CREDENTIALS_ENCRYPTION_KEY` env var — same encryption module already used by `minds.platform_credentials`).
+- `SAFE_COLUMNS` list ensures `encrypted_credentials` never returns from any controller endpoint. `getDecryptedCredentials` is internal-only and called from the adapter layer only.
+- DB-level `CHECK (platform IN ('hubspot'))` on `website_integrations` rejects typos that would create unreadable rows. Extending vendors = small follow-up migration to widen the CHECK.
+
+**Out of scope (v1 — explicit deferrals):**
+OAuth flow (Private App token only), one-to-many fanout, static defaults / field transformations, manual retry from UI for failed pushes, soft delete, custom HubSpot property creation for unmapped fields, encryption key rotation, bulk replay of historical submissions, in-memory caching of vendor forms list.
+
+**Runtime verification:**
+**Deferred.** Code is `tsc --noEmit` clean across backend and frontend, but no migrations have been applied to a real DB, no real HubSpot token has been validated through the adapter, no end-to-end form submission has actually pushed a contact. The spec's Done checklist (~17 manual items including idempotency, Make.com regression, broken-form detection, Redis-down resilience) is unrun. Treat 0.0.30 as code-complete — the runtime gate fires the first time a customer connects HubSpot in dev/staging.
+
+**Commits:**
+- `src/database/migrations/20260425100000_create_website_integrations.ts` — `website_integrations` table with `CHECK` on `platform` + `status`, unique `(project_id, platform)`.
+- `src/database/migrations/20260425100001_create_website_integration_form_mappings.ts` — N→1 mappings with unique `(integration_id, website_form_name)`.
+- `src/database/migrations/20260425100002_create_crm_sync_logs.ts` — audit trail with `SET NULL` cascade + denormalized `platform`/`vendor_form_id`.
+- `src/models/website-builder/WebsiteIntegrationModel.ts` — `SAFE_COLUMNS` excludes `encrypted_credentials`; internal `getDecryptedCredentials`.
+- `src/models/website-builder/IntegrationFormMappingModel.ts` — `bulkMarkBrokenForMissingVendorForms` + `bulkMarkValidated` for daily validation.
+- `src/models/website-builder/CrmSyncLogModel.ts` — paginated query for Recent Activity panel; `pruneOlderThan` retention helper.
+- `src/services/integrations/types.ts` — `ICrmAdapter` + DTOs.
+- `src/services/integrations/hubspotAdapter.ts` — fetch-based impl: `validateConnection` (account-info/v3/details), `listForms` (marketing/v3/forms paginated), `getFormSchema`, `submitForm` (api.hsforms.com auth-less endpoint). 429/5xx throw to trigger BullMQ retry; 401 returns `auth_failed`; 404 returns `form_not_found`.
+- `src/services/integrations/fieldInference.ts` — exact + alias + length-capped fuzzy matching for `email`/`phone`/`firstname`/etc. plus dental synonyms (`practice_name → company`).
+- `src/services/integrations/index.ts` — `getAdapter(platform)` registry.
+- `src/utils/formContentsFlattener.ts` — handles both `FormSection[]` and legacy flat shapes; shared between form-detection and CRM push.
+- `src/controllers/admin-websites/feature-services/service.form-detection.ts` — `listDetectedForms` (excludes Newsletter Signup) + `getFormFieldShape` with sample values.
+- `src/controllers/admin-websites/WebsiteIntegrationsController.ts` — 16 endpoint handlers; project-ownership checks on every per-integration route.
+- `src/routes/admin/websites.ts` — 16 new routes mounted between form-submissions and review-sync sections.
+- `src/workers/queues.ts` — `getCrmQueue` helper, prefix `{crm}`.
+- `src/workers/processors/crmPush.processor.ts` — late-skip on `is_flagged` race; flips integration to revoked on 401, mapping to broken on 404.
+- `src/workers/processors/crmMappingValidation.processor.ts` — daily token + form-existence sweep, best-effort across all integrations.
+- `src/workers/worker.ts` — `crm-hubspot-push` (concurrency 3, lockDuration 30s) + `crm-mapping-validation` (concurrency 1, daily 4:30 AM UTC) workers + scheduled job + shutdown wiring.
+- `src/controllers/websiteContact/formSubmissionController.ts` — additive enqueue block AFTER AI classification, gated on local `flagged` boolean + `submissionId !== null`, idempotent via `jobId: submissionId`, inner try/catch isolates Redis failures from visitor response.
+- `frontend/src/api/integrations.ts` — typed client for all 16 endpoints + `SyncLog` type.
+- `frontend/src/components/Admin/IntegrationsTab.tsx` — main tab with state machine for not-connected / connected / revoked.
+- `frontend/src/components/Admin/integrations/{IntegrationProviderList,HubSpotConnectModal,HubSpotConnectionPanel,DetectedFormsPanel,FieldMappingDropdown,RecentActivityPanel}.tsx` — 6 subcomponents.
+- `frontend/src/pages/admin/WebsiteDetail.tsx` — register `?tab=integrations` (4 edits: VALID_TABS, tabConfig, conditional render, lucide `Plug` import).
+- `plans/04252026-no-ticket-website-integrations-hubspot-form-mapping/spec.md` — 800+ line spec with Risk section, T0 audit findings, two Revision Log entries (Rev 1: pre-execution review fixes; Rev 2: T7 placement correction from T0 findings).
+
 ## [0.0.29] - April 2026
 
 ### Audit Pipeline — Stealth Scrape Fallback + Branch-B Perf Tightening

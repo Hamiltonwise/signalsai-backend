@@ -24,7 +24,9 @@ import {
 import { processIdentityWarmup } from "./processors/identityWarmup.processor";
 import { processLayoutGenerate } from "./processors/websiteLayouts.processor";
 import { processPostImport } from "./processors/postImporter.processor";
-import { getMindsQueue } from "./queues";
+import { processCrmPush } from "./processors/crmPush.processor";
+import { processCrmMappingValidation } from "./processors/crmMappingValidation.processor";
+import { getMindsQueue, getCrmQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
 const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
@@ -323,8 +325,41 @@ const auditLeadgenWorker = new Worker(
   }
 );
 
+// CRM HubSpot Push worker — async push of form submissions to HubSpot.
+// Idempotent via jobId === submissionId (set at enqueue time).
+const crmHubspotPushWorker = new Worker(
+  "crm-hubspot-push",
+  async (job) => {
+    await processCrmPush(job);
+  },
+  {
+    connection,
+    concurrency: 3,
+    lockDuration: 30000, // 30s — submission pushes are sub-second normally
+    prefix: '{crm}',
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 50 },
+  }
+);
+
+// CRM Mapping Validation worker — daily token + form-existence sweep.
+const crmMappingValidationWorker = new Worker(
+  "crm-mapping-validation",
+  async (job) => {
+    await processCrmMappingValidation(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000, // 10 min — could iterate many integrations
+    prefix: '{crm}',
+    removeOnComplete: { count: 30 },
+    removeOnFail: { count: 30 },
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbIdentityWarmupWorker, wbLayoutsWorker, wbProjectScrapeWorker, wbPageGenerateWorker, wbPostImportWorker, auditLeadgenWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbIdentityWarmupWorker, wbLayoutsWorker, wbProjectScrapeWorker, wbPageGenerateWorker, wbPostImportWorker, auditLeadgenWorker, crmHubspotPushWorker, crmMappingValidationWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -357,6 +392,8 @@ async function shutdown(): Promise<void> {
   await wbPageGenerateWorker.close();
   await wbPostImportWorker.close();
   await auditLeadgenWorker.close();
+  await crmHubspotPushWorker.close();
+  await crmMappingValidationWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -429,10 +466,32 @@ async function setupSchedulerTick(): Promise<void> {
   }
 }
 
+// Set up CRM mapping validation schedule (daily — 4:30 AM UTC)
+async function setupCrmMappingValidationSchedule(): Promise<void> {
+  try {
+    const queue = getCrmQueue("mapping-validation");
+    await queue.add(
+      "daily-mapping-validation",
+      {},
+      {
+        repeat: {
+          pattern: "30 4 * * *", // 4:30 AM UTC daily
+          tz: "UTC",
+        },
+        jobId: "daily-mapping-validation",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily CRM mapping validation scheduled (4:30 AM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up CRM mapping validation schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
 setupReviewSyncSchedule();
 setupSchedulerTick();
+setupCrmMappingValidationSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
