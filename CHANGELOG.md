@@ -2,6 +2,71 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.31] - April 2026
+
+### Per-Organization Data Reset (Admin)
+
+Admin can now wipe agent outputs and PMS data for a single organization via a "Reset Data" button on `/admin/organizations/:id`, scoped to the Agent Results section. v1 ships two reset groups — **PMS Ingestion** (clears `pms_jobs`) and **Referral Engine output** (clears `agent_results` + `agent_recommendations` where `agent_type='referral_engine'`) — with a one-way cascade: checking PMS auto-checks-and-disables Referral Engine because the analysis output is derived from PMS source data. Wiping PMS without RE would leave stale analysis pointing at deleted source data, so the modal forces them together. RE alone remains independent so admins can re-run analysis on existing PMS data without disturbing the source.
+
+**Architecture:**
+- Backend: `GET /api/admin/organizations/:id/reset-data/preview` returns live row counts for both groups; `POST /api/admin/organizations/:id/reset-data` accepts `{ groups, confirmName }` and runs all selected deletes inside a single `knex.transaction()` so partial failure rolls back. Returns per-table `deletedCounts`.
+- `agent_recommendations` deleted manually first via subquery on `agent_results` — there's no FK CASCADE from `agent_results.id`, confirmed during the prior one-off org-36 reset.
+- Audit trail via console-logged `[admin-reset]` structured JSON line on every successful commit (`adminEmail`, `orgId`, `orgName`, `groups`, `deletedCounts`, `timestamp`). No new audit table for v1.
+- RBAC: existing `superAdminMiddleware` (env-allowlist via `SUPER_ADMIN_EMAILS`). Defense-in-depth — backend route enforces super-admin even though the entire `/admin/*` tree is already gated by `AdminGuard` on the frontend.
+
+**Frontend:**
+- `ResetOrgDataModal.tsx` mirrors the existing `OrgSettingsSection` delete-org modal pattern (framer-motion `motion.div`, react-hot-toast feedback, type-org-name confirm input, `lucide-react` icons). On open, fetches preview counts and renders 2 checkboxes with row-count badges.
+- Cascade UX: when PMS checkbox is checked, RE is force-checked + disabled with hint "PMS reset also clears Referral Engine output (derived data)." When PMS is unchecked, RE becomes independently toggleable.
+- Submit button disabled until `confirmText === org.name` AND ≥1 group selected. On success: toasts deletion summary, fires `queryClient.invalidateQueries` for `adminOrgPmsJobsAll(orgId)` and `adminOrgAgentOutputsAll(orgId)`, closes modal.
+- Button placement gated to `?section=agent` only — hidden on Subscription/Users/Connections/Settings to reduce accidental-click surface (Rev 2 of the spec).
+
+**One-off org-36 PMS reset (prior plan, now in version control):**
+- `src/database/migrations/20260423000002_reset_pms_data_org_36.ts` — the manual prod reset that motivated this feature. Snapshot-rollback via `<table>_reset_backup_org36_20260423` tables; `down()` restores rows with original IDs and JSONB intact.
+- Dual env-var guarded: `RESET_ORG_36_CONFIRM=true` AND `RESET_ORG_36_DB_NAME=<DB_NAME>` both required, plus `DB_NAME` must match `RESET_ORG_36_DB_NAME`. Migration is a no-op in any future env that doesn't explicitly opt in. Deletion order is FK-safe: `agent_recommendations` (subquery) → `agent_results` → `tasks` → `pms_jobs`. `agent_recommendations` for org 36 had 0 rows; backups still created for rollback symmetry.
+
+**Out of scope (v1 — explicit deferrals):**
+The other 7 reset groups (Rankings, Tasks Hub, Notifications, Proofline, Summary, Opportunity, CRO) — modal architecture is structured to scale (just add list entries). In-flight job cancellation / org-lock during reset. Per-tab inline reset buttons. Admin audit log table + viewer. `google_data_store` reset (Proofline source data) as a separate group.
+
+### Referral Engine Accuracy — Tier 1 Fixes
+
+Six surgical accuracy improvements identified during a deep map of the Referral Engine flow. Bounded scope: no model change, no n8n contract change, no parser internals.
+
+**Key Changes:**
+- `buildReferralEnginePayload` now emits `additional_data.{pms, gbp, website_analytics}`. Prompt previously promised GBP + analytics enrichment but the code only sent PMS — the model was told to weigh data it never saw. Reuses the GBP fetch already wired into Summary; no new fetches.
+- New `ReferralEngineAgentOutputSchema` (Zod, top-level `.strict()`, nested permissive) validates every Referral Engine output. On shape mismatch the runner sends a corrective user message with formatted Zod issues and re-calls Anthropic once; both attempts logged with `[zod-retry]` prefix. Falls through to legacy `isValidAgentOutput` if the corrective retry also fails. Cap is one retry per outer attempt — outer retry budget unchanged at 3.
+- Three additive prompt sections in `src/agents/monthlyAgents/ReferralEngineAnalysis.md` (no existing rule reworded):
+    - **GROUNDING RULES — STRICT:** cite only source names, months, and numbers that appear verbatim in the input JSON. Omit claims with numbers not in the input. Do not infer, estimate, or interpolate.
+    - **SINGLE-MONTH RULE:** when `monthly_rollup` has one month, force `trend_label='new'` for every source in both matrices and add the corresponding `data_quality_flags` entry. Do not invent prior-month numbers.
+    - **UPSTREAM DATA QUALITY ACKNOWLEDGEMENT:** surface upstream flags from `additional_data.pms.data_quality_flags` verbatim — they are deterministic checks already run before the model saw the data.
+- `pmsAggregator`: new `SOURCE_SUM_TOLERANCE = 0.05` constant. Per-month reconciliation pushes `Sum-of-sources mismatch in <month>: sources=N, total=M` entries into a new `dataQualityFlags: string[]` field on the aggregator output. The orchestrator propagates this through its existing camelCase→snake_case PMS payload transform to `additional_data.pms.data_quality_flags`, which the new prompt section instructs the model to surface.
+- Prompt caching enabled at the Referral Engine `runAgent` call site (5-min ephemeral). `cache_creation_input_tokens` / `cache_read_input_tokens` visible in `llm-runner` logs from the second within-window call onward.
+- Runner cache condition relaxed: `cachedSystemBlocks !== undefined` (was: `length > 0`). Callers can now pass `[]` to cache only the auto-appended `systemPrompt` without duplicating it as a prefix block — fixes a double-send bug discovered during integration verification (the runner auto-appends the systemPrompt as a cached block; passing `[systemPrompt]` would have produced two identical cached blocks per call).
+
+**Backward compat:**
+No new dependencies (Zod 4.3.6 already in deps). No schema migration. Other agents (Proofline, Summary, Opportunity, CRO Optimizer) byte-identical at the runner call — `runAgent` and `runMonthlyAgent` extensions are optional params; existing callers behave exactly as before.
+
+**Out of scope (Tier 2 / Tier 3 — explicit follow-ups):**
+AI-driven type classification (replace keyword matching at parse time), date-format detection by sampling, parser unit test suite, "review parsed data" admin UI step, self-critique second pass (Haiku), n8n parser repatriation, per-claim confidence scoring, output cache keyed by PMS data fingerprint, 1-hour cache TTL (Anthropic beta).
+
+**Commits:**
+- `src/types/adminReset.ts` — `ResetGroupKey` union + request/response types.
+- `src/controllers/admin-organizations/feature-services/service.reset-org-data.ts` — transactional reset service with `[admin-reset]` audit log.
+- `src/controllers/admin-organizations/AdminOrganizationsController.ts` — `previewResetData` + `resetOrgData` handlers with org-name confirmation validation.
+- `src/routes/admin/organizations.ts` — 2 super-admin gated routes (`GET /:id/reset-data/preview`, `POST /:id/reset-data`).
+- `src/database/migrations/20260423000002_reset_pms_data_org_36.ts` — prior one-off prod reset, snapshot-rollback, dual env-var guarded.
+- `frontend/src/components/Admin/ResetOrgDataModal.tsx` — type-org-name confirm modal with PMS→RE cascade UX.
+- `frontend/src/api/admin-organizations.ts` — typed API client (`adminPreviewResetData`, `adminResetOrgData`).
+- `frontend/src/pages/admin/OrganizationDetail.tsx` — Reset Data button next to DFY badge, gated to `?section=agent`.
+- `src/agents/monthlyAgents/ReferralEngineAnalysis.md` — three new rule sections.
+- `src/agents/service.llm-runner.ts` — `outputSchema` optional param + corrective single-retry; relaxed cache condition.
+- `src/controllers/agents/feature-services/service.agent-input-builder.ts` — `buildReferralEnginePayload` payload extension.
+- `src/controllers/agents/feature-services/service.agent-orchestrator.ts` — Referral Engine call passes GBP + analytics + `enableCache` + `outputSchema`; PMS payload transform now includes `data_quality_flags`.
+- `src/controllers/agents/types/agent-output-schemas.ts` — `ReferralEngineAgentOutputSchema` Zod export alongside the existing TS interface.
+- `src/utils/pms/pmsAggregator.ts` — `SOURCE_SUM_TOLERANCE` + per-month sum reconciliation.
+
+**Runtime verification:**
+**Deferred.** Code is `tsc --noEmit` clean across backend and frontend. UI walkthrough of the Reset Data modal and end-to-end Referral Engine smoke test (cache token logs, Zod-valid output, single-month trend behavior, upstream-flag surfacing) are flagged in their respective spec Done checklists. Treat 0.0.31 as code-complete; runtime gate fires the first time a super-admin uses Reset Data on Hamilton Wise's org and the next Referral Engine run that produces `cache_creation_input_tokens` logs and a Zod-valid output.
+
 ## [0.0.30] - April 2026
 
 ### Website Integrations — HubSpot Form-to-Contact Mapping (v1)
