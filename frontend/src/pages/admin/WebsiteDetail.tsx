@@ -34,6 +34,7 @@ import {
   Lock,
   Eye,
   DollarSign,
+  Plug,
 } from "lucide-react";
 import {
   fetchWebsiteDetail,
@@ -81,6 +82,7 @@ import AiCommandTab from "../../components/Admin/AiCommandTab";
 import RedirectsTab from "../../components/Admin/RedirectsTab";
 import ReviewsTab from "../../components/Admin/ReviewsTab";
 import CostsTab from "../../components/Admin/CostsTab";
+import IntegrationsTab from "../../components/Admin/IntegrationsTab";
 import { fetchProjectCodeSnippets } from "../../api/codeSnippets";
 import type { CodeSnippet } from "../../api/codeSnippets";
 import { useConfirm } from "../../components/ui/ConfirmModal";
@@ -316,7 +318,7 @@ export default function WebsiteDetail() {
   const isBulkSeoActive = bulkSeoStatus !== null && (bulkSeoStatus.status === "queued" || bulkSeoStatus.status === "processing");
 
   // Detail tab: persisted in URL search params so refresh preserves tab
-  const VALID_TABS = ["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "reviews", "redirects", "backups", "advanced-tools", "costs"] as const;
+  const VALID_TABS = ["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "reviews", "redirects", "integrations", "backups", "advanced-tools", "costs"] as const;
   type DetailTab = typeof VALID_TABS[number];
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get("tab");
@@ -1304,7 +1306,7 @@ export default function WebsiteDetail() {
 
       {/* Tab bar: Pages | Layouts | Code Manager | Media | Form Submissions */}
       <div className="flex items-stretch gap-1 p-1.5 bg-gray-100 rounded-xl mb-4">
-        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "reviews", "redirects", "backups", "advanced-tools", "costs"] as const).map((tab) => {
+        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "reviews", "redirects", "integrations", "backups", "advanced-tools", "costs"] as const).map((tab) => {
           const isActive = detailTab === tab;
           const tabConfig: Record<string, { label: string; icon: React.ReactNode }> = {
             "pages": { label: "Pages", icon: <FileText className="w-3.5 h-3.5" /> },
@@ -1316,6 +1318,7 @@ export default function WebsiteDetail() {
             "menus": { label: "Menus", icon: <Menu className="w-3.5 h-3.5" /> },
             "reviews": { label: "Reviews", icon: <Star className="w-3.5 h-3.5" /> },
             "redirects": { label: "Redirects", icon: <ArrowRightLeft className="w-3.5 h-3.5" /> },
+            "integrations": { label: "Integrations", icon: <Plug className="w-3.5 h-3.5" /> },
             "backups": { label: "Backups", icon: <Archive className="w-3.5 h-3.5" /> },
             "advanced-tools": { label: "Advanced Tools", icon: <Wrench className="w-3.5 h-3.5" /> },
             "costs": { label: "Costs", icon: <DollarSign className="w-3.5 h-3.5" /> },
@@ -2067,6 +2070,17 @@ export default function WebsiteDetail() {
           transition={{ delay: 0.2 }}
         >
           <AiCommandTab projectId={id!} pages={website.pages} onExecutionComplete={() => invalidateWebsite(id!)} />
+        </motion.div>
+      )}
+
+      {/* Integrations Section — HubSpot only in v1 */}
+      {detailTab === "integrations" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <IntegrationsTab projectId={id!} />
         </motion.div>
       )}
 

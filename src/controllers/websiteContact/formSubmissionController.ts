@@ -31,6 +31,10 @@ import { buildEmailBody } from "./websiteContact-services/emailBodyBuilder";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { FormSubmissionModel, type FileValue, type FormSection, type FormContents } from "../../models/website-builder/FormSubmissionModel";
+import { WebsiteIntegrationModel } from "../../models/website-builder/WebsiteIntegrationModel";
+import { IntegrationFormMappingModel } from "../../models/website-builder/IntegrationFormMappingModel";
+import { CrmSyncLogModel } from "../../models/website-builder/CrmSyncLogModel";
+import { getCrmQueue } from "../../workers/queues";
 import { db } from "../../database/connection";
 import { NewsletterSignupModel } from "../../models/website-builder/NewsletterSignupModel";
 import { uploadToS3 } from "../../utils/core/s3";
@@ -471,6 +475,62 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
             console.error("[Form Submission] Failed to update flag:", updateErr);
           }
         }
+      }
+    }
+
+    // ── 14b. CRM push (idempotent, async) ──
+    // Hooks AFTER the AI block so `flagged` is final. Wrapped in its own
+    // try/catch so a Redis hiccup or DB blip never breaks the visitor response.
+    if (submissionId) {
+      try {
+        const integration = await WebsiteIntegrationModel.findByProjectAndPlatform(
+          String(projectId),
+          "hubspot",
+        );
+        if (integration && integration.status === "active") {
+          const mapping = await IntegrationFormMappingModel.findByIntegrationAndWebsiteForm(
+            integration.id,
+            sanitizedFormName,
+          );
+
+          if (flagged) {
+            await CrmSyncLogModel.create({
+              integration_id: integration.id,
+              mapping_id: mapping?.id ?? null,
+              submission_id: submissionId,
+              platform: integration.platform,
+              vendor_form_id: mapping?.vendor_form_id ?? null,
+              outcome: "skipped_flagged",
+              error: flagReason || null,
+            });
+          } else if (!mapping || mapping.status !== "active") {
+            await CrmSyncLogModel.create({
+              integration_id: integration.id,
+              mapping_id: null,
+              submission_id: submissionId,
+              platform: integration.platform,
+              vendor_form_id: null,
+              outcome: "no_mapping",
+            });
+          } else {
+            const queue = getCrmQueue(`${integration.platform}-push`);
+            await queue.add(
+              "push-submission",
+              { submissionId, mappingId: mapping.id },
+              {
+                jobId: submissionId, // IDEMPOTENCY KEY — BullMQ refuses duplicate jobIds
+                attempts: 5,
+                backoff: { type: "exponential", delay: 5000 },
+                removeOnComplete: { count: 100 },
+                removeOnFail: { count: 50 },
+              },
+            );
+          }
+        }
+        // No active integration → no log row (write-amplification rule)
+      } catch (err) {
+        console.error("[Form Submission] CRM enqueue failed:", err);
+        // Do not throw — visitor response must complete normally.
       }
     }
 
