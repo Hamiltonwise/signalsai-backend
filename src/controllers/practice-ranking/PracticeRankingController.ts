@@ -67,6 +67,7 @@ import {
 } from "./feature-services/service.location-competitor-onboarding";
 import { LocationCompetitorModel } from "../../models/LocationCompetitorModel";
 import { LocationModel } from "../../models/LocationModel";
+import { getPlacePhotoMedia } from "../places/feature-services/GooglePlacesApiService";
 import {
   validateLocationIdParam,
   validatePlaceIdInput,
@@ -1345,6 +1346,7 @@ export async function getLocationCompetitors(
         lng: c.lng === null ? null : Number(c.lng),
         phone: c.phone,
         website: c.website,
+        photoName: c.photo_name,
         source: c.source,
         addedAt: c.added_at,
         addedByUserId: c.added_by_user_id,
@@ -1528,6 +1530,46 @@ export async function finalizeLocationAndRun(
       success: false,
       error: "FINALIZE_ERROR",
       message: error.message || "Failed to finalize and trigger run",
+    });
+  }
+}
+
+// GET /photo?name=places/.../photos/...
+// Authed proxy for Google Places Photo media. Each call hits the paid Place
+// Photo SKU; do not expose unauthenticated.
+export async function getCompetitorPhoto(
+  req: Request,
+  res: Response
+): Promise<Response | void> {
+  try {
+    const photoName = String(req.query.name || "");
+    // Validate shape: Google's photo resource names are "places/<id>/photos/<id>".
+    // Reject anything else to prevent abuse against arbitrary upstream paths.
+    if (!/^places\/[^/]+\/photos\/[^/]+$/.test(photoName)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_PHOTO_NAME",
+        message: "name must look like places/<id>/photos/<id>",
+      });
+    }
+    const maxHeightPx = Math.min(
+      Math.max(parseInt(String(req.query.h || "200"), 10) || 200, 64),
+      800
+    );
+    const { buffer, contentType } = await getPlacePhotoMedia(
+      photoName,
+      maxHeightPx
+    );
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Length", String(buffer.length));
+    return res.end(buffer);
+  } catch (error: any) {
+    logError("GET /practice-ranking/photo", error);
+    return res.status(502).json({
+      success: false,
+      error: "PHOTO_FETCH_FAILED",
+      message: error.message || "Failed to fetch photo",
     });
   }
 }

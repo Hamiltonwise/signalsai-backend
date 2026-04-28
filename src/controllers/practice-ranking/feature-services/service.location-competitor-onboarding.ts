@@ -405,6 +405,7 @@ export async function runDiscoveryForLocation(
           lng: comp.location?.lng ?? null,
           phone: comp.phone || null,
           website: comp.website || null,
+          photoName: comp.photoName || null,
           source: "initial_scrape",
           addedByUserId: null,
         },
@@ -498,6 +499,7 @@ export async function addCustomCompetitor(
   const lng = placeDetails?.location?.longitude ?? null;
   const phone = placeDetails?.nationalPhoneNumber || null;
   const website = placeDetails?.websiteUri || null;
+  const photoName = placeDetails?.photos?.[0]?.name || null;
 
   const added = await LocationCompetitorModel.addCompetitor(locationId, {
     placeId,
@@ -510,6 +512,7 @@ export async function addCustomCompetitor(
     lng,
     phone,
     website,
+    photoName,
     source: "user_added",
     addedByUserId: userId,
   });

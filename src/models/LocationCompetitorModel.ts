@@ -18,6 +18,7 @@ export interface ILocationCompetitor {
   lng: number | null;
   phone: string | null;
   website: string | null;
+  photo_name: string | null;
   source: LocationCompetitorSource;
   added_at: Date;
   added_by_user_id: number | null;
@@ -37,6 +38,7 @@ export interface AddCompetitorInput {
   lng?: number | null;
   phone?: string | null;
   website?: string | null;
+  photoName?: string | null;
   source: LocationCompetitorSource;
   addedByUserId?: number | null;
 }
@@ -129,6 +131,7 @@ export class LocationCompetitorModel extends BaseModel {
           lng: input.lng ?? existing.lng,
           phone: input.phone ?? existing.phone,
           website: input.website ?? existing.website,
+          photo_name: input.photoName ?? existing.photo_name,
           // If user is re-adding, mark it as user_added so the audit trail
           // reflects intent. If still active, keep original source.
           source: wasRemoved ? input.source : existing.source,
@@ -158,6 +161,7 @@ export class LocationCompetitorModel extends BaseModel {
         lng: input.lng ?? null,
         phone: input.phone ?? null,
         website: input.website ?? null,
+        photo_name: input.photoName ?? null,
         source: input.source,
         added_at: now,
         added_by_user_id: input.addedByUserId ?? null,

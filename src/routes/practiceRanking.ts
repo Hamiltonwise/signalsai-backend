@@ -30,6 +30,7 @@ import {
   locationScopeMiddleware,
   requireRole,
 } from "../middleware/rbac";
+import { placesPhotoLimiter } from "../middleware/publicRateLimiter";
 
 const router = express.Router();
 
@@ -105,6 +106,16 @@ router.post(
   locationScopeMiddleware,
   requireRole("admin", "manager"),
   controller.finalizeLocationAndRun
+);
+
+// Authed photo proxy for Place Photo media. Behind login + rate limit because
+// each call hits the paid Place Photo SKU.
+// Spec: plans/04282026-no-ticket-leaflet-map-click-sync-rich-row-data/spec.md
+router.get(
+  "/photo",
+  authenticateToken,
+  placesPhotoLimiter,
+  controller.getCompetitorPhoto
 );
 
 export default router;

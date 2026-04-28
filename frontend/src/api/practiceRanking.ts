@@ -24,6 +24,7 @@ export interface CuratedCompetitor {
   lng: number | null;
   phone: string | null;
   website: string | null;
+  photoName: string | null;
   source: LocationCompetitorSource;
   addedAt: string;
   addedByUserId: number | null;

@@ -9,7 +9,7 @@
  * Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,6 +26,10 @@ import {
   Globe,
   Info,
 } from "lucide-react";
+import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "./competitor-map.css";
 import {
   getLocationCompetitors,
   runCompetitorDiscovery,
@@ -39,9 +43,9 @@ import {
 import { searchPlaces, type PlaceSuggestion } from "../../api/places";
 import { haversineMiles, formatDistance } from "./util.distance";
 
-type Stage = "loading" | "discovering" | "curating" | "finalizing";
+const PULSE_DURATION_MS = 2000;
 
-const STAGGER_MS = 250;
+type Stage = "loading" | "discovering" | "curating" | "finalizing";
 
 function errorMessage(err: unknown, fallback: string): string {
   if (err instanceof Error) return err.message || fallback;
@@ -58,12 +62,67 @@ export default function LocationCompetitorOnboarding() {
   const [competitors, setCompetitors] = useState<CuratedCompetitor[]>([]);
   const [cap, setCap] = useState(10);
   const [error, setError] = useState<string | null>(null);
-  const [revealedCount, setRevealedCount] = useState(0);
-  const revealTimers = useRef<NodeJS.Timeout[]>([]);
+  // Single timeout flips Stage 1 → Stage 2 once discovery returns. Per-pin
+  // staggered reveal was retired with the Leaflet swap.
+  const stageTransitionTimer = useRef<number | null>(null);
   const [practiceLocation, setPracticeLocation] =
     useState<PracticeLocationRef | null>(null);
   const [selfFilterStatus, setSelfFilterStatus] =
     useState<SelfFilterStatus>("resolved");
+
+  // Bidirectional click sync between map pins and list rows.
+  // `selectionSource` tracks which side fired so the effect knows which side
+  // to scroll into view.
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [selectionSource, setSelectionSource] = useState<"list" | "pin" | null>(
+    null
+  );
+  const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  const mapWrapperRef = useRef<HTMLDivElement | null>(null);
+  const pulseTimer = useRef<number | null>(null);
+
+  const selectFromList = useCallback((placeId: string) => {
+    setSelectionSource("list");
+    setSelectedPlaceId(placeId);
+  }, []);
+  const selectFromPin = useCallback((placeId: string) => {
+    setSelectionSource("pin");
+    setSelectedPlaceId(placeId);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPlaceId) return;
+    if (selectionSource === "list") {
+      mapWrapperRef.current?.scrollIntoView({
+        block: "start",
+        behavior: "smooth",
+      });
+    } else if (selectionSource === "pin") {
+      rowRefs.current
+        .get(selectedPlaceId)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    if (pulseTimer.current) window.clearTimeout(pulseTimer.current);
+    pulseTimer.current = window.setTimeout(() => {
+      setSelectedPlaceId(null);
+      setSelectionSource(null);
+      pulseTimer.current = null;
+    }, PULSE_DURATION_MS);
+    return () => {
+      if (pulseTimer.current) {
+        window.clearTimeout(pulseTimer.current);
+        pulseTimer.current = null;
+      }
+    };
+  }, [selectedPlaceId, selectionSource]);
+
+  const registerRowRef = useCallback(
+    (placeId: string, el: HTMLLIElement | null) => {
+      if (el) rowRefs.current.set(placeId, el);
+      else rowRefs.current.delete(placeId);
+    },
+    []
+  );
 
   // Search dropdown state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -118,7 +177,10 @@ export default function LocationCompetitorOnboarding() {
     })();
     return () => {
       cancelled = true;
-      revealTimers.current.forEach((t) => clearTimeout(t));
+      if (stageTransitionTimer.current) {
+        window.clearTimeout(stageTransitionTimer.current);
+        stageTransitionTimer.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationId]);
@@ -141,20 +203,12 @@ export default function LocationCompetitorOnboarding() {
       setCompetitors(list.competitors);
       setPracticeLocation(list.practiceLocation);
       setSelfFilterStatus(list.selfFilterStatus);
-      // Stagger the reveal animation while still showing "discovering"
-      list.competitors.forEach((_, i) => {
-        const t = setTimeout(
-          () => setRevealedCount((c) => Math.max(c, i + 1)),
-          (i + 1) * STAGGER_MS
-        );
-        revealTimers.current.push(t);
-      });
-      // After the last reveal, transition to curating with a brief pause
-      const transitionT = setTimeout(
+      // Brief pause so the user registers the discovery view before the curate
+      // stage takes over.
+      stageTransitionTimer.current = window.setTimeout(
         () => setStage("curating"),
-        list.competitors.length * STAGGER_MS + 800
+        1200
       );
-      revealTimers.current.push(transitionT);
     } catch (err) {
       setError(errorMessage(err, "Discovery failed."));
     }
@@ -299,7 +353,6 @@ export default function LocationCompetitorOnboarding() {
         {stage === "discovering" && (
           <DiscoveringStage
             competitors={competitors}
-            revealedCount={revealedCount}
             practiceLocation={practiceLocation}
           />
         )}
@@ -319,6 +372,11 @@ export default function LocationCompetitorOnboarding() {
             onFinalize={handleFinalizeAndRun}
             practiceLocation={practiceLocation}
             selfFilterStatus={selfFilterStatus}
+            selectedPlaceId={selectedPlaceId}
+            onSelectFromList={selectFromList}
+            onSelectFromPin={selectFromPin}
+            registerRowRef={registerRowRef}
+            mapWrapperRef={mapWrapperRef}
           />
         )}
 
@@ -360,11 +418,9 @@ function FinalizingState() {
 
 function DiscoveringStage({
   competitors,
-  revealedCount,
   practiceLocation,
 }: {
   competitors: CuratedCompetitor[];
-  revealedCount: number;
   practiceLocation: PracticeLocationRef | null;
 }) {
   return (
@@ -387,7 +443,6 @@ function DiscoveringStage({
         competitors={competitors}
         practiceLocation={practiceLocation}
         height={480}
-        revealedCount={revealedCount}
         showLoadingFallback
       />
 
@@ -399,9 +454,7 @@ function DiscoveringStage({
               : `Found ${competitors.length} practices nearby`}
           </span>
           <span className="text-alloro-textDark/40 text-xs font-bold uppercase tracking-widest">
-            {competitors.length === 0
-              ? ""
-              : `Revealing ${revealedCount} of ${competitors.length}`}
+            {competitors.length === 0 ? "" : "Locking in your list"}
           </span>
         </div>
       </div>
@@ -423,6 +476,11 @@ function CuratingStage({
   onFinalize,
   practiceLocation,
   selfFilterStatus,
+  selectedPlaceId,
+  onSelectFromList,
+  onSelectFromPin,
+  registerRowRef,
+  mapWrapperRef,
 }: {
   competitors: CuratedCompetitor[];
   cap: number;
@@ -437,6 +495,11 @@ function CuratingStage({
   onFinalize: () => void;
   practiceLocation: PracticeLocationRef | null;
   selfFilterStatus: SelfFilterStatus;
+  selectedPlaceId: string | null;
+  onSelectFromList: (placeId: string) => void;
+  onSelectFromPin: (placeId: string) => void;
+  registerRowRef: (placeId: string, el: HTMLLIElement | null) => void;
+  mapWrapperRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const atCap = competitors.length >= cap;
   const placeIds = useMemo(
@@ -460,11 +523,15 @@ function CuratingStage({
           </p>
         </div>
 
-        <CompetitorMap
-          competitors={competitors}
-          practiceLocation={practiceLocation}
-          height={300}
-        />
+        <div ref={mapWrapperRef}>
+          <CompetitorMap
+            competitors={competitors}
+            practiceLocation={practiceLocation}
+            height={300}
+            selectedPlaceId={selectedPlaceId}
+            onPinClick={onSelectFromPin}
+          />
+        </div>
 
         {selfFilterStatus === "unresolved" && (
           <div className="mx-8 mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
@@ -572,18 +639,34 @@ function CuratingStage({
                 return (
                 <motion.li
                   key={c.placeId}
+                  ref={(el) => registerRowRef(c.placeId, el)}
+                  data-selected={selectedPlaceId === c.placeId}
                   layout
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 8 }}
-                  className="flex items-center justify-between gap-3 py-4"
+                  onClick={() => onSelectFromList(c.placeId)}
+                  className="competitor-row flex items-center justify-between gap-3 py-4 px-2 -mx-2 cursor-pointer hover:bg-slate-50 transition-colors"
                 >
+                  {c.photoName && (
+                    <img
+                      src={`/api/practice-ranking/photo?name=${encodeURIComponent(c.photoName)}`}
+                      alt=""
+                      loading="lazy"
+                      className="w-12 h-12 rounded-lg object-cover flex-shrink-0 bg-slate-100"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display =
+                          "none";
+                      }}
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
                       <a
                         href={`https://www.google.com/maps/place/?q=place_id:${c.placeId}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
                         className="font-bold text-sm text-alloro-textDark hover:text-alloro-orange truncate"
                         title={`Open ${c.name} on Google Maps`}
                       >
@@ -619,6 +702,7 @@ function CuratingStage({
                       {c.phone && (
                         <a
                           href={`tel:${c.phone.replace(/\s+/g, "")}`}
+                          onClick={(e) => e.stopPropagation()}
                           className="flex items-center gap-1 text-slate-500 hover:text-alloro-orange"
                         >
                           <Phone size={11} className="text-slate-400" />
@@ -630,6 +714,7 @@ function CuratingStage({
                           href={c.website}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className="flex items-center gap-1 text-slate-500 hover:text-alloro-orange truncate max-w-[180px]"
                         >
                           <Globe size={11} className="text-slate-400" />
@@ -653,7 +738,10 @@ function CuratingStage({
                     {c.source === "user_added" ? "You added" : "Auto"}
                   </span>
                   <button
-                    onClick={() => onRemove(c.placeId)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(c.placeId);
+                    }}
                     className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-400 flex items-center justify-center transition flex-shrink-0"
                     aria-label={`Remove ${c.name}`}
                   >
@@ -704,18 +792,57 @@ function CuratingStage({
 // Shared map component (used by Stage 1 reveal animation + Stage 2 static)
 // =====================================================================
 
+function makeCompetitorIcon(index: number, isSelected: boolean): L.DivIcon {
+  return L.divIcon({
+    className: "alloro-marker-wrapper",
+    html: `<div class="alloro-pin alloro-pin-competitor${isSelected ? " is-selected" : ""}">${index + 1}</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+}
+
+function makePracticeIcon(): L.DivIcon {
+  return L.divIcon({
+    className: "alloro-marker-wrapper",
+    html: `<div class="alloro-pin alloro-pin-practice">YOU</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+}
+
+// Imperatively pan/zoom to fit the supplied points whenever they change.
+// `react-leaflet` doesn't expose a declarative bounds prop on MapContainer
+// after first render, so this helper rides inside the map context.
+function FitBoundsOnChange({ points }: { points: [number, number][] }) {
+  const map = useMap();
+  // Stable serialization keeps useEffect from re-running on object identity churn.
+  const key = useMemo(() => points.map((p) => p.join(",")).join("|"), [points]);
+  useEffect(() => {
+    if (points.length === 0) return;
+    if (points.length === 1) {
+      map.setView(points[0], 14);
+      return;
+    }
+    map.fitBounds(points, { padding: [40, 40] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return null;
+}
+
 function CompetitorMap({
   competitors,
   practiceLocation,
   height,
-  revealedCount,
   showLoadingFallback,
+  selectedPlaceId,
+  onPinClick,
 }: {
   competitors: CuratedCompetitor[];
   practiceLocation: PracticeLocationRef | null;
   height: number;
-  revealedCount?: number;
   showLoadingFallback?: boolean;
+  selectedPlaceId?: string | null;
+  onPinClick?: (placeId: string) => void;
 }) {
   const withCoords = useMemo(
     () =>
@@ -726,151 +853,100 @@ function CompetitorMap({
     [competitors]
   );
 
-  // Bounds include the practice marker when present so the YOU pin is in frame.
-  const bounds = useMemo(() => {
-    const points: { lat: number; lng: number }[] = [...withCoords];
-    if (practiceLocation) points.push(practiceLocation);
-    if (points.length === 0) return null;
-    let minLat = points[0].lat;
-    let maxLat = points[0].lat;
-    let minLng = points[0].lng;
-    let maxLng = points[0].lng;
-    for (const p of points) {
-      if (p.lat < minLat) minLat = p.lat;
-      if (p.lat > maxLat) maxLat = p.lat;
-      if (p.lng < minLng) minLng = p.lng;
-      if (p.lng > maxLng) maxLng = p.lng;
-    }
-    const latPad = (maxLat - minLat) * 0.18 || 0.01;
-    const lngPad = (maxLng - minLng) * 0.18 || 0.01;
-    return {
-      minLat: minLat - latPad,
-      maxLat: maxLat + latPad,
-      minLng: minLng - lngPad,
-      maxLng: maxLng + lngPad,
-      centerLat: (minLat + maxLat) / 2,
-      centerLng: (minLng + maxLng) / 2,
-    };
+  const points = useMemo<[number, number][]>(() => {
+    const arr: [number, number][] = withCoords.map((c) => [c.lat, c.lng]);
+    if (practiceLocation) arr.push([practiceLocation.lat, practiceLocation.lng]);
+    return arr;
   }, [withCoords, practiceLocation]);
 
-  // Static keyless Google Maps embed (matches Stage 1 implementation).
-  const mapEmbedUrl = useMemo(() => {
-    if (!bounds) return null;
-    const { centerLat, centerLng } = bounds;
-    return `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d40000!2d${centerLng}!3d${centerLat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1705000000000!5m2!1sen!2sus`;
-  }, [bounds]);
+  // Pre-Leaflet shimmer fallback for the brief discovery window when no
+  // coordinates have arrived yet. Once we have any point, render the real map.
+  if (points.length === 0) {
+    return (
+      <div
+        className="relative bg-gradient-to-br from-alloro-bg to-slate-50 overflow-hidden"
+        style={{ height: `${height}px` }}
+      >
+        {showLoadingFallback && (
+          <>
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="absolute rounded-full border-2 border-alloro-orange/40"
+                style={{ left: "50%", top: "50%" }}
+                initial={{ width: 0, height: 0, x: 0, y: 0, opacity: 0.8 }}
+                animate={{
+                  width: 360,
+                  height: 360,
+                  x: -180,
+                  y: -180,
+                  opacity: 0,
+                }}
+                transition={{
+                  duration: 2.4,
+                  delay: i * 0.8,
+                  repeat: Infinity,
+                  ease: "easeOut",
+                }}
+              />
+            ))}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+              <div className="w-12 h-12 rounded-full bg-alloro-orange text-white flex items-center justify-center shadow-xl">
+                <Loader2 size={20} className="animate-spin" />
+              </div>
+            </div>
+            <div className="absolute left-1/2 bottom-10 -translate-x-1/2 z-10">
+              <span className="text-[10px] font-black text-alloro-textDark/50 uppercase tracking-widest">
+                Scanning Google for nearby practices…
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
-  const allRevealed = revealedCount === undefined;
+  const initialCenter: [number, number] = points[0];
 
   return (
     <div
       className="relative bg-gradient-to-br from-alloro-bg to-slate-50 overflow-hidden"
       style={{ height: `${height}px` }}
     >
-      {!mapEmbedUrl && showLoadingFallback && (
-        <>
-          {[0, 1, 2].map((i) => (
-            <motion.div
-              key={i}
-              className="absolute rounded-full border-2 border-alloro-orange/40"
-              style={{ left: "50%", top: "50%" }}
-              initial={{ width: 0, height: 0, x: 0, y: 0, opacity: 0.8 }}
-              animate={{
-                width: 360,
-                height: 360,
-                x: -180,
-                y: -180,
-                opacity: 0,
-              }}
-              transition={{
-                duration: 2.4,
-                delay: i * 0.8,
-                repeat: Infinity,
-                ease: "easeOut",
-              }}
+      <MapContainer
+        center={initialCenter}
+        zoom={12}
+        scrollWheelZoom={false}
+        style={{ height: "100%", width: "100%" }}
+      >
+        <TileLayer
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        <FitBoundsOnChange points={points} />
+        {withCoords.map((c, i) => {
+          const isSelected = selectedPlaceId === c.placeId;
+          return (
+            <Marker
+              key={c.placeId}
+              position={[c.lat, c.lng]}
+              icon={makeCompetitorIcon(i, isSelected)}
+              zIndexOffset={isSelected ? 1000 : 0}
+              eventHandlers={
+                onPinClick ? { click: () => onPinClick(c.placeId) } : undefined
+              }
             />
-          ))}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-            <div className="w-12 h-12 rounded-full bg-alloro-orange text-white flex items-center justify-center shadow-xl">
-              <Loader2 size={20} className="animate-spin" />
-            </div>
-          </div>
-          <div className="absolute left-1/2 bottom-10 -translate-x-1/2 z-10">
-            <span className="text-[10px] font-black text-alloro-textDark/50 uppercase tracking-widest">
-              Scanning Google for nearby practices…
-            </span>
-          </div>
-        </>
-      )}
-
-      {mapEmbedUrl && (
-        <>
-          <iframe
-            src={mapEmbedUrl}
-            width="100%"
-            height="100%"
-            style={{ border: 0, pointerEvents: "none" }}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            className="absolute inset-0"
-            title="Competitor map"
+          );
+        })}
+        {practiceLocation && (
+          <Marker
+            position={[practiceLocation.lat, practiceLocation.lng]}
+            icon={makePracticeIcon()}
+            zIndexOffset={500}
+            interactive={false}
           />
-          <div className="absolute inset-0 z-[5]" />
-
-          {bounds &&
-            withCoords.map((c, i) => {
-              const xPct =
-                ((c.lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) *
-                100;
-              const yPct =
-                ((bounds.maxLat - c.lat) / (bounds.maxLat - bounds.minLat)) *
-                100;
-              const revealed = allRevealed || i < (revealedCount ?? 0);
-              return (
-                <motion.div
-                  key={c.placeId}
-                  className="absolute z-[10] pointer-events-none"
-                  style={{ left: `${xPct}%`, top: `${yPct}%` }}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{
-                    scale: revealed ? 1 : 0,
-                    opacity: revealed ? 1 : 0,
-                  }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 260,
-                    damping: 18,
-                  }}
-                >
-                  <div className="-translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-full bg-alloro-orange text-white text-[10px] font-black flex items-center justify-center shadow-lg ring-2 ring-white">
-                      {i + 1}
-                    </div>
-                    <div className="mt-1 px-1.5 py-0.5 rounded bg-white/95 text-[9px] font-bold text-alloro-textDark shadow-sm max-w-[110px] truncate">
-                      {c.name}
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-
-          {bounds && practiceLocation && (
-            <div
-              className="absolute z-[15] pointer-events-none"
-              style={{
-                left: `${((practiceLocation.lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * 100}%`,
-                top: `${((bounds.maxLat - practiceLocation.lat) / (bounds.maxLat - bounds.minLat)) * 100}%`,
-              }}
-            >
-              <div className="-translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                <div className="w-10 h-10 rounded-full bg-alloro-navy text-white text-[10px] font-black flex items-center justify-center shadow-xl ring-4 ring-white">
-                  YOU
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
+        )}
+      </MapContainer>
     </div>
   );
 }
