@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, MapPin } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLocationContext } from "../../../contexts/locationContext";
 import { useDashboardMetrics } from "../../../hooks/queries/useDashboardMetrics";
@@ -189,10 +189,31 @@ function EmptyShell() {
   return (
     <CardShell>
       <Eyebrow>Local Ranking</Eyebrow>
-      <p className="text-sm leading-relaxed" style={{ color: MUTED }}>
-        We have not snapshotted your local rank yet. Once your first ranking
-        scan completes, your position and factor scores will appear here.
-      </p>
+      <div className="flex flex-col items-center justify-center text-center py-6">
+        <div
+          className="flex items-center justify-center rounded-full mb-3"
+          style={{
+            width: 44,
+            height: 44,
+            background: "#FFF7F2",
+            color: BRAND_ORANGE,
+          }}
+        >
+          <MapPin size={20} />
+        </div>
+        <p
+          className="text-[13.5px] font-semibold leading-snug"
+          style={{ color: INK }}
+        >
+          No ranking snapshot yet
+        </p>
+        <p
+          className="text-[12px] mt-1 leading-relaxed max-w-[220px]"
+          style={{ color: MUTED }}
+        >
+          Your local position and factor scores will appear after the first scan.
+        </p>
+      </div>
     </CardShell>
   );
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, FileSpreadsheet } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLocationContext } from "../../../contexts/locationContext";
 import { useDashboardMetrics } from "../../../hooks/queries/useDashboardMetrics";
@@ -170,10 +170,31 @@ function EmptyShell({ monthName }: { monthName: string }) {
   return (
     <CardShell>
       <Eyebrow>PMS · {monthName}</Eyebrow>
-      <p className="text-sm leading-relaxed" style={{ color: MUTED }}>
-        No PMS data uploaded yet. Once you import production and referral
-        rows, your monthly summary and top sources will appear here.
-      </p>
+      <div className="flex flex-col items-center justify-center text-center py-6">
+        <div
+          className="flex items-center justify-center rounded-full mb-3"
+          style={{
+            width: 44,
+            height: 44,
+            background: "#FFF7F2",
+            color: BRAND_ORANGE,
+          }}
+        >
+          <FileSpreadsheet size={20} />
+        </div>
+        <p
+          className="text-[13.5px] font-semibold leading-snug"
+          style={{ color: INK }}
+        >
+          No PMS data yet
+        </p>
+        <p
+          className="text-[12px] mt-1 leading-relaxed max-w-[220px]"
+          style={{ color: MUTED }}
+        >
+          Upload production and referral rows to see your monthly summary.
+        </p>
+      </div>
     </CardShell>
   );
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, RefreshCw, Globe2 } from "lucide-react";
+import { ArrowRight, RefreshCw, Globe2, Loader2, Inbox } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiGet } from "../../../api";
 import { useFormSubmissionsTimeseries } from "../../../hooks/queries/useFormSubmissionsTimeseries";
@@ -120,34 +120,76 @@ function SkeletonShell() {
   );
 }
 
-interface ErrorShellProps {
-  onRetry: () => void;
-  message: string;
+function CenteredState({
+  icon,
+  title,
+  hint,
+  action,
+  spin,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint?: string;
+  action?: React.ReactNode;
+  spin?: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-6">
+      <div
+        className="flex items-center justify-center rounded-full mb-3"
+        style={{
+          width: 44,
+          height: 44,
+          background: "#FFF7F2",
+          color: BRAND_ORANGE,
+        }}
+      >
+        <span className={spin ? "animate-spin" : undefined}>{icon}</span>
+      </div>
+      <p
+        className="text-[13.5px] font-semibold leading-snug"
+        style={{ color: INK }}
+      >
+        {title}
+      </p>
+      {hint && (
+        <p
+          className="text-[12px] mt-1 leading-relaxed max-w-[220px]"
+          style={{ color: MUTED }}
+        >
+          {hint}
+        </p>
+      )}
+      {action && <div className="mt-3">{action}</div>}
+    </div>
+  );
 }
 
-function ErrorShell({ onRetry, message }: ErrorShellProps) {
+interface ErrorShellProps {
+  onRetry: () => void;
+}
+
+function ErrorShell({ onRetry }: ErrorShellProps) {
   return (
     <CardShell>
       <Eyebrow>Website · Form submissions</Eyebrow>
-      <div
-        className="rounded-md border px-3 py-2 text-xs"
-        style={{
-          borderColor: "#F3D6C4",
-          background: "#FFF7F2",
-          color: "#8A4A36",
-        }}
-      >
-        {message}
-      </div>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="mt-3 inline-flex items-center gap-1.5 self-start rounded-md px-2.5 py-1 text-xs font-semibold"
-        style={{ color: BRAND_ORANGE }}
-      >
-        <RefreshCw size={12} />
-        Retry
-      </button>
+      <CenteredState
+        icon={<Loader2 size={20} />}
+        spin
+        title="Preparing your website"
+        hint="We'll email you when it's ready. This card will populate automatically once the site goes live."
+        action={
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
+            style={{ color: BRAND_ORANGE }}
+          >
+            <RefreshCw size={11} />
+            Check again
+          </button>
+        }
+      />
     </CardShell>
   );
 }
@@ -156,10 +198,11 @@ function EmptyShell() {
   return (
     <CardShell>
       <Eyebrow>Website · Form submissions</Eyebrow>
-      <p className="text-sm leading-relaxed" style={{ color: MUTED }}>
-        No form submissions yet. Once leads start coming in through your
-        website, they will show up here with verified counts and trend.
-      </p>
+      <CenteredState
+        icon={<Inbox size={20} />}
+        title="No submissions yet"
+        hint="Verified leads from your website will appear here."
+      />
     </CardShell>
   );
 }
@@ -169,40 +212,22 @@ function NotReadyShell() {
   return (
     <CardShell>
       <Eyebrow>Website · Form submissions</Eyebrow>
-      <div className="flex items-start gap-3 mt-1">
-        <div
-          className="flex-shrink-0 flex items-center justify-center rounded-lg"
-          style={{
-            width: 36,
-            height: 36,
-            background: "#FFF7F2",
-            color: BRAND_ORANGE,
-          }}
-        >
-          <Globe2 size={18} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p
-            className="text-[13.5px] font-semibold leading-snug"
-            style={{ color: INK }}
+      <CenteredState
+        icon={<Globe2 size={20} />}
+        title="Website not connected"
+        hint="Connect your practice website to track form submissions and leads."
+        action={
+          <button
+            type="button"
+            onClick={() => navigate("/dfy/website")}
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
+            style={{ color: BRAND_ORANGE }}
           >
-            Website not connected yet
-          </p>
-          <p className="text-[12px] mt-0.5 leading-relaxed" style={{ color: MUTED }}>
-            Connect your practice website to track form submissions, leads,
-            and traffic from one place.
-          </p>
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={() => navigate("/dfy/website")}
-        className="mt-4 inline-flex items-center gap-1.5 self-start text-[11px] font-bold uppercase tracking-[0.12em]"
-        style={{ color: BRAND_ORANGE }}
-      >
-        Connect website
-        <ArrowRight size={12} />
-      </button>
+            Connect website
+            <ArrowRight size={12} />
+          </button>
+        }
+      />
     </CardShell>
   );
 }
@@ -292,14 +317,13 @@ const WebsiteCard: React.FC = () => {
 
   if (isError) {
     // Distinguish "website not connected" (expected) from a real fetch error.
+    // Any other error path is shown as the friendly "preparing" shell — most
+    // commonly the project exists but its site isn't built/live yet, in which
+    // case the form-submissions endpoint errors. Retry covers transient cases.
     if (isNoWebsiteError(stats.error) || isNoWebsiteError(series.error)) {
       return <NotReadyShell />;
     }
-    const msg =
-      (stats.error as Error)?.message ||
-      (series.error as Error)?.message ||
-      "Could not load website data.";
-    return <ErrorShell onRetry={retry} message={msg} />;
+    return <ErrorShell onRetry={retry} />;
   }
 
   const points = series.data ?? [];
