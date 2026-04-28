@@ -2,6 +2,34 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.35] - April 2026
+
+### Restore Sidebar — Keep New Dashboard Content
+
+Walked back the most visible part of 0.0.34 (the global sidebar → top-bar swap) while preserving every other piece of that release. The sidebar returns as the live navigation across all authenticated pages; the new Focus dashboard content (Hero, Trajectory, Action Queue, three product cards), the new fonts (Fraunces, Inter, JetBrains Mono), the `mark.hl` highlight class, and the brand-orange wizard outline all stay.
+
+**Code changes:**
+- `PageWrapper.tsx` — restored to its pre-0.0.34 shape (sidebar mount + mobile header + sidebar-aware main padding via `useSidebar` collapsed state). `TopBar` and `Ticker` are no longer mounted.
+- `Sidebar.tsx` — `@deprecated` JSDoc block from 0.0.34 removed; the sidebar is fully live again.
+- `components/layout/TopBar.tsx` + `components/layout/Ticker.tsx` — `@deprecated` JSDoc added (mirrors the pattern we just removed from Sidebar). Components preserved on disk and trivially revivable with a one-line `PageWrapper` edit if a top-bar rethink lands later.
+
+**Unchanged from 0.0.34:**
+- All 11 components under `components/dashboard/focus/` (Hero, Trajectory, ActionQueue, WebsiteCard, LocalRankingCard, PMSCard, ProoflineModal, SetupProgressBanner, HighlightedText, Sparkline, FactorBar, icons)
+- The thin `DashboardOverview.tsx` composition rendering them
+- 3 new API clients (`dashboardMetrics`, `formSubmissionsTimeseries`, `rankingHistory`)
+- 5 new React Query hooks
+- `frontend/src/types/dashboardMetrics.ts`
+- `index.html` font links (Fraunces, Inter, JetBrains Mono)
+- `index.css` additions (`mark.hl` class, `--font-display`/`--font-mono` vars, domain icon tile classes)
+- Wizard `wizard-highlight` outline brand-orange fix in `SpotlightOverlay.tsx`
+
+**Visual outcome:** `/dashboard` renders the new Focus content (Hero card on dark, Trajectory + Action Queue 2-col row, three product cards 3-col row) inside the sidebar-constrained main area. All other authenticated routes (Settings, Help, Notifications, DFY Website) look exactly as they did before 0.0.34. Mobile uses the legacy mobile-header burger + slide-in sidebar drawer + bottom nav.
+
+**Verification:** `npx tsc --noEmit` clean (backend + frontend). `npm run build` clean (4.35s, 4.7MB main chunk per pre-existing pattern).
+
+**Out of scope (deferred):**
+Decide within ~1 release cycle whether to delete `TopBar.tsx` + `Ticker.tsx` or commit to a different navigation rethink that revives them. Adjust new dashboard card spacing if the Hero or product cards feel cramped at typical sidebar-open desktop widths. Reintroduce a refresh affordance on the new dashboard surface (none currently surfaced — TanStack Query's automatic refetch is keeping data current). Mobile redesign of the new dashboard cards.
+
 ## [0.0.34] - April 2026
 
 ### Focus Dashboard — Frontend Redesign
