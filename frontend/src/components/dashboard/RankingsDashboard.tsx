@@ -42,6 +42,18 @@ import { RankingInFlightBanner } from "./RankingInFlightBanner";
 const PRACTICE_HEALTH_METHODOLOGY_CHANGED_AT = "2026-04-12";
 
 /**
+ * Date the Live Google Rank source switched from Google Places API
+ * `searchText` to the Apify Google Maps actor. Position values observed
+ * before this date measured a different surface (Places API ranking biased
+ * to client coordinates) and are not directly comparable to Maps-panel
+ * positions persisted after this cutover. Used to suppress the rank-position
+ * trend arrow on the first post-cutover datapoint.
+ *
+ * Spec: plans/04282026-no-ticket-live-google-rank-apify-maps-swap/spec.md (T3)
+ */
+const LIVE_GOOGLE_RANK_SOURCE_CHANGED_AT = "2026-04-28";
+
+/**
  * Maximum drift between consecutive runs' vantage points (in meters) before
  * the Search Position growth arrow is suppressed. Beyond this distance the
  * comparison isn't measuring the same thing — practice may have moved or the
@@ -217,11 +229,18 @@ interface RankingResult {
   // Practice Health aliases (same data as rankScore/rankPosition).
   practiceHealth: number | null;
   practiceHealthRank: number | null;
+  // Source of the persisted searchPosition — used to suppress the trend arrow
+  // when the previous row was computed against a different surface (e.g. the
+  // Places API legacy source vs the new Apify Maps source).
+  // Spec: plans/04282026-no-ticket-live-google-rank-apify-maps-swap/spec.md (T3)
+  searchPositionSource: "apify_maps" | "places_text" | null;
   // Previous run's Search Position data — used to gate growth arrow stability.
   previousSearchPosition: number | null;
   previousSearchQuery: string | null;
   previousSearchLat: number | null;
   previousSearchLng: number | null;
+  previousSearchPositionSource: "apify_maps" | "places_text" | null;
+  previousObservedAt: string | null;
   // v2 curated competitor list metadata (Practice Ranking v2).
   // Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
   locationId: number | null;
@@ -824,12 +843,15 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
           searchLng: -122.4194,
           searchRadiusMeters: 40234,
           searchCheckedAt: new Date().toISOString(),
+          searchPositionSource: "apify_maps",
           practiceHealth: 78,
           practiceHealthRank: wizardDemoData.rankingData[0].rank,
           previousSearchPosition: null,
           previousSearchQuery: null,
           previousSearchLat: null,
           previousSearchLng: null,
+          previousSearchPositionSource: null,
+          previousObservedAt: null,
           locationId: null,
           competitorSource: "curated",
           locationOnboarding: { status: "finalized", finalizedAt: null },
@@ -951,7 +973,9 @@ function SearchPositionSection({ result }: { result: RankingResult }) {
   const status = result.searchStatus ?? "ok";
 
   // Stability check: render growth arrow only when comparison is valid.
-  // Falls back to NEW badge for first run, query drift, or vantage drift > 500m.
+  // Falls back to NEW badge for first run, query drift, vantage drift > 500m,
+  // or when the previous row was measured against a different ranking surface
+  // (Places API legacy vs Apify Maps cutover).
   const hasPriorPosition = result.previousSearchPosition !== null;
   const sameQuery =
     result.previousSearchQuery !== null &&
@@ -968,8 +992,24 @@ function SearchPositionSection({ result }: { result: RankingResult }) {
       result.searchLng,
     ) <= SEARCH_POSITION_VANTAGE_TOLERANCE_METERS;
 
+  // Source-stability guard: explicit source mismatch OR a pre-cutover previous
+  // row (null source observed before LIVE_GOOGLE_RANK_SOURCE_CHANGED_AT) means
+  // the two positions measure different surfaces and shouldn't be compared.
+  // Spec: plans/04282026-no-ticket-live-google-rank-apify-maps-swap/spec.md (T3)
+  const sourceStable = (() => {
+    const curr = result.searchPositionSource;
+    const prev = result.previousSearchPositionSource;
+    if (curr !== null && prev !== null) return curr === prev;
+    if (curr !== null && prev === null && result.previousObservedAt) {
+      const prevDate = new Date(result.previousObservedAt);
+      const cutoff = new Date(LIVE_GOOGLE_RANK_SOURCE_CHANGED_AT);
+      return prevDate >= cutoff;
+    }
+    return true;
+  })();
+
   const showGrowthArrow =
-    hasPriorPosition && sameQuery && vantageStable;
+    hasPriorPosition && sameQuery && vantageStable && sourceStable;
 
   const positionDelta =
     showGrowthArrow && result.searchPosition !== null
@@ -978,9 +1018,11 @@ function SearchPositionSection({ result }: { result: RankingResult }) {
 
   const stabilityTooltip = !hasPriorPosition
     ? "First measurement — tracking starts now"
-    : !sameQuery || !vantageStable
-      ? "Measurement updated — tracking restarted"
-      : null;
+    : !sourceStable
+      ? "Ranking source updated — tracking restarted"
+      : !sameQuery || !vantageStable
+        ? "Measurement updated — tracking restarted"
+        : null;
 
   // Render the "Last checked" timestamp
   const lastCheckedLabel = result.searchCheckedAt
@@ -1012,7 +1054,7 @@ function SearchPositionSection({ result }: { result: RankingResult }) {
             {sectionTitle}
           </h2>
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
-            Live Google Search Position
+            Google Maps Position
           </p>
         </div>
         <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-black/5 text-[10px] font-black text-alloro-orange uppercase tracking-widest">
@@ -1385,7 +1427,7 @@ function PerformanceDashboard({
         <InfoHint
           title="Live Google Rank"
           dotColor="#4F8A5B"
-          content="The actual position your practice shows up at on Google for your specialty search query — refreshed on each ranking run. Distinct from the diagnostic score above."
+          content="Your position in Google's Maps Places panel for your specialty in your city — the list a real searcher in the area sees. Refreshed on each ranking run. Distinct from the diagnostic score above."
         />
         <SearchPositionSection result={result} />
       </div>

@@ -273,6 +273,10 @@ export function formatLatestRanking(
     searchLng: toNumberOrNull(ranking.search_lng),
     searchRadiusMeters: ranking.search_radius_meters,
     searchCheckedAt: ranking.search_checked_at,
+    // Source of `searchPosition` (apify_maps | places_text | null). Used by the
+    // frontend to suppress the position trend arrow across the cutover.
+    // Spec: plans/04282026-no-ticket-live-google-rank-apify-maps-swap/spec.md (T3)
+    searchPositionSource: ranking.search_position_source ?? null,
     rankingFactors: parseJsonField(ranking.ranking_factors),
     rawData: parseJsonField(ranking.raw_data),
     llmAnalysis: parseJsonField(ranking.llm_analysis),
@@ -297,6 +301,8 @@ export function formatLatestRanking(
     previousSearchQuery: previous?.search_query ?? null,
     previousSearchLat: toNumberOrNull(previous?.search_lat),
     previousSearchLng: toNumberOrNull(previous?.search_lng),
+    previousSearchPositionSource: previous?.search_position_source ?? null,
+    previousObservedAt: previous?.observed_at ?? null,
   };
 }
 

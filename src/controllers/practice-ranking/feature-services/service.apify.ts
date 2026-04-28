@@ -177,6 +177,163 @@ async function fetchDatasetItems(datasetId: string): Promise<any[]> {
 }
 
 /**
+ * Result shape for the searchPosition lookup.
+ *
+ * - `ok`           : client was found in the Apify result set; `position` is 1-based.
+ * - `not_in_top_20`: actor returned results but the client's placeId was absent.
+ * - `api_error`    : Apify request or run failed; `position` is null.
+ *
+ * `orderedResults` mirrors the rich fields the rankings page renders in its
+ * "Top Orthodontists" table — kept in sync with `position` so the table and
+ * the headline number reflect the same Maps panel ordering.
+ */
+export interface ApifyMapsSearchPositionResult {
+  position: number | null;
+  status: "ok" | "not_in_top_20" | "api_error";
+  resultCount: number;
+  orderedPlaceIds: string[];
+  orderedResults: Array<{
+    placeId: string;
+    name: string;
+    position: number;
+    rating: number;
+    reviewCount: number;
+    primaryType: string;
+    isClient: boolean;
+  }>;
+}
+
+/**
+ * Get the client's position in Google Maps' Places panel for a given query.
+ *
+ * Uses the same `compass~crawler-google-places` Apify actor as
+ * `discoverCompetitors`, but the contract is narrowed to "where am I in
+ * the ordered Maps result list". The order Apify returns matches the
+ * Maps panel a real searcher sees in the area — distinct from the Places
+ * API's `searchText` ranking, which is biased to client coordinates and
+ * applies a different relevance algorithm.
+ *
+ * Spec: plans/04282026-no-ticket-live-google-rank-apify-maps-swap/spec.md (T1)
+ *
+ * Never throws — failures collapse into `{ status: "api_error", position: null }`
+ * so the caller can fall back without aborting the rest of the pipeline.
+ */
+export async function getSearchPositionViaApifyMaps(
+  searchQuery: string,
+  clientPlaceId: string,
+  locationParams?: LocationParams,
+): Promise<ApifyMapsSearchPositionResult> {
+  if (!APIFY_API_TOKEN) {
+    log(
+      `getSearchPositionViaApifyMaps: APIFY_TOKEN not set — returning api_error`,
+    );
+    return {
+      position: null,
+      status: "api_error",
+      resultCount: 0,
+      orderedPlaceIds: [],
+      orderedResults: [],
+    };
+  }
+
+  log(
+    `Search-position lookup: "${searchQuery}" for placeId=${clientPlaceId}` +
+      (locationParams
+        ? ` (city=${locationParams.city ?? "-"}, state=${locationParams.state ?? "-"})`
+        : ""),
+  );
+
+  try {
+    const inputPayload: Record<string, any> = {
+      searchStringsArray: [searchQuery],
+      maxCrawledPlacesPerSearch: 20,
+    };
+    if (locationParams?.county) inputPayload.county = locationParams.county;
+    if (locationParams?.state) inputPayload.state = locationParams.state;
+    if (locationParams?.postalCode)
+      inputPayload.postalCode = locationParams.postalCode;
+    if (locationParams?.city) inputPayload.city = locationParams.city;
+
+    const runResponse = await axios.post(
+      `${APIFY_API_BASE}/acts/${GOOGLE_MAPS_ACTOR}/runs`,
+      inputPayload,
+      {
+        headers: {
+          Authorization: `Bearer ${APIFY_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    const runId = runResponse.data.data.id;
+    log(`Search-position actor run started: ${runId}`);
+
+    const runResult = await waitForActorRun(runId);
+
+    if (!runResult.datasetId) {
+      throw new Error("No dataset ID returned from actor run");
+    }
+
+    const items = await fetchDatasetItems(runResult.datasetId);
+    log(`Search-position fetched ${items.length} ordered Maps results`);
+
+    const validItems = items.filter(
+      (item: any) => typeof item?.placeId === "string" && item.placeId.length > 0,
+    );
+
+    const orderedPlaceIds: string[] = validItems.map(
+      (item: any) => item.placeId,
+    );
+
+    const orderedResults = validItems.map((item: any, idx: number) => ({
+      placeId: item.placeId as string,
+      name: (item.title || item.name || "") as string,
+      position: idx + 1,
+      rating: typeof item.totalScore === "number" ? item.totalScore : 0,
+      reviewCount:
+        typeof item.reviewsCount === "number" ? item.reviewsCount : 0,
+      primaryType: (item.categoryName ||
+        (Array.isArray(item.categories) ? item.categories[0] : "") ||
+        "") as string,
+      isClient: item.placeId === clientPlaceId,
+    }));
+
+    const index = orderedPlaceIds.indexOf(clientPlaceId);
+    if (index >= 0) {
+      const position = index + 1;
+      log(`Search-position: client found at position ${position}`);
+      return {
+        position,
+        status: "ok",
+        resultCount: orderedPlaceIds.length,
+        orderedPlaceIds,
+        orderedResults,
+      };
+    }
+
+    log(
+      `Search-position: client placeId not in top ${orderedPlaceIds.length} results`,
+    );
+    return {
+      position: null,
+      status: "not_in_top_20",
+      resultCount: orderedPlaceIds.length,
+      orderedPlaceIds,
+      orderedResults,
+    };
+  } catch (error: any) {
+    log(`Search-position lookup failed: ${error.message}`);
+    return {
+      position: null,
+      status: "api_error",
+      resultCount: 0,
+      orderedPlaceIds: [],
+      orderedResults: [],
+    };
+  }
+}
+
+/**
  * Discover competitors by searching Google Maps
  * @param searchQuery - Search query (e.g., "orthodontist")
  * @param limit - Maximum number of results (default 20)
