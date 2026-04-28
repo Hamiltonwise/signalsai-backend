@@ -2,6 +2,40 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.37] - April 2026
+
+### Rankings Polish — Eyebrow Pattern, Layout Repair, Tone & Brand Sweep
+
+Iterative refinement pass on the Rankings dashboard and the surrounding UI shell. Removed a redundant hero block, replaced overlapping section descriptors with `(i)`-icon hover tooltips (`InfoHint` helper), recovered from a layout regression where the eyebrow tooltip was rendering behind adjacent stacking contexts and one KPI label ("Practice Health") was wrapping to two lines, and finished the multi-page serif sweep that had been rolling out since 0.0.36. Brand bar in the sidebar now renders "Alloro" in bold Fraunces with the "Intelligence" subtitle dropped. The legacy v1 "auto-discovered competitors" notice on Practice Health was removed entirely.
+
+**Key Changes:**
+- `RankingsDashboard.tsx` — dropped Local Reputation hero block; restyled `client_summary` as a soft cream parchment callout (`#FCFAED` / `#EDE5C0`) with an "Practice insight" Info eyebrow and serif body; introduced `InfoHint` component for section eyebrows (Practice Health + Live Google Rank), replacing inline overflowing descriptors with bottom-positioned animated tooltips; grouped each `InfoHint` with its section in `space-y-4` containers so eyebrows hug their content while preserving 80px breathing room between major groups; tightened KPI label tracking (`0.25em` → `0.18em`) + added `whitespace-nowrap` so "PRACTICE HEALTH" stays on one line; removed the `LegacyRankingTag` v1 notice and its dead import.
+- `CompetitorOnboardingBanner.tsx` — slimmed v2 banner from a 3-line card to a single padded row (`px-4 py-2.5`, 28px icon); added animated Info hover tooltip explaining what curation does to ranking accuracy.
+- `focus/ActionQueue.tsx` — removed the explanatory footer paragraph ("Summary outputs 3–5 actions per month, ordered by priority_score…").
+- `focus/WebsiteCard.tsx` — added `NotReadyShell` with Globe2 icon + "Connect website →" CTA; routes 404 "No website found" responses to the not-ready path instead of the generic error shell.
+- `Sidebar.tsx` — brand block switched to `font-display font-bold text-2xl` Alloro and the "Intelligence" subtitle was removed; flex column collapsed.
+- **Serif sweep across the rest of the app:** `Help.tsx`, `Notifications.tsx` (notification card titles), `TasksView.tsx` (Team Tasks h2 + error states), `BillingTab.tsx` (plan name h3s), `PMSVisualPillars.tsx`, `DFYWebsite.tsx`, `VitalSignsCards/VitalSignsCards.tsx` (Patient Journey Insights), `ReferralEngineDashboard.tsx`, `Profile.tsx`, `Signin.tsx`, `Signup.tsx`, `ForgotPassword.tsx`, `LocationCompetitorOnboarding.tsx`.
+- **Tone shift in competitor copy** — "you compete with…" / "anyone you don't compete with" passive-aggressive phrasing replaced with neutral "local competitors" framing on the location curation page.
+
+**Tooltip layering fix (post-regression):** Initial `InfoHint` rendered tooltips above the icon (`bottom-full mb-2`) with a `-mb-6` negative margin on the row, causing the tooltip to clash with the previous section's stacking context and the eyebrow row to crowd against the next KPI grid. Flipped tooltip to render below (`top-full mt-2`), flipped the arrow (`border-b-alloro-navy`), replaced `-mb-6` with `pb-2`, bumped tooltip `z-50` → `z-[100]`, and added a per-instance `zIndex: 60` on the `InfoHint` root when the tooltip is open.
+
+**Commits:**
+- `e9927fdf` — drop hero header, restyle client summary as parchment callout
+- `f44ef3c2` — subtler cream callout + slim v2 banner above
+- `ced05757` — info tooltip on v2 banner explaining the curation upgrade
+- `17ae6dee` — passive 'local competitors' tone + serif headings on more pages
+- `61a47809` — bold serif 'Alloro' brand, drop 'Intelligence' subtitle
+- `50e8bd95` — drop queue footer note + WebsiteCard not-ready shell
+- `0753d3a1` — clarify Practice Health vs Live Google Rank + serif on remaining tabs
+- `4ad1df91` — rankings overflow + serif sweep across remaining pages
+- `ea8a323d` — replace overlapping section descriptors with InfoHint tooltips
+- `8c1eac84` — InfoHint tooltip layering + spacing
+- `375062b2` — group eyebrows with sections, attach legacy tag to Practice Health
+- `b84d467f` — keep KPI label on one line (tighter tracking + nowrap)
+- `22ef6bc5` — remove v1 legacy auto-discovered competitor notice
+
+**Verification:** `tsc --noEmit` clean. `npm run build` clean (~4.3s) on each iteration.
+
 ## [0.0.36] - April 2026
 
 ### Page Headings Cleanup — Drop 4, Shrink 1, Apply Serif
