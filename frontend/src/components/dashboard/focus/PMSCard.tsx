@@ -170,7 +170,7 @@ function EmptyShell({ monthName }: { monthName: string }) {
   return (
     <CardShell>
       <Eyebrow>PMS · {monthName}</Eyebrow>
-      <div className="flex flex-col items-center justify-center text-center py-6">
+      <div className="flex flex-1 flex-col items-center justify-center text-center py-6">
         <div
           className="flex items-center justify-center rounded-full mb-3"
           style={{
