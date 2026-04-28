@@ -360,13 +360,13 @@ export async function processLocationRanking(
   }> | null = null;
 
   if (clientPlaceId) {
+    // Pass the Identifier Agent's resolved city/state/county/postalCode straight
+    // through to Apify so the Maps query is scoped correctly even when the
+    // composite marketLocation string is a placeholder like "Unknown, XX".
     const apifyResult = await getSearchPositionViaApifyMaps(
       searchQuery,
       clientPlaceId,
-      // Apify Maps actor scopes by city/state; pass through what we know.
-      // The Identifier Agent's locationParams are not always present here, so
-      // fall back to undefined and let Apify infer from the query string.
-      undefined,
+      locationParams,
     );
 
     if (apifyResult.status === "ok") {
