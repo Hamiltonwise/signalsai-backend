@@ -282,7 +282,10 @@ function InfoHint({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 -mb-6">
+    <div
+      className="relative flex flex-wrap items-center gap-x-2 gap-y-0.5 pb-2"
+      style={{ zIndex: open ? 60 : "auto" }}
+    >
       <span
         className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
         style={{ background: dotColor }}
@@ -312,15 +315,15 @@ function InfoHint({
         <AnimatePresence>
           {open && (
             <motion.span
-              initial={{ opacity: 0, y: 4, scale: 0.95 }}
+              initial={{ opacity: 0, y: -4, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 4, scale: 0.95 }}
+              exit={{ opacity: 0, y: -4, scale: 0.95 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="absolute z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 bg-alloro-navy text-white text-[11px] font-medium leading-relaxed rounded-lg px-3 py-2 shadow-lg pointer-events-none"
+              className="absolute z-[100] top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-alloro-navy text-white text-[11px] font-medium leading-relaxed rounded-lg px-3 py-2 shadow-lg pointer-events-none"
               role="tooltip"
             >
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 w-0 h-0 border-[5px] border-transparent border-b-alloro-navy" />
               {content}
-              <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-[5px] border-transparent border-t-alloro-navy" />
             </motion.span>
           )}
         </AnimatePresence>
