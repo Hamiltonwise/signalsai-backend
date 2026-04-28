@@ -58,6 +58,7 @@ import {
 import type { ZodTypeAny } from "zod";
 // Plan 1: dashboard-metrics service runs between RE and Summary
 import { computeDashboardMetrics } from "../../../utils/dashboard-metrics/service.dashboard-metrics";
+import { fetchLatestRankingRecommendations } from "./service.ranking-recommendations";
 import type { DashboardMetrics } from "../../../utils/dashboard-metrics/types";
 
 // =====================================================================
@@ -278,7 +279,7 @@ async function runMonthlyAgent(opts: {
       agent_type: opts.meta.agentType,
       date_start: opts.meta.dateStart,
       date_end: opts.meta.dateEnd,
-      agent_input: userMessage.length > 50000 ? null : userMessage,
+      agent_input: userMessage,
       agent_output: JSON.stringify(result.parsed),
       status: "success",
       created_at: new Date(),
@@ -655,6 +656,25 @@ export async function processMonthlyAgents(
     if (onProgress) await onProgress("summary_agent", "Running Summary v2 agent...", "dashboard_metrics");
     log(`  [MONTHLY] Running Summary v2 agent (max 3 attempts)`);
 
+    // Pull latest LLM-curated ranking recommendations for this org+location.
+    // Summary becomes the sole USER-task writer; ranking output flows in here
+    // instead of writing its own RANKING-typed tasks.
+    let rankingRecommendations: any[] | null = null;
+    try {
+      rankingRecommendations = await fetchLatestRankingRecommendations(
+        organizationId,
+        locationId ?? null,
+      );
+      if (rankingRecommendations) {
+        log(`  [MONTHLY] \u2713 Loaded ${rankingRecommendations.length} ranking recommendations`);
+      } else {
+        log(`  [MONTHLY] \u2139 No completed ranking recommendations available`);
+      }
+    } catch (rankErr: any) {
+      log(`  [MONTHLY] \u26a0 Ranking recommendations fetch failed: ${rankErr.message}. Summary will run without them.`);
+      rankingRecommendations = null;
+    }
+
     const summaryPayload = buildSummaryPayload({
       domain,
       googleAccountId,
@@ -665,6 +685,7 @@ export async function processMonthlyAgents(
       websiteAnalytics: websiteAnalyticsMonthly,
       referralEngineOutput,
       dashboardMetrics,
+      rankingRecommendations,
     });
 
     let summaryOutput: SummaryV2Output | undefined;

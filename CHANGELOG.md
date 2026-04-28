@@ -2,6 +2,32 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.38] - April 2026
+
+### Summary as Sole USER Task Writer + Pipeline Debug Modal
+
+Two coordination problems shared one root cause and got fixed together: (1) the ranking pipeline was writing its own `agent_type="RANKING"` USER tasks in parallel to Summary's `top_actions`, so clients on `/to-do-list` could see duplicate or contradictory tasks; (2) admins had no way to debug a monthly run because `agent_results.agent_input` was nulled out for any payload >50KB and `dashboard_metrics`/GBP/Rybbit were never persisted. Folding ranking into Summary's input and removing the truncation fixes both with one coherent change.
+
+**Key Changes:**
+- `service.agent-orchestrator.ts` — removed the 50KB truncation on `agent_results.agent_input`; the column is already JSONB-shaped via `BaseModel.jsonFields`, so no migration was needed. The full payload sent to Claude (PMS rollup + GBP + RE output + dashboard_metrics + ranking_recommendations) is now persisted verbatim per run for both Referral Engine and Summary.
+- `service.ranking-recommendations.ts` (new) — `fetchLatestRankingRecommendations(orgId, locationId)` reads the most recent completed `practice_rankings.llm_analysis.top_recommendations[]` for a location.
+- `service.agent-input-builder.ts` — `buildSummaryPayload` accepts `rankingRecommendations` and emits it as `additional_data.ranking_recommendations` (sibling key, intentionally not folded into `dashboard_metrics` so the deterministic-dictionary contract stays intact).
+- `Summary.md` — listed `ranking_recommendations` in INPUTS as interpretive (not deterministic); added a usage rule that recommendations enrich `rationale`/`outcome` and merge with overlapping RE actions, but values must NOT be cited via `supporting_metrics[*].source_field` (those still must trace to `dashboard_metrics` paths).
+- `service.ranking-llm.ts` — removed the call to `archiveAndCreateTasks`. Summary v2 is now the sole writer of `category="USER"` tasks; ranking output reaches Summary on the next monthly run via the new payload field.
+- `service.llm-webhook-handler.ts` — deleted dead `archiveAndCreateTasks` and `WebhookBody`; renamed conceptual purpose in the header comment (file is now ranking-result persistence, no longer a webhook handler).
+- `20260429000001_archive_legacy_ranking_tasks.ts` (new) — one-shot data migration: snapshots existing `agent_type="RANKING"` pending/in_progress tasks to `tasks_ranking_archive_backup_20260429`, archives them, verifies, with full rollback support.
+- `PmsPipelineController.ts` + `routes/admin/pmsPipeline.ts` (new) — `GET /api/admin/pms-jobs/:id/pipeline` returns the PMS metadata plus full RE and Summary `agent_input`/`agent_output` rows. Linkage is primary via `pms_jobs.automation_status_detail.summary.agentResults.{agent}.resultId` (recorded at completion), with a fallback org+location ORDER BY join for legacy/partial-fail rows. Gated behind `authenticateToken + superAdminMiddleware`.
+- `PMSPipelineModal.tsx` (new) — admin debug modal: horizontal DAG (PMS → Referral Engine → Dashboard Metrics → Summary → Tasks) with click-to-expand raw-JSON drill-down for each node. Dashboard Metrics node reads its data from inside Summary's persisted `agent_input.additional_data.dashboard_metrics`. Renders a "Not captured (legacy run)" placeholder for runs that completed before the truncation fix.
+- `PMSAutomationCards.tsx` — added a "Pipeline" button next to the existing "View" button on each row. Visibility gated on `automation_status_detail.currentStep IN (monthly_agents, task_creation, complete)` so it only appears when pipeline data exists.
+
+**What this changes for clients:** existing pending RANKING-typed tasks become `archived` at deploy. New ranking insights surface on the next monthly Summary run as part of the unified `top_actions[]` list, instead of as a parallel pipeline.
+
+**What this changes for admins:** every monthly run from this version forward is fully replayable via the Pipeline modal — full RE input, full Summary input including dashboard_metrics, and both agent outputs.
+
+**Out of scope (deliberate):** RE → ALLORO tasks left untouched (different audience, agency-internal); cadence policy for ranking news between PMS uploads accepts the lag (option a from the planning thread); `pms_job_id` FK on `agent_results` deferred (current join sufficient); Rybbit website analytics path stays as-is (not yet emitting data).
+
+**Verification:** `tsc --noEmit` clean (backend + frontend). `npm run lint` clean for the changed files (264 pre-existing errors elsewhere, unchanged by this work).
+
 ## [0.0.37] - April 2026
 
 ### Rankings Polish — Eyebrow Pattern, Layout Repair, Tone & Brand Sweep

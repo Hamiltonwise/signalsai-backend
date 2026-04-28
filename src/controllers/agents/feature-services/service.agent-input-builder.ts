@@ -202,6 +202,11 @@ export function buildSummaryPayload(params: {
   /** Plan 1: Summary v2 receives the deterministic metrics dictionary computed
    *  by service.dashboard-metrics.ts. Used to ground supporting_metrics[*] picks. */
   dashboardMetrics?: any;
+  /** Latest LLM-curated ranking recommendations (top_recommendations[]) from
+   *  the most recent completed practice_ranking for this location. Sibling
+   *  to dashboard_metrics: interpretive (not deterministic), so values must
+   *  not be cited via supporting_metrics[*].source_field. */
+  rankingRecommendations?: any[] | null;
 }): any {
   return {
     agent: "summary",
@@ -217,6 +222,9 @@ export function buildSummaryPayload(params: {
       ...(params.websiteAnalytics ? { website_analytics: params.websiteAnalytics } : {}),
       ...(params.referralEngineOutput ? { referral_engine_output: params.referralEngineOutput } : {}),
       ...(params.dashboardMetrics ? { dashboard_metrics: params.dashboardMetrics } : {}),
+      ...(params.rankingRecommendations && params.rankingRecommendations.length > 0
+        ? { ranking_recommendations: params.rankingRecommendations }
+        : {}),
     },
   };
 }

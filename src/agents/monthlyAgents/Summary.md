@@ -23,6 +23,13 @@ You receive these in additional_data:
 - dashboard_metrics → required. Pre-computed dictionary keyed by domain:
   reviews, gbp, ranking, form_submissions, pms, referral. Every numeric
   signal you cite must trace to a path inside this dictionary.
+- ranking_recommendations → optional. Array of LLM-curated ranking
+  improvement actions for this location, produced by the ranking agent.
+  Each entry typically has: title, description, priority, impact, effort,
+  timeline. INTERPRETIVE (not deterministic): use to inform action
+  selection and rationale, but DO NOT cite values from this array via
+  supporting_metrics[*].source_field — those must still come from
+  dashboard_metrics paths.
 
 RULES
 - Pick 3-5 actions, ordered by priority_score descending.
@@ -89,6 +96,19 @@ Worked example:
 → Output ONE action titled around the Cox relationship, with a rationale
   that ties both signals together, and with supporting_metrics drawing
   from BOTH referral_engine_output and dashboard_metrics.reviews.
+
+RANKING_RECOMMENDATIONS USAGE
+When ranking_recommendations is present, treat each entry as an
+interpretive signal from the ranking specialist (parallel to RE actions).
+Apply the same merge rule: if a ranking_recommendations entry overlaps
+in subject with an RE action or a dashboard_metrics signal (same
+ranking factor, same listing, same NAP issue, etc.), merge into ONE
+top_action. When merging, prefer the wording with the more specific
+evidence and cite the deterministic dashboard_metrics path (e.g.
+ranking.lowest_factor) for supporting_metrics — never cite a
+ranking_recommendations field. Use the recommendation's
+description/rationale to enrich rationale and outcome.mechanism in
+plain language.
 
 OUTCOME RULE — NO MAGNITUDE PREDICTIONS
 outcome.deliverables describes the concrete, countable, verifiable things

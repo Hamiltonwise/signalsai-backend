@@ -1,24 +1,17 @@
 /**
- * LLM Webhook Handler Service
+ * Ranking LLM Result Persistence
  *
- * Processes n8n webhook callbacks containing LLM analysis results.
- * Creates tasks from recommendations and archives previous tasks.
+ * Persists LLM analysis output for the practice ranking pipeline. Originally
+ * served as an n8n webhook handler; the pipeline now runs Claude inline (see
+ * service.ranking-llm.ts) and these helpers are called directly.
  *
- * CRITICAL FIX: The archive+insert for tasks is wrapped in a database
- * transaction to prevent data loss if the insert fails after archiving.
+ * Task creation moved out: Summary v2 is the sole writer of category="USER"
+ * tasks. Ranking output reaches Summary via additional_data.ranking_recommendations
+ * on the next monthly run.
  */
 
 import { db } from "../../../database/connection";
-import { resolveLocationId } from "../../../utils/locationResolver";
-import { log, logDebug, logWarn } from "../feature-utils/util.ranking-logger";
-
-interface WebhookBody {
-  practice_ranking_id: number;
-  error?: boolean;
-  error_code?: string;
-  error_message?: string;
-  [key: string]: any;
-}
+import { log } from "../feature-utils/util.ranking-logger";
 
 /**
  * Handle an error response from the LLM webhook.
@@ -51,107 +44,6 @@ export async function handleErrorResponse(
       error_message: `LLM Error: ${errorCode} - ${errorMessage}`,
       updated_at: new Date(),
     });
-}
-
-/**
- * Archive previous tasks and create new tasks from LLM recommendations.
- * CRITICAL: Wrapped in a transaction to prevent data loss.
- *
- * If archive succeeds but insert fails without a transaction, previous
- * tasks would be archived with no new tasks created (data loss).
- */
-export async function archiveAndCreateTasks(
-  ranking: any,
-  practiceRankingId: number,
-  llmAnalysis: any,
-): Promise<void> {
-  try {
-    await db.transaction(async (trx) => {
-      // Find previous ranking IDs for this location (excluding current)
-      const previousRankings = await trx("practice_rankings")
-        .where({
-          organization_id: ranking.organization_id,
-          gbp_location_id: ranking.gbp_location_id,
-        })
-        .whereNot({ id: practiceRankingId })
-        .select("id");
-
-      const previousRankingIds = previousRankings.map((r: any) => r.id);
-
-      if (previousRankingIds.length > 0) {
-        // Archive tasks from previous rankings for this location
-        const archivedCount = await trx("tasks")
-          .where({ agent_type: "RANKING" })
-          .whereRaw("metadata::jsonb->>'practice_ranking_id' IN (?)", [
-            previousRankingIds.map(String).join(","),
-          ])
-          .whereNot({ status: "archived" })
-          .update({
-            status: "archived",
-            updated_at: new Date(),
-          });
-
-        if (archivedCount > 0) {
-          logDebug(
-            `  [Webhook] Archived ${archivedCount} tasks from previous rankings`,
-          );
-        }
-      }
-
-      // Extract top_recommendations from LLM analysis
-      const topRecommendations = llmAnalysis.top_recommendations || [];
-      logDebug(
-        `  [Webhook] Found ${topRecommendations.length} top recommendations to create as tasks`,
-      );
-
-      // Resolve location_id for task creation
-      const taskLocationId = await resolveLocationId(
-        ranking.organization_id,
-        ranking.gbp_location_id,
-      );
-
-      // Create task records for each recommendation
-      if (topRecommendations.length > 0) {
-        const tasksToInsert = topRecommendations.map((item: any) => ({
-          organization_id: ranking.organization_id,
-          location_id: taskLocationId,
-          title: item.title || "Ranking Improvement Action",
-          description: item.expected_outcome
-            ? `${item.description || ""}\n\n**Expected Outcome:**\n${
-                item.expected_outcome
-              }`
-            : item.description || "",
-          category: "USER",
-          agent_type: "RANKING",
-          status: "pending",
-          is_approved: false,
-          created_by_admin: true,
-          due_date: null,
-          metadata: JSON.stringify({
-            practice_ranking_id: practiceRankingId,
-            gbp_location_id: ranking.gbp_location_id,
-            gbp_location_name: ranking.gbp_location_name,
-            priority: item.priority || null,
-            impact: item.impact || null,
-            effort: item.effort || null,
-            timeline: item.timeline || null,
-          }),
-          created_at: new Date(),
-          updated_at: new Date(),
-        }));
-
-        await trx("tasks").insert(tasksToInsert);
-        logDebug(
-          `  [Webhook] Created ${tasksToInsert.length} pending tasks from ranking recommendations`,
-        );
-      }
-    });
-  } catch (taskError: any) {
-    // Log but don't fail the webhook if task creation fails
-    logWarn(
-      `[Webhook] Failed to create tasks from ranking recommendations: ${taskError.message}`,
-    );
-  }
 }
 
 /**

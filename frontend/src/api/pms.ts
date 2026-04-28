@@ -114,6 +114,43 @@ export interface ActiveAutomationJobsResponse {
 }
 
 // =====================================================================
+// PIPELINE DEBUG MODAL TYPES
+// =====================================================================
+
+export interface PipelineAgentNode {
+  agent_type: string;
+  status: "success" | "pending" | "error" | "archived" | "missing";
+  result_id: number | null;
+  run_id: string | null;
+  date_start: string | null;
+  date_end: string | null;
+  agent_input: Record<string, unknown> | null;
+  agent_output: Record<string, unknown> | null;
+  error_message: string | null;
+  created_at: string | null;
+}
+
+export interface PipelinePmsJob {
+  id: number;
+  organization_id: number | null;
+  location_id: number | null;
+  status: string;
+  is_approved: boolean;
+  is_client_approved: boolean;
+  timestamp: string;
+  response_log: Record<string, unknown> | null;
+  automation_status_detail: AutomationStatusDetail | null;
+}
+
+export interface PmsPipelineResponse {
+  success: boolean;
+  pms_job?: PipelinePmsJob;
+  agents?: PipelineAgentNode[];
+  error?: string;
+  message?: string;
+}
+
+// =====================================================================
 // EXISTING TYPES
 // =====================================================================
 
@@ -565,6 +602,18 @@ export async function fetchAutomationStatus(
   return apiGet({
     path: `/pms/jobs/${jobId}/automation-status`,
   }) as Promise<AutomationStatusResponse>;
+}
+
+/**
+ * Fetch the full agent pipeline (RE + Summary inputs/outputs) for one PMS job.
+ * Backs the "View Pipeline" admin debug modal at /admin/ai-pms-automation.
+ */
+export async function fetchPmsPipeline(
+  jobId: number
+): Promise<PmsPipelineResponse> {
+  return apiGet({
+    path: `/admin/pms-jobs/${jobId}/pipeline`,
+  }) as Promise<PmsPipelineResponse>;
 }
 
 /**
