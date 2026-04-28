@@ -1,3 +1,12 @@
+/**
+ * @deprecated Plan 3 (Restore sidebar) walked back Plan 2's top-bar layout.
+ * This component is preserved on disk for potential revival but is no longer
+ * mounted. The global layout shell is `PageWrapper.tsx` (sidebar + mobile
+ * header). All file dependencies (lucide imports, useAuth, useLocationContext)
+ * remain intact so this can be re-enabled with a one-line PageWrapper edit.
+ *
+ * Plan: plans/04282026-no-ticket-restore-sidebar-keep-dashboard/spec.md
+ */
 import React, { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import {

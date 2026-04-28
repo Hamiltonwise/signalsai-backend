@@ -1,3 +1,11 @@
+/**
+ * @deprecated Plan 3 (Restore sidebar) walked back Plan 2's top-bar layout.
+ * Ticker was rendered above the dashboard hero by the deprecated TopBar
+ * shell. Component preserved on disk for potential revival but no longer
+ * mounted. The global layout shell is `PageWrapper.tsx` (sidebar).
+ *
+ * Plan: plans/04282026-no-ticket-restore-sidebar-keep-dashboard/spec.md
+ */
 import React from "react";
 
 interface TickerProps {
