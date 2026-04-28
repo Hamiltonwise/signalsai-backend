@@ -1,15 +1,27 @@
 /**
  * PMS Paste-Parse Service
  *
- * Pure JS parsing for fixed-column PMS data:
- *   Col 0: Treatment Date
- *   Col 1: Source
- *   Col 2: Type (self | doctor)
- *   Col 3: Production
+ * Two-tier dispatch:
+ *   Tier 1 (fast-path): if the pasted file's header signature matches the
+ *     canonical Alloro 4-col template, run the legacy positional parser
+ *     verbatim — guarantees byte-identical output for the existing path.
+ *   Tier 2 (mapping system): for any other shape, parse rows into records
+ *     keyed by header, then dispatch through the column-mapping resolver
+ *     (org-cache → global-library → AI inference) and apply the resolved
+ *     mapping to produce a `MonthlyRollupForJob`. The legacy `ParsedRow[]`
+ *     return shape is reconstructed from the rollup so existing callers
+ *     don't break.
  *
- * Each row = 1 referral. No AI needed for parsing.
- * Stateless — no database writes.
+ * Stateless — no database writes (the resolver layer manages cache reads;
+ * the upload-with-mapping endpoint owns the clone-on-confirm write).
  */
+
+import { signHeaders } from "../../../utils/pms/headerSignature";
+import { resolveMapping } from "../../../utils/pms/resolveColumnMapping";
+import {
+  applyMapping,
+  type MonthlyRollupForJob,
+} from "../../../utils/pms/applyColumnMapping";
 
 export interface ParsedRow {
   source: string;
@@ -25,6 +37,19 @@ export interface PasteParseResult {
   rowsParsed: number;
   monthsDetected: number;
 }
+
+/**
+ * Canonical Alloro template signature — the four-column "Treatment Date,
+ * Source, Type, Production" shape that this service has parsed positionally
+ * since v0. Computed once at module load so the fast-path test is O(1).
+ */
+const ALLORO_TEMPLATE_HEADERS = [
+  "Treatment Date",
+  "Source",
+  "Type",
+  "Production",
+];
+const ALLORO_TEMPLATE_SIGNATURE = signHeaders(ALLORO_TEMPLATE_HEADERS);
 
 /**
  * Detect delimiter: tab (pasted from spreadsheet) or comma (CSV file).
@@ -90,7 +115,7 @@ function splitLine(line: string, delimiter: "\t" | ","): string[] {
  * Parse a date string into YYYY-MM format.
  * Handles: MM/DD/YYYY, YYYY-MM-DD, "January 2025", "Jan 2025", etc.
  */
-function parseDateToMonth(dateStr: string, fallback: string): string {
+export function parseDateToMonth(dateStr: string, fallback: string): string {
   const trimmed = dateStr.trim();
   if (!trimmed) return fallback;
 
@@ -162,31 +187,58 @@ function parseType(val: string): "self" | "doctor" {
 }
 
 /**
- * Parse pasted text with fixed column structure.
- * Returns flat array of ParsedRow (one per input row).
+ * Internal: split raw text into headers + rows-as-records keyed by header.
+ * Used by the Tier 2 path (mapping system) and exported for callers that
+ * need to reuse paste delimiter handling without going through positional
+ * parsing (e.g. `uploadWithMapping` in PmsController).
  */
-export function parsePastedData(
-  rawText: string,
-  currentMonth: string
-): PasteParseResult {
-  if (!rawText || rawText.trim().length === 0) {
-    throw Object.assign(new Error("No data provided to parse"), {
-      statusCode: 400,
-    });
-  }
-
+export function pasteTextToRecords(rawText: string): {
+  headers: string[];
+  rows: Record<string, string>[];
+  delimiter: "\t" | ",";
+} {
   const lines = rawText.split("\n").filter((l) => l.trim().length > 0);
   if (lines.length < 2) {
-    throw Object.assign(new Error("Data must have a header row and at least one data row"), {
-      statusCode: 400,
-    });
+    throw Object.assign(
+      new Error("Data must have a header row and at least one data row"),
+      { statusCode: 400 }
+    );
   }
 
   const delimiter = detectDelimiter(lines[0]);
-  const dataLines = lines.slice(1); // skip header
+  const headers = splitLine(lines[0], delimiter).map((h) => h.trim());
+
+  const rows: Record<string, string>[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitLine(lines[i], delimiter);
+    const record: Record<string, string> = {};
+    for (let j = 0; j < headers.length; j++) {
+      record[headers[j]] = (cols[j] ?? "").toString();
+    }
+    rows.push(record);
+  }
+
+  return { headers, rows, delimiter };
+}
+
+/**
+ * Tier 1 fast-path: legacy positional parser. Preserved verbatim from the
+ * pre-mapping-system implementation so byte-identical output is guaranteed
+ * for the canonical 4-col Alloro template.
+ */
+function parseAlloroTemplate(
+  rawText: string,
+  currentMonth: string
+): PasteParseResult {
+  const lines = rawText.split("\n").filter((l) => l.trim().length > 0);
+  // Header + data row count is already validated by caller via pasteTextToRecords.
+
+  const delimiter = detectDelimiter(lines[0]);
+  const dataLines = lines.slice(1);
 
   console.log(
-    `[PMS-Paste] Parsing ${dataLines.length} data rows (delimiter: ${delimiter === "\t" ? "TAB" : "COMMA"})`
+    `[PMS-Paste] (tier1/template) Parsing ${dataLines.length} data rows ` +
+      `(delimiter: ${delimiter === "\t" ? "TAB" : "COMMA"})`
   );
 
   const warnings: string[] = [];
@@ -198,7 +250,9 @@ export function parsePastedData(
 
     // Need at least 4 columns: date, source, type, production
     if (cols.length < 4) {
-      warnings.push(`Row ${i + 2}: skipped — expected 4 columns, got ${cols.length}`);
+      warnings.push(
+        `Row ${i + 2}: skipped — expected 4 columns, got ${cols.length}`
+      );
       continue;
     }
 
@@ -220,13 +274,15 @@ export function parsePastedData(
 
   if (rows.length === 0) {
     throw Object.assign(
-      new Error("No parseable data found. Make sure the pasted content has Date, Source, Type, Production columns."),
+      new Error(
+        "No parseable data found. Make sure the pasted content has Date, Source, Type, Production columns."
+      ),
       { statusCode: 400 }
     );
   }
 
   console.log(
-    `[PMS-Paste] Parsed ${rows.length} rows across ${monthsSet.size} month(s)`
+    `[PMS-Paste] (tier1/template) Parsed ${rows.length} rows across ${monthsSet.size} month(s)`
   );
 
   return {
@@ -235,4 +291,147 @@ export function parsePastedData(
     rowsParsed: rows.length,
     monthsDetected: monthsSet.size,
   };
+}
+
+/**
+ * Convert a `MonthlyRollupForJob` (the mapping-system output) back into the
+ * legacy `ParsedRow[]` shape this service has historically returned. One
+ * `ParsedRow` is emitted per (month, source) pair, with `referrals` and
+ * `production` summed across the rollup. `type` is derived from the source's
+ * `inferred_referral_type` (procedure-log adapter sets it; template adapter
+ * leaves it unset, in which case we default to "self").
+ */
+function rollupToParsedRows(rollup: MonthlyRollupForJob): {
+  rows: ParsedRow[];
+  monthsDetected: number;
+} {
+  const out: ParsedRow[] = [];
+  const monthsSet = new Set<string>();
+
+  for (const monthEntry of rollup) {
+    monthsSet.add(monthEntry.month);
+    for (const src of monthEntry.sources) {
+      const type: "self" | "doctor" =
+        src.inferred_referral_type === "doctor" ? "doctor" : "self";
+      out.push({
+        source: src.name || "Unknown",
+        type,
+        referrals: src.referrals,
+        production: src.production,
+        month: monthEntry.month,
+      });
+    }
+  }
+
+  return { rows: out, monthsDetected: monthsSet.size };
+}
+
+/**
+ * Parse pasted text. Dispatches to Tier 1 (Alloro template) or Tier 2
+ * (mapping system) based on header signature.
+ *
+ * @param rawText - pasted spreadsheet/CSV content (with header row).
+ * @param currentMonth - fallback month in YYYY-MM format used when a row's
+ *   date can't be parsed.
+ * @param orgId - optional org id for Tier 1 cache lookup. When omitted (or
+ *   the caller doesn't have an authenticated org), the mapping system still
+ *   runs but skips org-cache and falls through to global library + AI.
+ */
+export async function parsePastedData(
+  rawText: string,
+  currentMonth: string,
+  orgId?: number
+): Promise<PasteParseResult> {
+  if (!rawText || rawText.trim().length === 0) {
+    throw Object.assign(new Error("No data provided to parse"), {
+      statusCode: 400,
+    });
+  }
+
+  // Always tokenize first so we can inspect the header signature.
+  const { headers, rows: rowRecords } = pasteTextToRecords(rawText);
+
+  const signature = signHeaders(headers);
+
+  // -----------------------------------------------------------------
+  // Tier 1: Alloro 4-col template — legacy positional parser.
+  // Byte-identical output to pre-mapping-system behavior.
+  // -----------------------------------------------------------------
+  if (signature === ALLORO_TEMPLATE_SIGNATURE) {
+    return parseAlloroTemplate(rawText, currentMonth);
+  }
+
+  // -----------------------------------------------------------------
+  // Tier 2: dispatch through the mapping system.
+  // -----------------------------------------------------------------
+  console.log(
+    `[PMS-Paste] (tier2/mapping) signature=${signature} headers=${headers.length} rows=${rowRecords.length} orgId=${orgId ?? "none"}`
+  );
+
+  // Resolver requires a numeric orgId — when the caller didn't pass one
+  // (e.g. pre-existing /pms/parse-paste route ran without RBAC), fall back
+  // to a sentinel that will miss every org-cache and proceed to global
+  // library + AI inference. This preserves the resolver's tier ordering
+  // without inventing a new "no-org" code path.
+  const effectiveOrgId = orgId ?? -1;
+
+  const resolved = await resolveMapping(
+    effectiveOrgId,
+    headers,
+    rowRecords.slice(0, 10)
+  );
+
+  // Apply mapping to produce a MonthlyRollupForJob.
+  let rollup: MonthlyRollupForJob;
+  try {
+    rollup = applyMapping(rowRecords, resolved.mapping);
+  } catch (err) {
+    // Invalid mapping (e.g. neither source nor referring_practice mapped,
+    // or both mapped). Surface as a 400 so the UI can prompt the user to
+    // fix the mapping in the side drawer.
+    throw Object.assign(
+      new Error(
+        err instanceof Error
+          ? err.message
+          : "Could not apply column mapping to pasted data."
+      ),
+      { statusCode: 400 }
+    );
+  }
+
+  const { rows: legacyRows, monthsDetected } = rollupToParsedRows(rollup);
+
+  console.log(
+    `[PMS-Paste] (tier2/mapping) Produced ${legacyRows.length} parsed rows across ${monthsDetected} month(s) via ${resolved.source}`
+  );
+
+  return {
+    rows: legacyRows,
+    warnings: [],
+    rowsParsed: legacyRows.length,
+    monthsDetected,
+  };
+}
+
+/**
+ * Re-export the canonical signature so other services / tests can verify
+ * Tier 1 behavior without recomputing it.
+ */
+export { ALLORO_TEMPLATE_SIGNATURE };
+
+/**
+ * `toNumber` helper exposed for external callers (mirrors the helper used
+ * by `pmsAggregator.ts` and `productionFormula.ts`). Kept here as a
+ * convenience export — not the canonical home; that remains pmsAggregator.
+ */
+export function toNumber(value: unknown): number {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+  if (typeof value === "string") {
+    const cleaned = value.replace(/[^0-9.\-]/g, "");
+    const parsed = Number.parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
 }

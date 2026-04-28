@@ -2,7 +2,7 @@
  * Seed script: Insert a second location for testing multi-location switching.
  *
  * Usage:
- *   npx ts-node src/database/seeds/seed-second-location.ts
+ *   npx ts-node scripts/seed-second-location.ts
  *
  * What it does:
  *   1. Finds the first organization that has a primary location

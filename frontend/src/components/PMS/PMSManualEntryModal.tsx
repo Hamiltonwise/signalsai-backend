@@ -37,9 +37,17 @@ import {
   toYm,
 } from "./pmsDataTransform";
 import type { MonthBucket, SourceRow } from "./types";
-import { submitManualPMSData } from "../../api/pms";
+import {
+  submitManualPMSData,
+  previewMapping,
+  uploadWithMapping,
+  type ColumnMapping,
+  type MappingSource,
+  type MonthlyRollupForJob,
+} from "../../api/pms";
 import { usePasteHandler } from "./usePasteHandler";
 import { PasteConfirmDialog } from "./PasteConfirmDialog";
+import { ColumnMappingDrawer } from "./ColumnMappingDrawer";
 
 interface PMSManualEntryModalProps {
   isOpen: boolean;
@@ -51,6 +59,94 @@ interface PMSManualEntryModalProps {
 
 const ALORO_ORANGE = "#C9765E";
 const ALORO_ORANGE_DARK = "#D66853";
+
+/**
+ * State-machine CSV/TSV parser for the mapping-preview path.
+ *
+ * Handles:
+ *   - Tab or comma delimiters (auto-detected from first line)
+ *   - Quoted fields containing the delimiter (e.g. `"Diab, Zied"`)
+ *   - Escaped quotes inside quoted fields (`""` → `"`)
+ *   - LF and CRLF row endings
+ *   - Newlines inside quoted fields (rare but legal)
+ *   - Ragged rows (fewer cells than headers → undefined)
+ *
+ * The previous naive `split(delimiter)` implementation broke on the very
+ * common case of practice-management exports that quote fields with commas
+ * (Patient, Provider, Referring User on the Open Dental shape), causing the
+ * mapping to read column N as column N+k for arbitrary k. Verified against
+ * `Fredericksburg February 2026 - Raw Data.csv` (515 rows, 11 cols).
+ */
+const parseTabularToRows = (
+  raw: string
+): { headers: string[]; rows: Record<string, unknown>[] } => {
+  if (!raw.trim()) return { headers: [], rows: [] };
+
+  const firstLineEnd = raw.indexOf("\n");
+  const firstLine = firstLineEnd === -1 ? raw : raw.slice(0, firstLineEnd);
+  const delimiter = firstLine.includes("\t") ? "\t" : ",";
+
+  const allRows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        // Escaped quote: "" → "
+        if (raw[i + 1] === '"') {
+          currentField += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        currentField += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === delimiter) {
+      currentRow.push(currentField);
+      currentField = "";
+    } else if (ch === "\n" || ch === "\r") {
+      // Skip the LF in CRLF
+      if (ch === "\r" && raw[i + 1] === "\n") i++;
+      currentRow.push(currentField);
+      currentField = "";
+      if (currentRow.some((c) => c.length > 0)) {
+        allRows.push(currentRow);
+      }
+      currentRow = [];
+    } else {
+      currentField += ch;
+    }
+  }
+
+  // Flush final field/row
+  if (currentField.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentField);
+    if (currentRow.some((c) => c.length > 0)) {
+      allRows.push(currentRow);
+    }
+  }
+
+  if (allRows.length === 0) return { headers: [], rows: [] };
+
+  const headers = allRows[0].map((h) => h.trim());
+  const rows: Record<string, unknown>[] = [];
+  for (let i = 1; i < allRows.length; i++) {
+    const cells = allRows[i];
+    const row: Record<string, unknown> = {};
+    headers.forEach((h, idx) => {
+      row[h] = (cells[idx] ?? "").trim();
+    });
+    rows.push(row);
+  }
+  return { headers, rows };
+};
 
 /**
  * Get the previous month in YYYY-MM format
@@ -147,6 +243,35 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
 
+  // Column-mapping state (T18/T19)
+  const [mappingHeaders, setMappingHeaders] = useState<string[]>([]);
+  const [mappingSampleRows, setMappingSampleRows] = useState<
+    Record<string, unknown>[]
+  >([]);
+  const [mappingAllRows, setMappingAllRows] = useState<
+    Record<string, unknown>[]
+  >([]);
+  const [currentMapping, setCurrentMapping] = useState<ColumnMapping | null>(
+    null
+  );
+  const [mappingSource, setMappingSource] = useState<MappingSource | null>(null);
+  const [parsedPreview, setParsedPreview] = useState<MonthlyRollupForJob | null>(
+    null
+  );
+  const [isResolvingMapping, setIsResolvingMapping] = useState(false);
+  const [isReprocessing, setIsReprocessing] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Raw paste text captured at paste-event time, consumed AFTER legacy parse
+  // completes. Sequencing the mapping pipeline behind the legacy parse means
+  // the drawer can't auto-open while the user is still in the "Paste detected"
+  // confirmation dialog.
+  const pastedRawTextRef = useRef<string>("");
+
+  // Forward-ref to runMappingPreview, populated by an effect below. handleParsedPaste
+  // is declared before runMappingPreview so we use a ref to avoid TDZ.
+  const runMappingPreviewRef = useRef<(rawText: string) => void>(() => {});
+
   // Paste handler
   const handleParsedPaste = useCallback(
     (parsedMonths: MonthBucket[]) => {
@@ -162,6 +287,15 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
         "Data parsed!",
         `${parsedMonths.reduce((s, m) => s + m.rows.length, 0)} rows added. Review and submit when ready.`
       );
+
+      // Now that legacy parsing is done and the user can see the result, kick
+      // off the column-mapping resolver. This is what eventually opens the
+      // mapping drawer for non-org-cache signatures.
+      const text = pastedRawTextRef.current;
+      if (text) {
+        runMappingPreviewRef.current(text);
+        pastedRawTextRef.current = "";
+      }
     },
     []
   );
@@ -185,13 +319,86 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
     batchProgress,
     confirmPaste,
     cancelPaste,
-    handlePasteEvent,
+    handlePasteEvent: legacyHandlePasteEvent,
   } = usePasteHandler({
     currentMonth: activeMonthStr,
     onParsed: handleParsedPaste,
     onError: (msg) => setError(msg),
     onWarnings: handlePasteWarnings,
   });
+
+  /**
+   * Run the column-mapping resolver against the pasted text. Triggered by
+   * `handleParsedPaste` AFTER the legacy parser populates the months bucket
+   * UI — so the drawer never opens while the "Paste detected" modal is up.
+   *
+   * Declared BEFORE handlePasteEvent so that callback's deps array can
+   * reference it without hitting a TDZ.
+   */
+  const runMappingPreview = useCallback(
+    async (rawText: string) => {
+      const { headers, rows } = parseTabularToRows(rawText);
+      if (headers.length === 0 || rows.length === 0) return;
+
+      setMappingHeaders(headers);
+      setMappingAllRows(rows);
+      // Keep a small sample around for any UI that wants to show example values
+      // (e.g. the production formula preview). The backend always gets ALL
+      // rows so the parsed preview reflects the entire file, not a sample.
+      setMappingSampleRows(rows.slice(0, 5));
+      setIsResolvingMapping(true);
+
+      try {
+        const resp = await previewMapping({ headers, sampleRows: rows });
+        if (resp.success && resp.data) {
+          setCurrentMapping(resp.data.mapping);
+          setMappingSource(resp.data.source);
+          setParsedPreview(resp.data.parsedPreview);
+          // Open drawer for non-org-cache sources (D6). At this point the
+          // user has already seen parsed data on the left, so the drawer is
+          // a "verify or adjust" prompt, not a blocking question.
+          setDrawerOpen(resp.data.source !== "org-cache");
+        } else {
+          console.warn("[PMSManualEntry] previewMapping failed:", resp.error);
+        }
+      } catch (err) {
+        console.warn(
+          "[PMSManualEntry] previewMapping unexpected error:",
+          err
+        );
+      } finally {
+        setIsResolvingMapping(false);
+      }
+    },
+    []
+  );
+
+  // Keep the forward-ref synced so handleParsedPaste can call the latest
+  // runMappingPreview without dependency loops.
+  useEffect(() => {
+    runMappingPreviewRef.current = runMappingPreview;
+  }, [runMappingPreview]);
+
+  /**
+   * Wraps the legacy paste handler. Captures the raw text into a ref, then
+   * forwards the event to the positional parser. The mapping resolver does
+   * NOT run here — it's deferred to `handleParsedPaste` so the drawer can't
+   * pop while the user is still confirming the legacy "Paste detected" modal.
+   */
+  const handlePasteEvent = useCallback(
+    (e: React.ClipboardEvent) => {
+      // Sniff text first (the legacy handler may preventDefault and consume).
+      let text = "";
+      try {
+        text = e.clipboardData.getData("text/plain");
+      } catch {
+        // ignore — not all synthetic events expose clipboardData
+      }
+      pastedRawTextRef.current = text;
+      legacyHandlePasteEvent(e);
+    },
+    [legacyHandlePasteEvent]
+  );
 
   // Only reset transient state when modal opens (keep data intact)
   useEffect(() => {
@@ -200,6 +407,90 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
       setError(null);
     }
   }, [isOpen]);
+
+  // ─── Column-mapping pipeline ─────────────────────────────────────
+  // When the mapping pipeline produces a parsedPreview, hydrate the existing
+  // months bucket UI with it so the user can review/edit the parsed result
+  // alongside the drawer.
+  useEffect(() => {
+    if (!parsedPreview) return;
+    const rows = parsedPreview.monthly_rollup;
+    if (!rows?.length) return;
+    const buckets: MonthBucket[] = rows.map((m, i) => ({
+      id: Date.now() + i,
+      month: m.month,
+      rows: m.sources.map((s, j) => ({
+        id: Date.now() + i * 1000 + j,
+        source: s.name,
+        type: (s.inferred_referral_type as "self" | "doctor") || "self",
+        referrals: String(s.referrals),
+        production: String(s.production),
+      })),
+    }));
+    setMonths(buckets);
+    const sorted = [...buckets].sort((a, b) => a.month.localeCompare(b.month));
+    const first = sorted.find((m) => m.rows.length > 0) || sorted[0];
+    if (first) setActiveMonthId(first.id);
+  }, [parsedPreview]);
+
+  // Reset mapping state on modal close so re-opens get a clean slate.
+  useEffect(() => {
+    if (!isOpen) {
+      setMappingHeaders([]);
+      setMappingSampleRows([]);
+      setMappingAllRows([]);
+      setCurrentMapping(null);
+      setMappingSource(null);
+      setParsedPreview(null);
+      setDrawerOpen(false);
+      setIsResolvingMapping(false);
+      setIsReprocessing(false);
+    }
+  }, [isOpen]);
+
+  /**
+   * Re-call previewMapping with the user-edited mapping as `overrideMapping`.
+   * Backend skips resolution and re-applies the supplied mapping to sampleRows.
+   * Chosen over a dedicated /apply-mapping endpoint to keep the contract surface
+   * minimal — see report.
+   */
+  const handleReprocess = useCallback(async () => {
+    if (!currentMapping || mappingHeaders.length === 0) return;
+    setIsReprocessing(true);
+    try {
+      // Send ALL rows so the backend re-applies the mapping to the entire
+      // file, not just the 5-row preview sample. The months display rebuilds
+      // from the resulting parsedPreview via the parsedPreview→months effect.
+      const resp = await previewMapping({
+        headers: mappingHeaders,
+        sampleRows: mappingAllRows,
+        overrideMapping: currentMapping,
+      });
+      if (resp.success && resp.data) {
+        setParsedPreview(resp.data.parsedPreview);
+        setDrawerOpen(false);
+        const totalRows = (resp.data.parsedPreview?.monthly_rollup ?? []).reduce(
+          (s, m) => s + (m.sources?.length ?? 0),
+          0
+        );
+        // Adapter-emitted notes — currently the "skipped N zero/negative-
+        // production referrals" line. Append to the toast body so it's
+        // visible without adding new UI surface.
+        const flagsLine =
+          resp.data.dataQualityFlags && resp.data.dataQualityFlags.length
+            ? "\n" + resp.data.dataQualityFlags.join(" · ")
+            : "";
+        showUploadToast(
+          "Mapping saved",
+          `Re-processed ${mappingAllRows.length} rows into ${totalRows} sources.${flagsLine}`
+        );
+      } else {
+        setError(resp.error || "Re-process failed.");
+      }
+    } finally {
+      setIsReprocessing(false);
+    }
+  }, [currentMapping, mappingHeaders, mappingAllRows]);
 
   // Clear all data and reset to empty state
   const clearAllData = useCallback(() => {
@@ -453,6 +744,54 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
 
   // Submit handler
   const handleSubmit = async () => {
+    // ── Mapping path: when the user pasted a non-template file and we
+    // resolved a mapping, submit via uploadWithMapping so the backend's
+    // parsing pipeline (and clone-on-confirm cache write) runs end-to-end.
+    if (currentMapping && mappingAllRows.length > 0) {
+      setIsSubmitting(true);
+      setError(null);
+      try {
+        const result = await uploadWithMapping({
+          domain: clientId,
+          rows: mappingAllRows,
+          mapping: currentMapping,
+          locationId,
+        });
+
+        if (result.success) {
+          setSubmitStatus("success");
+          showUploadToast(
+            "Data received!",
+            "Processing your insights now..."
+          );
+
+          if (typeof window !== "undefined") {
+            const event = new CustomEvent("pms:job-uploaded", {
+              detail: { clientId, entryType: "mapping" },
+            });
+            window.dispatchEvent(event);
+          }
+
+          setTimeout(() => {
+            onSuccess?.();
+            onClose();
+          }, 2000);
+          return;
+        }
+        throw new Error(result.error || "Submission failed");
+      } catch (err) {
+        console.error("[PMSManualEntryModal] uploadWithMapping error:", err);
+        setSubmitStatus("error");
+        setError(err instanceof Error ? err.message : "Submission failed");
+        setIsSubmitting(false);
+        return;
+      } finally {
+        // Only flip off when staying on screen (success leaves modal open
+        // until the timeout above fires).
+      }
+    }
+
+    // ── Legacy manual-entry path (unchanged) ──────────────────────────
     // Validate that there's at least one source with data
     const allRows = months.flatMap((m) => m.rows);
     const validRows = allRows.filter(
@@ -537,7 +876,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ type: "spring", damping: 20, stiffness: 200 }}
-          className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl my-auto"
+          className="relative flex max-h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl my-auto"
           onClick={(e) => e.stopPropagation()}
           onPaste={handlePasteEvent}
           onDragEnter={handleDragEnter}
@@ -574,17 +913,65 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                 Add your referral and production data for {clientId}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-gray-200 p-2 text-gray-500 transition hover:border-gray-300 hover:text-gray-700"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Mapping settings link — visible whenever a mapping has been
+                  resolved, even silently from org-cache, so doctors can audit
+                  what was applied. */}
+              {currentMapping && !drawerOpen && (
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:border-gray-300"
+                  title="Review or edit the column mapping"
+                >
+                  Mapping settings
+                </button>
+              )}
+              {isResolvingMapping && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Resolving mapping…
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full border border-gray-200 p-2 text-gray-500 transition hover:border-gray-300 hover:text-gray-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-6 py-6 bg-gray-50">
+          <div className="relative flex-1 overflow-y-auto px-6 py-6 bg-gray-50">
+            {/* Re-processing overlay — visible feedback so the user can see
+                the new mapping being applied to their data, not just a
+                fleeting toast. Blocks pointer events on the months display
+                so the user can't edit during a re-process. */}
+            <AnimatePresence>
+              {isReprocessing && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-white/85 backdrop-blur-sm pointer-events-auto"
+                >
+                  <Loader2
+                    className="h-8 w-8 animate-spin"
+                    style={{ color: ALORO_ORANGE }}
+                  />
+                  <p className="text-sm font-semibold text-gray-900">
+                    Re-processing your data…
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Applying your mapping to {mappingAllRows.length}{" "}
+                    {mappingAllRows.length === 1 ? "row" : "rows"}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {submitStatus === "success" ? (
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
@@ -1141,6 +1528,23 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Column-mapping side drawer (T18). Slides over the right edge
+              of the modal whenever a non-org-cache mapping needs review, or
+              when the user clicks "Mapping settings" in the header. */}
+          {currentMapping && mappingSource && (
+            <ColumnMappingDrawer
+              isOpen={drawerOpen}
+              headers={mappingHeaders}
+              sampleRows={mappingSampleRows}
+              mapping={currentMapping}
+              source={mappingSource}
+              isReprocessing={isReprocessing}
+              onChange={setCurrentMapping}
+              onReprocess={handleReprocess}
+              onClose={() => setDrawerOpen(false)}
+            />
+          )}
 
           {/* Footer */}
           {submitStatus !== "success" && (

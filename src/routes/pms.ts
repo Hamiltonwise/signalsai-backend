@@ -16,6 +16,13 @@ pmsRoutes.post("/parse-paste", authenticateToken, rbacMiddleware, controller.par
 pmsRoutes.post("/sanitize-paste", authenticateToken, rbacMiddleware, controller.sanitizePaste);
 pmsRoutes.post("/summary", authenticateToken, rbacMiddleware, controller.getPmsSummary);
 
+// Column-mapping endpoints
+// (See plan: 04272026-no-ticket-pms-column-mapping-ai-inference)
+pmsRoutes.post("/preview-mapping", authenticateToken, rbacMiddleware, controller.previewResetMapping);
+pmsRoutes.post("/upload-with-mapping", authenticateToken, rbacMiddleware, controller.uploadWithMapping);
+pmsRoutes.post("/jobs/:id/reprocess", authenticateToken, rbacMiddleware, controller.reprocessJobMapping);
+pmsRoutes.get("/mappings/cache", authenticateToken, rbacMiddleware, controller.getCachedMapping);
+
 // Data Retrieval
 pmsRoutes.get("/keyData", authenticateToken, rbacMiddleware, controller.getKeyData);
 

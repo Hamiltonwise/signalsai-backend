@@ -19,6 +19,10 @@ const config: { [key: string]: Knex.Config } = {
       directory: "./src/database/migrations",
       extension: "ts",
     },
+    seeds: {
+      directory: "./src/database/seeds",
+      extension: "ts",
+    },
     pool: {
       min: 2,
       max: 50,
@@ -61,6 +65,10 @@ const config: { [key: string]: Knex.Config } = {
     },
     migrations: {
       directory: "./src/database/migrations",
+      extension: "ts",
+    },
+    seeds: {
+      directory: "./src/database/seeds",
       extension: "ts",
     },
     pool: {
