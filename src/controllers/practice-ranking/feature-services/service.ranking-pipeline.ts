@@ -25,6 +25,7 @@ import {
   getCachedCompetitors,
   setCachedCompetitors,
 } from "./service.competitor-cache";
+import { resolveCompetitorsForRanking } from "./service.competitor-source-resolver";
 import {
   calculateRankingScore,
   rankPractices,
@@ -380,6 +381,28 @@ export async function processLocationRanking(
     `[RANKING] [${rankingId}] Step 0 complete: status=${searchStatus}, position=${
       searchPosition ?? "n/a"
     }, results=${discoveredCompetitors.length}`,
+  );
+
+  // ========== STEP 0.5: Competitor Source Resolution (v2) ==========
+  // For finalized locations (user has curated their competitor list), swap
+  // discoveredCompetitors with the curated set so Practice Health scoring runs
+  // against the user's chosen comparison group. Search Position above is
+  // unaffected — it always uses raw Google top-N.
+  // Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
+  const resolved = await resolveCompetitorsForRanking(
+    rankingId,
+    discoveredCompetitors,
+    log,
+  );
+  discoveredCompetitors = resolved.competitors;
+  await db("practice_rankings")
+    .where({ id: rankingId })
+    .update({
+      competitor_source: resolved.source,
+      updated_at: new Date(),
+    });
+  log(
+    `[RANKING] [${rankingId}] Competitor source resolved: ${resolved.source}, ${discoveredCompetitors.length} competitors used for Practice Health`,
   );
 
   // ========== STEP 1: Fetch GBP Data ==========

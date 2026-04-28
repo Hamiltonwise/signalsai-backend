@@ -13,10 +13,23 @@
  * - POST /refresh-competitors - Invalidate competitor cache
  * - GET /latest - Get latest rankings for all locations (client dashboard)
  * - GET /tasks - Get approved ranking tasks
+ *
+ * v2 Curated Competitor Lists (location-scoped, client-facing, RBAC-gated):
+ * - GET    /locations/:locationId/competitors
+ * - POST   /locations/:locationId/competitors/discover
+ * - POST   /locations/:locationId/competitors
+ * - DELETE /locations/:locationId/competitors/:placeId
+ * - POST   /locations/:locationId/competitors/finalize-and-run
  */
 
 import express from "express";
 import * as controller from "../controllers/practice-ranking/PracticeRankingController";
+import { authenticateToken } from "../middleware/auth";
+import {
+  rbacMiddleware,
+  locationScopeMiddleware,
+  requireRole,
+} from "../middleware/rbac";
 
 const router = express.Router();
 
@@ -42,5 +55,55 @@ router.post("/retry-batch/:batchId", controller.retryBatch);
 router.delete("/batch/:batchId", controller.deleteBatch);
 router.delete("/:id", controller.deleteRanking);
 router.post("/refresh-competitors", controller.refreshCompetitors);
+
+// =====================================================================
+// v2 Curated Competitor Lists — gated by auth + RBAC + location scope.
+// All endpoints validate that req.user has access to :locationId via the
+// existing locationScopeMiddleware.
+// =====================================================================
+
+router.get(
+  "/locations/:locationId/competitors",
+  authenticateToken,
+  rbacMiddleware,
+  locationScopeMiddleware,
+  controller.getLocationCompetitors
+);
+
+router.post(
+  "/locations/:locationId/competitors/discover",
+  authenticateToken,
+  rbacMiddleware,
+  locationScopeMiddleware,
+  requireRole("admin", "manager"),
+  controller.discoverLocationCompetitors
+);
+
+router.post(
+  "/locations/:locationId/competitors",
+  authenticateToken,
+  rbacMiddleware,
+  locationScopeMiddleware,
+  requireRole("admin", "manager"),
+  controller.addLocationCompetitor
+);
+
+router.delete(
+  "/locations/:locationId/competitors/:placeId",
+  authenticateToken,
+  rbacMiddleware,
+  locationScopeMiddleware,
+  requireRole("admin", "manager"),
+  controller.deleteLocationCompetitor
+);
+
+router.post(
+  "/locations/:locationId/competitors/finalize-and-run",
+  authenticateToken,
+  rbacMiddleware,
+  locationScopeMiddleware,
+  requireRole("admin", "manager"),
+  controller.finalizeLocationAndRun
+);
 
 export default router;

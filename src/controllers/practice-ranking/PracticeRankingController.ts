@@ -59,7 +59,20 @@ import {
   MAX_RETRIES,
   RETRY_DELAY_MS,
 } from "./feature-services/service.ranking-pipeline";
+import {
+  runDiscoveryForLocation,
+  addCustomCompetitor,
+  removeCompetitorFromList,
+  finalizeAndTriggerRun,
+} from "./feature-services/service.location-competitor-onboarding";
+import { LocationCompetitorModel } from "../../models/LocationCompetitorModel";
+import {
+  validateLocationIdParam,
+  validatePlaceIdInput,
+  MAX_COMPETITORS_PER_LOCATION,
+} from "./feature-utils/util.competitor-validator";
 import { GooglePropertyModel } from "../../models/GooglePropertyModel";
+import type { RBACRequest } from "../../middleware/rbac";
 
 // =====================================================================
 // POST /trigger
@@ -1015,7 +1028,38 @@ export async function getLatestRankings(
       `[GET /latest] Found ${batchRankings.length} rankings in batch ${latestBatchId}`,
     );
 
-    // Step 3: For each ranking in the batch, get the previous analysis for trend comparison
+    // Step 3a: Batch-fetch v2 onboarding metadata for the distinct location_ids
+    // in this batch. Used by the dashboard to render the "set up your competitor
+    // list" banner for pending/curating locations.
+    // Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
+    const distinctLocationIds = Array.from(
+      new Set(
+        batchRankings
+          .map((r) => r.location_id)
+          .filter((id): id is number => typeof id === "number")
+      )
+    );
+    const onboardingByLocationId = new Map<
+      number,
+      { status: "pending" | "curating" | "finalized"; finalizedAt: Date | null }
+    >();
+    if (distinctLocationIds.length > 0) {
+      const locationRows = await db("locations")
+        .whereIn("id", distinctLocationIds)
+        .select(
+          "id",
+          "location_competitor_onboarding_status",
+          "location_competitor_onboarding_finalized_at"
+        );
+      for (const row of locationRows) {
+        onboardingByLocationId.set(row.id, {
+          status: row.location_competitor_onboarding_status,
+          finalizedAt: row.location_competitor_onboarding_finalized_at ?? null,
+        });
+      }
+    }
+
+    // Step 3b: For each ranking in the batch, get the previous analysis for trend comparison
     const rankingsWithPrevious = await Promise.all(
       batchRankings.map(async (ranking) => {
         // Get the previous completed ranking for this location (excluding current batch)
@@ -1029,7 +1073,11 @@ export async function getLatestRankings(
           .orderBy("created_at", "desc")
           .first();
 
-        return formatLatestRanking(ranking, previous || null);
+        const onboarding = ranking.location_id
+          ? onboardingByLocationId.get(ranking.location_id) || null
+          : null;
+
+        return formatLatestRanking(ranking, previous || null, onboarding);
       }),
     );
 
@@ -1136,3 +1184,220 @@ export async function getRankingTasks(
   }
 }
 
+// =====================================================================
+// v2 Curated Competitor Lists — location-scoped client endpoints
+// Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
+// =====================================================================
+
+// GET /locations/:locationId/competitors
+export async function getLocationCompetitors(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const v = validateLocationIdParam(req.params.locationId);
+    if (!v.valid) return res.status(v.status).json(v.body);
+    const locationId = Number(req.params.locationId);
+
+    const [onboarding, competitors] = await Promise.all([
+      LocationCompetitorModel.getOnboardingStatus(locationId),
+      LocationCompetitorModel.findActiveByLocationId(locationId),
+    ]);
+
+    return res.json({
+      success: true,
+      onboarding: {
+        status: onboarding.status,
+        finalizedAt: onboarding.finalizedAt,
+      },
+      competitors: competitors.map((c) => ({
+        id: c.id,
+        placeId: c.place_id,
+        name: c.name,
+        address: c.address,
+        primaryType: c.primary_type,
+        lat: c.lat,
+        lng: c.lng,
+        source: c.source,
+        addedAt: c.added_at,
+        addedByUserId: c.added_by_user_id,
+      })),
+      count: competitors.length,
+      cap: MAX_COMPETITORS_PER_LOCATION,
+    });
+  } catch (error: any) {
+    logError("GET /locations/:locationId/competitors", error);
+    return res.status(500).json({
+      success: false,
+      error: "GET_COMPETITORS_ERROR",
+      message: error.message || "Failed to load competitors",
+    });
+  }
+}
+
+// POST /locations/:locationId/competitors/discover
+export async function discoverLocationCompetitors(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const v = validateLocationIdParam(req.params.locationId);
+    if (!v.valid) return res.status(v.status).json(v.body);
+    const locationId = Number(req.params.locationId);
+
+    const result = await runDiscoveryForLocation(locationId);
+    return res.json({ success: true, ...result });
+  } catch (error: any) {
+    logError("POST /locations/:locationId/competitors/discover", error);
+    if (
+      typeof error?.message === "string" &&
+      error.message.includes("already finalized")
+    ) {
+      return res.status(409).json({
+        success: false,
+        error: "LOCATION_FINALIZED",
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      error: "DISCOVERY_ERROR",
+      message: error.message || "Discovery failed",
+    });
+  }
+}
+
+// POST /locations/:locationId/competitors  (body: { placeId })
+export async function addLocationCompetitor(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const locV = validateLocationIdParam(req.params.locationId);
+    if (!locV.valid) return res.status(locV.status).json(locV.body);
+    const placeV = validatePlaceIdInput(req.body?.placeId);
+    if (!placeV.valid) return res.status(placeV.status).json(placeV.body);
+
+    const locationId = Number(req.params.locationId);
+    const placeId = String(req.body.placeId).trim();
+    const userId = (req as RBACRequest).userId ?? null;
+
+    const result = await addCustomCompetitor(locationId, placeId, userId);
+    return res.json({
+      success: true,
+      added: {
+        id: result.added.id,
+        placeId: result.added.place_id,
+        name: result.added.name,
+        address: result.added.address,
+        primaryType: result.added.primary_type,
+        lat: result.added.lat,
+        lng: result.added.lng,
+        source: result.added.source,
+        addedAt: result.added.added_at,
+        addedByUserId: result.added.added_by_user_id,
+      },
+      activeCount: result.activeCount,
+      cap: MAX_COMPETITORS_PER_LOCATION,
+    });
+  } catch (error: any) {
+    logError("POST /locations/:locationId/competitors", error);
+    if (error?.code === "COMPETITOR_CAP_REACHED") {
+      return res.status(409).json({
+        success: false,
+        error: "COMPETITOR_CAP_REACHED",
+        message: error.message,
+      });
+    }
+    if (error?.code === "PLACES_LOOKUP_FAILED") {
+      return res.status(502).json({
+        success: false,
+        error: "PLACES_LOOKUP_FAILED",
+        message: error.message,
+      });
+    }
+    if (
+      typeof error?.message === "string" &&
+      error.message.includes("already finalized")
+    ) {
+      return res.status(409).json({
+        success: false,
+        error: "LOCATION_FINALIZED",
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      error: "ADD_COMPETITOR_ERROR",
+      message: error.message || "Failed to add competitor",
+    });
+  }
+}
+
+// DELETE /locations/:locationId/competitors/:placeId
+export async function deleteLocationCompetitor(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const locV = validateLocationIdParam(req.params.locationId);
+    if (!locV.valid) return res.status(locV.status).json(locV.body);
+    const placeV = validatePlaceIdInput(req.params.placeId);
+    if (!placeV.valid) return res.status(placeV.status).json(placeV.body);
+
+    const locationId = Number(req.params.locationId);
+    const placeId = String(req.params.placeId).trim();
+
+    const result = await removeCompetitorFromList(locationId, placeId);
+    return res.json({
+      success: true,
+      removed: result.removed,
+      activeCount: result.activeCount,
+      cap: MAX_COMPETITORS_PER_LOCATION,
+    });
+  } catch (error: any) {
+    logError("DELETE /locations/:locationId/competitors/:placeId", error);
+    if (
+      typeof error?.message === "string" &&
+      error.message.includes("already finalized")
+    ) {
+      return res.status(409).json({
+        success: false,
+        error: "LOCATION_FINALIZED",
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      error: "REMOVE_COMPETITOR_ERROR",
+      message: error.message || "Failed to remove competitor",
+    });
+  }
+}
+
+// POST /locations/:locationId/competitors/finalize-and-run
+export async function finalizeLocationAndRun(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const v = validateLocationIdParam(req.params.locationId);
+    if (!v.valid) return res.status(v.status).json(v.body);
+    const locationId = Number(req.params.locationId);
+
+    const result = await finalizeAndTriggerRun(locationId);
+    return res.json({
+      success: true,
+      batchId: result.batchId,
+      rankingId: result.rankingId,
+      reused: result.reused,
+    });
+  } catch (error: any) {
+    logError("POST /locations/:locationId/competitors/finalize-and-run", error);
+    return res.status(500).json({
+      success: false,
+      error: "FINALIZE_ERROR",
+      message: error.message || "Failed to finalize and trigger run",
+    });
+  }
+}
