@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, RefreshCw, Globe2, Loader2, Inbox } from "lucide-react";
+import { ArrowRight, Globe2, Inbox } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiGet } from "../../../api";
 import { useFormSubmissionsTimeseries } from "../../../hooks/queries/useFormSubmissionsTimeseries";
@@ -165,30 +165,14 @@ function CenteredState({
   );
 }
 
-interface ErrorShellProps {
-  onRetry: () => void;
-}
-
-function ErrorShell({ onRetry }: ErrorShellProps) {
+function ErrorShell() {
   return (
     <CardShell>
       <Eyebrow>Website · Form submissions</Eyebrow>
       <CenteredState
-        icon={<Loader2 size={20} />}
-        spin
+        icon={<Globe2 size={20} />}
         title="Preparing your website"
         hint="We'll email you when it's ready. This card will populate automatically once the site goes live."
-        action={
-          <button
-            type="button"
-            onClick={onRetry}
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
-            style={{ color: BRAND_ORANGE }}
-          >
-            <RefreshCw size={11} />
-            Check again
-          </button>
-        }
       />
     </CardShell>
   );
@@ -308,22 +292,17 @@ const WebsiteCard: React.FC = () => {
   const isLoading = stats.isLoading || series.isLoading;
   const isError = stats.isError || series.isError;
 
-  const retry = () => {
-    stats.refetch();
-    series.refetch();
-  };
-
   if (isLoading) return <SkeletonShell />;
 
   if (isError) {
     // Distinguish "website not connected" (expected) from a real fetch error.
     // Any other error path is shown as the friendly "preparing" shell — most
     // commonly the project exists but its site isn't built/live yet, in which
-    // case the form-submissions endpoint errors. Retry covers transient cases.
+    // case the form-submissions endpoint errors. React-query auto-retries.
     if (isNoWebsiteError(stats.error) || isNoWebsiteError(series.error)) {
       return <NotReadyShell />;
     }
-    return <ErrorShell onRetry={retry} />;
+    return <ErrorShell />;
   }
 
   const points = series.data ?? [];
