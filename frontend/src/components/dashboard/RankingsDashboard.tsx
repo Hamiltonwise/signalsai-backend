@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy,
   Star,
@@ -265,6 +265,68 @@ interface RankingTask {
 interface RankingsDashboardProps {
   organizationId: number | null;
   locationId?: number | null;
+}
+
+/**
+ * Small hover/focus tooltip used by section eyebrows on this page.
+ * Mirrors the v2 banner pattern in CompetitorOnboardingBanner.
+ */
+function InfoHint({
+  content,
+  dotColor = "#D66853",
+  title,
+}: {
+  content: string;
+  dotColor?: string;
+  title: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 -mb-6">
+      <span
+        className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+        style={{ background: dotColor }}
+      />
+      <span className="font-display text-base md:text-lg font-medium text-alloro-navy tracking-tight">
+        {title}
+      </span>
+      <span
+        className="relative inline-flex flex-shrink-0 cursor-help"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        tabIndex={0}
+        role="button"
+        aria-label={`What is ${title}?`}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+      >
+        <Info
+          size={13}
+          className="text-slate-400 hover:text-alloro-navy transition-colors"
+        />
+        <AnimatePresence>
+          {open && (
+            <motion.span
+              initial={{ opacity: 0, y: 4, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="absolute z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 bg-alloro-navy text-white text-[11px] font-medium leading-relaxed rounded-lg px-3 py-2 shadow-lg pointer-events-none"
+              role="tooltip"
+            >
+              {content}
+              <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-[5px] border-transparent border-t-alloro-navy" />
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </span>
+    </div>
+  );
 }
 
 // KPICard Component - Matching newdesign
@@ -1234,20 +1296,11 @@ function PerformanceDashboard({
             Distinct from the Live Google Rank section below: this is Alloro's
             internal score (review velocity, rating, NAP consistency, sentiment),
             not the live Google search position. */}
-      <div className="-mb-6">
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mb-1">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-alloro-orange" />
-          <span className="font-display text-base md:text-lg font-medium text-alloro-navy tracking-tight">
-            Practice Health
-          </span>
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.16em]">
-            · Diagnostic snapshot
-          </span>
-        </div>
-        <p className="text-[12px] text-slate-500 font-medium leading-relaxed pl-3.5">
-          Alloro's score for your local SEO fundamentals — review velocity, rating, NAP consistency, sentiment.
-        </p>
-      </div>
+      <InfoHint
+        title="Practice Health"
+        dotColor="#D66853"
+        content="Alloro's diagnostic score for your local SEO fundamentals — review velocity, rating, NAP consistency, and sentiment. Separate from the live Google rank below."
+      />
       <section
         data-wizard-target="rankings-score"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
@@ -1295,20 +1348,11 @@ function PerformanceDashboard({
       {/* 3. SEARCH POSITION — live Google ranking for the practice's specialty query.
             Replaces the legacy "Nearby Practices" table.
             Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md */}
-      <div className="-mb-6">
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mb-1">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
-          <span className="font-display text-base md:text-lg font-medium text-alloro-navy tracking-tight">
-            Live Google Rank
-          </span>
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.16em]">
-            · Where you appear right now
-          </span>
-        </div>
-        <p className="text-[12px] text-slate-500 font-medium leading-relaxed pl-3.5">
-          The actual position your practice shows up at on Google for your specialty search query — refreshed on each ranking run.
-        </p>
-      </div>
+      <InfoHint
+        title="Live Google Rank"
+        dotColor="#4F8A5B"
+        content="The actual position your practice shows up at on Google for your specialty search query — refreshed on each ranking run. Distinct from the diagnostic score above."
+      />
       <SearchPositionSection result={result} />
 
       {/* 3a. WHAT'S HOLDING YOU BACK — top-3 LLM gap analysis teaser, links to /to-do-list */}
