@@ -508,50 +508,45 @@ function CuratingStage({
   );
 
   return (
-    <section className="space-y-6">
-      <div className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden">
-        <div className="px-8 py-8 border-b border-black/5 text-left">
-          <div className="px-2 py-0.5 inline-flex items-center gap-2 bg-alloro-navy/10 rounded-md text-alloro-navy text-[10px] font-black uppercase tracking-widest mb-3">
-            Step 2 of 3
-          </div>
-          <h2 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight mb-2">
-            Your competitor list
-          </h2>
-          <p className="text-base text-slate-500 font-medium leading-relaxed">
-            Remove any practices that aren't local competitors. Add any we
-            missed. Up to <strong>{cap}</strong> competitors.
+    <section className="space-y-8">
+      <div className="text-left">
+        <div className="px-2 py-0.5 inline-flex items-center gap-2 bg-alloro-navy/10 rounded-md text-alloro-navy text-[10px] font-black uppercase tracking-widest mb-3">
+          Step 2 of 3
+        </div>
+        <h2 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight mb-2">
+          Your competitor list
+        </h2>
+        <p className="text-base text-slate-500 font-medium leading-relaxed">
+          Remove any practices that aren't local competitors. Add any we missed.
+          Up to <strong>{cap}</strong> competitors.
+        </p>
+      </div>
+
+      {selfFilterStatus === "unresolved" && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+          <Info size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-900 font-medium leading-relaxed">
+            We couldn't automatically detect your practice in this market. If
+            your own listing appears below, remove it manually — it'll skew
+            your ranking.
           </p>
         </div>
+      )}
 
-        {selfFilterStatus === "unresolved" && (
-          <div className="mx-8 mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
-            <Info
-              size={16}
-              className="text-amber-600 flex-shrink-0 mt-0.5"
-            />
-            <p className="text-xs text-amber-900 font-medium leading-relaxed">
-              We couldn't automatically detect your practice in this market. If
-              your own listing appears below, remove it manually — it'll skew
-              your ranking.
-            </p>
-          </div>
-        )}
+      <div className="lg:grid lg:grid-cols-[1fr_1.2fr] lg:gap-8">
+        <div
+          ref={mapWrapperRef}
+          className="mb-6 lg:mb-0 h-[500px] lg:h-full min-h-[500px] rounded-2xl overflow-hidden border border-black/5"
+        >
+          <CompetitorMap
+            competitors={competitors}
+            practiceLocation={practiceLocation}
+            selectedPlaceId={selectedPlaceId}
+            onPinClick={onSelectFromPin}
+          />
+        </div>
 
-        <div className="px-8 py-6 lg:grid lg:grid-cols-[1fr_1.2fr] lg:gap-8">
-          <div
-            ref={mapWrapperRef}
-            className="mb-6 lg:mb-0 lg:sticky lg:top-6 lg:self-start rounded-2xl overflow-hidden border border-black/5"
-          >
-            <CompetitorMap
-              competitors={competitors}
-              practiceLocation={practiceLocation}
-              height={560}
-              selectedPlaceId={selectedPlaceId}
-              onPinClick={onSelectFromPin}
-            />
-          </div>
-
-          <div>
+        <div>
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-bold text-alloro-textDark">
               {competitors.length} / {cap}
@@ -765,7 +760,6 @@ function CuratingStage({
               still be calculated against your own data).
             </p>
           )}
-          </div>
         </div>
       </div>
 
@@ -845,11 +839,14 @@ function CompetitorMap({
 }: {
   competitors: CuratedCompetitor[];
   practiceLocation: PracticeLocationRef | null;
-  height: number;
+  /** Fixed pixel height. When omitted, fills parent (parent must have a height). */
+  height?: number;
   showLoadingFallback?: boolean;
   selectedPlaceId?: string | null;
   onPinClick?: (placeId: string) => void;
 }) {
+  const heightStyle: React.CSSProperties =
+    height !== undefined ? { height: `${height}px` } : { height: "100%" };
   const withCoords = useMemo(
     () =>
       competitors.filter(
@@ -871,7 +868,7 @@ function CompetitorMap({
     return (
       <div
         className="relative bg-gradient-to-br from-alloro-bg to-slate-50 overflow-hidden"
-        style={{ height: `${height}px` }}
+        style={heightStyle}
       >
         {showLoadingFallback && (
           <>
@@ -917,7 +914,7 @@ function CompetitorMap({
   return (
     <div
       className="relative bg-gradient-to-br from-alloro-bg to-slate-50 overflow-hidden"
-      style={{ height: `${height}px` }}
+      style={heightStyle}
     >
       <MapContainer
         center={initialCenter}
