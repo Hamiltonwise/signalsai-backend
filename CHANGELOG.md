@@ -2,6 +2,39 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.32] - April 2026
+
+### PMS Column Mapping with AI Inference
+
+PMS uploads now run through a column-mapping system that handles arbitrary export shapes — not just the 4-col Alloro template. The previous positional parser silently misclassified procedure-log exports (e.g., Open Dental: `Treatment Date | Procedure | Patient | … | Referring Practice | …`) by treating procedure codes as source names and per-procedure rows as per-referral rows. New flow hashes the file's headers into a signature and resolves through three tiers: **org cache → global library → AI inference (Haiku 4.5)**. On first upload of an unknown shape, the user reviews/edits the mapping in a side drawer; on confirm (or "Re-process and save") it clones into the org's cache so subsequent uploads of the same shape are silent. The n8n PMS parsing webhook is no longer called — paste and file-upload paths now run the same code in this repo.
+
+**Architecture:**
+- New `pms_column_mappings` table (jsonb mapping payload, `is_global` flag, partial unique indexes for org rows and global rows). `pms_jobs.column_mapping_id` added as additive nullable FK with `ON DELETE SET NULL`.
+- Three-tier resolver in `src/utils/pms/resolveColumnMapping.ts` with `[pms-mapping]` telemetry on every dispatch (`{ signatureHash, source, confidence, orgId, success }`). One-way fallback chain — never reversed, never merged.
+- AI inference (`src/utils/pms/columnMappingInference.ts`) reuses the same Zod + corrective-retry plumbing the Referral Engine got in 0.0.31. 8s hard timeout, Haiku 4.5, temperature 0, prompt cache enabled (`cachedSystemBlocks: []`). On timeout or repeat-Zod-failure, falls through to manual-mapping UI.
+- Two adapters under `src/utils/pms/adapters/`: `templateAdapter` (1 row = 1 referral, byte-identical to the previous parser for Alloro template signatures) and `procedureLogAdapter` (group rows, count groups). Dispatcher (`applyColumnMapping.ts`) picks based on which roles are mapped (`source` vs. `referring_practice`); throws on both-mapped or neither-mapped.
+- Procedure-log adapter strips leading/trailing `*` characters from referring-practice values (handles `***Cox Family Dentistry & Orthodontics***` style annotations) and classifies blank → `self`, non-blank → `doctor`. No keyword inference on text.
+- Production formula is an array of `{ op: "+" | "-", column }` ops — no expression strings, no parentheses, no multiplication/division. Evaluator reuses `toNumber()` from `pmsAggregator.ts` for currency-aware coercion (`"$1,234.56"`, parenthesised negatives `"(91.6)"`, signed strings).
+- Initial global library seeded with two entries: Alloro 4-col template and the Open Dental procedure-log shape derived from the Fredericksburg test fixture. Engineering-controlled — global writes are seed-only; app code can only read from the library and write to the org cache.
+
+**Frontend:**
+- `PMSManualEntryModal.tsx` rewritten with a state-machine CSV parser. The previous naive `split(',')` shifted all columns silently whenever a quoted field contained a comma (patient names like `"Diab, Zied"`). State machine handles quoted fields, escaped quotes (`""`), and CRLF.
+- New `ColumnMappingDrawer.tsx` — 3 main fields (Date, Source, Production) + Advanced collapsible (Patient + status filter). Inverted from the original per-header dropdown matrix because doctors found the role-enum-first UX unintuitive — "tell us where Date / Source / Production live" matches the mental model of someone who knows their PMS export but not the role enum. Single "Re-process and save" CTA, disabled until edits exist.
+- New `ProductionFormulaBuilder.tsx` — `+` / `−` ops over column dropdowns with live preview against the first row (`Gross Revenue − Total Writeoffs = $1,234.56`). The target-of-formula dropdown was removed during execution (overengineered — defaults to `production_net` silently).
+- 4 new typed API client wrappers in `frontend/src/api/pms.ts`: `previewMapping`, `uploadWithMapping`, `reprocessJob`, `getCachedMapping`.
+
+**Behavior changes from spec (logged in spec Revision Log):**
+- **Dedup model** changed from per-`(patient, date, practice)` triplet (D8) to per-`(patient, practice)` pair after verification against Hamilton Wise's reference pivot on the Fredericksburg Feb 2026 dataset. The spreadsheet treats a patient referred by Practice X as one referral for the period regardless of visit count — per-patient mental model, not per-visit. Multiple visits collapse into one referral; production sums across visits. Per-source counts and production now match the pivot exactly.
+- **Zero-production skip rule** was prototyped then removed. The reference pivot retains zero-production referrals (post-op visits) as legitimate referral events. The `flags?: string[]` parameter on `applyMapping` and `applyProcedureLogMapping` is preserved for future data-quality use.
+- **Clone-on-confirm cache write** now also fires from the drawer's "Re-process and save" CTA, not just initial Submit. User edits made during the preview flow weren't being persisted before, so re-uploads after Clear Data showed the seed/global mapping again instead of the edited version.
+- **Backend response shape**: adapter returns a flat `MonthlyRollupForJob` array; controller now wraps it as `{ monthly_rollup: parsedPreview }` in both override and normal branches before responding, matching what the existing UI consumes.
+- **Re-process-and-save** sends the full row set (`mappingAllRows`), not just the 5-row sample — sample-only re-processing didn't update toast counts or rollup totals.
+- **Drawer auto-open** deferred to fire from `handleParsedPaste` after the legacy paste-detected modal completes (sequenced via `pastedRawTextRef` and `runMappingPreviewRef`) to avoid the drawer opening over the legacy modal.
+- **`seed-second-location.ts`** moved from `src/database/seeds/` to `scripts/`. Adding the `seeds:` config block to `src/database/config.ts` (required for the new global-library seed) made the knex seed loader pick up the standalone ts-node script, which isn't compatible with knex's seed contract. Both files remain runnable in their new locations.
+
+**Out of scope (deferred):**
+Admin UI for managing the global library, AI inference for the dedup step, multi-mapping per file (sectioned exports), drag-drop UI redesign, multiplication/division/parentheses in production formulas, telemetry dashboard, backfill of historical `pms_jobs` rows, per-uploader (vs per-org) mappings, telemetry-driven auto-promotion of org cache entries into the global library.
+
 ## [0.0.31] - April 2026
 
 ### Per-Organization Data Reset (Admin)
