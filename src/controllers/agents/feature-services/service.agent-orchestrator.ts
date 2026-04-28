@@ -636,7 +636,11 @@ export async function processMonthlyAgents(
     }
 
     // === STEP 2: Compute deterministic dashboard metrics (Plan 1 NEW) ===
-    if (onProgress) await onProgress("dashboard_metrics", "Computing dashboard metrics...", "referral_engine");
+    // Note: no onProgress call here. dashboard_metrics is a sub-second
+    // deterministic compute, not a real agent in MonthlyAgentKey /
+    // MONTHLY_AGENT_CONFIG. A prior progress write here was throwing
+    // "Cannot read properties of undefined (reading 'progressOffset')"
+    // and crashing the entire monthly run between RE and Summary.
     log(`  [MONTHLY] Computing dashboard metrics`);
     let dashboardMetrics: DashboardMetrics | undefined;
     try {

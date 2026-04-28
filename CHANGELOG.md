@@ -2,6 +2,20 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.39] - April 2026
+
+### Fix: Monthly Agents No Longer Crash Between Referral Engine and Summary
+
+Pre-existing bug from the Plan 1 "Summary as Chief-of-Staff" refactor (commit `35a54b50`). The orchestrator wrote a progress notification for `subStep="dashboard_metrics"` between Referral Engine and Summary, but `dashboard_metrics` was never added to `MonthlyAgentKey` / `MONTHLY_AGENT_CONFIG` — so `calculateProgress()` looked up `undefined` and threw `Cannot read properties of undefined (reading 'progressOffset')`. Every monthly run since the refactor has been crashing at the same spot, with the failure surfacing in the UI as a stuck "Referral Engine" badge (RE had completed; the crash was on the *next* progress write).
+
+**Key Changes:**
+- `service.agent-orchestrator.ts` — deleted the broken `onProgress("dashboard_metrics", ...)` call. `dashboard_metrics` is a sub-second deterministic compute, not a real agent step worth surfacing in the agent-progress UI; the backend `log(...)` line one over still records it for server observability.
+
+**Commits:**
+- `fix: monthly agents crash between RE and Summary on dashboard_metrics progress write`
+
+**Verification:** `tsc --noEmit` clean. Next PMS-triggered monthly run will pass through dashboard_metrics → Summary cleanly. Job #118 (One Endodontics) and any earlier failed runs remain in their failed state and will need to be re-triggered via the existing PMS restart flow.
+
 ## [0.0.38] - April 2026
 
 ### Summary as Sole USER Task Writer + Pipeline Debug Modal
