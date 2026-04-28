@@ -786,31 +786,11 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
       </header>
 
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-12 lg:space-y-20">
-        {/* HERO SECTION */}
-        <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 text-left pt-2">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-[10px] font-black uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-alloro-orange"></span>
-              Local SEO Tracking On
-            </div>
-          </div>
-          <h1 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight leading-tight mb-2">
-            Local Reputation.
-          </h1>
-          <p className="text-base lg:text-lg text-slate-500 font-medium tracking-tight leading-relaxed max-w-3xl">
-            See how your{" "}
-            <span className="text-alloro-orange underline underline-offset-4 font-semibold">
-              Rank and Reviews
-            </span>{" "}
-            compare to the practices nearby.
-          </p>
-        </section>
-
-        {/* CLIENT SUMMARY CARD */}
+        {/* CLIENT SUMMARY CARD — parchment-yellow callout, serif body */}
         {selectedRanking?.llmAnalysis?.client_summary && (
           <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-150">
-            <div className="bg-gradient-to-r from-alloro-orange/90 to-alloro-orange rounded-3xl p-6 lg:p-8 shadow-lg">
-              <p className="text-white text-base lg:text-lg font-medium leading-relaxed">
+            <div className="bg-[#FAF3D9] border border-[#E8DBA3] rounded-2xl px-5 py-4 lg:px-6 lg:py-5">
+              <p className="font-display text-sm lg:text-[15px] text-[#1A1A1A] leading-relaxed">
                 {selectedRanking.llmAnalysis.client_summary}
               </p>
             </div>
