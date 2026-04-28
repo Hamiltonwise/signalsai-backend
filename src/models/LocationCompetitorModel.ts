@@ -16,6 +16,8 @@ export interface ILocationCompetitor {
   review_count: number | null;
   lat: number | null;
   lng: number | null;
+  phone: string | null;
+  website: string | null;
   source: LocationCompetitorSource;
   added_at: Date;
   added_by_user_id: number | null;
@@ -33,6 +35,8 @@ export interface AddCompetitorInput {
   reviewCount?: number | null;
   lat?: number | null;
   lng?: number | null;
+  phone?: string | null;
+  website?: string | null;
   source: LocationCompetitorSource;
   addedByUserId?: number | null;
 }
@@ -123,6 +127,8 @@ export class LocationCompetitorModel extends BaseModel {
           review_count: input.reviewCount ?? existing.review_count,
           lat: input.lat ?? existing.lat,
           lng: input.lng ?? existing.lng,
+          phone: input.phone ?? existing.phone,
+          website: input.website ?? existing.website,
           // If user is re-adding, mark it as user_added so the audit trail
           // reflects intent. If still active, keep original source.
           source: wasRemoved ? input.source : existing.source,
@@ -150,6 +156,8 @@ export class LocationCompetitorModel extends BaseModel {
         review_count: input.reviewCount ?? null,
         lat: input.lat ?? null,
         lng: input.lng ?? null,
+        phone: input.phone ?? null,
+        website: input.website ?? null,
         source: input.source,
         added_at: now,
         added_by_user_id: input.addedByUserId ?? null,

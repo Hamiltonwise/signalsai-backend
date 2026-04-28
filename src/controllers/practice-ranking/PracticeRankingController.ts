@@ -66,6 +66,7 @@ import {
   finalizeAndTriggerRun,
 } from "./feature-services/service.location-competitor-onboarding";
 import { LocationCompetitorModel } from "../../models/LocationCompetitorModel";
+import { LocationModel } from "../../models/LocationModel";
 import {
   validateLocationIdParam,
   validatePlaceIdInput,
@@ -1307,10 +1308,22 @@ export async function getLocationCompetitors(
     if (!v.valid) return res.status(v.status).json(v.body);
     const locationId = Number(req.params.locationId);
 
-    const [onboarding, competitors] = await Promise.all([
+    const [onboarding, competitors, location] = await Promise.all([
       LocationCompetitorModel.getOnboardingStatus(locationId),
       LocationCompetitorModel.findActiveByLocationId(locationId),
+      LocationModel.findById(locationId),
     ]);
+
+    const practiceLocation =
+      location?.client_place_id &&
+      location.client_lat !== null &&
+      location.client_lng !== null
+        ? {
+            placeId: location.client_place_id,
+            lat: Number(location.client_lat),
+            lng: Number(location.client_lng),
+          }
+        : null;
 
     return res.json({
       success: true,
@@ -1318,6 +1331,8 @@ export async function getLocationCompetitors(
         status: onboarding.status,
         finalizedAt: onboarding.finalizedAt,
       },
+      practiceLocation,
+      selfFilterStatus: location?.client_place_id ? "resolved" : "unresolved",
       competitors: competitors.map((c) => ({
         id: c.id,
         placeId: c.place_id,
@@ -1328,6 +1343,8 @@ export async function getLocationCompetitors(
         reviewCount: c.review_count,
         lat: c.lat === null ? null : Number(c.lat),
         lng: c.lng === null ? null : Number(c.lng),
+        phone: c.phone,
+        website: c.website,
         source: c.source,
         addedAt: c.added_at,
         addedByUserId: c.added_by_user_id,

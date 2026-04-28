@@ -14,6 +14,9 @@ export interface ILocation {
   business_data: Record<string, unknown> | null;
   location_competitor_onboarding_status: LocationCompetitorOnboardingStatus;
   location_competitor_onboarding_finalized_at: Date | null;
+  client_place_id: string | null;
+  client_lat: number | null;
+  client_lng: number | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -64,10 +67,16 @@ export class LocationModel extends BaseModel {
       | "business_data"
       | "location_competitor_onboarding_status"
       | "location_competitor_onboarding_finalized_at"
+      | "client_place_id"
+      | "client_lat"
+      | "client_lng"
     > & {
       business_data?: Record<string, unknown> | null;
       location_competitor_onboarding_status?: LocationCompetitorOnboardingStatus;
       location_competitor_onboarding_finalized_at?: Date | null;
+      client_place_id?: string | null;
+      client_lat?: number | null;
+      client_lng?: number | null;
     },
     trx?: QueryContext
   ): Promise<ILocation> {
@@ -80,5 +89,25 @@ export class LocationModel extends BaseModel {
     trx?: QueryContext
   ): Promise<number> {
     return super.updateById(id, data as Record<string, unknown>, trx);
+  }
+
+  /**
+   * Cache the practice's resolved Google Places identifiers on the location.
+   * Used by the curate flow to filter the practice out of its own competitor
+   * list deterministically (vs. re-running a name lookup on every discovery).
+   */
+  static async setClientIdentifiers(
+    locationId: number,
+    data: { placeId: string; lat: number | null; lng: number | null },
+    trx?: QueryContext
+  ): Promise<number> {
+    return this.table(trx)
+      .where({ id: locationId })
+      .update({
+        client_place_id: data.placeId,
+        client_lat: data.lat,
+        client_lng: data.lng,
+        updated_at: new Date(),
+      });
   }
 }
