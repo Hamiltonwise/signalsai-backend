@@ -213,7 +213,13 @@ export const Trajectory: React.FC<TrajectoryProps> = ({ organizationId }) => {
   }, [agentData, proofline]);
 
   const greeting = getGreeting();
-  const firstName = userProfile?.firstName?.trim() || "there";
+  const firstName = (() => {
+    const first = userProfile?.firstName?.trim();
+    if (first) return first;
+    const local = userProfile?.email?.split("@")[0]?.trim();
+    if (local) return local.charAt(0).toUpperCase() + local.slice(1);
+    return "there";
+  })();
 
   // Loading state
   if (agentLoading) {
