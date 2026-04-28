@@ -12,6 +12,8 @@ export interface ILocationCompetitor {
   name: string;
   address: string | null;
   primary_type: string | null;
+  rating: number | null;
+  review_count: number | null;
   lat: number | null;
   lng: number | null;
   source: LocationCompetitorSource;
@@ -27,6 +29,8 @@ export interface AddCompetitorInput {
   name: string;
   address?: string | null;
   primaryType?: string | null;
+  rating?: number | null;
+  reviewCount?: number | null;
   lat?: number | null;
   lng?: number | null;
   source: LocationCompetitorSource;
@@ -115,6 +119,8 @@ export class LocationCompetitorModel extends BaseModel {
           name: input.name,
           address: input.address ?? existing.address,
           primary_type: input.primaryType ?? existing.primary_type,
+          rating: input.rating ?? existing.rating,
+          review_count: input.reviewCount ?? existing.review_count,
           lat: input.lat ?? existing.lat,
           lng: input.lng ?? existing.lng,
           // If user is re-adding, mark it as user_added so the audit trail
@@ -140,6 +146,8 @@ export class LocationCompetitorModel extends BaseModel {
         name: input.name,
         address: input.address ?? null,
         primary_type: input.primaryType ?? null,
+        rating: input.rating ?? null,
+        review_count: input.reviewCount ?? null,
         lat: input.lat ?? null,
         lng: input.lng ?? null,
         source: input.source,

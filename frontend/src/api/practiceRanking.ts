@@ -18,6 +18,8 @@ export interface CuratedCompetitor {
   name: string;
   address: string | null;
   primaryType: string | null;
+  rating: number | null;
+  reviewCount: number | null;
   lat: number | null;
   lng: number | null;
   source: LocationCompetitorSource;

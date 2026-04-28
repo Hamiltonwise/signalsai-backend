@@ -13,7 +13,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MapPin,
   Loader2,
   Plus,
   X,
@@ -21,6 +20,7 @@ import {
   Sparkles,
   ArrowRight,
   CheckCircle2,
+  Star,
 } from "lucide-react";
 import {
   getLocationCompetitors,
@@ -341,6 +341,50 @@ function DiscoveringStage({
   competitors: CuratedCompetitor[];
   revealedCount: number;
 }) {
+  // Compute bounding box from competitor lat/lngs (the practice itself isn't
+  // in the list — we filtered it out server-side). Pad slightly so pins don't
+  // sit on the iframe edges.
+  const withCoords = useMemo(
+    () =>
+      competitors.filter(
+        (c): c is CuratedCompetitor & { lat: number; lng: number } =>
+          typeof c.lat === "number" && typeof c.lng === "number"
+      ),
+    [competitors]
+  );
+
+  const bounds = useMemo(() => {
+    if (withCoords.length === 0) return null;
+    let minLat = withCoords[0].lat;
+    let maxLat = withCoords[0].lat;
+    let minLng = withCoords[0].lng;
+    let maxLng = withCoords[0].lng;
+    for (const c of withCoords) {
+      if (c.lat < minLat) minLat = c.lat;
+      if (c.lat > maxLat) maxLat = c.lat;
+      if (c.lng < minLng) minLng = c.lng;
+      if (c.lng > maxLng) maxLng = c.lng;
+    }
+    const latPad = (maxLat - minLat) * 0.18 || 0.01;
+    const lngPad = (maxLng - minLng) * 0.18 || 0.01;
+    return {
+      minLat: minLat - latPad,
+      maxLat: maxLat + latPad,
+      minLng: minLng - lngPad,
+      maxLng: maxLng + lngPad,
+      centerLat: (minLat + maxLat) / 2,
+      centerLng: (minLng + maxLng) / 2,
+    };
+  }, [withCoords]);
+
+  // Static Google Maps embed centered on the bounding box centroid. Embed-API
+  // pb URL doesn't require an API key for basic non-interactive maps.
+  const mapEmbedUrl = useMemo(() => {
+    if (!bounds) return null;
+    const { centerLat, centerLng } = bounds;
+    return `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d40000!2d${centerLng}!3d${centerLat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1705000000000!5m2!1sen!2sus`;
+  }, [bounds]);
+
   return (
     <section className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden">
       <div className="px-8 py-8 border-b border-black/5 text-left">
@@ -357,71 +401,113 @@ function DiscoveringStage({
         </p>
       </div>
 
-      <div className="relative h-[420px] bg-gradient-to-br from-alloro-bg to-slate-50 overflow-hidden">
-        {/* Animated radar pings (no map dependency — works without lat/lng) */}
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full border-2 border-alloro-orange/40"
-            style={{ left: "50%", top: "50%" }}
-            initial={{ width: 0, height: 0, x: 0, y: 0, opacity: 0.8 }}
-            animate={{
-              width: 360,
-              height: 360,
-              x: -180,
-              y: -180,
-              opacity: 0,
-            }}
-            transition={{
-              duration: 2.4,
-              delay: i * 0.8,
-              repeat: Infinity,
-              ease: "easeOut",
-            }}
-          />
-        ))}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          <div className="w-12 h-12 rounded-full bg-alloro-orange text-white flex items-center justify-center shadow-xl">
-            <MapPin size={20} />
-          </div>
-        </div>
-
-        {/* Reveal pins around the center */}
-        {competitors.slice(0, 10).map((c, i) => {
-          const angle = (i / Math.max(competitors.length, 1)) * Math.PI * 2;
-          const radius = 130 + (i % 3) * 30;
-          const x = Math.cos(angle) * radius;
-          const y = Math.sin(angle) * radius;
-          const revealed = i < revealedCount;
-          return (
-            <motion.div
-              key={c.placeId}
-              className="absolute z-20"
-              style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{
-                scale: revealed ? 1 : 0,
-                opacity: revealed ? 1 : 0,
-              }}
-              transition={{ type: "spring", stiffness: 260, damping: 18 }}
-            >
-              <div className="-translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                <div className="w-7 h-7 rounded-full bg-alloro-navy text-white text-[10px] font-black flex items-center justify-center shadow-lg">
-                  {i + 1}
-                </div>
+      <div className="relative h-[480px] bg-gradient-to-br from-alloro-bg to-slate-50 overflow-hidden">
+        {/* Loading shimmer + radar pings while we wait for the discovery POST */}
+        {!mapEmbedUrl && (
+          <>
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="absolute rounded-full border-2 border-alloro-orange/40"
+                style={{ left: "50%", top: "50%" }}
+                initial={{ width: 0, height: 0, x: 0, y: 0, opacity: 0.8 }}
+                animate={{
+                  width: 360,
+                  height: 360,
+                  x: -180,
+                  y: -180,
+                  opacity: 0,
+                }}
+                transition={{
+                  duration: 2.4,
+                  delay: i * 0.8,
+                  repeat: Infinity,
+                  ease: "easeOut",
+                }}
+              />
+            ))}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+              <div className="w-12 h-12 rounded-full bg-alloro-orange text-white flex items-center justify-center shadow-xl">
+                <Loader2 size={20} className="animate-spin" />
               </div>
-            </motion.div>
-          );
-        })}
+            </div>
+            <div className="absolute left-1/2 bottom-10 -translate-x-1/2 z-10">
+              <span className="text-[10px] font-black text-alloro-textDark/50 uppercase tracking-widest">
+                Scanning Google for nearby practices…
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* Real Google Maps embed once we have coords */}
+        {mapEmbedUrl && (
+          <>
+            <iframe
+              src={mapEmbedUrl}
+              width="100%"
+              height="100%"
+              style={{ border: 0, pointerEvents: "none" }}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="absolute inset-0"
+              title="Competitor map"
+            />
+            {/* Transparent overlay blocks accidental iframe interaction */}
+            <div className="absolute inset-0 z-[5]" />
+
+            {/* Project competitor lat/lngs to pixel %; reveal staggered */}
+            {bounds &&
+              withCoords.map((c, i) => {
+                const xPct =
+                  ((c.lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) *
+                  100;
+                // Lat axis is inverted (north = top, lower y%)
+                const yPct =
+                  ((bounds.maxLat - c.lat) / (bounds.maxLat - bounds.minLat)) *
+                  100;
+                const revealed = i < revealedCount;
+                return (
+                  <motion.div
+                    key={c.placeId}
+                    className="absolute z-[10] pointer-events-none"
+                    style={{ left: `${xPct}%`, top: `${yPct}%` }}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{
+                      scale: revealed ? 1 : 0,
+                      opacity: revealed ? 1 : 0,
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 18,
+                    }}
+                  >
+                    <div className="-translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                      <div className="w-8 h-8 rounded-full bg-alloro-orange text-white text-[10px] font-black flex items-center justify-center shadow-lg ring-2 ring-white">
+                        {i + 1}
+                      </div>
+                      <div className="mt-1 px-1.5 py-0.5 rounded bg-white/95 text-[9px] font-bold text-alloro-textDark shadow-sm max-w-[110px] truncate">
+                        {c.name}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+          </>
+        )}
       </div>
 
       <div className="px-8 py-6 bg-white border-t border-black/5">
         <div className="flex items-center justify-between text-sm">
           <span className="text-slate-500 font-medium">
-            Found {competitors.length} practices nearby
+            {competitors.length === 0
+              ? "Searching Google Places…"
+              : `Found ${competitors.length} practices nearby`}
           </span>
           <span className="text-alloro-textDark/40 text-xs font-bold uppercase tracking-widest">
-            Revealing {revealedCount} of {competitors.length}
+            {competitors.length === 0
+              ? ""
+              : `Revealing ${revealedCount} of ${competitors.length}`}
           </span>
         </div>
       </div>
@@ -553,18 +639,49 @@ function CuratingStage({
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 8 }}
-                  className="flex items-center justify-between gap-3 py-3"
+                  className="flex items-center justify-between gap-3 py-4"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="font-bold text-sm text-alloro-textDark truncate">
-                      {c.name}
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <a
+                        href={`https://www.google.com/maps/place/?q=place_id:${c.placeId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-sm text-alloro-textDark hover:text-alloro-orange truncate"
+                        title={`Open ${c.name} on Google Maps`}
+                      >
+                        {c.name}
+                      </a>
+                      {c.primaryType && (
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                          {c.primaryType.replace(/_/g, " ")}
+                        </span>
+                      )}
                     </div>
-                    <div className="text-xs text-slate-500 truncate">
-                      {c.address || c.primaryType || "—"}
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      {typeof c.rating === "number" && c.rating > 0 && (
+                        <span className="flex items-center gap-1 font-bold text-alloro-textDark">
+                          <Star
+                            size={12}
+                            className="fill-yellow-400 text-yellow-400"
+                          />
+                          {c.rating.toFixed(1)}
+                        </span>
+                      )}
+                      {typeof c.reviewCount === "number" && c.reviewCount > 0 && (
+                        <span className="text-slate-500">
+                          {c.reviewCount.toLocaleString()} reviews
+                        </span>
+                      )}
+                      {c.address && (
+                        <span className="truncate text-slate-500">
+                          {c.address}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <span
-                    className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                    className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md whitespace-nowrap ${
                       c.source === "user_added"
                         ? "bg-alloro-navy/10 text-alloro-navy"
                         : "bg-slate-100 text-slate-500"
@@ -574,7 +691,7 @@ function CuratingStage({
                   </span>
                   <button
                     onClick={() => onRemove(c.placeId)}
-                    className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-400 flex items-center justify-center transition"
+                    className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-400 flex items-center justify-center transition flex-shrink-0"
                     aria-label={`Remove ${c.name}`}
                   >
                     <X size={14} />
