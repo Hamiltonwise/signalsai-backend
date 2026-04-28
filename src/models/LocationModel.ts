@@ -1,5 +1,10 @@
 import { BaseModel, QueryContext } from "./BaseModel";
 
+export type LocationCompetitorOnboardingStatus =
+  | "pending"
+  | "curating"
+  | "finalized";
+
 export interface ILocation {
   id: number;
   organization_id: number;
@@ -7,6 +12,8 @@ export interface ILocation {
   domain: string | null;
   is_primary: boolean;
   business_data: Record<string, unknown> | null;
+  location_competitor_onboarding_status: LocationCompetitorOnboardingStatus;
+  location_competitor_onboarding_finalized_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -49,7 +56,19 @@ export class LocationModel extends BaseModel {
   }
 
   static async create(
-    data: Omit<ILocation, "id" | "created_at" | "updated_at" | "business_data"> & { business_data?: Record<string, unknown> | null },
+    data: Omit<
+      ILocation,
+      | "id"
+      | "created_at"
+      | "updated_at"
+      | "business_data"
+      | "location_competitor_onboarding_status"
+      | "location_competitor_onboarding_finalized_at"
+    > & {
+      business_data?: Record<string, unknown> | null;
+      location_competitor_onboarding_status?: LocationCompetitorOnboardingStatus;
+      location_competitor_onboarding_finalized_at?: Date | null;
+    },
     trx?: QueryContext
   ): Promise<ILocation> {
     return super.create(data as Record<string, unknown>, trx);

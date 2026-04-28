@@ -27,6 +27,10 @@ import {
   useWizardDemoData,
 } from "../../contexts/OnboardingWizardContext";
 import { useLocationContext } from "../../contexts/locationContext";
+import {
+  CompetitorOnboardingBanner,
+  LegacyRankingTag,
+} from "./CompetitorOnboardingBanner";
 
 /**
  * Date when the Practice Health scoring methodology changed (Practice Health +
@@ -219,6 +223,18 @@ interface RankingResult {
   previousSearchQuery: string | null;
   previousSearchLat: number | null;
   previousSearchLng: number | null;
+  // v2 curated competitor list metadata (Practice Ranking v2).
+  // Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
+  locationId: number | null;
+  competitorSource:
+    | "curated"
+    | "discovered_v2_pending"
+    | "discovered_v1_legacy"
+    | null;
+  locationOnboarding: {
+    status: "pending" | "curating" | "finalized";
+    finalizedAt: string | null;
+  } | null;
 }
 
 // Ranking Task from the tasks endpoint (approved tasks only)
@@ -718,6 +734,9 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
           previousSearchQuery: null,
           previousSearchLat: null,
           previousSearchLng: null,
+          locationId: null,
+          competitorSource: "curated",
+          locationOnboarding: { status: "finalized", finalizedAt: null },
         }
       : null;
 
@@ -797,6 +816,19 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
             </div>
           </section>
         )}
+
+        {/* v2 Competitor onboarding banner — only shown for pending/curating
+            locations. Final-state locations render normally. */}
+        {selectedRanking?.locationId &&
+          selectedRanking.locationOnboarding &&
+          (selectedRanking.locationOnboarding.status === "pending" ||
+            selectedRanking.locationOnboarding.status === "curating") && (
+            <CompetitorOnboardingBanner
+              locationId={selectedRanking.locationId}
+              locationName={selectedRanking.gbpLocationName}
+              status={selectedRanking.locationOnboarding.status}
+            />
+          )}
 
         {/* Selected Location Detail */}
         {selectedRanking && (
@@ -1198,6 +1230,18 @@ function PerformanceDashboard({
 
   return (
     <div className="space-y-12 lg:space-y-20">
+      {/* v2 legacy tag — surfaces when this ranking row was generated before
+          the user curated their competitor list (auto-discovered competitors). */}
+      {result.competitorSource === "discovered_v1_legacy" && (
+        <div className="flex items-center gap-3 -mb-6">
+          <LegacyRankingTag />
+          <span className="text-[11px] text-slate-500 font-medium">
+            This score used auto-discovered competitors. Curate your list to
+            refresh it.
+          </span>
+        </div>
+      )}
+
       {/* 2. MARKET VITALS - KPIS */}
       <section
         data-wizard-target="rankings-score"

@@ -40,6 +40,7 @@ import { DFYRoute } from "./components/DFYRoute";
 import { PilotHandler } from "./components/PilotHandler";
 import { PilotBanner } from "./components/Admin/PilotBanner";
 import { SessionExpiredModal } from "./components/SessionExpiredModal";
+import LocationCompetitorOnboarding from "./pages/competitor-onboarding/LocationCompetitorOnboarding";
 
 // AppProviders wrapper - now used as a layout route to avoid remounting on navigation
 function AppProviders({ children }: { children: ReactNode }) {
@@ -158,6 +159,10 @@ function App() {
                 <Route path="/pmsStatistics" element={<Dashboard />} />
                 <Route path="/tasks" element={<Dashboard />} />
                 <Route path="/rankings" element={<Dashboard />} />
+                <Route
+                  path="/dashboard/competitors/:locationId/onboarding"
+                  element={<LocationCompetitorOnboarding />}
+                />
                 <Route
                   path="/dfy/website"
                   element={
