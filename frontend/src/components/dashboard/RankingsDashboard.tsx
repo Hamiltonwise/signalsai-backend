@@ -1230,7 +1230,24 @@ function PerformanceDashboard({
         </div>
       )}
 
-      {/* 2. MARKET VITALS - KPIS */}
+      {/* 2. MARKET VITALS - KPIS — Practice Health diagnostic snapshot.
+            Distinct from the Live Google Rank section below: this is Alloro's
+            internal score (review velocity, rating, NAP consistency, sentiment),
+            not the live Google search position. */}
+      <div className="-mb-6">
+        <div className="flex items-center gap-2.5 mb-1">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-alloro-orange" />
+          <span className="font-display text-base md:text-lg font-medium text-alloro-navy tracking-tight">
+            Practice Health
+          </span>
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.16em]">
+            · Diagnostic snapshot
+          </span>
+        </div>
+        <p className="text-[12px] text-slate-500 font-medium leading-relaxed pl-3.5">
+          Alloro's score for your local SEO fundamentals — review velocity, rating, NAP consistency, sentiment.
+        </p>
+      </div>
       <section
         data-wizard-target="rankings-score"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
@@ -1278,6 +1295,20 @@ function PerformanceDashboard({
       {/* 3. SEARCH POSITION — live Google ranking for the practice's specialty query.
             Replaces the legacy "Nearby Practices" table.
             Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md */}
+      <div className="-mb-6">
+        <div className="flex items-center gap-2.5 mb-1">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
+          <span className="font-display text-base md:text-lg font-medium text-alloro-navy tracking-tight">
+            Live Google Rank
+          </span>
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.16em]">
+            · Where you appear right now
+          </span>
+        </div>
+        <p className="text-[12px] text-slate-500 font-medium leading-relaxed pl-3.5">
+          The actual position your practice shows up at on Google for your specialty search query — refreshed on each ranking run.
+        </p>
+      </div>
       <SearchPositionSection result={result} />
 
       {/* 3a. WHAT'S HOLDING YOU BACK — top-3 LLM gap analysis teaser, links to /to-do-list */}

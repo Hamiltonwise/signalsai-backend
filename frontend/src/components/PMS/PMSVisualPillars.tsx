@@ -1561,7 +1561,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <h3 className="text-2xl sm:text-3xl font-bold font-heading text-alloro-navy tracking-tight leading-tight">
+                    <h3 className="font-display text-2xl sm:text-3xl font-medium text-alloro-navy tracking-tight leading-tight">
                       Update your referral data
                     </h3>
                     <p className="text-base sm:text-lg text-slate-400 font-normal tracking-tight leading-relaxed max-w-xl mx-auto">
