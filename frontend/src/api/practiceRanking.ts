@@ -167,3 +167,29 @@ export async function getBatchStatus(
     path: `/practice-ranking/batch/${encodeURIComponent(batchId)}/status`,
   });
 }
+
+export interface InFlightRanking {
+  rankingId: number;
+  batchId: string;
+  status: string;
+  statusDetail: RankingStatusDetail | null;
+  gbpLocationName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GetInFlightRankingResponse {
+  success: true;
+  ranking: InFlightRanking | null;
+}
+
+export async function getInFlightRanking(
+  googleAccountId: number,
+  locationId?: number | null
+): Promise<GetInFlightRankingResponse> {
+  const qs = new URLSearchParams({
+    googleAccountId: String(googleAccountId),
+  });
+  if (locationId) qs.set("locationId", String(locationId));
+  return apiGet({ path: `/practice-ranking/in-flight?${qs.toString()}` });
+}

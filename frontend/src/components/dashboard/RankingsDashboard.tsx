@@ -30,6 +30,7 @@ import {
 import { useLocationContext } from "../../contexts/locationContext";
 import { CompetitorOnboardingBanner } from "./CompetitorOnboardingBanner";
 import { RankingInFlightBanner } from "./RankingInFlightBanner";
+import { getInFlightRanking } from "../../api/practiceRanking";
 
 /**
  * Date when the Practice Health scoring methodology changed (Practice Health +
@@ -444,13 +445,17 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
     Record<number, RankingTask[]>
   >({});
 
-  // In-flight ranking banner — shown when the URL carries ?batchId=... after
-  // a finalize-and-run kickoff. Polls batch status, clears the URL param when
-  // the batch completes or the user dismisses.
-  // Spec: plans/04282026-no-ticket-rankings-dashboard-in-flight-batch-banner/spec.md
+  // In-flight ranking banner — shown when EITHER the URL carries
+  // ?batchId=... (post-finalize redirect fast-path) OR the dashboard
+  // auto-detects an in-flight ranking for the current org/location on mount.
+  // Spec: plans/04282026-no-ticket-rankings-auto-detect-in-flight-sticky/spec.md
   const [searchParams, setSearchParams] = useSearchParams();
-  const inFlightBatchId = searchParams.get("batchId");
+  const urlBatchId = searchParams.get("batchId");
+  const [autoDetectedBatchId, setAutoDetectedBatchId] = useState<string | null>(
+    null
+  );
   const [bannerHidden, setBannerHidden] = useState(false);
+  const activeBatchId = urlBatchId || autoDetectedBatchId;
 
   // Skip fetching during wizard mode - use demo data instead
   useEffect(() => {
@@ -475,6 +480,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
       next.delete("batchId");
       return next;
     });
+    setAutoDetectedBatchId(null);
     setBannerHidden(true);
     if (organizationId) fetchLatestRankings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -486,8 +492,33 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
       next.delete("batchId");
       return next;
     });
+    setAutoDetectedBatchId(null);
     setBannerHidden(true);
   }, [setSearchParams]);
+
+  // Auto-detect an in-flight ranking on mount when the URL doesn't already
+  // carry a batchId. Single fetch — once a banner is mounted it polls itself.
+  useEffect(() => {
+    if (urlBatchId) return; // URL fast-path takes precedence
+    if (!organizationId) return;
+    if (isWizardActive) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getInFlightRanking(organizationId, locationId);
+        if (cancelled) return;
+        if (res?.success && res.ranking?.batchId) {
+          setAutoDetectedBatchId(res.ranking.batchId);
+          setBannerHidden(false);
+        }
+      } catch {
+        /* silent — banner just doesn't appear */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId, locationId, urlBatchId, isWizardActive]);
 
   const fetchLatestRankings = async () => {
     try {
@@ -904,14 +935,17 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
       </header>
 
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-8 lg:space-y-12">
-        {/* In-flight ranking progress banner — only when ?batchId= is in the URL
-            (i.e. the user just kicked off a ranking and was redirected here). */}
-        {inFlightBatchId && !bannerHidden && (
-          <RankingInFlightBanner
-            batchId={inFlightBatchId}
-            onComplete={handleBatchComplete}
-            onDismiss={handleBatchDismiss}
-          />
+        {/* In-flight ranking progress banner — auto-detected on mount or
+            seeded from ?batchId= in the URL. Sticks to the viewport top so it
+            stays visible while the user scrolls the dashboard. */}
+        {activeBatchId && !bannerHidden && (
+          <div className="sticky top-4 z-30 -mx-2 px-2">
+            <RankingInFlightBanner
+              batchId={activeBatchId}
+              onComplete={handleBatchComplete}
+              onDismiss={handleBatchDismiss}
+            />
+          </div>
         )}
 
         {/* v2 Competitor onboarding banner — slim row, shown for pending/curating

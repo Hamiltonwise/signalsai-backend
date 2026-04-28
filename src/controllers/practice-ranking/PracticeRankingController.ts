@@ -1574,3 +1574,72 @@ export async function getCompetitorPhoto(
     });
   }
 }
+
+// =====================================================================
+// GET /in-flight
+// Returns the most-recent pending/processing ranking for an org (and
+// optionally a specific location). The client dashboard polls/uses this
+// to auto-render the in-flight progress banner without needing a batchId
+// in the URL.
+// Spec: plans/04282026-no-ticket-rankings-auto-detect-in-flight-sticky/spec.md
+// =====================================================================
+
+export async function getInFlightRanking(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { googleAccountId, locationId } = req.query;
+    if (!googleAccountId) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PARAMS",
+        message: "googleAccountId is required",
+      });
+    }
+
+    const filters: Record<string, unknown> = {
+      organization_id: Number(googleAccountId),
+    };
+    if (locationId) filters.location_id = Number(locationId);
+
+    const row = await db("practice_rankings")
+      .where(filters)
+      .whereIn("status", ["pending", "processing"])
+      .orderBy("created_at", "desc")
+      .select(
+        "id",
+        "batch_id",
+        "status",
+        "status_detail",
+        "gbp_location_name",
+        "created_at",
+        "updated_at"
+      )
+      .first();
+
+    if (!row) {
+      return res.json({ success: true, ranking: null });
+    }
+
+    return res.json({
+      success: true,
+      ranking: {
+        rankingId: row.id,
+        batchId: row.batch_id,
+        status: row.status,
+        statusDetail: parseJsonField(row.status_detail),
+        gbpLocationName: row.gbp_location_name,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      },
+    });
+  } catch (error: any) {
+    logError("GET /practice-ranking/in-flight", error);
+    return res.status(500).json({
+      success: false,
+      error: "IN_FLIGHT_FETCH_FAILED",
+      message: error.message || "Failed to fetch in-flight ranking",
+    });
+  }
+}

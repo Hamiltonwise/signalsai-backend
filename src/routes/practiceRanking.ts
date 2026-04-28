@@ -46,6 +46,7 @@ router.get("/results/:id", controller.getRankingResults);
 router.get("/list", controller.listRankings);
 router.get("/accounts", controller.listAccounts);
 router.get("/latest", controller.getLatestRankings);
+router.get("/in-flight", controller.getInFlightRanking);
 router.get("/history", controller.getRankingHistory);
 router.get("/tasks", controller.getRankingTasks);
 
