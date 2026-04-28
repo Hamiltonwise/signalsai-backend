@@ -221,7 +221,16 @@ export function formatAccountsList(accounts: any[]) {
 // LATEST RANKINGS RESPONSE
 // =====================================================================
 
-export function formatLatestRanking(ranking: any, previous: any | null) {
+export interface LatestRankingOnboardingMeta {
+  status: "pending" | "curating" | "finalized";
+  finalizedAt: Date | string | null;
+}
+
+export function formatLatestRanking(
+  ranking: any,
+  previous: any | null,
+  onboardingMeta: LatestRankingOnboardingMeta | null = null
+) {
   // Coerce decimal columns (search_lat, search_lng) — Postgres returns DECIMAL
   // as a string in some pg driver versions; cast to number for the frontend.
   const toNumberOrNull = (v: unknown): number | null =>
@@ -230,6 +239,7 @@ export function formatLatestRanking(ranking: any, previous: any | null) {
   return {
     id: ranking.id,
     organizationId: ranking.organization_id,
+    locationId: ranking.location_id ?? null,
     specialty: ranking.specialty,
     location: ranking.location,
     gbpAccountId: ranking.gbp_account_id,
@@ -241,6 +251,13 @@ export function formatLatestRanking(ranking: any, previous: any | null) {
     rankScore: ranking.rank_score,
     rankPosition: ranking.rank_position,
     totalCompetitors: ranking.total_competitors,
+    // v2: source of the competitor list used for Practice Health scoring.
+    // 'curated' = user-curated v2 list, 'discovered_v2_pending' = post-v2
+    // location that hasn't finalized yet, 'discovered_v1_legacy' = pre-v2 row.
+    // Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
+    competitorSource: ranking.competitor_source ?? null,
+    // v2 onboarding status for this location (per-location, not per-org).
+    locationOnboarding: onboardingMeta,
     // Practice Health aliases — same data, new label for the client UI.
     // The legacy rankScore/rankPosition fields stay above for backward compatibility.
     practiceHealth: ranking.rank_score,

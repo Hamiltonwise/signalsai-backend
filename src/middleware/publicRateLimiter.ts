@@ -62,6 +62,35 @@ export const gbpAuthLimiter = rateLimit({
   message: RATE_LIMIT_MESSAGE,
 });
 
+// ─── Places API limiters (Practice Ranking v2 + leadgen autocomplete) ──
+// Generous enough for normal client use (curate page autocomplete + leadgen
+// onboarding flow), tight enough to keep Places API spend predictable.
+// Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
+
+export const placesAutocompleteLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: RATE_LIMIT_MESSAGE,
+});
+
+export const placesDetailsLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: RATE_LIMIT_MESSAGE,
+});
+
+export const placesSearchLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: RATE_LIMIT_MESSAGE,
+});
+
 // ─── Scraper detection ──────────────────────────────────────────────
 
 const placeIdTracker = new Map<string, { count: number; firstSeen: number }>();

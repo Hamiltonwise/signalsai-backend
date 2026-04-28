@@ -2,6 +2,86 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.32] - April 2026
+
+### Practice Ranking v2 — User-Curated Competitor Lists
+
+Replaces the auto-discovered competitor set with a user-curated list per location. Clients control exactly which practices their Practice Health score is benchmarked against — no more drift run-to-run, no more nearby-but-irrelevant competitors, no more missing real ones. Search Position stays untouched (still pure-Google top-20) so the live rank signal remains a real Google rank, not a relative position within a curated set.
+
+**Architecture:**
+- New `location_competitors` table (per-location, soft-deletable via `removed_at`, partial unique index on `(location_id, place_id) WHERE removed_at IS NULL` so re-add revives instead of duplicates). FK cascades from `locations`; `added_by_user_id` SET NULL on user deletion.
+- New `LocationCompetitorModel` mirrors the `PracticeRankingModel` style — find-active, find-including-removed, addCompetitor (handles soft-delete revival), removeCompetitor (soft), countActive, getOnboardingStatus, setOnboardingStatus, findLatestInitialScrapeAt.
+- Per-location v2 lifecycle on `locations`: `location_competitor_onboarding_status` (`pending` → `curating` → `finalized`) + `location_competitor_onboarding_finalized_at`. Verbose name to disambiguate from the existing organization-level onboarding.
+- New `competitor_source` column on `practice_rankings` (`curated` / `discovered_v2_pending` / `discovered_v1_legacy`) with backfill of all pre-v2 rows as `discovered_v1_legacy`. Enables history rendering with explicit provenance.
+- Dead `competitor_cache` table dropped — bypassed by the location-bias rewrite per `service.ranking-pipeline.ts:421` comment.
+- Existing `agent_key='ranking'` schedule row updated in-place from drifting `interval_days=15` to calendar-aligned cron `0 0 1,15 * *` UTC. No new scheduler entry; the worker recomputes `next_run_at` via `cron-parser`.
+
+**Pipeline branching (single decision point):**
+- New `service.competitor-source-resolver.ts:resolveCompetitorsForRanking` resolves the competitor set used for Practice Health scoring. For finalized locations: loads the curated list, batch-fetches fresh `getPlaceDetails`, returns hydrated `DiscoveredCompetitor[]`. For pending/curating: passes through the Step 0 Places top-N. Falls back to the discovered set on any curated-path failure (graceful degradation).
+- Resolver wired into `service.ranking-pipeline.ts` after Step 0 sub-step 5 (search_position persisted), before Step 1. Step 0 sub-steps 1-5 (Places top-20 → search_position fields) are UNCHANGED — Search Position math is fully isolated from curation status.
+- `competitor_source` persisted on the `practice_rankings` row at the same point.
+
+**Scheduler filter:**
+- `service.ranking-executor.ts:setupRankingBatches` skips locations whose `location_competitor_onboarding_status !== 'finalized'`. Logged per-location with status. Existing admin trigger flow (`POST /api/practice-ranking/trigger`) is unchanged — admins can still trigger any location regardless of onboarding status.
+
+**Backend endpoints (location-scoped, JWT + RBAC + locationScope gated):**
+- `GET    /api/practice-ranking/locations/:locationId/competitors` — list active curated competitors + onboarding status + cap.
+- `POST   /api/practice-ranking/locations/:locationId/competitors/discover` — runs initial Places discovery (top 10), populates `location_competitors` with `source='initial_scrape'`, flips status to `curating`. Idempotent: skips if existing initial_scrape <7 days old.
+- `POST   /api/practice-ranking/locations/:locationId/competitors` — adds a user-chosen competitor by Place ID (cap enforced server-side at 10).
+- `DELETE /api/practice-ranking/locations/:locationId/competitors/:placeId` — soft-deletes from the active list.
+- `POST   /api/practice-ranking/locations/:locationId/competitors/finalize-and-run` — single-click finalize: flips status to `finalized`, creates `practice_rankings` row tagged `competitor_source='curated'`, kicks off pipeline async. Idempotent on rapid double-click via 5-min in-flight window check.
+- All write endpoints require `admin` or `manager` role; `viewer` cannot mutate the curated list.
+
+**Places API rate limiting:**
+- `placesAutocompleteLimiter` (60/min/IP), `placesDetailsLimiter` (60/min/IP), `placesSearchLimiter` (30/min/IP) added to the existing `publicRateLimiter.ts`. Wired into `routes/places.ts`. Generous enough that the leadgen-tool's onboarding flow (which shares these public endpoints) is unaffected.
+
+**Frontend — 3-stage onboarding page:**
+- New route `/dashboard/competitors/:locationId/onboarding` → `LocationCompetitorOnboarding.tsx`.
+- Stage 1 — Discovering: framer-motion radar pulses + staggered pin reveal as the Places top-10 lands. No Google Maps iframe dependency (works without lat/lng up front).
+- Stage 2 — Curating: list with per-row Remove (soft delete, optimistic), Add via debounced autocomplete against `/api/places/autocomplete`. Counter shows N/10. Source tag distinguishes "you added" vs "auto" entries.
+- Stage 3 — Finalize: single button → `POST /finalize-and-run`, redirects to `/rankings?batchId=…` for the user to watch their first run.
+
+**Frontend — Dashboard banner + v1 legacy tag:**
+- `CompetitorOnboardingBanner.tsx` renders for `pending`/`curating` locations with copy + CTA to the onboarding page.
+- `LegacyRankingTag` renders next to Practice Health when the latest ranking row has `competitor_source='discovered_v1_legacy'` — explains the score predates curation and prompts setup.
+- `/latest` controller now returns `competitorSource` and `locationOnboarding` per ranking; `RankingResult` interface extended; `wizardDemoData` updated to satisfy the new fields.
+
+**Out of scope (v1 — explicit deferrals):**
+- Admin-side curate UI (admin trigger flow stays as-is — read-only competitor list view via existing endpoints).
+- Re-discovery UX ("suggest competitors I might have missed").
+- Per-competitor scoring weight overrides.
+- Geographic radius slider on the curate page.
+- Email templates / send infrastructure (announce email sent manually by ops).
+- Reminder/nudge automation for un-finalized locations.
+- Minimum competitor count enforcement (lists may be 0–10).
+
+**Runtime verification:**
+- `tsc --noEmit` clean across backend and frontend (one pre-existing unused-var error in `FieldMappingDropdown.tsx` predates this work).
+- ESLint clean for all newly-authored files (one benign React hooks warning about ref cleanup in `LocationCompetitorOnboarding.tsx`).
+- Migration applied successfully against the configured DB; `competitor_cache` dropped, `location_competitors` created, `locations` and `practice_rankings` columns added, `schedules.ranking` row switched to cron `0 0 1,15 * *` UTC.
+- End-to-end manual verification (3-stage onboarding walkthrough, scheduler skip behavior, dashboard banner + v1 tag rendering, Search Position non-cross-contamination) is the deployment owner's responsibility — Done checklist captured in spec.
+
+**Commits:**
+- `src/database/migrations/20260428000001_practice_ranking_v2_curated_competitors.ts` — drops `competitor_cache`, creates `location_competitors`, adds onboarding columns to `locations`, `competitor_source` to `practice_rankings` (with backfill), updates the `agent_key='ranking'` schedule row.
+- `src/models/LocationCompetitorModel.ts` — new model.
+- `src/models/LocationModel.ts` — `ILocation` extended with v2 columns; `create()` signature widened so callers don't need to pass the defaulted onboarding fields.
+- `src/controllers/practice-ranking/feature-services/service.location-competitor-onboarding.ts` — runDiscoveryForLocation, addCustomCompetitor, removeCompetitorFromList, finalizeAndTriggerRun.
+- `src/controllers/practice-ranking/feature-services/service.competitor-source-resolver.ts` — single-decision-point pipeline branch.
+- `src/controllers/practice-ranking/feature-services/service.ranking-pipeline.ts` — resolver call + `competitor_source` persist after Step 0 sub-step 5.
+- `src/controllers/practice-ranking/feature-utils/util.competitor-validator.ts` — locationId / placeId / cap validators.
+- `src/controllers/practice-ranking/feature-utils/util.ranking-formatter.ts` — `competitorSource` + `locationOnboarding` + `locationId` added to `formatLatestRanking` payload.
+- `src/controllers/practice-ranking/PracticeRankingController.ts` — 5 new endpoint handlers + extended `/latest` response with onboarding metadata.
+- `src/controllers/agents/feature-services/service.ranking-executor.ts` — scheduler filter on `location_competitor_onboarding_status === 'finalized'`.
+- `src/routes/practiceRanking.ts` — 5 new gated routes (authenticateToken + rbacMiddleware + locationScopeMiddleware + requireRole on writes).
+- `src/middleware/publicRateLimiter.ts` — 3 new Places limiters.
+- `src/routes/places.ts` — limiters wired.
+- `frontend/src/api/practiceRanking.ts` — typed client for all 5 v2 endpoints.
+- `frontend/src/components/dashboard/CompetitorOnboardingBanner.tsx` — banner + legacy-tag components.
+- `frontend/src/components/dashboard/RankingsDashboard.tsx` — `RankingResult` interface extended; banner injected above PerformanceDashboard; legacy tag injected at top of PerformanceDashboard for `discovered_v1_legacy` rows.
+- `frontend/src/pages/competitor-onboarding/LocationCompetitorOnboarding.tsx` — 3-stage page with framer-motion radar discovery animation.
+- `frontend/src/App.tsx` — `/dashboard/competitors/:locationId/onboarding` route registered inside the protected layout.
+- `plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md` — 12-decision spec with Risk Level 3 analysis (pipeline branching, Search Position non-cross-contamination, blast radius, deployment-mid-batch resilience).
+
 ## [0.0.31] - April 2026
 
 ### Per-Organization Data Reset (Admin)
