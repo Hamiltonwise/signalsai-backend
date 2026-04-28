@@ -8,7 +8,9 @@
  * Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
  */
 
-import { Sparkles, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, ArrowRight, Info } from "lucide-react";
 
 interface CompetitorOnboardingBannerProps {
   locationId: number;
@@ -21,6 +23,7 @@ export function CompetitorOnboardingBanner({
   locationName,
   status,
 }: CompetitorOnboardingBannerProps) {
+  const [tipOpen, setTipOpen] = useState(false);
   const headline =
     status === "pending"
       ? "v2 competitor curation — improving ranking accuracy"
@@ -41,6 +44,41 @@ export function CompetitorOnboardingBanner({
           </span>
           <span className="text-sm font-semibold text-alloro-navy truncate">
             {headline}
+          </span>
+          <span
+            className="relative inline-flex flex-shrink-0 cursor-help"
+            onMouseEnter={() => setTipOpen(true)}
+            onMouseLeave={() => setTipOpen(false)}
+            onFocus={() => setTipOpen(true)}
+            onBlur={() => setTipOpen(false)}
+            tabIndex={0}
+            role="button"
+            aria-label="What is v2 competitor curation?"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setTipOpen((v) => !v);
+            }}
+          >
+            <Info
+              size={13}
+              className="text-alloro-orange/60 hover:text-alloro-orange transition-colors"
+            />
+            <AnimatePresence>
+              {tipOpen && (
+                <motion.span
+                  initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="absolute z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 bg-alloro-navy text-white text-[11px] font-medium leading-relaxed rounded-lg px-3 py-2 shadow-lg pointer-events-none"
+                  role="tooltip"
+                >
+                  v2 lets you curate the practices you actually compete with — instead of auto-discovered ones — so your ranking score reflects reality.
+                  <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-[5px] border-transparent border-t-alloro-navy" />
+                </motion.span>
+              )}
+            </AnimatePresence>
           </span>
           {locationName && (
             <span className="text-[10px] font-bold text-alloro-textDark/40 uppercase tracking-widest truncate hidden md:inline">
