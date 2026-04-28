@@ -123,25 +123,6 @@ const Help = () => {
 
       {/* Main Content */}
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-12 lg:space-y-20">
-        {/* Hero Section */}
-        <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 text-left pt-2">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-[10px] font-black uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-alloro-orange"></span>
-              We are here to help
-            </div>
-          </div>
-          <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
-            How can we help?
-          </h1>
-          <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
-            Talk to your{" "}
-            <span className="text-alloro-orange underline underline-offset-8 font-black">
-              Alloro Strategist
-            </span>{" "}
-            for help with your practice growth.
-          </p>
-        </section>
 
         {/* Inquiry Form & Side Panel */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">

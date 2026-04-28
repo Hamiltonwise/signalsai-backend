@@ -885,7 +885,7 @@ export function DFYWebsite() {
               Almost There
             </span>
           </div>
-          <h1 className="text-3xl font-black text-alloro-navy font-heading tracking-tight mb-3">
+          <h1 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight mb-3">
             Your Website is Being Built
           </h1>
           <p className="text-base text-slate-500 font-medium max-w-md mx-auto">
