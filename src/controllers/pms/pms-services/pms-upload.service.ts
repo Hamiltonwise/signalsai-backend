@@ -1,19 +1,12 @@
-import axios from "axios";
 import { PmsJobModel } from "../../../models/PmsJobModel";
 import { PmsColumnMappingModel } from "../../../models/PmsColumnMappingModel";
-import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import { convertFileToJson } from "../pms-utils/file-converter.util";
-import {
-  initializeAutomationStatus,
-  updateAutomationStatus,
-  completeStep,
-  setAwaitingApproval,
-} from "../../../utils/pms/pmsAutomationStatus";
 import { resolveLocationId } from "../../../utils/locationResolver";
 import { OrganizationModel } from "../../../models/OrganizationModel";
 import { resolveMapping } from "../../../utils/pms/resolveColumnMapping";
 import { applyMapping } from "../../../utils/pms/applyColumnMapping";
 import { signHeaders } from "../../../utils/pms/headerSignature";
+import { finalizePmsJob } from "./pms-finalize.service";
 
 /**
  * Process a manual PMS data entry.
@@ -60,88 +53,13 @@ export async function processManualEntry(
     throw new Error("Failed to create PMS job record");
   }
 
-  // Initialize automation status tracking
-  await initializeAutomationStatus(jobId);
-
-  // Mark file_upload as completed (manual data received)
-  await completeStep(jobId, "file_upload");
-
-  // Skip pms_parser step (no AI parsing needed for manual entry)
-  await updateAutomationStatus(jobId, {
-    step: "pms_parser",
-    stepStatus: "skipped",
-    customMessage: "Manual entry - no parsing required",
+  await finalizePmsJob(jobId, {
+    organizationId,
+    locationId,
+    domain,
+    pmsParserStatus: "skipped",
+    pmsParserSkipMessage: "Manual entry - no parsing required",
   });
-
-  // Skip admin_approval step (client entered it themselves)
-  await updateAutomationStatus(jobId, {
-    step: "admin_approval",
-    stepStatus: "skipped",
-    customMessage: "Manual entry - no admin approval required",
-  });
-
-  // Skip client_approval step (client entered it themselves)
-  await updateAutomationStatus(jobId, {
-    step: "client_approval",
-    stepStatus: "skipped",
-    customMessage: "Manual entry - no client approval required",
-  });
-
-  // Start monthly agents immediately
-  await updateAutomationStatus(jobId, {
-    status: "processing",
-    step: "monthly_agents",
-    stepStatus: "processing",
-    subStep: "data_fetch",
-    customMessage: "Starting monthly agents - fetching data...",
-  });
-
-  // Trigger monthly agents immediately
-  try {
-    const account = organizationId
-      ? await GoogleConnectionModel.findOneByOrganization(organizationId)
-      : undefined;
-
-    if (account) {
-      console.log(
-        `[PMS] Manual entry: Triggering monthly agents for ${domain}`
-      );
-
-      // Fire async request to start monthly agents (don't wait)
-      axios
-        .post(
-          `http://localhost:${
-            process.env.PORT || 3000
-          }/api/agents/monthly-agents-run`,
-          {
-            googleAccountId: account.id,
-            domain: domain,
-            force: true,
-            pmsJobId: jobId,
-            locationId: locationId,
-          }
-        )
-        .then(() => {
-          console.log(
-            `[PMS] Monthly agents triggered successfully for ${domain} (manual entry)`
-          );
-        })
-        .catch((error) => {
-          console.error(
-            `[PMS] Failed to trigger monthly agents for manual entry: ${error.message}`
-          );
-        });
-    } else {
-      console.warn(
-        `[PMS] No google account found for domain ${domain} - monthly agents not triggered`
-      );
-    }
-  } catch (triggerError: any) {
-    console.error(
-      `[PMS] Error triggering monthly agents for manual entry: ${triggerError.message}`
-    );
-    // Don't fail the request if agent trigger fails
-  }
 
   return {
     recordsProcessed: parsedManualData.length,
@@ -161,9 +79,11 @@ export async function processManualEntry(
  *   3. Apply the mapping inline to produce `monthly_rollup`.
  *   4. Persist the mapping into the org's cache (clone-on-confirm) so
  *      subsequent uploads of the same signature are silent.
- *   5. Create a `pms_jobs` row with raw rows + parsed rollup pre-attached.
- *   6. Advance the automation status straight to `admin_approval` —
- *      `pms_parser` ran inline; we don't wait on n8n.
+ *   5. Create an approved `pms_jobs` row with raw rows + parsed rollup
+ *      pre-attached.
+ *   6. Hand off to `finalizePmsJob` — skips admin/client approval
+ *      (the client already reviewed via the column-mapping drawer)
+ *      and fires monthly_agents immediately.
  *
  * NOTE: n8n PMS parsing webhook removed — parsing now handled inline via
  * resolveMapping + applyMapping. See plan
@@ -261,10 +181,10 @@ export async function processFileUpload(
     }
   }
 
-  // Create the job record with parsed rollup already attached.
+  // Create the approved job record with parsed rollup already attached.
   const job = await PmsJobModel.create({
     time_elapsed: 0,
-    status: "completed",
+    status: "approved",
     response_log: {
       monthly_rollup: monthlyRollup,
       mapping_source: resolved.source,
@@ -278,6 +198,8 @@ export async function processFileUpload(
     organization_id: organizationId,
     location_id: locationId,
     column_mapping_id: columnMappingId,
+    is_approved: true,
+    is_client_approved: true,
   } as any);
 
   const jobId = job.id;
@@ -286,18 +208,12 @@ export async function processFileUpload(
     throw new Error("Failed to create PMS job record");
   }
 
-  // Initialize automation status tracking
-  await initializeAutomationStatus(jobId);
-
-  // Mark file_upload as completed (file received and converted).
-  await completeStep(jobId, "file_upload", "pms_parser");
-
-  // Mark pms_parser as completed inline — we already produced the rollup.
-  // Then advance to admin_approval awaiting state so the existing
-  // status-tracking automation downstream of `getJobAutomationStatus`
-  // doesn't get stuck waiting on n8n.
-  await completeStep(jobId, "pms_parser", "admin_approval");
-  await setAwaitingApproval(jobId, "admin_approval");
+  await finalizePmsJob(jobId, {
+    organizationId,
+    locationId,
+    domain,
+    pmsParserStatus: "completed",
+  });
 
   return {
     recordsProcessed,

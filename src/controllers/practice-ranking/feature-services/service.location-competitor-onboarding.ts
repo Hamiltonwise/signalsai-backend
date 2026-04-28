@@ -149,10 +149,20 @@ export async function resolveClientPlaceId(
   // Step 1 — cache on locations row
   const location = await LocationModel.findById(ctx.locationId);
   if (location?.client_place_id) {
+    // pg returns decimal columns as strings; coerce so downstream
+    // numeric ops (e.g. `.toFixed`) don't blow up.
+    const lat =
+      location.client_lat !== null && location.client_lat !== undefined
+        ? Number(location.client_lat)
+        : null;
+    const lng =
+      location.client_lng !== null && location.client_lng !== undefined
+        ? Number(location.client_lng)
+        : null;
     return {
       placeId: location.client_place_id,
-      lat: location.client_lat,
-      lng: location.client_lng,
+      lat,
+      lng,
       source: "cache",
     };
   }

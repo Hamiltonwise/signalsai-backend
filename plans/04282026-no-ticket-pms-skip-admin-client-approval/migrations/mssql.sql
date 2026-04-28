@@ -1,0 +1,13 @@
+-- =====================================================================
+-- One-shot recovery: unstick PMS jobs trapped in admin/client approval.
+--
+-- MSSQL variant. Production currently runs Postgres (verify before
+-- needing this); this file exists per the project's plan-template
+-- requirement and as a future-proofing artifact only.
+-- =====================================================================
+
+-- TODO: fill during execution if/when an MSSQL deployment exists.
+-- Postgres is the production DB for this project as of 2026-04-28;
+-- the canonical migration is the knex .ts file. Translate the
+-- jsonb_set / JSONB updates into MSSQL JSON_MODIFY equivalents only
+-- if execution against MSSQL becomes a real requirement.

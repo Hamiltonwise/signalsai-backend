@@ -242,6 +242,9 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
   // Drag & drop state
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
+  // Set when the user dropped a file (vs pasting). Drives the
+  // PasteConfirmDialog wording ("File detected" vs "Paste detected").
+  const [droppedFileName, setDroppedFileName] = useState<string | null>(null);
 
   // Column-mapping state (T18/T19)
   const [mappingHeaders, setMappingHeaders] = useState<string[]>([]);
@@ -326,6 +329,11 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
     onError: (msg) => setError(msg),
     onWarnings: handlePasteWarnings,
   });
+
+  // Clear droppedFileName once the dialog tears down (cancel or done).
+  useEffect(() => {
+    if (!pasteInfo) setDroppedFileName(null);
+  }, [pasteInfo]);
 
   /**
    * Run the column-mapping resolver against the pasted text. Triggered by
@@ -544,6 +552,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
       reader.onload = (evt) => {
         const text = evt.target?.result as string;
         if (!text) return;
+        setDroppedFileName(file.name);
         const fakeEvent = {
           clipboardData: { getData: () => text },
           target: document.body,
@@ -1403,7 +1412,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
             )}
           </div>
 
-          {/* Paste Confirm Dialog */}
+          {/* Paste / file-drop Confirm Dialog */}
           {showPasteConfirm && (
             <PasteConfirmDialog
               pasteInfo={pasteInfo}
@@ -1412,6 +1421,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
               batchProgress={batchProgress}
               onConfirm={confirmPaste}
               onCancel={cancelPaste}
+              droppedFileName={droppedFileName}
             />
           )}
 

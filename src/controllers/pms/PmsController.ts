@@ -6,6 +6,7 @@ import * as dataService from "./pms-services/pms-data.service";
 import * as retryService from "./pms-services/pms-retry.service";
 import * as pasteParseService from "./pms-services/pms-paste-parse.service";
 import * as sanitizationService from "./pms-services/pms-paste-analysis.service";
+import { finalizePmsJob } from "./pms-services/pms-finalize.service";
 import { coerceBoolean } from "./pms-utils/pms-validator.util";
 import { validateJobId } from "./pms-utils/pms-validator.util";
 import { PmsStatus } from "./pms-utils/pms-constants";
@@ -783,18 +784,22 @@ export async function previewResetMapping(req: Request, res: Response) {
 
 /**
  * POST /pms/upload-with-mapping
- * Body: { rows: Record<string, any>[], mapping: ColumnMapping, month?: string }
- *   OR: { pasteText: string, mapping: ColumnMapping, month?: string }
+ * Body: { rows: Record<string, any>[], mapping: ColumnMapping, month?: string, domain?: string }
+ *   OR: { pasteText: string, mapping: ColumnMapping, month?: string, domain?: string }
  *
  * Persists the user-confirmed mapping into the org cache (clone-on-confirm
  * per D2), applies it to the rows to produce `monthly_rollup`, and creates
- * a `pms_jobs` row pre-populated with the parsed result. Skips n8n entirely.
+ * an approved `pms_jobs` row pre-populated with the parsed result. Hands off
+ * to `finalizePmsJob` — skips admin/client approval (the client already
+ * reviewed the mapping in the drawer) and fires monthly_agents immediately.
  */
 export async function uploadWithMapping(req: Request, res: Response) {
   try {
     const body = req.body ?? {};
     const { mapping } = body;
     const month: string | undefined = body.month;
+    const domain: string | undefined =
+      typeof body.domain === "string" ? body.domain : undefined;
 
     if (!isColumnMappingShape(mapping)) {
       return res.status(400).json({
@@ -863,11 +868,11 @@ export async function uploadWithMapping(req: Request, res: Response) {
 
     const job = await PmsJobModel.create({
       time_elapsed: 0,
-      status: "uploaded",
+      status: "approved",
       organization_id: orgId,
       location_id: locationId,
-      is_approved: false,
-      is_client_approved: false,
+      is_approved: true,
+      is_client_approved: true,
       raw_input_data: {
         rows,
         headers,
@@ -881,6 +886,17 @@ export async function uploadWithMapping(req: Request, res: Response) {
       },
       column_mapping_id: mappingId,
     } as any);
+
+    if (!job.id) {
+      throw new Error("Failed to create PMS job record");
+    }
+
+    await finalizePmsJob(job.id, {
+      organizationId: orgId,
+      locationId,
+      domain,
+      pmsParserStatus: "completed",
+    });
 
     return res.json({
       success: true,

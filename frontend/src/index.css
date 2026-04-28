@@ -256,6 +256,16 @@ h1, h2, h3, h4, h5, h6, .font-heading {
    --pm-shadow-elevated: 0 4px 16px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
    --pm-shadow-fab: 0 4px 12px rgba(214,104,83,0.35), 0 2px 4px rgba(0,0,0,0.2);
    
+   /* Rankings redesign tokens — Plan: 04282026-no-ticket-rankings-page-redesign */
+   --color-cream: #FCFAED;
+   --color-cream-line: #EDE5C0;
+   --color-line-soft: rgba(17, 21, 28, 0.06);
+   --color-line-medium: rgba(17, 21, 28, 0.10);
+   --color-success-soft: rgba(34, 197, 94, 0.10);
+   --color-danger-soft: rgba(239, 68, 68, 0.10);
+   --color-amber: #D9A441;
+   --color-amber-soft: rgba(217, 164, 65, 0.14);
+
    /* Font families */
    --font-sans: 'Plus Jakarta Sans', sans-serif;
    --font-body: 'Plus Jakarta Sans', sans-serif;
