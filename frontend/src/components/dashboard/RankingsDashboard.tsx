@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy,
@@ -29,6 +29,7 @@ import {
 } from "../../contexts/OnboardingWizardContext";
 import { useLocationContext } from "../../contexts/locationContext";
 import { CompetitorOnboardingBanner } from "./CompetitorOnboardingBanner";
+import { RankingInFlightBanner } from "./RankingInFlightBanner";
 
 /**
  * Date when the Practice Health scoring methodology changed (Practice Health +
@@ -424,6 +425,14 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
     Record<number, RankingTask[]>
   >({});
 
+  // In-flight ranking banner — shown when the URL carries ?batchId=... after
+  // a finalize-and-run kickoff. Polls batch status, clears the URL param when
+  // the batch completes or the user dismisses.
+  // Spec: plans/04282026-no-ticket-rankings-dashboard-in-flight-batch-banner/spec.md
+  const [searchParams, setSearchParams] = useSearchParams();
+  const inFlightBatchId = searchParams.get("batchId");
+  const [bannerHidden, setBannerHidden] = useState(false);
+
   // Skip fetching during wizard mode - use demo data instead
   useEffect(() => {
     if (isWizardActive) {
@@ -436,6 +445,30 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
       setLoading(false);
     }
   }, [organizationId, locationId, isWizardActive]);
+
+  // Stable callbacks for the in-flight banner. setSearchParams is stable per
+  // react-router; we don't include fetchLatestRankings in deps because it's
+  // declared fresh each render — the latest closure is captured at call time
+  // since handleBatchComplete is invoked, not memoized over.
+  const handleBatchComplete = useCallback(() => {
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p);
+      next.delete("batchId");
+      return next;
+    });
+    setBannerHidden(true);
+    if (organizationId) fetchLatestRankings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setSearchParams, organizationId]);
+
+  const handleBatchDismiss = useCallback(() => {
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p);
+      next.delete("batchId");
+      return next;
+    });
+    setBannerHidden(true);
+  }, [setSearchParams]);
 
   const fetchLatestRankings = async () => {
     try {
@@ -849,6 +882,16 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
       </header>
 
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-8 lg:space-y-12">
+        {/* In-flight ranking progress banner — only when ?batchId= is in the URL
+            (i.e. the user just kicked off a ranking and was redirected here). */}
+        {inFlightBatchId && !bannerHidden && (
+          <RankingInFlightBanner
+            batchId={inFlightBatchId}
+            onComplete={handleBatchComplete}
+            onDismiss={handleBatchDismiss}
+          />
+        )}
+
         {/* v2 Competitor onboarding banner — slim row, shown for pending/curating
             locations. Sits above the client summary so the action prompt is the
             first thing visible. Final-state locations render normally. */}

@@ -273,6 +273,7 @@ export async function getBatchStatus(
         "gbp_location_id",
         "gbp_location_name",
         "status",
+        "status_detail",
         "rank_score",
         "rank_position",
         "error_message",

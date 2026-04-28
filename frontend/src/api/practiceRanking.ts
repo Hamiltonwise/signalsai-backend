@@ -80,6 +80,41 @@ export interface FinalizeAndRunResponse {
   reused: boolean;
 }
 
+export type BatchStatus = "processing" | "completed" | "failed";
+
+export interface RankingStatusDetail {
+  currentStep?: string;
+  message?: string;
+  progress?: number;
+  stepsCompleted?: string[];
+  timestamps?: Record<string, string>;
+}
+
+export interface BatchRankingItem {
+  id: number;
+  gbpLocationId: string;
+  gbpLocationName: string | null;
+  status: string;
+  statusDetail: RankingStatusDetail | null;
+  rankScore: number | null;
+  rankPosition: number | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GetBatchStatusResponse {
+  success: true;
+  batchId: string;
+  status: BatchStatus;
+  totalLocations: number;
+  completedLocations: number;
+  failedLocations: number;
+  pendingLocations?: number;
+  rankings: BatchRankingItem[];
+  progress: number;
+}
+
 const BASE = "/practice-ranking/locations";
 
 export async function getLocationCompetitors(
@@ -122,5 +157,13 @@ export async function finalizeAndRun(
   return apiPost({
     path: `${BASE}/${locationId}/competitors/finalize-and-run`,
     passedData: {},
+  });
+}
+
+export async function getBatchStatus(
+  batchId: string
+): Promise<GetBatchStatusResponse> {
+  return apiGet({
+    path: `/practice-ranking/batch/${encodeURIComponent(batchId)}/status`,
   });
 }

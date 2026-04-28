@@ -100,6 +100,7 @@ export function formatDbBatchStatus(batchId: string, rankings: any[]) {
       gbpLocationId: r.gbp_location_id,
       gbpLocationName: r.gbp_location_name,
       status: r.status,
+      statusDetail: parseJsonField(r.status_detail),
       rankScore: r.rank_score,
       rankPosition: r.rank_position,
       errorMessage: r.error_message,
