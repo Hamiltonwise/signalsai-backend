@@ -2,6 +2,38 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.40] - April 2026
+
+### Fix: Summary v2 Validator + Prompt Contract — Monthly Runs Actually Pass
+
+Three bundled fixes that, together, take the monthly agents pipeline from "every run dies in Summary v2 validation" to "Summary v2 passes attempt 1 and emits 5 USER tasks." Verified end-to-end on a Job #118 rerun this session — full pipeline completed in ~6:41 with zero retries on either RE or Summary.
+
+The proximate failures all lived in three different places, but they shared one root: contracts between the Summary prompt and the `validateSummarySupportingMetrics` validator that didn't agree with each other. Once the prompt told the model the right thing AND the validator honored what the prompt promised, the run passed cleanly on attempt 1.
+
+**Key Changes:**
+
+1. **`Summary.md` — GROUNDING RULES + PASSTHROUGH RULE rewrite.** The previous PASSTHROUGH RULE explicitly told Summary to cite `referral_engine_output.practice_action_plan[N].title` in `supporting_metrics[*].source_field`, which the validator then rejected because that field is restricted to `dashboard_metrics` paths. An earlier in-session attempt to fix this (using the phrase *"pick at least one deterministic dashboard_metrics path"*) accidentally caused the model to literally prefix every path with `"dashboard_metrics."` (e.g. `"dashboard_metrics.ranking.position"`), which the validator also rejected because it walks the dashboard_metrics object as root.
+
+   The rewrite makes the contract crystal clear:
+   - Lists valid top-level keys explicitly: `reviews, gbp, ranking, form_submissions, pms, referral`
+   - Shows correct examples (bare paths like `"ranking.position"`)
+   - Shows forbidden examples with explicit explanations: `"dashboard_metrics.X"` (no prefix), `"referral_engine_output.X"` (RE not allowed in source_field), `"pms.sources_summary[N].X"` (only dashboard_metrics.pms keys)
+   - Separates `rationale` (permissive — any input narratively) from `supporting_metrics` (restricted to dashboard_metrics paths)
+   - Says explicitly that the RE passthrough audit trail flows through preserved title/rationale wording, NOT through any source_field citation
+
+2. **`service.prompt-loader.ts` — cache bypass in dev.** `loadPrompt()` had an in-memory `Map<string, string>` cache that, once populated, never re-read from disk. This made prompt iteration in dev impossible: every Summary.md edit required a full server restart to take effect. The fix gates the cache on `NODE_ENV === "production"`. In dev (tsx) every `loadPrompt()` call re-reads the file; in prod the cache stays on for performance. This was the silent reason multiple prompt-fix attempts during the session appeared to do nothing — the dev server was serving the prompt content from server-start time regardless of disk edits.
+
+3. **`service.agent-orchestrator.ts` — `metricValuesMatch` tolerance and normalization.** The validator's prior implementation only stripped non-numeric characters from the *metric* side (the model's value), not from the *dict* side. So `"$365,747"` reduced to `365747` and was strict-`===`-compared against `365747.01` (which carried two decimals from `.toFixed(2)` rounding of summed monthly production), and failed. The Summary prompt explicitly promised "*Numeric equivalence counts (`$48,420 == 48420`)*" — the validator was breaking that promise on any decimal residue. Same shape for strings: case-sensitive substring fallback rejected `"GBP activity"` ≈ `"gbp_activity"`. The new implementation:
+   - Strips non-numeric from BOTH sides before numeric comparison
+   - Adds 1% relative-tolerance check (`Math.max(|a|,|b|,1)` denominator avoids div-by-zero and asymmetric tolerance)
+   - Adds string normalization layer (lowercase, `_-` ↔ space, whitespace collapse) for both exact-and-substring fallbacks
+   - Length guards on substring to prevent empty-string degeneracy
+   - Function-level docstring updated to document the precedence order and explicitly link the contract to the prompt's "numeric equivalence counts" line
+
+**Why all three were needed in one shipping unit:** Fix (1) alone is invisible without (2) — disk edits don't reach the model with a stale prompt cache. Fix (1)+(2) gets paths right but exposes the value-format mismatch that always existed. Fix (3) closes that final gap. Skipping any of the three leaves the monthly pipeline broken.
+
+**Verification:** `tsc --noEmit` clean. Job #118 monthly run (One Endodontics, Falls Church) completed cleanly in ~6:41 with Summary v2 passing on attempt 1 and emitting 5 USER tasks across 5 domains (review, referral, gbp, referral, pms-data-quality), plus 6 ALLORO tasks from RE.
+
 ## [0.0.39] - April 2026
 
 ### Fix: Monthly Agents No Longer Crash Between Referral Engine and Summary

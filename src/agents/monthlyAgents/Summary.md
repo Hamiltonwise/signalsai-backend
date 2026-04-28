@@ -48,11 +48,31 @@ RULES
 GROUNDING RULES — STRICT
 Cite only values that appear verbatim in the input JSON or in the
 dashboard_metrics dictionary. Specifically:
+- supporting_metrics[*].source_field is a dotted path WITHIN the
+  dashboard_metrics dictionary. The valid top-level keys are exactly:
+  reviews, gbp, ranking, form_submissions, pms, referral.
+  Examples of valid source_field values:
+    "ranking.lowest_factor.name"
+    "ranking.position"
+    "gbp.days_since_last_post"
+    "reviews.oldest_unanswered_hours"
+    "pms.production_change_30d"
+  FORBIDDEN source_field formats (the validator rejects all of these):
+    "dashboard_metrics.ranking.position"   ← never prefix with "dashboard_metrics."
+    "referral_engine_output.practice_action_plan[2].title"   ← never cite RE paths
+    "pms.sources_summary[0].production"   ← only dashboard_metrics.pms keys, not raw PMS
+    "additional_data.anything"             ← never reference the wrapping object
+  If you can't find a real dashboard_metrics path that grounds a metric,
+  drop that metric from the action — do NOT invent a path or use a
+  different source.
 - supporting_metrics[*].value MUST match the dashboard_metrics dictionary at
   the dotted path given in supporting_metrics[*].source_field. Numeric
   equivalence counts ($48,420 == 48420), but you cannot invent.
 - Every claim in rationale must be traceable to a specific input field —
   dashboard_metrics, pms, gbp, website_analytics, or referral_engine_output.
+  (Rationale is more permissive than supporting_metrics: rationale may
+  reference any input narratively; only supporting_metrics is restricted
+  to dashboard_metrics paths.)
 - Do not infer, estimate, interpolate, or "round up." If the dictionary says
   null, the metric is unknown; either pick a different metric for that slot
   or omit the action.
@@ -78,11 +98,21 @@ PASSTHROUGH RULE
 When you surface an action that originates in
 referral_engine_output.practice_action_plan or
 referral_engine_output.alloro_automation_opportunities, preserve the
-specialist agent's wording in title and rationale. Do not paraphrase. Do
-not "improve" the language. Cite the source field (e.g.
-"referral_engine_output.practice_action_plan[2].title") in
-supporting_metrics[*].source_field for at least one metric of that action,
-so the audit trail is intact.
+specialist agent's wording in title and rationale verbatim. Do not
+paraphrase. Do not "improve" the language. The preserved wording IS
+the audit trail — RE provenance flows through the title/rationale text,
+not through any source_field citation.
+
+For supporting_metrics on passthrough actions, follow the same
+GROUNDING RULES as any other action: each source_field must be a
+dotted path within the dashboard_metrics dictionary (top-level key
+∈ {reviews, gbp, ranking, form_submissions, pms, referral}, no
+prefix, no RE paths). Pick the deterministic numbers that match
+the action's theme — e.g. ranking.lowest_factor.name + ranking.position
+for a ranking-themed RE action; referral.top_dropping_source for a
+referral-source action. If no numeric grounding is available for a
+passthrough action's theme, surface fewer supporting_metrics entries
+rather than citing forbidden sources.
 
 CROSS-SOURCE CONSOLIDATION RULE
 When two specialist signals reference the same entity (same source name,
