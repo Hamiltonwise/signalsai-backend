@@ -2,6 +2,29 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.36] - April 2026
+
+### Page Headings Cleanup — Drop 4, Shrink 1, Apply Serif
+
+Stripped page-level eyebrow + headline + subtitle blocks that were taking first-fold space without adding signal. Tasks, Notifications, Help, and Settings lose their headers entirely; Rankings keeps its header but at a much smaller scale and switches to Fraunces (`font-display`). Two remaining setup-state headings (PMS Visual Pillars, DFY Website) also pick up Fraunces for consistency with the Focus dashboard's typography.
+
+**Removed entirely (no replacement):**
+- `TasksView.tsx` — "Actionable Growth · Practice Roadmap. Complete these Team Tasks to capture high-value revenue leakage."
+- `Notifications.tsx` — "Notifications Active · Practice Updates. A live feed of Important Events that need your attention."
+- `Help.tsx` — "We are here to help · How can we help? Talk to your Alloro Strategist for help with your practice growth."
+- `Settings.tsx` — avatar circle + "Hamilton Wise's Organization" h1 + "Manage your practice details and connect your Google integrations" subtitle, plus the entire `<header>` shell that wrapped them.
+
+**Shrunk + serif:**
+- `RankingsDashboard.tsx` — "Local Reputation." heading dropped from `text-5xl/6xl font-black font-heading` to `font-display text-2xl md:text-3xl font-medium tracking-tight`. Subtitle dropped from `text-xl/2xl` to `text-base/lg`. The "Local SEO Tracking On" eyebrow + structure preserved.
+
+**Serif applied to remaining prominent page headings:**
+- `PMSVisualPillars.tsx:1148` setup-state heading — `font-display text-3xl font-medium`
+- `DFYWebsite.tsx:888` building-state heading — `font-display text-2xl md:text-3xl font-medium`
+
+**Settings cleanup also removed the unused `useAuth().userProfile` destructure** — caught by `tsc -b` after the header removal.
+
+**Verification:** `tsc --noEmit` clean (backend + frontend). `npm run build` clean (4.39s).
+
 ## [0.0.35] - April 2026
 
 ### Restore Sidebar — Keep New Dashboard Content
