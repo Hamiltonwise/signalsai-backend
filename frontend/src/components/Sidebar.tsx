@@ -1,3 +1,10 @@
+/**
+ * @deprecated Plan 2 (Focus dashboard redesign) replaced the global sidebar
+ * with a top-bar nav (`components/layout/TopBar.tsx`). This file is preserved
+ * on disk for revert/reference but is no longer mounted by `PageWrapper.tsx`.
+ *
+ * Plan: plans/04282026-no-ticket-focus-dashboard-frontend/spec.md
+ */
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {

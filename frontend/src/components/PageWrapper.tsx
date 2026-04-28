@@ -1,34 +1,42 @@
-import React, { useState, useEffect } from "react";
+/**
+ * PageWrapper — global authenticated layout shell.
+ *
+ * Plan 2 (Focus dashboard redesign): replaced the left Sidebar with a top
+ * TopBar + Ticker (Ticker only on dashboard routes). The sidebar is no
+ * longer rendered. `Sidebar.tsx` is preserved on disk for revert/reference
+ * but is unmounted from the layout. `MobileBottomNav` continues to render
+ * as the primary mobile nav until the mobile redesign lands.
+ *
+ * Plan ref: plans/04282026-no-ticket-focus-dashboard-frontend/spec.md (T19)
+ */
+
+import React, { useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, Bell, Lock, CreditCard, ArrowRight } from "lucide-react";
-import { Sidebar } from "./Sidebar";
+import { useQueryClient } from "@tanstack/react-query";
+import { Lock, CreditCard, ArrowRight } from "lucide-react";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { LocationTransitionOverlay } from "./LocationTransitionOverlay";
-import { SidebarProvider, useSidebar } from "./Admin/SidebarContext";
+import { TopBar } from "./layout/TopBar";
+import { Ticker } from "./layout/Ticker";
 import { useAuth } from "../hooks/useAuth";
-import { useSession } from "../contexts/sessionContext";
 
 interface PageWrapperProps {
   children: React.ReactNode;
 }
 
-export const PageWrapper: React.FC<PageWrapperProps> = ({ children }) => {
-  return (
-    <SidebarProvider defaultCollapsed={false}>
-      <PageWrapperInner>{children}</PageWrapperInner>
-    </SidebarProvider>
-  );
-};
+const DASHBOARD_ROUTE_PREFIXES = [
+  "/dashboard",
+  "/patientJourneyInsights",
+  "/pmsStatistics",
+  "/rankings",
+  "/tasks",
+];
 
-const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
-  const { userProfile, selectedDomain, onboardingCompleted, billingStatus } =
-    useAuth();
-  const { disconnect } = useSession();
+export const PageWrapper: React.FC<PageWrapperProps> = ({ children }) => {
+  const { onboardingCompleted, billingStatus } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { collapsed } = useSidebar();
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const isLockedOut = billingStatus?.isLockedOut ?? false;
   const isOnSettingsPage = location.pathname.startsWith("/settings");
@@ -40,65 +48,32 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
     }
   }, [isLockedOut, isOnSettingsPage, navigate]);
 
+  // T21: Ticker + refresh button only render on dashboard routes.
+  const isDashboardRoute = useMemo(
+    () =>
+      DASHBOARD_ROUTE_PREFIXES.some((prefix) =>
+        location.pathname.startsWith(prefix),
+      ),
+    [location.pathname],
+  );
+
+  // T21: Refresh handler — invalidate every TanStack query so the dashboard
+  // re-fetches dashboard metrics, tasks, ranking, PMS, form submissions, etc.
+  // in one click. Cheap because TanStack Query dedupes identical keys.
+  const handleRefresh = () => {
+    queryClient.invalidateQueries();
+  };
+
   return (
-    <div className="flex bg-alloro-bg min-h-screen font-body text-alloro-navy relative overflow-x-hidden selection:bg-alloro-orange selection:text-white">
-      {/* Mobile Header - consistent across all pages */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 z-[60] shadow-sm">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 text-alloro-navy hover:bg-slate-100 rounded-lg transition-colors"
-            aria-label="Open menu"
-          >
-            <Menu size={24} />
-          </button>
-          <div className="flex items-center gap-2">
-            <img
-              src="/logo.png"
-              alt="Alloro"
-              className="w-8 h-8 rounded-lg object-contain"
-            />
-            <span className="text-alloro-navy font-heading font-black text-base hidden sm:inline-block">
-              {onboardingCompleted
-                ? userProfile?.practiceName || "Alloro"
-                : "Alloro"}
-            </span>
-          </div>
-        </div>
+    <div className="bg-alloro-bg min-h-screen font-body text-alloro-navy relative overflow-x-hidden selection:bg-alloro-orange selection:text-white">
+      <TopBar onRefresh={handleRefresh} />
+      {isDashboardRoute && <Ticker items={[]} />}
 
-        <div className="flex items-center gap-2">
-          {!isLockedOut && (
-            <button
-              onClick={() => navigate("/notifications")}
-              className="p-2 text-slate-400 hover:text-alloro-orange transition-colors relative"
-            >
-              <Bell size={20} />
-            </button>
-          )}
-          <button
-            onClick={() => navigate("/settings")}
-            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold border border-slate-200"
-          >
-            {userProfile?.practiceName?.substring(0, 2).toUpperCase() || "AP"}
-          </button>
-        </div>
-      </div>
+      <main className="flex-1 w-full min-h-screen flex flex-col">
+        {/* Onboarding-incomplete banner is now rendered per-page (Focus dashboard
+            uses SetupProgressBanner). The lockout + subscribe banners below
+            remain global because they apply to every authenticated page. */}
 
-      <Sidebar
-        userProfile={userProfile}
-        onboardingCompleted={onboardingCompleted}
-        disconnect={disconnect}
-        selectedDomain={selectedDomain}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      {/* Main Content Area - responsive padding applied here */}
-      <main
-        className={`flex-1 w-full pt-16 lg:pt-0 min-h-screen flex flex-col transition-all duration-300 ease-in-out ${
-          collapsed ? "lg:pl-[68px]" : "lg:pl-72"
-        }`}
-      >
         {/* Lockout Banner — persistent top bar when account is locked */}
         {isLockedOut && (
           <div className="bg-red-50 border-b border-red-200 px-4 sm:px-6 py-3 sm:py-3.5 shrink-0">

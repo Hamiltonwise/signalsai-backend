@@ -172,31 +172,31 @@ export function SpotlightOverlay({
               position: relative;
               z-index: 85;
               border-radius: 28px;
-              outline: 4px solid rgba(255, 138, 61, 0.9);
+              outline: 4px solid rgba(214, 104, 83, 0.9);
               outline-offset: 12px;
               box-shadow:
-                0 0 0 16px rgba(255, 138, 61, 0.1),
-                0 0 30px rgba(255, 138, 61, 0.25),
-                0 0 60px rgba(255, 138, 61, 0.1);
+                0 0 0 16px rgba(214, 104, 83, 0.1),
+                0 0 30px rgba(214, 104, 83, 0.25),
+                0 0 60px rgba(214, 104, 83, 0.1);
               animation: wizard-pulse 2s ease-in-out infinite;
             }
 
             @keyframes wizard-pulse {
               0%, 100% {
-                outline: 4px solid rgba(255, 138, 61, 0.9);
+                outline: 4px solid rgba(214, 104, 83, 0.9);
                 outline-offset: 12px;
                 box-shadow:
-                  0 0 0 16px rgba(255, 138, 61, 0.1),
-                  0 0 30px rgba(255, 138, 61, 0.25),
-                  0 0 60px rgba(255, 138, 61, 0.1);
+                  0 0 0 16px rgba(214, 104, 83, 0.1),
+                  0 0 30px rgba(214, 104, 83, 0.25),
+                  0 0 60px rgba(214, 104, 83, 0.1);
               }
               50% {
-                outline: 5px solid rgba(255, 138, 61, 1);
+                outline: 5px solid rgba(214, 104, 83, 1);
                 outline-offset: 14px;
                 box-shadow:
-                  0 0 0 18px rgba(255, 138, 61, 0.15),
-                  0 0 40px rgba(255, 138, 61, 0.35),
-                  0 0 80px rgba(255, 138, 61, 0.15);
+                  0 0 0 18px rgba(214, 104, 83, 0.15),
+                  0 0 40px rgba(214, 104, 83, 0.35),
+                  0 0 80px rgba(214, 104, 83, 0.15);
               }
             }
           `}</style>

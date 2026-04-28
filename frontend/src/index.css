@@ -259,6 +259,10 @@ h1, h2, h3, h4, h5, h6, .font-heading {
    /* Font families */
    --font-sans: 'Plus Jakarta Sans', sans-serif;
    --font-body: 'Plus Jakarta Sans', sans-serif;
+   /* Plan 2 (Focus dashboard redesign): new font stack for the dashboard surface */
+   --font-display: 'Fraunces', 'Literata', serif;
+   --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+   --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -1099,4 +1103,38 @@ body.minds-page-active .glass-header {
     transform: translateY(-6px);
   }
 }
+
+/* =====================================================================
+   Focus Dashboard (Plan 2)
+   ===================================================================== */
+
+/* Inline highlight — used by HighlightedText helper across Hero, Trajectory,
+   and any narrative surface. Frontend wraps phrases from agent's highlights[]
+   array deterministically (no raw HTML from agent output). Brand orange,
+   light-card and dark-card variants. */
+mark.hl {
+  background: rgba(214, 104, 83, 0.14);
+  color: #D66853;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.focus-card-dark mark.hl {
+  background: rgba(214, 104, 83, 0.22);
+  color: #F0A98E;
+}
+
+/* Domain icon tile classes — backgrounds for the small lucide icon containers
+   in the action queue. One per domain enum value. */
+.di-review { background: #FFF3ED; color: #D66853; }
+.di-gbp { background: #FBF1C8; color: #92750A; }
+.di-ranking { background: #E8F1E5; color: #4F8A5B; }
+.di-form { background: #F0ECE5; color: #2C2A26; }
+.di-pms { background: #EEF1F8; color: #4A5B8A; }
+.di-referral { background: #FFF0E8; color: #D66853; }
+
+/* Display + mono utilities for the new dashboard cards */
+.font-display { font-family: var(--font-display); }
+.font-inter { font-family: var(--font-inter); }
+.font-mono-display { font-family: var(--font-mono); }
 
