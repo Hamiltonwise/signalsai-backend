@@ -2,6 +2,45 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.33] - April 2026
+
+### Monthly Agents v2 — Summary as Chief-of-Staff
+
+The monthly agent chain is reorganized so a single agent (Summary v2) writes practice-facing tasks, with Referral Engine providing specialist input and a new deterministic metrics service grounding every claim. Opportunity and CRO Optimizer are disabled (preserved on disk for revival). Two new endpoints land for the upcoming dashboard redesign (Plan 2 — frontend).
+
+**Architecture:**
+- **New chain order:** `Referral Engine → service.dashboard-metrics.ts → Summary v2`. RE runs first to produce specialist analysis (matrices, growth opportunity summary). The new dashboard-metrics service computes a deterministic dictionary of org-specific numbers (review/GBP/ranking/form-submission/PMS/referral) consuming RE's output. Summary v2 runs last with the full context (PMS, GBP, analytics, RE output, dashboard metrics) and picks 3-5 monthly priorities across all six domains.
+- **Opportunity + CRO disabled** in `service.agent-orchestrator.ts` via `if (false)` blocks. Their prompt files, payload builders, and task-creator branches are preserved on disk; revival is a one-line orchestrator change.
+- **Summary v2 schema** (`SummaryV2OutputSchema` in `agent-output-schemas.ts`): top-level `.strict()` Zod, requires `top_actions: TopAction[]` of length 3-5. Each `TopAction` carries `title · urgency · priority_score (0-1) · domain · rationale · highlights[≤2] · supporting_metrics[exactly 3] · outcome.{deliverables, mechanism} · cta · due_at?`. The domain enum is `review | gbp | ranking | form-submission | pms-data-quality | referral` — Summary now picks across all six (the earlier "exclude referral" rule is dropped).
+- **Summary v2 prompt** (`src/agents/monthlyAgents/Summary.md` rewritten): Chief-of-Staff role, 154 lines. Mirrors the RE Tier-1 grounding pattern with new sections — GROUNDING RULES STRICT, SINGLE-MONTH RULE, UPSTREAM DATA QUALITY ACKNOWLEDGEMENT, PASSTHROUGH RULE (preserve specialist wording verbatim), CROSS-SOURCE CONSOLIDATION RULE (merge actions referencing the same entity), OUTCOME RULE — NO MAGNITUDE PREDICTIONS (forbidden patterns: "+2 positions", "+5 patients/mo", "$3,200 revenue est."), HIGHLIGHTS RULE.
+- **Post-Zod value validator hook** in the orchestrator: walks every `top_actions[*].supporting_metrics[*].source_field` against the dashboard_metrics dictionary at the dotted path. Mismatch (numeric-normalized + substring-tolerant comparison) throws to trigger the runner's outer 3-attempt retry. Means the agent literally cannot invent values — every `value` in the stat strip traces to a deterministic backend computation.
+- **Highlights post-validator** (warn-only): logs mismatched entries; frontend silently drops at render time.
+- **Summary writes USER tasks** via the new `createTasksFromSummaryV2Output` branch in `service.task-creator.ts`. Each `top_actions[i]` becomes one row with `agent_type='SUMMARY', category='USER', is_approved=true` and the entire TopAction object stored in `metadata` (jsonb) so the dashboard renders hero/queue without a separate fetch.
+- **RE keeps ALLORO task writes only**. The `practice_action_plan → USER` branch was removed from `service.task-creator.ts`; those items now feed Summary as input. The `alloro_automation_opportunities → ALLORO` branch (agency-internal automation tasks) is unchanged.
+- **Proofline `highlights[]`** field added (additive). `ProoflineAgentOutputSchema` is new (Proofline previously had only a TS interface). Same pattern as Summary — max 2 phrases, must appear verbatim in `trajectory`.
+- **3-attempt retry on Summary v2** (mirrors RE's pattern). Each attempt: Zod corrective retry inside the runner + value/highlights validators outside. Failure of all 3 attempts returns `{ success: false }` with the error.
+
+**New backend endpoints (consumed by Plan 2 frontend):**
+- `GET /api/dashboard/metrics?organization_id=X[&location_id=Y]` — wraps `computeDashboardMetrics`. Validates output via `DashboardMetricsSchema` before returning.
+- `GET /api/user/website/form-submissions/timeseries?range=12m|6m|3m` — returns `[{ month, verified, unread, flagged }]` zero-filled, oldest-first. Filters via the existing `is_flagged` / `is_read` columns + `form_name` exclusion that match the existing `/stats` semantics (so dashboard counts stay consistent).
+- `GET /api/practice-ranking/history?googleAccountId=X[&locationId=Y]&range=6m|3m` — returns `[{ observedAt, rankScore, rankPosition, factorScores }]` oldest-first, with `factorScores` flattened from the `ranking_factors` jsonb to a `Record<string, number>` of just the score numbers.
+
+**`service.dashboard-metrics.ts` — the deterministic dictionary:**
+Pure function — no LLM calls. Six sections:
+- `reviews` — oldest_unanswered_hours, unanswered_count, current_rating, rating_change_30d, reviews_this_month
+- `gbp` — days_since_last_post, posts_last_quarter, call/direction_clicks_last_30d
+- `ranking` — position, total_competitors, score, lowest_factor, highest_factor, score_gap_to_top
+- `form_submissions` — unread_count, oldest_unread_hours, verified_count, verified_this_week, flagged_count
+- `pms` — distinct_months, last_upload_days_ago, missing_months_in_period, production_total, production_change_30d, total/doctor/self_referrals
+- `referral` (sourced from RE output) — top_dropping_source, top_growing_source, sources_count
+
+Each section is wrapped in try/catch — a failure in one section logs a warning and emits zero/null defaults rather than failing the whole dictionary. The result is `safeParse`'d through `DashboardMetricsSchema` and throws on schema violation (programming-error signal). The dotted-path keys ARE the legal `source_field` values for Summary's `supporting_metrics[*]` validator.
+
+**Smoke verification (Plan 1 T15) is gated on live infrastructure** — running monthly agents end-to-end on a real test org and inspecting `tasks` table + `agent_results.response_log` shape compliance. Code is TypeScript-clean (`npx tsc --noEmit` zero new errors backend + frontend). Recommended pre-merge: smoke-test against a staging copy of prod data.
+
+**Out of scope (deferred):**
+Frontend redesign (Plan 2 — separate spec at `plans/04282026-no-ticket-focus-dashboard-frontend/`). Removal (full delete) of Opportunity/CRO Optimizer prompt files + task-creator branches. Future specialist agents (ranking-analyzer, website-analyzer) feeding Summary. Backfill of historical Summary outputs into the new shape. Per-claim confidence scoring inside top_actions[*]. Daily-cadence Summary.
+
 ## [0.0.32] - April 2026
 
 ### PMS Column Mapping with AI Inference
