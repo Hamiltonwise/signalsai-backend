@@ -122,3 +122,29 @@ export async function textSearch(
 export function isApiKeyConfigured(): boolean {
   return !!GOOGLE_PLACES_API_KEY;
 }
+
+/**
+ * Fetch the bytes for a Google Places photo by its resource name
+ * (e.g. "places/ChIJ.../photos/AdDdOWp..."). Returns the image buffer plus
+ * the upstream Content-Type so the caller can stream it back unchanged.
+ *
+ * Each call is billed against the Place Photo SKU; route this behind auth.
+ */
+export async function getPlacePhotoMedia(
+  photoName: string,
+  maxHeightPx: number = 200
+): Promise<{ buffer: Buffer; contentType: string }> {
+  const response = await axios.get(
+    `${PLACES_API_BASE}/${photoName}/media`,
+    {
+      params: {
+        maxHeightPx,
+        key: GOOGLE_PLACES_API_KEY!,
+      },
+      responseType: "arraybuffer",
+    }
+  );
+  const contentType =
+    (response.headers["content-type"] as string) || "image/jpeg";
+  return { buffer: Buffer.from(response.data), contentType };
+}
