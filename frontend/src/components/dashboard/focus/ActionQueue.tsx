@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight, Inbox } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLocationContext } from "../../../contexts/locationContext";
 import {
@@ -119,7 +119,7 @@ export function ActionQueue() {
   const { rows, isLoading, error, refetch } = useActionQueue(orgId, locationId);
 
   return (
-    <section className="rounded-[14px] border border-[#EDE8DE] bg-white p-[22px_22px_18px] shadow-[0_1px_2px_rgba(20,18,12,0.04)]">
+    <section className="flex flex-col rounded-[14px] border border-[#EDE8DE] bg-white p-[22px_22px_18px] shadow-[0_1px_2px_rgba(20,18,12,0.04)]">
       <div className="mb-4 flex items-center justify-between">
         <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#6B7280]">
           Queue · {rows.length} more
@@ -134,7 +134,7 @@ export function ActionQueue() {
         </button>
       </div>
 
-      <div>
+      <div className="flex flex-1 flex-col">
         {isLoading ? (
           <>
             {[0, 1, 2].map((i) => (
@@ -154,9 +154,25 @@ export function ActionQueue() {
             </button>
           </div>
         ) : rows.length === 0 ? (
-          <p className="py-6 text-center text-[12px] text-[#6B7280]">
-            No queued actions for this month.
-          </p>
+          <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
+            <div
+              className="mb-3 flex items-center justify-center rounded-full"
+              style={{
+                width: 44,
+                height: 44,
+                background: "#FFF7F2",
+                color: "#D66853",
+              }}
+            >
+              <Inbox size={20} />
+            </div>
+            <p className="text-[13.5px] font-semibold leading-snug text-[#1F1B16]">
+              No queued actions
+            </p>
+            <p className="mt-1 max-w-[220px] text-[12px] leading-relaxed text-[#8E8579]">
+              You're all caught up for this month.
+            </p>
+          </div>
         ) : (
           rows.map((row, i) => (
             <QueueRowItem
