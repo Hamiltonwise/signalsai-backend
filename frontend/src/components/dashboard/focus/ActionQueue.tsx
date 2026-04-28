@@ -169,14 +169,6 @@ export function ActionQueue() {
         )}
       </div>
 
-      <p className="mt-4 border-t border-[#F0ECE5] pt-3.5 text-[10.5px] leading-[1.55] text-[#6B7280]">
-        Summary outputs <strong className="font-bold">3–5 actions</strong> per
-        month, ordered by{" "}
-        <code className="rounded bg-[#F0ECE5] px-1 py-px font-mono-display text-[9.5px]">
-          priority_score
-        </code>
-        . Referral Engine items mix in by score.
-      </p>
     </section>
   );
 }
