@@ -197,6 +197,11 @@ export function buildSummaryPayload(params: {
   monthData: any;
   pmsData?: any;
   websiteAnalytics?: { currentMonth: any; previousMonth: any } | null;
+  /** Plan 1: Summary v2 also receives RE's full output (Chief-of-Staff role). */
+  referralEngineOutput?: any;
+  /** Plan 1: Summary v2 receives the deterministic metrics dictionary computed
+   *  by service.dashboard-metrics.ts. Used to ground supporting_metrics[*] picks. */
+  dashboardMetrics?: any;
 }): any {
   return {
     agent: "summary",
@@ -210,6 +215,8 @@ export function buildSummaryPayload(params: {
       ...params.monthData,
       pms: params.pmsData || null,
       ...(params.websiteAnalytics ? { website_analytics: params.websiteAnalytics } : {}),
+      ...(params.referralEngineOutput ? { referral_engine_output: params.referralEngineOutput } : {}),
+      ...(params.dashboardMetrics ? { dashboard_metrics: params.dashboardMetrics } : {}),
     },
   };
 }

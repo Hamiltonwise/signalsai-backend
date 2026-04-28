@@ -1097,6 +1097,114 @@ export async function getLatestRankings(
 }
 
 // =====================================================================
+// GET /history
+// =====================================================================
+
+export async function getRankingHistory(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { googleAccountId, locationId, range } = req.query;
+
+    if (!googleAccountId) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PARAMS",
+        message: "googleAccountId is required",
+      });
+    }
+
+    const orgId = Number(googleAccountId);
+    if (!Number.isFinite(orgId) || orgId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_PARAMS",
+        message: "googleAccountId must be a positive integer",
+      });
+    }
+
+    let locId: number | null = null;
+    if (locationId !== undefined && locationId !== null && locationId !== "") {
+      locId = Number(locationId);
+      if (!Number.isFinite(locId) || locId <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: "INVALID_PARAMS",
+          message: "locationId must be a positive integer",
+        });
+      }
+    }
+
+    const rangeStr = typeof range === "string" ? range : "6m";
+    const months = rangeStr === "3m" ? 3 : 6;
+    const intervalLiteral = months === 3 ? "3 months" : "6 months";
+
+    let query = db("practice_rankings")
+      .where({
+        organization_id: orgId,
+        status: "completed",
+      })
+      .andWhereRaw(`observed_at >= NOW() - INTERVAL '${intervalLiteral}'`)
+      .orderBy("observed_at", "asc")
+      .select(
+        "observed_at",
+        "rank_score",
+        "rank_position",
+        "ranking_factors",
+      );
+
+    if (locId !== null) {
+      query = query.andWhere({ location_id: locId });
+    }
+
+    const rows = await query;
+
+    const rankings = rows.map((row: any) => {
+      const parsed = parseJsonField(row.ranking_factors) as
+        | Record<string, { score?: number } | number | null>
+        | null;
+      const factorScores: Record<string, number> = {};
+      if (parsed && typeof parsed === "object") {
+        for (const [name, val] of Object.entries(parsed)) {
+          if (val && typeof val === "object" && "score" in val) {
+            const s = (val as { score?: unknown }).score;
+            if (typeof s === "number" && Number.isFinite(s)) {
+              factorScores[name] = s;
+            }
+          } else if (typeof val === "number" && Number.isFinite(val)) {
+            factorScores[name] = val;
+          }
+        }
+      }
+
+      return {
+        observedAt:
+          row.observed_at instanceof Date
+            ? row.observed_at.toISOString()
+            : row.observed_at,
+        rankScore: row.rank_score === null ? 0 : Number(row.rank_score),
+        rankPosition:
+          row.rank_position === null ? 0 : Number(row.rank_position),
+        factorScores,
+      };
+    });
+
+    return res.json({
+      success: true,
+      rankings,
+    });
+  } catch (error: any) {
+    logError("GET /history", error);
+    return res.status(500).json({
+      success: false,
+      error: "HISTORY_ERROR",
+      message: error.message || "Failed to get ranking history",
+    });
+  }
+}
+
+// =====================================================================
 // GET /tasks
 // =====================================================================
 

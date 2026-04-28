@@ -356,6 +356,97 @@ export async function getFormSubmissionStats(
   }
 }
 
+/** GET /api/user/website/form-submissions/timeseries */
+export async function getFormSubmissionsTimeseries(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const project = await ProjectModel.findByOrganizationId(orgId);
+    if (!project) return res.status(404).json({ error: "No website found" });
+
+    const rangeParam = (req.query.range as string) || "12m";
+    const monthCount =
+      rangeParam === "3m" ? 3 : rangeParam === "6m" ? 6 : 12;
+
+    // Compute the start of the range: first day of (current month - (monthCount - 1))
+    const now = new Date();
+    const rangeStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (monthCount - 1), 1)
+    );
+
+    // Aggregate by month with per-status counts (Postgres syntax).
+    // Project-scoped because submissions live under website_builder.form_submissions
+    // keyed by project_id; the project itself is scoped to the org via ProjectModel.findByOrganizationId.
+    const rows = await db("website_builder.form_submissions")
+      .select(
+        db.raw(
+          "to_char(date_trunc('month', submitted_at), 'YYYY-MM') AS month"
+        ),
+        db.raw(
+          `COUNT(*) FILTER (WHERE is_flagged = false AND form_name <> 'Newsletter Signup')::int AS verified`
+        ),
+        db.raw(`COUNT(*) FILTER (WHERE is_read = false)::int AS unread`),
+        db.raw(`COUNT(*) FILTER (WHERE is_flagged = true)::int AS flagged`)
+      )
+      .where("project_id", project.id)
+      .andWhere("submitted_at", ">=", rangeStart.toISOString())
+      .groupBy(db.raw("date_trunc('month', submitted_at)"))
+      .orderBy("month", "asc");
+
+    // Build a map of month → counts from query results
+    const byMonth = new Map<
+      string,
+      { month: string; verified: number; unread: number; flagged: number }
+    >();
+    for (const r of rows as Array<{
+      month: string;
+      verified: number | string;
+      unread: number | string;
+      flagged: number | string;
+    }>) {
+      byMonth.set(r.month, {
+        month: r.month,
+        verified: Number(r.verified) || 0,
+        unread: Number(r.unread) || 0,
+        flagged: Number(r.flagged) || 0,
+      });
+    }
+
+    // Zero-fill every month in the range, oldest-first
+    const data: Array<{
+      month: string;
+      verified: number;
+      unread: number;
+      flagged: number;
+    }> = [];
+    for (let i = 0; i < monthCount; i++) {
+      const d = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (monthCount - 1 - i), 1)
+      );
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(
+        2,
+        "0"
+      )}`;
+      data.push(
+        byMonth.get(key) || {
+          month: key,
+          verified: 0,
+          unread: 0,
+          flagged: 0,
+        }
+      );
+    }
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    return handleError(res, error, "Fetch form submissions timeseries");
+  }
+}
+
 /** PATCH /api/user/website/form-submissions/mark-all-read */
 export async function markAllFormSubmissionsRead(
   req: RBACRequest,

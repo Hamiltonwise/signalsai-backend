@@ -113,6 +113,14 @@ userWebsiteRoutes.get(
 );
 
 userWebsiteRoutes.get(
+  "/form-submissions/timeseries",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.getFormSubmissionsTimeseries
+);
+
+userWebsiteRoutes.get(
   "/form-submissions",
   authenticateToken,
   rbacMiddleware,

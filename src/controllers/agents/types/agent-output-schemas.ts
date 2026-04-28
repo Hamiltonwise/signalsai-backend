@@ -31,12 +31,46 @@ export interface ProoflineAgentOutput {
   metric_signal?: string;
   source_type?: "visibility" | "engagement" | "reviews";
   citations?: string[];
+  /**
+   * Up to 2 phrases pulled verbatim from `trajectory` that the dashboard
+   * highlights inline. Additive (optional) — legacy outputs without this
+   * field remain valid.
+   */
+  highlights?: string[];
 }
 
 export interface ProoflineSkippedOutput {
   skipped: true;
   reason: string;
 }
+
+// ---------------------------------------------------------------------
+// Zod schema for ProoflineAgentOutput
+// ---------------------------------------------------------------------
+//
+// Mirrors the TS interface above. `highlights` is additive and optional
+// (max 2 entries). Nested fields stay permissive; the runner does a
+// post-Zod substring check for `highlights[*]` against `trajectory`
+// (mismatched entries dropped with a [proofline] warning, not rejected).
+//
+// Top-level uses `.passthrough()` rather than `.strict()` so legacy
+// Proofline outputs that may include incidental extra keys still pass.
+
+export const ProoflineAgentOutputSchema = z
+  .object({
+    title: z.string().min(1),
+    proof_type: z.enum(["win", "loss"]),
+    trajectory: z.string().min(1),
+    explanation: z.string().min(1),
+    value_change: z.string().optional(),
+    metric_signal: z.string().optional(),
+    source_type: z.enum(["visibility", "engagement", "reviews"]).optional(),
+    citations: z.array(z.string()).optional(),
+    highlights: z.array(z.string()).max(2).default([]),
+  })
+  .passthrough();
+
+export type ProoflineAgentOutputZ = z.infer<typeof ProoflineAgentOutputSchema>;
 
 // =====================================================================
 // SUMMARY AGENT
@@ -297,3 +331,74 @@ export const ReferralEngineAgentOutputSchema = z
 export type ReferralEngineAgentOutputZ = z.infer<
   typeof ReferralEngineAgentOutputSchema
 >;
+
+// =====================================================================
+// SUMMARY V2 AGENT (Chief-of-Staff)
+// =====================================================================
+//
+// Forward-going contract for Summary v2 (see
+// plans/04282026-no-ticket-monthly-agents-v2-backend/spec.md). Replaces
+// the legacy `SummaryAgentOutput` interface as the validation target —
+// the legacy interface is intentionally kept for backward compat with
+// already-stored agent_results rows. Top-level `.strict()` forbids
+// unknown keys at the root; nested objects (cta, outcome) stay
+// permissive to tolerate model verbosity.
+
+export const SupportingMetricSchema = z.object({
+  label: z.string().min(1).max(40),
+  value: z.string().min(1),
+  sub: z.string().optional(),
+  source_field: z.string().min(1),
+});
+
+export const TopActionSchema = z.object({
+  title: z.string().min(1).max(160),
+  urgency: z.enum(["high", "medium", "low"]),
+  priority_score: z.number().min(0).max(1),
+  domain: z.enum([
+    "review",
+    "gbp",
+    "ranking",
+    "form-submission",
+    "pms-data-quality",
+    "referral",
+  ]),
+  rationale: z.string().min(1),
+  highlights: z.array(z.string()).max(2).default([]),
+  supporting_metrics: z.array(SupportingMetricSchema).length(3),
+  outcome: z.object({
+    deliverables: z.string().min(1),
+    mechanism: z.string().min(1),
+  }),
+  cta: z.object({
+    primary: z.object({
+      label: z.string().min(1),
+      action_url: z.string().min(1),
+    }),
+    secondary: z
+      .object({
+        label: z.string().min(1),
+        action_url: z.string().min(1),
+      })
+      .optional(),
+  }),
+  due_at: z.string().optional(),
+});
+
+export const SummaryV2OutputSchema = z
+  .object({
+    top_actions: z.array(TopActionSchema).min(3).max(5),
+    data_quality_flags: z.array(z.string()).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    observed_period: z
+      .object({
+        start_date: z.string(),
+        end_date: z.string(),
+      })
+      .optional(),
+  })
+  .strict();
+
+export type SupportingMetric = z.infer<typeof SupportingMetricSchema>;
+export type TopAction = z.infer<typeof TopActionSchema>;
+export type SummaryV2Output = z.infer<typeof SummaryV2OutputSchema>;
