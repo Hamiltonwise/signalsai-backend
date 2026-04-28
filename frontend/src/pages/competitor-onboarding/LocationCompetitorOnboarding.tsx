@@ -523,16 +523,6 @@ function CuratingStage({
           </p>
         </div>
 
-        <div ref={mapWrapperRef}>
-          <CompetitorMap
-            competitors={competitors}
-            practiceLocation={practiceLocation}
-            height={300}
-            selectedPlaceId={selectedPlaceId}
-            onPinClick={onSelectFromPin}
-          />
-        </div>
-
         {selfFilterStatus === "unresolved" && (
           <div className="mx-8 mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
             <Info
@@ -547,7 +537,21 @@ function CuratingStage({
           </div>
         )}
 
-        <div className="px-8 py-6">
+        <div className="px-8 py-6 lg:grid lg:grid-cols-[1fr_1.2fr] lg:gap-8">
+          <div
+            ref={mapWrapperRef}
+            className="mb-6 lg:mb-0 lg:sticky lg:top-6 lg:self-start rounded-2xl overflow-hidden border border-black/5"
+          >
+            <CompetitorMap
+              competitors={competitors}
+              practiceLocation={practiceLocation}
+              height={560}
+              selectedPlaceId={selectedPlaceId}
+              onPinClick={onSelectFromPin}
+            />
+          </div>
+
+          <div>
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-bold text-alloro-textDark">
               {competitors.length} / {cap}
@@ -661,7 +665,7 @@ function CuratingStage({
                     />
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mb-0.5">
                       <a
                         href={`https://www.google.com/maps/place/?q=place_id:${c.placeId}`}
                         target="_blank"
@@ -672,6 +676,21 @@ function CuratingStage({
                       >
                         {c.name}
                       </a>
+                      {typeof c.rating === "number" && c.rating > 0 && (
+                        <span className="flex items-center gap-1 text-xs font-bold text-alloro-textDark whitespace-nowrap">
+                          <Star
+                            size={12}
+                            className="fill-yellow-400 text-yellow-400"
+                          />
+                          {c.rating.toFixed(1)}
+                          {typeof c.reviewCount === "number" &&
+                            c.reviewCount > 0 && (
+                              <span className="font-medium text-slate-500">
+                                ({c.reviewCount.toLocaleString()})
+                              </span>
+                            )}
+                        </span>
+                      )}
                       {c.primaryType && (
                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
                           {c.primaryType.replace(/_/g, " ")}
@@ -679,20 +698,6 @@ function CuratingStage({
                       )}
                     </div>
                     <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
-                      {typeof c.rating === "number" && c.rating > 0 && (
-                        <span className="flex items-center gap-1 font-bold text-alloro-textDark">
-                          <Star
-                            size={12}
-                            className="fill-yellow-400 text-yellow-400"
-                          />
-                          {c.rating.toFixed(1)}
-                        </span>
-                      )}
-                      {typeof c.reviewCount === "number" && c.reviewCount > 0 && (
-                        <span className="text-slate-500">
-                          {c.reviewCount.toLocaleString()} reviews
-                        </span>
-                      )}
                       {distanceMi !== null && (
                         <span className="flex items-center gap-1 text-slate-500">
                           <MapPin size={11} className="text-slate-400" />
@@ -760,6 +765,7 @@ function CuratingStage({
               still be calculated against your own data).
             </p>
           )}
+          </div>
         </div>
       </div>
 
@@ -920,8 +926,9 @@ function CompetitorMap({
         style={{ height: "100%", width: "100%" }}
       >
         <TileLayer
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          subdomains="abcd"
         />
         <FitBoundsOnChange points={points} />
         {withCoords.map((c, i) => {
