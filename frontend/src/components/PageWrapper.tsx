@@ -17,7 +17,7 @@ import { Lock, CreditCard, ArrowRight } from "lucide-react";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { LocationTransitionOverlay } from "./LocationTransitionOverlay";
 import { TopBar } from "./layout/TopBar";
-import { Ticker } from "./layout/Ticker";
+import Ticker from "./layout/Ticker";
 import { useAuth } from "../hooks/useAuth";
 
 interface PageWrapperProps {

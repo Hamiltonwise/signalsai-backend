@@ -27,9 +27,9 @@
 import { Hero } from "./focus/Hero";
 import { Trajectory } from "./focus/Trajectory";
 import { ActionQueue } from "./focus/ActionQueue";
-import { WebsiteCard } from "./focus/WebsiteCard";
-import { LocalRankingCard } from "./focus/LocalRankingCard";
-import { PMSCard } from "./focus/PMSCard";
+import WebsiteCard from "./focus/WebsiteCard";
+import LocalRankingCard from "./focus/LocalRankingCard";
+import PMSCard from "./focus/PMSCard";
 import { SetupProgressBanner } from "./focus/SetupProgressBanner";
 
 interface DashboardOverviewProps {

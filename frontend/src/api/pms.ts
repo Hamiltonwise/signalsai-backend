@@ -812,6 +812,9 @@ export interface PreviewMappingResponse {
     confidence: number;
     parsedPreview: MonthlyRollupForJob | null;
     mappingError?: string;
+    /** Optional data-quality messages surfaced by the procedure-log adapter
+     *  (e.g., skipped zero/negative-production triplets). Type added 0.0.34. */
+    dataQualityFlags?: string[];
   };
   error?: string;
   message?: string;

@@ -373,12 +373,13 @@ const HeroBody: React.FC<HeroBodyProps> = ({ topAction }) => {
 };
 
 export function Hero() {
-  const { organizationId } = useAuth();
+  const { userProfile } = useAuth();
+  const organizationId = userProfile?.organizationId ?? null;
   const { selectedLocation } = useLocationContext();
   const locationId = selectedLocation?.id ?? null;
 
   const { topAction, isLoading, error, refetch } = useTopAction(
-    organizationId ?? null,
+    organizationId,
     locationId
   );
 
