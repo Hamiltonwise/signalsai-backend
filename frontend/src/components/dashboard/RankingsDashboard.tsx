@@ -8,9 +8,7 @@ import {
   AlertCircle,
   RefreshCw,
   Target,
-  Rocket,
   HelpCircle,
-  ExternalLink,
   Settings,
   ChevronRight,
   Sparkles,
@@ -212,7 +210,12 @@ interface RankingResult {
   // Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
   searchPosition: number | null;
   searchQuery: string | null;
-  searchStatus: "ok" | "not_in_top_20" | "bias_unavailable" | "api_error" | null;
+  searchStatus:
+    | "ok"
+    | "not_in_top_20"
+    | "bias_unavailable"
+    | "api_error"
+    | null;
   searchResults: Array<{
     placeId: string;
     name: string;
@@ -254,30 +257,6 @@ interface RankingResult {
     status: "pending" | "curating" | "finalized";
     finalizedAt: string | null;
   } | null;
-}
-
-// Ranking Task from the tasks endpoint (approved tasks only)
-interface RankingTask {
-  id: number;
-  title: string;
-  description: string;
-  status: string;
-  category: string;
-  agentType: string;
-  isApproved: boolean;
-  dueDate: string | null;
-  createdAt: string;
-  updatedAt: string;
-  completedAt: string | null;
-  metadata: {
-    practiceRankingId: number | null;
-    gbpLocationId: string | null;
-    gbpLocationName: string | null;
-    priority: string | null;
-    impact: string | null;
-    effort: string | null;
-    timeline: string | null;
-  };
 }
 
 interface RankingsDashboardProps {
@@ -397,8 +376,8 @@ const KPICard = ({
             dir === "up"
               ? "bg-green-50 text-green-700 border-green-100"
               : dir === "down"
-              ? "bg-red-50 text-red-700 border-red-100"
-              : "bg-slate-50 text-slate-600 border-slate-200"
+                ? "bg-red-50 text-red-700 border-red-100"
+                : "bg-slate-50 text-slate-600 border-slate-200"
           }`}
         >
           {dir === "up" && "+"}
@@ -433,7 +412,10 @@ const KPICard = ({
   </div>
 );
 
-export function RankingsDashboard({ organizationId, locationId }: RankingsDashboardProps) {
+export function RankingsDashboard({
+  organizationId,
+  locationId,
+}: RankingsDashboardProps) {
   const navigate = useNavigate();
   const isWizardActive = useIsWizardActive();
   const { signalContentReady } = useLocationContext();
@@ -441,9 +423,6 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
   const [loading, setLoading] = useState(true);
   const [rankings, setRankings] = useState<RankingResult[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [rankingTasks, setRankingTasks] = useState<
-    Record<number, RankingTask[]>
-  >({});
 
   // In-flight ranking banner — shown when EITHER the URL carries
   // ?batchId=... (post-finalize redirect fast-path) OR the dashboard
@@ -452,7 +431,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
   const [searchParams, setSearchParams] = useSearchParams();
   const urlBatchId = searchParams.get("batchId");
   const [autoDetectedBatchId, setAutoDetectedBatchId] = useState<string | null>(
-    null
+    null,
   );
   const [bannerHidden, setBannerHidden] = useState(false);
   const activeBatchId = urlBatchId || autoDetectedBatchId;
@@ -530,7 +509,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
         `/api/practice-ranking/latest?googleAccountId=${organizationId}${locationId ? `&locationId=${locationId}` : ""}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -553,49 +532,13 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
     } catch (err) {
       console.error("Error fetching rankings:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to load ranking data"
+        err instanceof Error ? err.message : "Failed to load ranking data",
       );
     } finally {
       setLoading(false);
       signalContentReady();
     }
   };
-
-  // Fetch approved tasks for a specific ranking
-  const fetchRankingTasks = async (practiceRankingId: number) => {
-    try {
-      const token = getPriorityItem("token");
-      const response = await fetch(
-        `/api/practice-ranking/tasks?practiceRankingId=${practiceRankingId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (!response.ok) {
-        console.error("Failed to fetch ranking tasks");
-        return;
-      }
-
-      const data = await response.json();
-      setRankingTasks((prev) => ({ ...prev, [practiceRankingId]: data.tasks }));
-    } catch (error) {
-      console.error("Error fetching ranking tasks:", error);
-    }
-  };
-
-  // Fetch tasks when rankings are loaded - skip during wizard mode
-  useEffect(() => {
-    if (isWizardActive) return;
-    if (rankings.length > 0) {
-      // Fetch tasks for all rankings
-      rankings.forEach((ranking) => {
-        if (!rankingTasks[ranking.id]) {
-          fetchRankingTasks(ranking.id);
-        }
-      });
-    }
-  }, [rankings, isWizardActive]);
 
   if (loading && !isWizardActive) {
     return (
@@ -677,13 +620,16 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 rounded-full mb-4">
               <Sparkles className="w-4 h-4 text-alloro-orange" />
-              <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">Almost There</span>
+              <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">
+                Almost There
+              </span>
             </div>
             <h1 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight mb-3">
               Local Rankings Coming Soon
             </h1>
             <p className="text-base text-slate-500 font-medium max-w-md mx-auto">
-              We're preparing your competitive analysis. Make sure your Google Business Profile is connected to get started.
+              We're preparing your competitive analysis. Make sure your Google
+              Business Profile is connected to get started.
             </p>
           </div>
 
@@ -703,7 +649,8 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                   Connect Your Google Business Profile
                 </h3>
                 <p className="text-slate-500 font-medium leading-relaxed mb-4">
-                  Link your GBP to unlock local ranking insights, competitor analysis, and visibility tracking.
+                  Link your GBP to unlock local ranking insights, competitor
+                  analysis, and visibility tracking.
                 </p>
                 <div className="flex items-center gap-2 text-alloro-orange font-bold text-sm group-hover:gap-3 transition-all">
                   <Settings className="w-4 h-4" />
@@ -751,7 +698,12 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               value: wizardDemoData.rankingData[0].rating,
             },
             keyword_name: { score: 80, weighted: 8, weight: 10 },
-            review_velocity: { score: 65, weighted: 9.75, weight: 15, value: 8 },
+            review_velocity: {
+              score: 65,
+              weighted: 9.75,
+              weight: 15,
+              value: 8,
+            },
             nap_consistency: { score: 90, weighted: 9, weight: 10 },
             gbp_activity: { score: 70, weighted: 7, weight: 10, value: 12 },
             sentiment: { score: 88, weighted: 4.4, weight: 5 },
@@ -818,7 +770,8 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               {
                 priority: 2,
                 title: "Post more GBP updates",
-                description: "Increase posting frequency to improve GBP activity score",
+                description:
+                  "Increase posting frequency to improve GBP activity score",
               },
             ],
           },
@@ -924,7 +877,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               <div className="w-2 h-2 rounded-full bg-green-500"></div>{" "}
               {selectedRanking?.gbpLocationName || "Location"} •{" "}
               {new Date(
-                selectedRanking?.observedAt || new Date()
+                selectedRanking?.observedAt || new Date(),
               ).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -981,10 +934,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
 
         {/* Selected Location Detail */}
         {selectedRanking && (
-          <PerformanceDashboard
-            result={selectedRanking}
-            tasks={rankingTasks[selectedRanking.id] || []}
-          />
+          <PerformanceDashboard result={selectedRanking} />
         )}
       </main>
     </div>
@@ -1074,7 +1024,9 @@ function SearchPositionSection({ result }: { result: RankingResult }) {
   const sectionTitle = result.searchQuery
     ? `Top ${result.searchQuery
         .split(" in ")[0]
-        .replace(/^./, (c) => c.toUpperCase())}s in ${result.searchQuery.split(" in ")[1] ?? ""}`.trim()
+        .replace(/^./, (c) =>
+          c.toUpperCase(),
+        )}s in ${result.searchQuery.split(" in ")[1] ?? ""}`.trim()
     : "Your Competitors on Google";
 
   return (
@@ -1104,17 +1056,19 @@ function SearchPositionSection({ result }: { result: RankingResult }) {
               <span className="text-6xl lg:text-7xl font-black font-heading text-alloro-navy tracking-tighter leading-none tabular-nums">
                 #{result.searchPosition}
               </span>
-              {showGrowthArrow && positionDelta !== null && positionDelta !== 0 && (
-                <span
-                  className={`text-[11px] font-black px-3 py-1.5 rounded-lg border tabular-nums ${
-                    positionDelta > 0
-                      ? "bg-green-50 text-green-700 border-green-100"
-                      : "bg-red-50 text-red-700 border-red-100"
-                  }`}
-                >
-                  {positionDelta > 0 ? "▲" : "▼"} {Math.abs(positionDelta)}
-                </span>
-              )}
+              {showGrowthArrow &&
+                positionDelta !== null &&
+                positionDelta !== 0 && (
+                  <span
+                    className={`text-[11px] font-black px-3 py-1.5 rounded-lg border tabular-nums ${
+                      positionDelta > 0
+                        ? "bg-green-50 text-green-700 border-green-100"
+                        : "bg-red-50 text-red-700 border-red-100"
+                    }`}
+                  >
+                    {positionDelta > 0 ? "▲" : "▼"} {Math.abs(positionDelta)}
+                  </span>
+                )}
               {!showGrowthArrow && (
                 <div className="relative group">
                   <span className="text-[11px] font-black px-3 py-1.5 rounded-lg border bg-alloro-orange/10 text-alloro-orange border-alloro-orange/20">
@@ -1258,7 +1212,6 @@ function SearchPositionSection({ result }: { result: RankingResult }) {
  * Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
  */
 function HoldingYouBackSection({ result }: { result: RankingResult }) {
-  const navigate = useNavigate();
   const recs = result.llmAnalysis?.top_recommendations ?? [];
   const top3 = recs.slice(0, 3);
 
@@ -1303,32 +1256,18 @@ function HoldingYouBackSection({ result }: { result: RankingResult }) {
           </div>
         ))}
       </div>
-      <div className="px-10 py-6 border-t border-black/5 bg-slate-50/30">
-        <button
-          onClick={() => navigate("/to-do-list")}
-          className="text-[11px] font-black text-alloro-orange uppercase tracking-widest flex items-center gap-1.5 hover:text-alloro-orange/80 transition-colors"
-        >
-          See full improvement plan <ChevronRight size={14} />
-        </button>
-      </div>
     </section>
   );
 }
 
 // Performance Dashboard View Component
-function PerformanceDashboard({
-  result,
-  tasks,
-}: {
-  result: RankingResult;
-  tasks: RankingTask[];
-}) {
+function PerformanceDashboard({ result }: { result: RankingResult }) {
   const factors = result.rankingFactors;
   const competitors = result.rawData?.competitors || [];
 
   // Sort competitors by rankPosition for correct display order
   const sortedCompetitors = [...competitors].sort(
-    (a, b) => a.rankPosition - b.rankPosition
+    (a, b) => a.rankPosition - b.rankPosition,
   );
 
   // Calculate market averages from competitors
@@ -1381,9 +1320,12 @@ function PerformanceDashboard({
   const scoreTrend = getScoreTrend();
 
   // Modal state for driver insights carousel
-  const [selectedDriverIndex, setSelectedDriverIndex] = useState<number | null>(null);
+  const [selectedDriverIndex, setSelectedDriverIndex] = useState<number | null>(
+    null,
+  );
   const drivers = result.llmAnalysis?.drivers || [];
-  const selectedDriver = selectedDriverIndex !== null ? drivers[selectedDriverIndex] : null;
+  const selectedDriver =
+    selectedDriverIndex !== null ? drivers[selectedDriverIndex] : null;
 
   const goToPrevDriver = () => {
     if (selectedDriverIndex !== null && selectedDriverIndex > 0) {
@@ -1392,7 +1334,10 @@ function PerformanceDashboard({
   };
 
   const goToNextDriver = () => {
-    if (selectedDriverIndex !== null && selectedDriverIndex < drivers.length - 1) {
+    if (
+      selectedDriverIndex !== null &&
+      selectedDriverIndex < drivers.length - 1
+    ) {
       setSelectedDriverIndex(selectedDriverIndex + 1);
     }
   };
@@ -1444,8 +1389,8 @@ function PerformanceDashboard({
               Number(result.rankScore) >= 80
                 ? "Excellent — protect what's working"
                 : Number(result.rankScore) >= 60
-                ? "Good, room to grow"
-                : "Needs improvement"
+                  ? "Good, room to grow"
+                  : "Needs improvement"
             }
             trend={scoreTrend?.value}
             dir={scoreTrend?.dir}
@@ -1469,10 +1414,7 @@ function PerformanceDashboard({
       {/* 3a. WHAT'S HOLDING YOU BACK — top-3 LLM gap analysis teaser, links to /to-do-list */}
       <HoldingYouBackSection result={result} />
 
-      {/* 4. VISIBILITY PROTOCOL (Action Plan) - Only approved tasks */}
-      <VisibilityProtocol tasks={tasks} />
-
-      {/* 5. RANK DRIVERS */}
+      {/* 4. RANK DRIVERS */}
       {result.llmAnalysis?.drivers && result.llmAnalysis.drivers.length > 0 && (
         <section
           data-wizard-target="rankings-factors"
@@ -1504,9 +1446,15 @@ function PerformanceDashboard({
                 >
                   <div className="flex items-center gap-2 mb-3">
                     {driver.direction === "positive" ? (
-                      <TrendingUp size={20} className="text-green-600 shrink-0" />
+                      <TrendingUp
+                        size={20}
+                        className="text-green-600 shrink-0"
+                      />
                     ) : (
-                      <TrendingDown size={20} className="text-red-600 shrink-0" />
+                      <TrendingDown
+                        size={20}
+                        className="text-red-600 shrink-0"
+                      />
                     )}
                     <p
                       className={`font-black text-lg tracking-tight ${
@@ -1544,7 +1492,10 @@ function PerformanceDashboard({
           style={{ margin: 0 }}
           onClick={() => setSelectedDriverIndex(null)}
         >
-          <div className="relative flex items-center justify-center w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative flex items-center justify-center w-full max-w-5xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Previous Card Preview - Behind and to the left */}
             {selectedDriverIndex > 0 && (
               <motion.div
@@ -1568,11 +1519,13 @@ function PerformanceDashboard({
                       <TrendingDown size={20} className="text-red-600" />
                     </div>
                   )}
-                  <p className={`font-black text-base tracking-tight ${
-                    drivers[selectedDriverIndex - 1].direction === "positive"
-                      ? "text-green-700"
-                      : "text-red-700"
-                  }`}>
+                  <p
+                    className={`font-black text-base tracking-tight ${
+                      drivers[selectedDriverIndex - 1].direction === "positive"
+                        ? "text-green-700"
+                        : "text-red-700"
+                    }`}
+                  >
                     {drivers[selectedDriverIndex - 1].factor
                       .replace(/_/g, " ")
                       .replace(/\b\w/g, (c) => c.toUpperCase())}
@@ -1580,7 +1533,8 @@ function PerformanceDashboard({
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <p className="text-sm text-slate-500 line-clamp-2">
-                    {drivers[selectedDriverIndex - 1].insight || "No insight available"}
+                    {drivers[selectedDriverIndex - 1].insight ||
+                      "No insight available"}
                   </p>
                 </div>
               </motion.div>
@@ -1609,11 +1563,13 @@ function PerformanceDashboard({
                       <TrendingDown size={20} className="text-red-600" />
                     </div>
                   )}
-                  <p className={`font-black text-base tracking-tight ${
-                    drivers[selectedDriverIndex + 1].direction === "positive"
-                      ? "text-green-700"
-                      : "text-red-700"
-                  }`}>
+                  <p
+                    className={`font-black text-base tracking-tight ${
+                      drivers[selectedDriverIndex + 1].direction === "positive"
+                        ? "text-green-700"
+                        : "text-red-700"
+                    }`}
+                  >
                     {drivers[selectedDriverIndex + 1].factor
                       .replace(/_/g, " ")
                       .replace(/\b\w/g, (c) => c.toUpperCase())}
@@ -1621,7 +1577,8 @@ function PerformanceDashboard({
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <p className="text-sm text-slate-500 line-clamp-2">
-                    {drivers[selectedDriverIndex + 1].insight || "No insight available"}
+                    {drivers[selectedDriverIndex + 1].insight ||
+                      "No insight available"}
                   </p>
                 </div>
               </motion.div>
@@ -1674,7 +1631,8 @@ function PerformanceDashboard({
                   Insight
                 </p>
                 <p className="text-slate-700 font-medium leading-relaxed text-lg">
-                  {selectedDriver.insight || "No additional insight available for this factor."}
+                  {selectedDriver.insight ||
+                    "No additional insight available for this factor."}
                 </p>
               </div>
             </motion.div>
@@ -1759,8 +1717,8 @@ function PerformanceDashboard({
                     gap.impact === "high"
                       ? "bg-red-50 text-red-600 border-red-100"
                       : gap.impact === "medium"
-                      ? "bg-amber-50 text-amber-600 border-amber-100"
-                      : "bg-blue-50 text-blue-600 border-blue-100"
+                        ? "bg-amber-50 text-amber-600 border-amber-100"
+                        : "bg-blue-50 text-blue-600 border-blue-100"
                   }`}
                 >
                   {gap.impact} impact
@@ -1779,135 +1737,6 @@ function PerformanceDashboard({
         </section>
       )}
     </div>
-  );
-}
-
-// Visibility Protocol Component - Only shows approved tasks with "View in Tasks" CTA
-function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
-  const navigate = useNavigate();
-  const isWizardActive = useIsWizardActive();
-
-  // Demo tasks for wizard mode
-  const demoTasks: RankingTask[] = [
-    {
-      id: 1,
-      title: "Respond to 3 pending Google reviews",
-      description: "You have 3 reviews from the past week that need responses. Responding to reviews improves your local ranking and shows potential patients you care.",
-      status: "pending",
-      category: "Reputation",
-      agentType: "ranking",
-      isApproved: true,
-      dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      completedAt: null,
-      metadata: { practiceRankingId: 1, gbpLocationId: null, gbpLocationName: null, priority: "High", impact: "High", effort: "Low", timeline: "This week" },
-    },
-    {
-      id: 2,
-      title: "Add 5 new photos to Google Business Profile",
-      description: "Practices with 100+ photos get 520% more calls. Your current photo count is below average for your area.",
-      status: "pending",
-      category: "GBP",
-      agentType: "ranking",
-      isApproved: true,
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      completedAt: null,
-      metadata: { practiceRankingId: 1, gbpLocationId: null, gbpLocationName: null, priority: "Medium", impact: "Medium", effort: "Low", timeline: "This week" },
-    },
-    {
-      id: 3,
-      title: "Create a Google Business post about services",
-      description: "Regular GBP posts boost your visibility. Post about a service or special offer to engage potential patients.",
-      status: "pending",
-      category: "GBP",
-      agentType: "ranking",
-      isApproved: true,
-      dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      completedAt: null,
-      metadata: { practiceRankingId: 1, gbpLocationId: null, gbpLocationName: null, priority: "Medium", impact: "Medium", effort: "Low", timeline: "This week" },
-    },
-  ];
-
-  // Use demo tasks when wizard is active and no real tasks
-  const effectiveTasks = isWizardActive && (!tasks || tasks.length === 0) ? demoTasks : tasks;
-
-  return (
-    <section
-      className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden text-left"
-    >
-      <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between">
-        <div className="space-y-1">
-          <h3 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
-            Rank Improvement Plan
-          </h3>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            Steps to reach #1
-          </p>
-        </div>
-        <div className="w-12 h-12 bg-alloro-orange/10 text-alloro-orange rounded-xl flex items-center justify-center shadow-inner">
-          <Rocket size={24} />
-        </div>
-      </div>
-      <div className="p-8 lg:p-12 space-y-6">
-        {/* Only render approved tasks */}
-        {effectiveTasks && effectiveTasks.length > 0 ? (
-          effectiveTasks.slice(0, 3).map((task) => (
-            <div
-              key={task.id}
-              className="p-8 bg-slate-50/50 rounded-2xl border border-black/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8 hover:bg-white hover:border-alloro-orange/20 hover:shadow-premium transition-all group"
-            >
-              <div className="space-y-3">
-                <h4 className="font-black text-alloro-navy text-xl tracking-tight leading-none group-hover:text-alloro-orange transition-colors">
-                  {task.title}
-                </h4>
-                <p className="text-[15px] text-slate-500 font-bold tracking-tight leading-relaxed max-w-2xl line-clamp-2">
-                  {task.description}
-                </p>
-              </div>
-              <div className="flex items-center gap-6 shrink-0">
-                <span
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border shadow-sm ${
-                    task.metadata?.priority === "High" ||
-                    task.metadata?.priority === "1"
-                      ? "bg-red-50 text-red-600 border-red-100"
-                      : "bg-blue-50 text-blue-600 border-blue-100"
-                  }`}
-                >
-                  {task.metadata?.priority === "High" ||
-                  task.metadata?.priority === "1"
-                    ? "High"
-                    : "Medium"}{" "}
-                  Priority
-                </span>
-                <button
-                  onClick={() =>
-                    navigate("/tasks", { state: { scrollToTaskId: task.id } })
-                  }
-                  className="flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 text-alloro-orange rounded-xl text-[10px] font-black uppercase tracking-widest border border-alloro-orange/20 hover:bg-alloro-orange hover:text-white transition-all cursor-pointer"
-                >
-                  <ExternalLink size={14} />
-                  View in Tasks
-                </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-8 text-slate-400">
-            <p className="text-sm font-bold">
-              No approved protocol tasks available yet.
-            </p>
-            <p className="text-xs text-slate-300 mt-2">
-              Tasks will appear here once they're approved by your team.
-            </p>
-          </div>
-        )}
-      </div>
-    </section>
   );
 }
 
