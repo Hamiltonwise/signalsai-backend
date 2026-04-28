@@ -315,9 +315,20 @@ function lookupDottedPath(obj: any, path: string): any {
 
 /**
  * Compare a Summary supporting_metric's `value` (string from agent) against
- * the dashboard_metrics dictionary value at `source_field`. Tolerant matching:
- * exact string, numeric-equivalent (extracts numbers from strings like "$48,420"),
- * or substring inclusion.
+ * the dashboard_metrics dictionary value at `source_field`. Tolerant matching,
+ * in order:
+ *   1. exact string equality after trim
+ *   2. numeric equivalence — strip non-numeric chars from BOTH sides, accept
+ *      strict equality OR within 1% relative tolerance. Handles human-readable
+ *      rounding ("$365,747" for 365747.01, "0.33" for 0.328…, "33%" for 33.33).
+ *   3. string normalization — case-insensitive, underscores/dashes ↔ spaces,
+ *      whitespace collapsed. Handles "GBP activity" ≈ "gbp_activity".
+ *   4. substring after normalization (e.g. "#4 of 28" includes "4")
+ *
+ * Honors the prompt's stated contract: "Numeric equivalence counts
+ * ($48,420 == 48420), but you cannot invent." The previous implementation
+ * only stripped the metric side and used strict ===, which rejected any
+ * decimal residue and any case/underscore variation.
  */
 function metricValuesMatch(metricValue: string, dictValue: any): boolean {
   if (dictValue === null || dictValue === undefined) {
@@ -326,18 +337,37 @@ function metricValuesMatch(metricValue: string, dictValue: any): boolean {
     return true;
   }
 
-  const normalizedDict = String(dictValue).trim();
-  const normalizedMetric = metricValue.trim();
+  const dictStr = String(dictValue).trim();
+  const metricStr = metricValue.trim();
 
-  if (normalizedDict === normalizedMetric) return true;
+  if (dictStr === metricStr) return true;
 
-  // Numeric normalization
-  const dictNum = Number(normalizedDict);
-  const metricNum = Number(normalizedMetric.replace(/[^\d.\-]/g, ""));
-  if (!Number.isNaN(dictNum) && !Number.isNaN(metricNum) && dictNum === metricNum) return true;
+  // Numeric: strip non-numeric chars from both sides, then compare with
+  // 1% relative tolerance. Stricter denominators avoid div-by-zero and
+  // asymmetric tolerance for small values.
+  const stripNonNumeric = (s: string): string => s.replace(/[^\d.\-]/g, "");
+  const dictNum = Number(stripNonNumeric(dictStr));
+  const metricNum = Number(stripNonNumeric(metricStr));
+  if (!Number.isNaN(dictNum) && !Number.isNaN(metricNum)) {
+    if (dictNum === metricNum) return true;
+    const denom = Math.max(Math.abs(dictNum), Math.abs(metricNum), 1);
+    if (Math.abs(dictNum - metricNum) / denom <= 0.01) return true;
+  }
 
-  // Substring (e.g. "#4" includes "4")
-  if (normalizedMetric.includes(normalizedDict) || normalizedDict.includes(normalizedMetric)) return true;
+  // String normalization: lowercase, underscores/hyphens to spaces,
+  // collapse whitespace. Then exact + substring.
+  const normalize = (s: string): string =>
+    s.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  const dictNorm = normalize(dictStr);
+  const metricNorm = normalize(metricStr);
+  if (dictNorm === metricNorm) return true;
+  if (
+    dictNorm.length > 0 &&
+    metricNorm.length > 0 &&
+    (dictNorm.includes(metricNorm) || metricNorm.includes(dictNorm))
+  ) {
+    return true;
+  }
 
   return false;
 }
@@ -636,7 +666,11 @@ export async function processMonthlyAgents(
     }
 
     // === STEP 2: Compute deterministic dashboard metrics (Plan 1 NEW) ===
-    if (onProgress) await onProgress("dashboard_metrics", "Computing dashboard metrics...", "referral_engine");
+    // Note: no onProgress call here. dashboard_metrics is a sub-second
+    // deterministic compute, not a real agent in MonthlyAgentKey /
+    // MONTHLY_AGENT_CONFIG. A prior progress write here was throwing
+    // "Cannot read properties of undefined (reading 'progressOffset')"
+    // and crashing the entire monthly run between RE and Summary.
     log(`  [MONTHLY] Computing dashboard metrics`);
     let dashboardMetrics: DashboardMetrics | undefined;
     try {

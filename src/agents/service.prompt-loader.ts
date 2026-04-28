@@ -2,7 +2,9 @@
  * Prompt Loader Service
  *
  * Reads agent prompt markdown files from the src/agents/ directory.
- * Caches in memory after first read. Use clearPromptCache() for dev/testing.
+ * Caches in memory after first read in production. In dev (NODE_ENV !==
+ * "production") the cache is bypassed so prompt edits on disk take
+ * effect on the next agent run without requiring a server restart.
  *
  * Resolution order:
  *   1. __dirname (works in dev with tsx — points to src/agents/)
@@ -11,6 +13,8 @@
 
 import path from "path";
 import fs from "fs";
+
+const IS_PROD = process.env.NODE_ENV === "production";
 
 const AGENTS_DIR = (() => {
   // Dev (tsx): __dirname = .../src/agents — .md files are here
@@ -34,7 +38,7 @@ const cache = new Map<string, string>();
  * @returns The prompt text (full file contents)
  */
 export function loadPrompt(agentPath: string): string {
-  if (cache.has(agentPath)) return cache.get(agentPath)!;
+  if (IS_PROD && cache.has(agentPath)) return cache.get(agentPath)!;
 
   const filePath = path.join(AGENTS_DIR, `${agentPath}.md`);
 
@@ -45,7 +49,7 @@ export function loadPrompt(agentPath: string): string {
   }
 
   const content = fs.readFileSync(filePath, "utf-8").trim();
-  cache.set(agentPath, content);
+  if (IS_PROD) cache.set(agentPath, content);
   return content;
 }
 
