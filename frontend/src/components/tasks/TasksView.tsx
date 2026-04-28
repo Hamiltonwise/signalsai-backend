@@ -531,7 +531,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
           <div className="p-4 bg-slate-100 rounded-2xl w-fit mx-auto mb-4">
             <AlertCircle className="w-10 h-10 text-slate-400" />
           </div>
-          <h3 className="text-xl font-bold text-alloro-navy font-heading mb-2 tracking-tight">
+          <h3 className="font-display text-xl font-medium text-alloro-navy mb-2 tracking-tight">
             No Account Selected
           </h3>
           <p className="text-slate-500 text-sm font-medium">
@@ -553,7 +553,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
           <div className="p-4 bg-red-50 rounded-2xl w-fit mx-auto mb-4">
             <AlertCircle className="w-10 h-10 text-red-500" />
           </div>
-          <h3 className="text-xl font-bold text-alloro-navy font-heading mb-2 tracking-tight">
+          <h3 className="font-display text-xl font-medium text-alloro-navy mb-2 tracking-tight">
             Unable to Load Tasks
           </h3>
           <p className="text-slate-500 text-sm font-medium mb-6">{error}</p>
@@ -652,7 +652,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
                 <Layout size={24} />
               </div>
               <div className="text-left">
-                <h2 className="text-2xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                <h2 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight leading-tight">
                   Team Tasks
                 </h2>
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">

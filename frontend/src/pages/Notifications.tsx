@@ -290,7 +290,7 @@ export const Notifications: React.FC = () => {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                         <div className="flex items-center gap-3">
                           <h3
-                            className={`text-2xl font-black font-heading tracking-tight leading-none group-hover:text-alloro-orange transition-colors ${
+                            className={`font-display text-xl md:text-2xl font-medium tracking-tight leading-tight group-hover:text-alloro-orange transition-colors ${
                               isRead ? "text-slate-500" : "text-alloro-navy"
                             }`}
                           >

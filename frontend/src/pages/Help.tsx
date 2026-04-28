@@ -136,7 +136,7 @@ const Help = () => {
                     <CheckCircle2 size={40} />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-3xl font-black font-heading text-alloro-navy tracking-tight">
+                    <h3 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight">
                       Message Received.
                     </h3>
                     <p className="text-slate-500 font-bold max-w-sm">
@@ -157,7 +157,7 @@ const Help = () => {
                   className="space-y-8 relative z-10"
                 >
                   <div className="space-y-2">
-                    <h2 className="text-3xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                    <h2 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight leading-none">
                       Submit an Inquiry
                     </h2>
                     <p className="text-slate-400 font-bold text-sm tracking-tight leading-none">
@@ -276,7 +276,7 @@ const Help = () => {
           <div className="lg:col-span-5 space-y-10">
             <div className="bg-white rounded-[2.5rem] border border-black/5 shadow-premium p-10 lg:p-14 text-left space-y-10">
               <div className="space-y-1">
-                <h3 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                <h3 className="font-display text-xl font-medium text-alloro-navy tracking-tight leading-none">
                   Instant Channels
                 </h3>
                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">

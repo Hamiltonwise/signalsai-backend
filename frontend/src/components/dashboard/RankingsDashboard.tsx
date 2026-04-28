@@ -1235,7 +1235,7 @@ function PerformanceDashboard({
             internal score (review velocity, rating, NAP consistency, sentiment),
             not the live Google search position. */}
       <div className="-mb-6">
-        <div className="flex items-center gap-2.5 mb-1">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mb-1">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-alloro-orange" />
           <span className="font-display text-base md:text-lg font-medium text-alloro-navy tracking-tight">
             Practice Health
@@ -1296,7 +1296,7 @@ function PerformanceDashboard({
             Replaces the legacy "Nearby Practices" table.
             Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md */}
       <div className="-mb-6">
-        <div className="flex items-center gap-2.5 mb-1">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mb-1">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
           <span className="font-display text-base md:text-lg font-medium text-alloro-navy tracking-tight">
             Live Google Rank
