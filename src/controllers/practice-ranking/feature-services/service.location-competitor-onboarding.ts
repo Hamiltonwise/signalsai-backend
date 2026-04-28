@@ -110,6 +110,143 @@ async function loadLocationContext(
 }
 
 // =====================================================================
+// CLIENT PLACE-ID RESOLVER (self-filter source of truth)
+// =====================================================================
+
+export type ClientPlaceResolutionSource =
+  | "cache"
+  | "ranking_history"
+  | "places_lookup"
+  | "unresolved";
+
+export interface ResolvedClientPlace {
+  placeId: string | null;
+  lat: number | null;
+  lng: number | null;
+  source: ClientPlaceResolutionSource;
+}
+
+/**
+ * Resolve the practice's own Google Places identifiers via a 3-step fallback:
+ *
+ *   1. cache           — `locations.client_place_id` already set
+ *   2. ranking_history — find a prior `practice_rankings.search_results` entry
+ *                        where `isClient: true` (validated by an actual run)
+ *   3. places_lookup   — runtime `getClientPhotosViaPlaces` name search
+ *
+ * Persists the resolved value to `locations` so subsequent calls hit the cache.
+ * Returns `source: 'unresolved'` when all three fail — callers must NOT swallow
+ * this; the GET response surfaces it as `selfFilterStatus: 'unresolved'` so the
+ * UI can prompt the user to remove their own listing manually if it slips in.
+ *
+ * `marketLocation` is required for step 3. Steps 1 and 2 don't need it; if you
+ * don't have it, pass `null` and step 3 is skipped.
+ */
+export async function resolveClientPlaceId(
+  ctx: LoadedLocationContext,
+  marketLocation: string | null
+): Promise<ResolvedClientPlace> {
+  // Step 1 — cache on locations row
+  const location = await LocationModel.findById(ctx.locationId);
+  if (location?.client_place_id) {
+    return {
+      placeId: location.client_place_id,
+      lat: location.client_lat,
+      lng: location.client_lng,
+      source: "cache",
+    };
+  }
+
+  // Step 2 — latest valid ranking row's search_results JSONB
+  try {
+    const lastRanking = await db("practice_rankings")
+      .where({ location_id: ctx.locationId })
+      .where("search_status", "ok")
+      .whereNotNull("search_results")
+      .orderBy("created_at", "desc")
+      .select("search_results", "search_lat", "search_lng")
+      .first();
+
+    if (lastRanking?.search_results) {
+      const parsed =
+        typeof lastRanking.search_results === "string"
+          ? JSON.parse(lastRanking.search_results)
+          : lastRanking.search_results;
+      if (Array.isArray(parsed)) {
+        const clientEntry = parsed.find(
+          (r: any) => r && r.isClient === true && typeof r.placeId === "string"
+        );
+        if (clientEntry?.placeId) {
+          const lat =
+            lastRanking.search_lat !== null &&
+            lastRanking.search_lat !== undefined
+              ? Number(lastRanking.search_lat)
+              : null;
+          const lng =
+            lastRanking.search_lng !== null &&
+            lastRanking.search_lng !== undefined
+              ? Number(lastRanking.search_lng)
+              : null;
+          await LocationModel.setClientIdentifiers(ctx.locationId, {
+            placeId: clientEntry.placeId,
+            lat,
+            lng,
+          });
+          log(
+            `[ONBOARDING] [${ctx.locationId}] Resolved client place_id from ranking history: ${clientEntry.placeId}`
+          );
+          return {
+            placeId: clientEntry.placeId,
+            lat,
+            lng,
+            source: "ranking_history",
+          };
+        }
+      }
+    }
+  } catch (err: any) {
+    log(
+      `[ONBOARDING] [${ctx.locationId}] Ranking-history client lookup failed: ${err.message} — falling through to Places lookup`
+    );
+  }
+
+  // Step 3 — runtime Places name search
+  if (marketLocation) {
+    try {
+      const clientLookup = await getClientPhotosViaPlaces(
+        ctx.locationName,
+        marketLocation
+      );
+      if (clientLookup.placeId) {
+        await LocationModel.setClientIdentifiers(ctx.locationId, {
+          placeId: clientLookup.placeId,
+          lat: clientLookup.lat,
+          lng: clientLookup.lng,
+        });
+        log(
+          `[ONBOARDING] [${ctx.locationId}] Resolved client place_id via Places lookup: ${clientLookup.placeId}`
+        );
+        return {
+          placeId: clientLookup.placeId,
+          lat: clientLookup.lat,
+          lng: clientLookup.lng,
+          source: "places_lookup",
+        };
+      }
+    } catch (err: any) {
+      log(
+        `[ONBOARDING] [${ctx.locationId}] Places client lookup failed: ${err.message}`
+      );
+    }
+  }
+
+  log(
+    `[ONBOARDING] [${ctx.locationId}] Client place_id UNRESOLVED — UI will prompt user to remove own listing manually if it appears`
+  );
+  return { placeId: null, lat: null, lng: null, source: "unresolved" };
+}
+
+// =====================================================================
 // IDENTIFICATION (specialty + marketLocation)
 // =====================================================================
 
@@ -214,32 +351,20 @@ export async function runDiscoveryForLocation(
     `[ONBOARDING] [${locationId}] Running discovery for "${specialty}" in "${marketLocation}"`
   );
 
-  // Find vantage point (client's lat/lng on Places) for location-biased search.
-  // Also captures the client's own placeId so we can filter the practice out of
-  // its own competitor list (a Place result for the client's name + market will
-  // include the client itself, which is meaningless as a competitor).
-  let locationBias:
-    | { lat: number; lng: number; radiusMeters: number }
-    | undefined;
-  let clientPlaceId: string | null = null;
-  try {
-    const clientLookup = await getClientPhotosViaPlaces(
-      ctx.locationName,
-      marketLocation
-    );
-    clientPlaceId = clientLookup.placeId;
-    if (clientLookup.lat !== null && clientLookup.lng !== null) {
-      locationBias = {
-        lat: clientLookup.lat,
-        lng: clientLookup.lng,
-        radiusMeters: SEARCH_RADIUS_METERS,
-      };
-    }
-  } catch (err: any) {
-    log(
-      `[ONBOARDING] [${locationId}] Client lookup failed: ${err.message} — continuing without location bias and without own-practice filter`
-    );
-  }
+  // Resolve the practice's own placeId (cache → ranking history → Places lookup)
+  // so we can filter the practice out of its own competitor list. When all three
+  // fail (`source: 'unresolved'`), the GET response will flag this so the UI can
+  // prompt the user to remove their own listing manually.
+  const clientResolution = await resolveClientPlaceId(ctx, marketLocation);
+  const clientPlaceId = clientResolution.placeId;
+  const locationBias =
+    clientResolution.lat !== null && clientResolution.lng !== null
+      ? {
+          lat: clientResolution.lat,
+          lng: clientResolution.lng,
+          radiusMeters: SEARCH_RADIUS_METERS,
+        }
+      : undefined;
 
   // Discover top N+2 competitors so we can backfill after filtering out the
   // client's own placeId (defensive against an off-by-one when the practice
@@ -278,6 +403,8 @@ export async function runDiscoveryForLocation(
           reviewCount: comp.reviewsCount ?? null,
           lat: comp.location?.lat ?? null,
           lng: comp.location?.lng ?? null,
+          phone: comp.phone || null,
+          website: comp.website || null,
           source: "initial_scrape",
           addedByUserId: null,
         },
@@ -369,6 +496,8 @@ export async function addCustomCompetitor(
       : null;
   const lat = placeDetails?.location?.latitude ?? null;
   const lng = placeDetails?.location?.longitude ?? null;
+  const phone = placeDetails?.nationalPhoneNumber || null;
+  const website = placeDetails?.websiteUri || null;
 
   const added = await LocationCompetitorModel.addCompetitor(locationId, {
     placeId,
@@ -379,6 +508,8 @@ export async function addCustomCompetitor(
     reviewCount,
     lat,
     lng,
+    phone,
+    website,
     source: "user_added",
     addedByUserId: userId,
   });

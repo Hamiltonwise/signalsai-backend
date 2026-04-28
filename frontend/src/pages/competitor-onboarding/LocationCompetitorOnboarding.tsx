@@ -21,6 +21,10 @@ import {
   ArrowRight,
   CheckCircle2,
   Star,
+  MapPin,
+  Phone,
+  Globe,
+  Info,
 } from "lucide-react";
 import {
   getLocationCompetitors,
@@ -29,8 +33,11 @@ import {
   removeLocationCompetitor,
   finalizeAndRun,
   type CuratedCompetitor,
+  type PracticeLocationRef,
+  type SelfFilterStatus,
 } from "../../api/practiceRanking";
 import { searchPlaces, type PlaceSuggestion } from "../../api/places";
+import { haversineMiles, formatDistance } from "./util.distance";
 
 type Stage = "loading" | "discovering" | "curating" | "finalizing";
 
@@ -53,6 +60,10 @@ export default function LocationCompetitorOnboarding() {
   const [error, setError] = useState<string | null>(null);
   const [revealedCount, setRevealedCount] = useState(0);
   const revealTimers = useRef<NodeJS.Timeout[]>([]);
+  const [practiceLocation, setPracticeLocation] =
+    useState<PracticeLocationRef | null>(null);
+  const [selfFilterStatus, setSelfFilterStatus] =
+    useState<SelfFilterStatus>("resolved");
 
   // Search dropdown state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -83,6 +94,8 @@ export default function LocationCompetitorOnboarding() {
           return;
         }
         setCap(res.cap);
+        setPracticeLocation(res.practiceLocation);
+        setSelfFilterStatus(res.selfFilterStatus);
 
         if (res.onboarding.status === "finalized") {
           // Already done — bounce to dashboard
@@ -120,10 +133,14 @@ export default function LocationCompetitorOnboarding() {
         setError("Discovery failed. Please try again.");
         return;
       }
-      // Reload the list to render the freshly-scraped competitors
+      // Reload the list to render the freshly-scraped competitors. The
+      // discovery call resolves the practice's own placeId/lat/lng (writes
+      // them to `locations`), so the GET that follows picks them up.
       const list = await getLocationCompetitors(locationId);
       if (!list?.success) return;
       setCompetitors(list.competitors);
+      setPracticeLocation(list.practiceLocation);
+      setSelfFilterStatus(list.selfFilterStatus);
       // Stagger the reveal animation while still showing "discovering"
       list.competitors.forEach((_, i) => {
         const t = setTimeout(
@@ -181,7 +198,11 @@ export default function LocationCompetitorOnboarding() {
       }
       // Re-fetch so we have the canonical row (handles revival of soft-deleted)
       const list = await getLocationCompetitors(locationId);
-      if (list?.success) setCompetitors(list.competitors);
+      if (list?.success) {
+        setCompetitors(list.competitors);
+        setPracticeLocation(list.practiceLocation);
+        setSelfFilterStatus(list.selfFilterStatus);
+      }
       setSearchInput("");
       setSearchResults([]);
       setSearchOpen(false);
@@ -279,6 +300,7 @@ export default function LocationCompetitorOnboarding() {
           <DiscoveringStage
             competitors={competitors}
             revealedCount={revealedCount}
+            practiceLocation={practiceLocation}
           />
         )}
 
@@ -295,6 +317,8 @@ export default function LocationCompetitorOnboarding() {
             onAdd={handleAdd}
             onRemove={handleRemove}
             onFinalize={handleFinalizeAndRun}
+            practiceLocation={practiceLocation}
+            selfFilterStatus={selfFilterStatus}
           />
         )}
 
@@ -337,54 +361,12 @@ function FinalizingState() {
 function DiscoveringStage({
   competitors,
   revealedCount,
+  practiceLocation,
 }: {
   competitors: CuratedCompetitor[];
   revealedCount: number;
+  practiceLocation: PracticeLocationRef | null;
 }) {
-  // Compute bounding box from competitor lat/lngs (the practice itself isn't
-  // in the list — we filtered it out server-side). Pad slightly so pins don't
-  // sit on the iframe edges.
-  const withCoords = useMemo(
-    () =>
-      competitors.filter(
-        (c): c is CuratedCompetitor & { lat: number; lng: number } =>
-          typeof c.lat === "number" && typeof c.lng === "number"
-      ),
-    [competitors]
-  );
-
-  const bounds = useMemo(() => {
-    if (withCoords.length === 0) return null;
-    let minLat = withCoords[0].lat;
-    let maxLat = withCoords[0].lat;
-    let minLng = withCoords[0].lng;
-    let maxLng = withCoords[0].lng;
-    for (const c of withCoords) {
-      if (c.lat < minLat) minLat = c.lat;
-      if (c.lat > maxLat) maxLat = c.lat;
-      if (c.lng < minLng) minLng = c.lng;
-      if (c.lng > maxLng) maxLng = c.lng;
-    }
-    const latPad = (maxLat - minLat) * 0.18 || 0.01;
-    const lngPad = (maxLng - minLng) * 0.18 || 0.01;
-    return {
-      minLat: minLat - latPad,
-      maxLat: maxLat + latPad,
-      minLng: minLng - lngPad,
-      maxLng: maxLng + lngPad,
-      centerLat: (minLat + maxLat) / 2,
-      centerLng: (minLng + maxLng) / 2,
-    };
-  }, [withCoords]);
-
-  // Static Google Maps embed centered on the bounding box centroid. Embed-API
-  // pb URL doesn't require an API key for basic non-interactive maps.
-  const mapEmbedUrl = useMemo(() => {
-    if (!bounds) return null;
-    const { centerLat, centerLng } = bounds;
-    return `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d40000!2d${centerLng}!3d${centerLat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1705000000000!5m2!1sen!2sus`;
-  }, [bounds]);
-
   return (
     <section className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden">
       <div className="px-8 py-8 border-b border-black/5 text-left">
@@ -401,101 +383,13 @@ function DiscoveringStage({
         </p>
       </div>
 
-      <div className="relative h-[480px] bg-gradient-to-br from-alloro-bg to-slate-50 overflow-hidden">
-        {/* Loading shimmer + radar pings while we wait for the discovery POST */}
-        {!mapEmbedUrl && (
-          <>
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="absolute rounded-full border-2 border-alloro-orange/40"
-                style={{ left: "50%", top: "50%" }}
-                initial={{ width: 0, height: 0, x: 0, y: 0, opacity: 0.8 }}
-                animate={{
-                  width: 360,
-                  height: 360,
-                  x: -180,
-                  y: -180,
-                  opacity: 0,
-                }}
-                transition={{
-                  duration: 2.4,
-                  delay: i * 0.8,
-                  repeat: Infinity,
-                  ease: "easeOut",
-                }}
-              />
-            ))}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-              <div className="w-12 h-12 rounded-full bg-alloro-orange text-white flex items-center justify-center shadow-xl">
-                <Loader2 size={20} className="animate-spin" />
-              </div>
-            </div>
-            <div className="absolute left-1/2 bottom-10 -translate-x-1/2 z-10">
-              <span className="text-[10px] font-black text-alloro-textDark/50 uppercase tracking-widest">
-                Scanning Google for nearby practices…
-              </span>
-            </div>
-          </>
-        )}
-
-        {/* Real Google Maps embed once we have coords */}
-        {mapEmbedUrl && (
-          <>
-            <iframe
-              src={mapEmbedUrl}
-              width="100%"
-              height="100%"
-              style={{ border: 0, pointerEvents: "none" }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="absolute inset-0"
-              title="Competitor map"
-            />
-            {/* Transparent overlay blocks accidental iframe interaction */}
-            <div className="absolute inset-0 z-[5]" />
-
-            {/* Project competitor lat/lngs to pixel %; reveal staggered */}
-            {bounds &&
-              withCoords.map((c, i) => {
-                const xPct =
-                  ((c.lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) *
-                  100;
-                // Lat axis is inverted (north = top, lower y%)
-                const yPct =
-                  ((bounds.maxLat - c.lat) / (bounds.maxLat - bounds.minLat)) *
-                  100;
-                const revealed = i < revealedCount;
-                return (
-                  <motion.div
-                    key={c.placeId}
-                    className="absolute z-[10] pointer-events-none"
-                    style={{ left: `${xPct}%`, top: `${yPct}%` }}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{
-                      scale: revealed ? 1 : 0,
-                      opacity: revealed ? 1 : 0,
-                    }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 260,
-                      damping: 18,
-                    }}
-                  >
-                    <div className="-translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                      <div className="w-8 h-8 rounded-full bg-alloro-orange text-white text-[10px] font-black flex items-center justify-center shadow-lg ring-2 ring-white">
-                        {i + 1}
-                      </div>
-                      <div className="mt-1 px-1.5 py-0.5 rounded bg-white/95 text-[9px] font-bold text-alloro-textDark shadow-sm max-w-[110px] truncate">
-                        {c.name}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-          </>
-        )}
-      </div>
+      <CompetitorMap
+        competitors={competitors}
+        practiceLocation={practiceLocation}
+        height={480}
+        revealedCount={revealedCount}
+        showLoadingFallback
+      />
 
       <div className="px-8 py-6 bg-white border-t border-black/5">
         <div className="flex items-center justify-between text-sm">
@@ -527,6 +421,8 @@ function CuratingStage({
   onAdd,
   onRemove,
   onFinalize,
+  practiceLocation,
+  selfFilterStatus,
 }: {
   competitors: CuratedCompetitor[];
   cap: number;
@@ -539,6 +435,8 @@ function CuratingStage({
   onAdd: (s: PlaceSuggestion) => void;
   onRemove: (placeId: string) => void;
   onFinalize: () => void;
+  practiceLocation: PracticeLocationRef | null;
+  selfFilterStatus: SelfFilterStatus;
 }) {
   const atCap = competitors.length >= cap;
   const placeIds = useMemo(
@@ -561,6 +459,26 @@ function CuratingStage({
             <strong>{cap}</strong> competitors.
           </p>
         </div>
+
+        <CompetitorMap
+          competitors={competitors}
+          practiceLocation={practiceLocation}
+          height={300}
+        />
+
+        {selfFilterStatus === "unresolved" && (
+          <div className="mx-8 mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+            <Info
+              size={16}
+              className="text-amber-600 flex-shrink-0 mt-0.5"
+            />
+            <p className="text-xs text-amber-900 font-medium leading-relaxed">
+              We couldn't automatically detect your practice in this market. If
+              your own listing appears below, remove it manually — it'll skew
+              your ranking.
+            </p>
+          </div>
+        )}
 
         <div className="px-8 py-6">
           <div className="flex items-center justify-between mb-4">
@@ -632,7 +550,26 @@ function CuratingStage({
 
           <ul className="divide-y divide-black/5">
             <AnimatePresence initial={false}>
-              {competitors.map((c) => (
+              {competitors.map((c) => {
+                const distanceMi =
+                  practiceLocation &&
+                  typeof c.lat === "number" &&
+                  typeof c.lng === "number"
+                    ? haversineMiles(
+                        { lat: practiceLocation.lat, lng: practiceLocation.lng },
+                        { lat: c.lat, lng: c.lng }
+                      )
+                    : null;
+                const websiteHost = c.website
+                  ? (() => {
+                      try {
+                        return new URL(c.website).host.replace(/^www\./, "");
+                      } catch {
+                        return c.website;
+                      }
+                    })()
+                  : null;
+                return (
                 <motion.li
                   key={c.placeId}
                   layout
@@ -658,7 +595,7 @@ function CuratingStage({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
                       {typeof c.rating === "number" && c.rating > 0 && (
                         <span className="flex items-center gap-1 font-bold text-alloro-textDark">
                           <Star
@@ -672,6 +609,32 @@ function CuratingStage({
                         <span className="text-slate-500">
                           {c.reviewCount.toLocaleString()} reviews
                         </span>
+                      )}
+                      {distanceMi !== null && (
+                        <span className="flex items-center gap-1 text-slate-500">
+                          <MapPin size={11} className="text-slate-400" />
+                          {formatDistance(distanceMi)}
+                        </span>
+                      )}
+                      {c.phone && (
+                        <a
+                          href={`tel:${c.phone.replace(/\s+/g, "")}`}
+                          className="flex items-center gap-1 text-slate-500 hover:text-alloro-orange"
+                        >
+                          <Phone size={11} className="text-slate-400" />
+                          {c.phone}
+                        </a>
+                      )}
+                      {websiteHost && c.website && (
+                        <a
+                          href={c.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-slate-500 hover:text-alloro-orange truncate max-w-[180px]"
+                        >
+                          <Globe size={11} className="text-slate-400" />
+                          {websiteHost}
+                        </a>
                       )}
                       {c.address && (
                         <span className="truncate text-slate-500">
@@ -697,7 +660,8 @@ function CuratingStage({
                     <X size={14} />
                   </button>
                 </motion.li>
-              ))}
+                );
+              })}
             </AnimatePresence>
           </ul>
 
@@ -733,5 +697,180 @@ function CuratingStage({
         </button>
       </div>
     </section>
+  );
+}
+
+// =====================================================================
+// Shared map component (used by Stage 1 reveal animation + Stage 2 static)
+// =====================================================================
+
+function CompetitorMap({
+  competitors,
+  practiceLocation,
+  height,
+  revealedCount,
+  showLoadingFallback,
+}: {
+  competitors: CuratedCompetitor[];
+  practiceLocation: PracticeLocationRef | null;
+  height: number;
+  revealedCount?: number;
+  showLoadingFallback?: boolean;
+}) {
+  const withCoords = useMemo(
+    () =>
+      competitors.filter(
+        (c): c is CuratedCompetitor & { lat: number; lng: number } =>
+          typeof c.lat === "number" && typeof c.lng === "number"
+      ),
+    [competitors]
+  );
+
+  // Bounds include the practice marker when present so the YOU pin is in frame.
+  const bounds = useMemo(() => {
+    const points: { lat: number; lng: number }[] = [...withCoords];
+    if (practiceLocation) points.push(practiceLocation);
+    if (points.length === 0) return null;
+    let minLat = points[0].lat;
+    let maxLat = points[0].lat;
+    let minLng = points[0].lng;
+    let maxLng = points[0].lng;
+    for (const p of points) {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lng < minLng) minLng = p.lng;
+      if (p.lng > maxLng) maxLng = p.lng;
+    }
+    const latPad = (maxLat - minLat) * 0.18 || 0.01;
+    const lngPad = (maxLng - minLng) * 0.18 || 0.01;
+    return {
+      minLat: minLat - latPad,
+      maxLat: maxLat + latPad,
+      minLng: minLng - lngPad,
+      maxLng: maxLng + lngPad,
+      centerLat: (minLat + maxLat) / 2,
+      centerLng: (minLng + maxLng) / 2,
+    };
+  }, [withCoords, practiceLocation]);
+
+  // Static keyless Google Maps embed (matches Stage 1 implementation).
+  const mapEmbedUrl = useMemo(() => {
+    if (!bounds) return null;
+    const { centerLat, centerLng } = bounds;
+    return `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d40000!2d${centerLng}!3d${centerLat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1705000000000!5m2!1sen!2sus`;
+  }, [bounds]);
+
+  const allRevealed = revealedCount === undefined;
+
+  return (
+    <div
+      className="relative bg-gradient-to-br from-alloro-bg to-slate-50 overflow-hidden"
+      style={{ height: `${height}px` }}
+    >
+      {!mapEmbedUrl && showLoadingFallback && (
+        <>
+          {[0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full border-2 border-alloro-orange/40"
+              style={{ left: "50%", top: "50%" }}
+              initial={{ width: 0, height: 0, x: 0, y: 0, opacity: 0.8 }}
+              animate={{
+                width: 360,
+                height: 360,
+                x: -180,
+                y: -180,
+                opacity: 0,
+              }}
+              transition={{
+                duration: 2.4,
+                delay: i * 0.8,
+                repeat: Infinity,
+                ease: "easeOut",
+              }}
+            />
+          ))}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+            <div className="w-12 h-12 rounded-full bg-alloro-orange text-white flex items-center justify-center shadow-xl">
+              <Loader2 size={20} className="animate-spin" />
+            </div>
+          </div>
+          <div className="absolute left-1/2 bottom-10 -translate-x-1/2 z-10">
+            <span className="text-[10px] font-black text-alloro-textDark/50 uppercase tracking-widest">
+              Scanning Google for nearby practices…
+            </span>
+          </div>
+        </>
+      )}
+
+      {mapEmbedUrl && (
+        <>
+          <iframe
+            src={mapEmbedUrl}
+            width="100%"
+            height="100%"
+            style={{ border: 0, pointerEvents: "none" }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            className="absolute inset-0"
+            title="Competitor map"
+          />
+          <div className="absolute inset-0 z-[5]" />
+
+          {bounds &&
+            withCoords.map((c, i) => {
+              const xPct =
+                ((c.lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) *
+                100;
+              const yPct =
+                ((bounds.maxLat - c.lat) / (bounds.maxLat - bounds.minLat)) *
+                100;
+              const revealed = allRevealed || i < (revealedCount ?? 0);
+              return (
+                <motion.div
+                  key={c.placeId}
+                  className="absolute z-[10] pointer-events-none"
+                  style={{ left: `${xPct}%`, top: `${yPct}%` }}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{
+                    scale: revealed ? 1 : 0,
+                    opacity: revealed ? 1 : 0,
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 260,
+                    damping: 18,
+                  }}
+                >
+                  <div className="-translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full bg-alloro-orange text-white text-[10px] font-black flex items-center justify-center shadow-lg ring-2 ring-white">
+                      {i + 1}
+                    </div>
+                    <div className="mt-1 px-1.5 py-0.5 rounded bg-white/95 text-[9px] font-bold text-alloro-textDark shadow-sm max-w-[110px] truncate">
+                      {c.name}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+
+          {bounds && practiceLocation && (
+            <div
+              className="absolute z-[15] pointer-events-none"
+              style={{
+                left: `${((practiceLocation.lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * 100}%`,
+                top: `${((bounds.maxLat - practiceLocation.lat) / (bounds.maxLat - bounds.minLat)) * 100}%`,
+              }}
+            >
+              <div className="-translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-alloro-navy text-white text-[10px] font-black flex items-center justify-center shadow-xl ring-4 ring-white">
+                  YOU
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }

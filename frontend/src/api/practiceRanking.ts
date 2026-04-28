@@ -22,10 +22,20 @@ export interface CuratedCompetitor {
   reviewCount: number | null;
   lat: number | null;
   lng: number | null;
+  phone: string | null;
+  website: string | null;
   source: LocationCompetitorSource;
   addedAt: string;
   addedByUserId: number | null;
 }
+
+export interface PracticeLocationRef {
+  placeId: string;
+  lat: number;
+  lng: number;
+}
+
+export type SelfFilterStatus = "resolved" | "unresolved";
 
 export interface GetLocationCompetitorsResponse {
   success: true;
@@ -33,6 +43,8 @@ export interface GetLocationCompetitorsResponse {
     status: LocationCompetitorOnboardingStatus;
     finalizedAt: string | null;
   };
+  practiceLocation: PracticeLocationRef | null;
+  selfFilterStatus: SelfFilterStatus;
   competitors: CuratedCompetitor[];
   count: number;
   cap: number;
