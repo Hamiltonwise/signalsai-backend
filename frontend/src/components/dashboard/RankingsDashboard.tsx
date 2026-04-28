@@ -1283,80 +1283,83 @@ function PerformanceDashboard({
 
   return (
     <div className="space-y-12 lg:space-y-20">
-      {/* v2 legacy tag — surfaces when this ranking row was generated before
-          the user curated their competitor list (auto-discovered competitors). */}
-      {result.competitorSource === "discovered_v1_legacy" && (
-        <div className="flex items-center gap-3 -mb-6">
-          <LegacyRankingTag />
-          <span className="text-[11px] text-slate-500 font-medium">
-            This score used auto-discovered competitors. Curate your list to
-            refresh it.
-          </span>
-        </div>
-      )}
-
       {/* 2. MARKET VITALS - KPIS — Practice Health diagnostic snapshot.
             Distinct from the Live Google Rank section below: this is Alloro's
             internal score (review velocity, rating, NAP consistency, sentiment),
-            not the live Google search position. */}
-      <InfoHint
-        title="Practice Health"
-        dotColor="#D66853"
-        content="Alloro's diagnostic score for your local SEO fundamentals — review velocity, rating, NAP consistency, and sentiment. Separate from the live Google rank below."
-      />
-      <section
-        data-wizard-target="rankings-score"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-      >
-        <KPICard
-          label="Local Rank"
-          value={`#${result.rankPosition}`}
-          sub={`of ${result.totalCompetitors} Competitors`}
-          trend={rankTrend?.value}
-          dir={rankTrend?.dir}
+            not the live Google search position. The legacy v2 tag (when present)
+            sits inside this group so the "auto-discovered competitors" notice is
+            visually attached to the score it qualifies. */}
+      <div className="space-y-4">
+        {result.competitorSource === "discovered_v1_legacy" && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <LegacyRankingTag />
+            <span className="text-[11px] text-slate-500 font-medium">
+              This score used auto-discovered competitors. Curate your list to
+              refresh it.
+            </span>
+          </div>
+        )}
+        <InfoHint
+          title="Practice Health"
+          dotColor="#D66853"
+          content="Alloro's diagnostic score for your local SEO fundamentals — review velocity, rating, NAP consistency, and sentiment. Separate from the live Google rank below."
         />
-        <KPICard
-          label="Happy Patients"
-          value={Number(clientRating).toFixed(1)}
-          rating
-          sub={`Market Avg: ${marketAvgRating.toFixed(1)}`}
-          tooltip="Measures overall patient satisfaction based on review ratings and feedback sentiment analysis."
-        />
-        <KPICard
-          label="Total Reviews"
-          value={clientReviews.toString()}
-          warning={reviewGap > 0}
-          sub={
-            reviewGap > 0 ? `${reviewGap} behind Leader` : "Leading position"
-          }
-          tooltip="Total number of reviews across all platforms. Higher volume improves local search visibility."
-        />
-        <KPICard
-          label="Practice Health"
-          value={Number(result.rankScore).toFixed(0)}
-          suffix="/100"
-          sub={
-            Number(result.rankScore) >= 80
-              ? "Excellent — protect what's working"
-              : Number(result.rankScore) >= 60
-              ? "Good, room to grow"
-              : "Needs improvement"
-          }
-          trend={scoreTrend?.value}
-          dir={scoreTrend?.dir}
-          tooltip="Alloro's diagnostic score for the strength of your local search fundamentals — review count, recency, rating, profile completeness, NAP consistency. Separate from your live Google rank shown below."
-        />
-      </section>
+        <section
+          data-wizard-target="rankings-score"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        >
+          <KPICard
+            label="Local Rank"
+            value={`#${result.rankPosition}`}
+            sub={`of ${result.totalCompetitors} Competitors`}
+            trend={rankTrend?.value}
+            dir={rankTrend?.dir}
+          />
+          <KPICard
+            label="Happy Patients"
+            value={Number(clientRating).toFixed(1)}
+            rating
+            sub={`Market Avg: ${marketAvgRating.toFixed(1)}`}
+            tooltip="Measures overall patient satisfaction based on review ratings and feedback sentiment analysis."
+          />
+          <KPICard
+            label="Total Reviews"
+            value={clientReviews.toString()}
+            warning={reviewGap > 0}
+            sub={
+              reviewGap > 0 ? `${reviewGap} behind Leader` : "Leading position"
+            }
+            tooltip="Total number of reviews across all platforms. Higher volume improves local search visibility."
+          />
+          <KPICard
+            label="Practice Health"
+            value={Number(result.rankScore).toFixed(0)}
+            suffix="/100"
+            sub={
+              Number(result.rankScore) >= 80
+                ? "Excellent — protect what's working"
+                : Number(result.rankScore) >= 60
+                ? "Good, room to grow"
+                : "Needs improvement"
+            }
+            trend={scoreTrend?.value}
+            dir={scoreTrend?.dir}
+            tooltip="Alloro's diagnostic score for the strength of your local search fundamentals — review count, recency, rating, profile completeness, NAP consistency. Separate from your live Google rank shown below."
+          />
+        </section>
+      </div>
 
       {/* 3. SEARCH POSITION — live Google ranking for the practice's specialty query.
             Replaces the legacy "Nearby Practices" table.
             Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md */}
-      <InfoHint
-        title="Live Google Rank"
-        dotColor="#4F8A5B"
-        content="The actual position your practice shows up at on Google for your specialty search query — refreshed on each ranking run. Distinct from the diagnostic score above."
-      />
-      <SearchPositionSection result={result} />
+      <div className="space-y-4">
+        <InfoHint
+          title="Live Google Rank"
+          dotColor="#4F8A5B"
+          content="The actual position your practice shows up at on Google for your specialty search query — refreshed on each ranking run. Distinct from the diagnostic score above."
+        />
+        <SearchPositionSection result={result} />
+      </div>
 
       {/* 3a. WHAT'S HOLDING YOU BACK — top-3 LLM gap analysis teaser, links to /to-do-list */}
       <HoldingYouBackSection result={result} />
