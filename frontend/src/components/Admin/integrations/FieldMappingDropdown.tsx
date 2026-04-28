@@ -107,12 +107,9 @@ export default function FieldMappingDropdown({
     [vendorForms, vendorFormId],
   );
 
-  const requiredVendorFieldNames = useMemo(() => {
-    if (!selectedVendorForm) return new Set<string>();
-    return new Set(
-      selectedVendorForm.fields.filter((f) => f.required).map((f) => f.name),
-    );
-  }, [selectedVendorForm]);
+  // requiredVendorFieldNames was introduced for required-field validation but
+  // is not currently consumed. Removed 0.0.34 to unblock production build.
+  // Re-introduce when validating required-field coverage in the form.
 
   const mappedVendorFieldNames = useMemo(
     () => new Set(Object.values(mapping).filter(Boolean)),

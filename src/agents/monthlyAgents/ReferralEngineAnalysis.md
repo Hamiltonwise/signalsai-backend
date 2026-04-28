@@ -127,6 +127,22 @@ GOOD: "Call Southern Smiles — sent 5 patients in early 2025 and nothing
        since. Check in and ask if there is anything they need from you." 
        → USER
 
+GROUNDING RULES — STRICT
+Cite only source names, months, referral counts, and production figures
+that appear verbatim in the input JSON. If a number is not in the input,
+omit the claim. Do not infer, estimate, or interpolate values.
+
+SINGLE-MONTH RULE
+If monthly_rollup contains only one month, set trend_label to "new" for
+every source in both doctor_referral_matrix and non_doctor_referral_matrix.
+Add to data_quality_flags: "Single month of data — no trend comparison
+possible." Do not invent prior-month numbers or comparisons.
+
+UPSTREAM DATA QUALITY ACKNOWLEDGEMENT
+If additional_data.pms.data_quality_flags contains entries, surface them
+in your output's data_quality_flags array verbatim. These are deterministic
+checks already run on the data before you saw it.
+
 OUTPUT — respond with ONLY a valid JSON object, no markdown fences, no explanation, no text before or after:
 {
   "executive_summary": ["string"],

@@ -17,6 +17,7 @@ export const PLACE_DETAILS_FIELD_MASK = [
   "primaryType",
   "primaryTypeDisplayName",
   "location",
+  "photos",
 ].join(",");
 
 /**

@@ -39,6 +39,7 @@ import {
   createTasksFromOpportunityOutput,
   createTasksFromCroOptimizerOutput,
   createTasksFromReferralEngineOutput,
+  createTasksFromSummaryV2Output,
 } from "./service.task-creator";
 import { resolveLocationId } from "../../../utils/locationResolver";
 import { GooglePropertyModel } from "../../../models/GooglePropertyModel";
@@ -48,7 +49,17 @@ import type {
   OpportunityAgentOutput,
   CroOptimizerAgentOutput,
   ReferralEngineAgentOutput,
+  SummaryV2Output,
 } from "../types/agent-output-schemas";
+import {
+  ReferralEngineAgentOutputSchema,
+  SummaryV2OutputSchema,
+} from "../types/agent-output-schemas";
+import type { ZodTypeAny } from "zod";
+// Plan 1: dashboard-metrics service runs between RE and Summary
+import { computeDashboardMetrics } from "../../../utils/dashboard-metrics/service.dashboard-metrics";
+import { fetchLatestRankingRecommendations } from "./service.ranking-recommendations";
+import type { DashboardMetrics } from "../../../utils/dashboard-metrics/types";
 
 // =====================================================================
 // DAILY AGENT PROCESSING
@@ -230,6 +241,10 @@ async function runMonthlyAgent(opts: {
     dateStart: string;
     dateEnd: string;
   };
+  /** When true, enable Anthropic prompt cache for the system prompt. */
+  enableCache?: boolean;
+  /** Optional Zod schema; runner runs safeParse + corrective retry on failure. */
+  outputSchema?: ZodTypeAny;
 }): Promise<{ agentOutput: any; agentResultId: number }> {
   const systemPrompt = loadPrompt(opts.promptPath);
   const userMessage = JSON.stringify(opts.payload, null, 2);
@@ -240,6 +255,10 @@ async function runMonthlyAgent(opts: {
     systemPrompt,
     userMessage,
     maxTokens: 16384,
+    // Empty array enables caching of the auto-appended systemPrompt block
+    // without duplicating it as a prefix block. See service.llm-runner.ts.
+    ...(opts.enableCache ? { cachedSystemBlocks: [] } : {}),
+    ...(opts.outputSchema ? { outputSchema: opts.outputSchema } : {}),
   });
 
   log(
@@ -260,7 +279,7 @@ async function runMonthlyAgent(opts: {
       agent_type: opts.meta.agentType,
       date_start: opts.meta.dateStart,
       date_end: opts.meta.dateEnd,
-      agent_input: userMessage.length > 50000 ? null : userMessage,
+      agent_input: userMessage,
       agent_output: JSON.stringify(result.parsed),
       status: "success",
       created_at: new Date(),
@@ -279,12 +298,130 @@ async function runMonthlyAgent(opts: {
 }
 
 // =====================================================================
+// SUMMARY V2 POST-ZOD VALIDATORS (Plan 1 T10)
+// =====================================================================
+
+/**
+ * Walk a dotted path on an object. `lookupDottedPath({a: {b: 1}}, "a.b") === 1`.
+ * Returns undefined for any missing segment.
+ */
+function lookupDottedPath(obj: any, path: string): any {
+  if (!obj || !path) return undefined;
+  return path.split(".").reduce((acc, key) => {
+    if (acc === null || acc === undefined) return undefined;
+    return acc[key];
+  }, obj);
+}
+
+/**
+ * Compare a Summary supporting_metric's `value` (string from agent) against
+ * the dashboard_metrics dictionary value at `source_field`. Tolerant matching:
+ * exact string, numeric-equivalent (extracts numbers from strings like "$48,420"),
+ * or substring inclusion.
+ */
+function metricValuesMatch(metricValue: string, dictValue: any): boolean {
+  if (dictValue === null || dictValue === undefined) {
+    // null/undefined dict value — accept any agent value (the agent may legitimately
+    // report "0" or "—" when the underlying metric is absent).
+    return true;
+  }
+
+  const normalizedDict = String(dictValue).trim();
+  const normalizedMetric = metricValue.trim();
+
+  if (normalizedDict === normalizedMetric) return true;
+
+  // Numeric normalization
+  const dictNum = Number(normalizedDict);
+  const metricNum = Number(normalizedMetric.replace(/[^\d.\-]/g, ""));
+  if (!Number.isNaN(dictNum) && !Number.isNaN(metricNum) && dictNum === metricNum) return true;
+
+  // Substring (e.g. "#4" includes "4")
+  if (normalizedMetric.includes(normalizedDict) || normalizedDict.includes(normalizedMetric)) return true;
+
+  return false;
+}
+
+/**
+ * Plan 1 T10 post-Zod validator. Walks every
+ * `top_actions[i].supporting_metrics[j].source_field` against the
+ * dashboard_metrics dictionary. Throws on mismatch (which triggers the
+ * orchestrator's outer 3-attempt retry, with the error message included
+ * so the model can self-correct).
+ *
+ * If the metrics dictionary is null (computeDashboardMetrics failed),
+ * the validator is skipped — Summary still ran with whatever input was
+ * available; we don't want to block it on metrics infrastructure.
+ */
+function validateSummarySupportingMetrics(
+  output: SummaryV2Output,
+  metrics: DashboardMetrics | null,
+): void {
+  if (!metrics) {
+    log(`  [summary-v2] ⚠ No dashboard_metrics available — skipping value validator`);
+    return;
+  }
+
+  const errors: string[] = [];
+  output.top_actions.forEach((action, i) => {
+    action.supporting_metrics.forEach((metric, j) => {
+      const dictValue = lookupDottedPath(metrics, metric.source_field);
+      if (dictValue === undefined) {
+        errors.push(
+          `top_actions[${i}].supporting_metrics[${j}]: source_field "${metric.source_field}" not found in dashboard_metrics dictionary`,
+        );
+        return;
+      }
+      if (!metricValuesMatch(metric.value, dictValue)) {
+        errors.push(
+          `top_actions[${i}].supporting_metrics[${j}]: value "${metric.value}" doesn't match dashboard_metrics.${metric.source_field} = ${JSON.stringify(dictValue)}`,
+        );
+      }
+    });
+  });
+
+  if (errors.length > 0) {
+    const msg = `Summary v2 supporting_metrics validator failed:\n  - ${errors.join("\n  - ")}`;
+    log(`  [summary-v2] ⚠ ${msg}`);
+    throw new Error(msg);
+  }
+}
+
+/**
+ * Plan 1 T10 highlights validator. Each `highlights[i]` must be a contiguous
+ * substring of the action's `rationale`. Mismatches are logged as warnings
+ * but do NOT throw — the frontend's HighlightedText component will silently
+ * drop unmatched highlights at render time, so this is a soft signal.
+ */
+function validateSummaryHighlights(output: SummaryV2Output): void {
+  const warnings: string[] = [];
+  output.top_actions.forEach((action, i) => {
+    if (!action.highlights || action.highlights.length === 0) return;
+    action.highlights.forEach((phrase, j) => {
+      if (!action.rationale.includes(phrase)) {
+        warnings.push(
+          `top_actions[${i}].highlights[${j}]: "${phrase}" not found verbatim in rationale; will be dropped at render time`,
+        );
+      }
+    });
+  });
+  if (warnings.length > 0) {
+    log(`  [summary-v2] ⚠ Highlights mismatches:\n  - ${warnings.join("\n  - ")}`);
+  }
+}
+
+// =====================================================================
 // MONTHLY AGENTS PROCESSING
 // =====================================================================
 
 /**
- * Process monthly agents (Summary + Referral Engine + Opportunity + CRO Optimizer) for a single client
- * Returns outputs in memory without saving to DB
+ * Process monthly agents (Plan 1: RE → dashboard-metrics → Summary v2) for a single client.
+ *
+ * Order changed in Plan 1: RE runs first to produce specialist analysis;
+ * dashboard-metrics computes the deterministic dictionary (consuming RE's output);
+ * Summary v2 runs last as Chief-of-Staff with full context (PMS, GBP, analytics,
+ * referral_engine_output, dashboard_metrics) and writes the practice's monthly
+ * top_actions[]. Opportunity and CRO Optimizer are disabled (preserved on disk).
  */
 export async function processMonthlyAgents(
   account: any,
@@ -294,10 +431,13 @@ export async function processMonthlyAgents(
   onProgress?: (subStep: string, message: string, agentCompleted?: string) => Promise<void>,
 ): Promise<{
   success: boolean;
-  summaryOutput?: SummaryAgentOutput;
+  summaryOutput?: SummaryV2Output;
   referralEngineOutput?: ReferralEngineAgentOutput;
+  /** @deprecated Disabled in Plan 1; always undefined. */
   opportunityOutput?: OpportunityAgentOutput;
+  /** @deprecated Disabled in Plan 1; always undefined. */
   croOptimizerOutput?: CroOptimizerAgentOutput;
+  dashboardMetrics?: DashboardMetrics;
   summaryPayload?: any;
   referralEnginePayload?: any;
   opportunityPayload?: any;
@@ -385,6 +525,7 @@ export async function processMonthlyAgents(
           sources_summary: aggregated.sources,
           totals: aggregated.totals,
           patient_records: aggregated.patientRecords,
+          data_quality_flags: aggregated.dataQualityFlags,
         };
         log(
           `  [MONTHLY] \u2713 Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources, ${aggregated.patientRecords.length} patient records)`,
@@ -437,115 +578,8 @@ export async function processMonthlyAgents(
       updated_at: new Date(),
     };
 
-    // === STEP 1: Summary Agent (direct LLM call) ===
-    if (onProgress) await onProgress("summary_agent", "Running Summary Agent...");
-    log(`  [MONTHLY] Running Summary agent`);
-    const summaryPayload = buildSummaryPayload({
-      domain,
-      googleAccountId,
-      startDate,
-      endDate,
-      monthData,
-      pmsData,
-      websiteAnalytics: websiteAnalyticsMonthly,
-    });
-
-    const summaryResult = await runMonthlyAgent({
-      promptPath: "monthlyAgents/Summary",
-      payload: summaryPayload,
-      agentName: "Summary",
-      meta: { ...agentMeta, agentType: "summary" },
-    });
-
-    const summaryOutput: SummaryAgentOutput = summaryResult.agentOutput;
-    logAgentOutput("Summary", summaryOutput);
-
-    if (!isValidAgentOutput(summaryOutput, "Summary")) {
-      return { success: false, error: "Summary agent returned empty or invalid output" };
-    }
-    log(`  [MONTHLY] \u2713 Summary completed successfully`);
-
-    // === STEP 2: Opportunity Agent (depends on Summary output) ===
-    if (onProgress) await onProgress("opportunity_agent", "Running Opportunity Agent...", "summary_agent");
-    log(`  [MONTHLY] Running Opportunity agent`);
-    const opportunityPayload = buildOpportunityPayload({
-      domain,
-      googleAccountId,
-      startDate,
-      endDate,
-      summaryOutput,
-    });
-
-    const opportunityResult = await runMonthlyAgent({
-      promptPath: "monthlyAgents/Opportunity",
-      payload: opportunityPayload,
-      agentName: "Opportunity",
-      meta: { ...agentMeta, agentType: "opportunity" },
-    });
-
-    const opportunityOutput: OpportunityAgentOutput = opportunityResult.agentOutput;
-    logAgentOutput("Opportunity", opportunityOutput);
-
-    if (!isValidAgentOutput(opportunityOutput, "Opportunity")) {
-      return { success: false, error: "Opportunity agent returned empty or invalid output" };
-    }
-    log(`  [MONTHLY] \u2713 Opportunity completed successfully`);
-
-    // === STEP 3: CRO Optimizer Agent (depends on Summary output, with retry) ===
-    if (onProgress) await onProgress("cro_optimizer", "Running CRO Optimizer Agent...", "opportunity_agent");
-    log(`  [MONTHLY] Running CRO Optimizer agent (max 3 attempts)`);
-
-    let croOptimizerOutput: CroOptimizerAgentOutput | undefined;
-    let croOptimizerResultId: number | undefined;
-    const MAX_CRO_ATTEMPTS = 3;
-
-    for (let croAttempt = 1; croAttempt <= MAX_CRO_ATTEMPTS; croAttempt++) {
-      if (croAttempt > 1) {
-        log(`  [MONTHLY] \ud83d\udd04 CRO Optimizer retry attempt ${croAttempt}/${MAX_CRO_ATTEMPTS}`);
-        log(`  [MONTHLY] Waiting 30 seconds before retry...`);
-        if (onProgress) await onProgress("cro_optimizer", `Retrying CRO Optimizer (attempt ${croAttempt}/${MAX_CRO_ATTEMPTS})...`);
-        await delay(30000);
-      }
-
-      try {
-        const croPayload = buildCroOptimizerPayload({
-          domain,
-          googleAccountId,
-          startDate,
-          endDate,
-          summaryOutput,
-        });
-
-        const croResult = await runMonthlyAgent({
-          promptPath: "monthlyAgents/CRO",
-          payload: croPayload,
-          agentName: "CRO Optimizer",
-          meta: { ...agentMeta, agentType: "cro_optimizer" },
-        });
-
-        croOptimizerOutput = croResult.agentOutput;
-        croOptimizerResultId = croResult.agentResultId;
-        logAgentOutput("CRO Optimizer", croOptimizerOutput);
-
-        if (!isValidAgentOutput(croOptimizerOutput, "CRO Optimizer")) {
-          throw new Error("CRO Optimizer agent returned empty or invalid output");
-        }
-
-        log(`  [MONTHLY] \u2713 CRO Optimizer completed successfully on attempt ${croAttempt}`);
-        break;
-      } catch (croError: any) {
-        log(`  [MONTHLY] \u26a0 CRO Optimizer attempt ${croAttempt} failed: ${croError.message}`);
-        if (croAttempt === MAX_CRO_ATTEMPTS) {
-          return {
-            success: false,
-            error: `CRO Optimizer failed after ${MAX_CRO_ATTEMPTS} attempts: ${croError.message}`,
-          };
-        }
-      }
-    }
-
-    // === STEP 4: Referral Engine (uses PMS data, runs last, with retry) ===
-    if (onProgress) await onProgress("referral_engine", "Running Referral Engine Agent...", "cro_optimizer");
+    // === STEP 1: Referral Engine (Plan 1: now runs first to feed Summary as input) ===
+    if (onProgress) await onProgress("referral_engine", "Running Referral Engine Agent...");
     log(`  [MONTHLY] Running Referral Engine agent (max 3 attempts)`);
 
     let referralEngineOutput: ReferralEngineAgentOutput | undefined;
@@ -567,6 +601,8 @@ export async function processMonthlyAgents(
           startDate,
           endDate,
           pmsData,
+          gbpData: monthData,
+          websiteAnalytics: websiteAnalyticsMonthly,
         });
 
         const referralResult = await runMonthlyAgent({
@@ -574,6 +610,8 @@ export async function processMonthlyAgents(
           payload: referralPayload,
           agentName: "Referral Engine",
           meta: { ...agentMeta, agentType: "referral_engine" },
+          enableCache: true,
+          outputSchema: ReferralEngineAgentOutputSchema,
         });
 
         referralEngineOutput = referralResult.agentOutput;
@@ -597,26 +635,148 @@ export async function processMonthlyAgents(
       }
     }
 
-    // === STEP 5: Create tasks from action items ===
-    await createTasksFromOpportunityOutput(opportunityOutput, googleAccountId, organizationId, locationId);
-    await createTasksFromCroOptimizerOutput(croOptimizerOutput!, googleAccountId, organizationId, locationId);
+    // === STEP 2: Compute deterministic dashboard metrics (Plan 1 NEW) ===
+    if (onProgress) await onProgress("dashboard_metrics", "Computing dashboard metrics...", "referral_engine");
+    log(`  [MONTHLY] Computing dashboard metrics`);
+    let dashboardMetrics: DashboardMetrics | undefined;
+    try {
+      dashboardMetrics = await computeDashboardMetrics(
+        organizationId,
+        locationId ?? null,
+        { start: startDate, end: endDate },
+        referralEngineOutput ?? null,
+      );
+      log(`  [MONTHLY] \u2713 Dashboard metrics computed`);
+    } catch (metricsError: any) {
+      log(`  [MONTHLY] \u26a0 Dashboard metrics failed: ${metricsError.message}. Summary will run without metrics dictionary.`);
+      dashboardMetrics = undefined;
+    }
+
+    // === STEP 3: Summary v2 \u2014 Chief-of-Staff (Plan 1: runs last with full context) ===
+    if (onProgress) await onProgress("summary_agent", "Running Summary v2 agent...", "dashboard_metrics");
+    log(`  [MONTHLY] Running Summary v2 agent (max 3 attempts)`);
+
+    // Pull latest LLM-curated ranking recommendations for this org+location.
+    // Summary becomes the sole USER-task writer; ranking output flows in here
+    // instead of writing its own RANKING-typed tasks.
+    let rankingRecommendations: any[] | null = null;
+    try {
+      rankingRecommendations = await fetchLatestRankingRecommendations(
+        organizationId,
+        locationId ?? null,
+      );
+      if (rankingRecommendations) {
+        log(`  [MONTHLY] \u2713 Loaded ${rankingRecommendations.length} ranking recommendations`);
+      } else {
+        log(`  [MONTHLY] \u2139 No completed ranking recommendations available`);
+      }
+    } catch (rankErr: any) {
+      log(`  [MONTHLY] \u26a0 Ranking recommendations fetch failed: ${rankErr.message}. Summary will run without them.`);
+      rankingRecommendations = null;
+    }
+
+    const summaryPayload = buildSummaryPayload({
+      domain,
+      googleAccountId,
+      startDate,
+      endDate,
+      monthData,
+      pmsData,
+      websiteAnalytics: websiteAnalyticsMonthly,
+      referralEngineOutput,
+      dashboardMetrics,
+      rankingRecommendations,
+    });
+
+    let summaryOutput: SummaryV2Output | undefined;
+    let summaryResultId: number | undefined;
+    const MAX_SUMMARY_ATTEMPTS = 3;
+
+    for (let summaryAttempt = 1; summaryAttempt <= MAX_SUMMARY_ATTEMPTS; summaryAttempt++) {
+      if (summaryAttempt > 1) {
+        log(`  [MONTHLY] \ud83d\udd04 Summary v2 retry attempt ${summaryAttempt}/${MAX_SUMMARY_ATTEMPTS}`);
+        log(`  [MONTHLY] Waiting 30 seconds before retry...`);
+        if (onProgress) await onProgress("summary_agent", `Retrying Summary v2 (attempt ${summaryAttempt}/${MAX_SUMMARY_ATTEMPTS})...`);
+        await delay(30000);
+      }
+
+      try {
+        const summaryResult = await runMonthlyAgent({
+          promptPath: "monthlyAgents/Summary",
+          payload: summaryPayload,
+          agentName: "Summary",
+          meta: { ...agentMeta, agentType: "summary" },
+          enableCache: true,
+          outputSchema: SummaryV2OutputSchema,
+        });
+
+        summaryOutput = summaryResult.agentOutput as SummaryV2Output;
+        summaryResultId = summaryResult.agentResultId;
+        logAgentOutput("Summary", summaryOutput);
+
+        // Plan 1 T10: post-Zod value validator. Each supporting_metrics[*].value
+        // must match the dashboard_metrics dictionary at source_field. Throw on
+        // mismatch to trigger outer retry.
+        validateSummarySupportingMetrics(summaryOutput, dashboardMetrics ?? null);
+
+        // Highlights validator: warn-only (mismatched entries dropped at render time).
+        validateSummaryHighlights(summaryOutput);
+
+        log(`  [MONTHLY] \u2713 Summary v2 completed successfully on attempt ${summaryAttempt}`);
+        log(`  [summary-v2] ${JSON.stringify({ event: "success", orgId: organizationId, locationId, n_actions: summaryOutput.top_actions.length, domains: summaryOutput.top_actions.map((a) => a.domain), attempt: summaryAttempt })}`);
+        break;
+      } catch (sumError: any) {
+        log(`  [MONTHLY] \u26a0 Summary v2 attempt ${summaryAttempt} failed: ${sumError.message}`);
+        if (summaryAttempt === MAX_SUMMARY_ATTEMPTS) {
+          return {
+            success: false,
+            error: `Summary v2 failed after ${MAX_SUMMARY_ATTEMPTS} attempts: ${sumError.message}`,
+          };
+        }
+      }
+    }
+
+    // === STEP 4 [DISABLED Plan 1]: Opportunity Agent ===
+    // Disabled: Summary v2 absorbs cross-domain action picking.
+    // Code preserved for revival path (uncomment + re-enable in task-creator).
+    if (false) {
+      // void to preserve type usage references (so removal of this block is one-line)
+      void buildOpportunityPayload;
+      void createTasksFromOpportunityOutput;
+    }
+
+    // === STEP 5 [DISABLED Plan 1]: CRO Optimizer Agent ===
+    // Disabled: Summary v2 absorbs cross-domain action picking.
+    if (false) {
+      void buildCroOptimizerPayload;
+      void createTasksFromCroOptimizerOutput;
+    }
+
+    // === STEP 6: Create tasks from action items ===
+    // Plan 1: Summary v2 writes USER tasks (top_actions[]).
+    // RE writes ALLORO tasks ONLY (alloro_automation_opportunities; the
+    // practice_action_plan branch was removed and items now feed Summary instead).
+    if (summaryOutput) {
+      await createTasksFromSummaryV2Output(summaryOutput, googleAccountId, organizationId, locationId);
+    }
     await createTasksFromReferralEngineOutput(referralEngineOutput!, googleAccountId, organizationId, locationId);
 
     return {
       success: true,
       summaryOutput,
       referralEngineOutput,
-      opportunityOutput,
-      croOptimizerOutput,
-      summaryPayload: summaryPayload,
+      opportunityOutput: undefined,
+      croOptimizerOutput: undefined,
+      dashboardMetrics,
+      summaryPayload,
       referralEnginePayload: null, // Payload built inside retry loop
-      opportunityPayload,
-      croOptimizerPayload: null, // Payload built inside retry loop
+      opportunityPayload: undefined,
+      croOptimizerPayload: undefined,
       rawData,
       agentResultIds: {
-        summary: summaryResult.agentResultId,
-        opportunity: opportunityResult.agentResultId,
-        croOptimizer: croOptimizerResultId,
+        summary: summaryResultId,
+        opportunity: undefined,
+        croOptimizer: undefined,
         referralEngine: referralEngineResultId,
       },
     };

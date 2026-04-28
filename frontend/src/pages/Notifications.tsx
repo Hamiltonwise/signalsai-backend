@@ -224,30 +224,6 @@ export const Notifications: React.FC = () => {
       </header>
 
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-12 lg:space-y-20 text-left">
-        {/* Hero Section */}
-        <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 pt-2">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-[10px] font-black uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-alloro-orange animate-pulse"></span>
-              Notifications Active
-            </div>
-            {unreadCount > 0 && (
-              <div className="px-3 py-1.5 bg-alloro-navy/5 rounded-lg text-alloro-navy text-[10px] font-black uppercase tracking-widest border border-alloro-navy/10">
-                {unreadCount} unread
-              </div>
-            )}
-          </div>
-          <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
-            Practice Updates.
-          </h1>
-          <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
-            A live feed of{" "}
-            <span className="text-alloro-orange underline underline-offset-8 font-black">
-              Important Events
-            </span>{" "}
-            that need your attention.
-          </p>
-        </section>
 
         {loading ? (
           <div className="bg-white rounded-[2.5rem] border border-black/5 shadow-premium overflow-hidden">
@@ -314,7 +290,7 @@ export const Notifications: React.FC = () => {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                         <div className="flex items-center gap-3">
                           <h3
-                            className={`text-2xl font-black font-heading tracking-tight leading-none group-hover:text-alloro-orange transition-colors ${
+                            className={`font-display text-xl md:text-2xl font-medium tracking-tight leading-tight group-hover:text-alloro-orange transition-colors ${
                               isRead ? "text-slate-500" : "text-alloro-navy"
                             }`}
                           >

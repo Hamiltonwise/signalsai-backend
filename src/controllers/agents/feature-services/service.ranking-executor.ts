@@ -110,6 +110,17 @@ export async function setupRankingBatches(connectionIdFilter?: number): Promise<
     }> = [];
 
     for (const location of locations) {
+      // v2: only run scheduled rankings against locations that have finalized
+      // their curated competitor list. Pending/curating locations stay in
+      // self-service mode until the user finishes onboarding.
+      // Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
+      if (location.location_competitor_onboarding_status !== "finalized") {
+        log(
+          `[SETUP] Skipping location "${location.name}" (ID: ${location.id}) — competitor onboarding status: ${location.location_competitor_onboarding_status}`
+        );
+        continue;
+      }
+
       const gbpProperties = await GooglePropertyModel.findByLocationId(location.id);
       const selectedGbp = gbpProperties.find((p: any) => p.selected) || gbpProperties[0];
       if (!selectedGbp) {

@@ -832,7 +832,7 @@ export function DFYWebsite() {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center max-w-md">
           <div className="animate-spin w-12 h-12 border-4 border-alloro-orange border-t-transparent rounded-full mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">
+          <h2 className="font-display text-xl font-medium text-alloro-navy mb-2">
             Your Website is Being Prepared
           </h2>
           <p className="text-gray-600">
@@ -849,7 +849,7 @@ export function DFYWebsite() {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">
+          <h2 className="font-display text-xl font-medium text-alloro-navy mb-2">
             Website in Read-Only Mode
           </h2>
           <p className="text-gray-600 mb-4">
@@ -885,7 +885,7 @@ export function DFYWebsite() {
               Almost There
             </span>
           </div>
-          <h1 className="text-3xl font-black text-alloro-navy font-heading tracking-tight mb-3">
+          <h1 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight mb-3">
             Your Website is Being Built
           </h1>
           <p className="text-base text-slate-500 font-medium max-w-md mx-auto">

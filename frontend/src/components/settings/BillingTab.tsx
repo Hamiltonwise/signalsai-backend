@@ -282,7 +282,7 @@ export const BillingTab: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-white tracking-tight mb-0.5">
+                <h3 className="font-display text-lg sm:text-xl lg:text-2xl font-medium text-white tracking-tight mb-0.5">
                   {PLAN.name}
                 </h3>
                 <p className="text-white/60 text-sm font-medium">
@@ -386,7 +386,7 @@ export const BillingTab: React.FC = () => {
                 <XCircle size={22} className="text-red-500" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-alloro-navy tracking-tight mb-0.5">
+                <h3 className="font-display text-lg sm:text-xl lg:text-2xl font-medium text-alloro-navy tracking-tight mb-0.5">
                   Subscription Cancelled
                 </h3>
                 <p className="text-slate-400 text-sm font-medium">
@@ -428,7 +428,7 @@ export const BillingTab: React.FC = () => {
                 <Zap size={22} className="text-white" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-alloro-navy tracking-tight mb-0.5">
+                <h3 className="font-display text-lg sm:text-xl lg:text-2xl font-medium text-alloro-navy tracking-tight mb-0.5">
                   Get Started with Alloro
                 </h3>
                 <p className="text-slate-400 text-sm font-medium">

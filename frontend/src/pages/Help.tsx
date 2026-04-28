@@ -123,25 +123,6 @@ const Help = () => {
 
       {/* Main Content */}
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-12 lg:space-y-20">
-        {/* Hero Section */}
-        <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 text-left pt-2">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-[10px] font-black uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-alloro-orange"></span>
-              We are here to help
-            </div>
-          </div>
-          <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
-            How can we help?
-          </h1>
-          <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
-            Talk to your{" "}
-            <span className="text-alloro-orange underline underline-offset-8 font-black">
-              Alloro Strategist
-            </span>{" "}
-            for help with your practice growth.
-          </p>
-        </section>
 
         {/* Inquiry Form & Side Panel */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
@@ -155,7 +136,7 @@ const Help = () => {
                     <CheckCircle2 size={40} />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-3xl font-black font-heading text-alloro-navy tracking-tight">
+                    <h3 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight">
                       Message Received.
                     </h3>
                     <p className="text-slate-500 font-bold max-w-sm">
@@ -176,7 +157,7 @@ const Help = () => {
                   className="space-y-8 relative z-10"
                 >
                   <div className="space-y-2">
-                    <h2 className="text-3xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                    <h2 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight leading-none">
                       Submit an Inquiry
                     </h2>
                     <p className="text-slate-400 font-bold text-sm tracking-tight leading-none">
@@ -295,7 +276,7 @@ const Help = () => {
           <div className="lg:col-span-5 space-y-10">
             <div className="bg-white rounded-[2.5rem] border border-black/5 shadow-premium p-10 lg:p-14 text-left space-y-10">
               <div className="space-y-1">
-                <h3 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                <h3 className="font-display text-xl font-medium text-alloro-navy tracking-tight leading-none">
                   Instant Channels
                 </h3>
                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">

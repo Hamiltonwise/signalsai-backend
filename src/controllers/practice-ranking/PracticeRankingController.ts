@@ -59,7 +59,22 @@ import {
   MAX_RETRIES,
   RETRY_DELAY_MS,
 } from "./feature-services/service.ranking-pipeline";
+import {
+  runDiscoveryForLocation,
+  addCustomCompetitor,
+  removeCompetitorFromList,
+  finalizeAndTriggerRun,
+} from "./feature-services/service.location-competitor-onboarding";
+import { LocationCompetitorModel } from "../../models/LocationCompetitorModel";
+import { LocationModel } from "../../models/LocationModel";
+import { getPlacePhotoMedia } from "../places/feature-services/GooglePlacesApiService";
+import {
+  validateLocationIdParam,
+  validatePlaceIdInput,
+  MAX_COMPETITORS_PER_LOCATION,
+} from "./feature-utils/util.competitor-validator";
 import { GooglePropertyModel } from "../../models/GooglePropertyModel";
+import type { RBACRequest } from "../../middleware/rbac";
 
 // =====================================================================
 // POST /trigger
@@ -258,6 +273,7 @@ export async function getBatchStatus(
         "gbp_location_id",
         "gbp_location_name",
         "status",
+        "status_detail",
         "rank_score",
         "rank_position",
         "error_message",
@@ -1015,7 +1031,38 @@ export async function getLatestRankings(
       `[GET /latest] Found ${batchRankings.length} rankings in batch ${latestBatchId}`,
     );
 
-    // Step 3: For each ranking in the batch, get the previous analysis for trend comparison
+    // Step 3a: Batch-fetch v2 onboarding metadata for the distinct location_ids
+    // in this batch. Used by the dashboard to render the "set up your competitor
+    // list" banner for pending/curating locations.
+    // Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
+    const distinctLocationIds = Array.from(
+      new Set(
+        batchRankings
+          .map((r) => r.location_id)
+          .filter((id): id is number => typeof id === "number")
+      )
+    );
+    const onboardingByLocationId = new Map<
+      number,
+      { status: "pending" | "curating" | "finalized"; finalizedAt: Date | null }
+    >();
+    if (distinctLocationIds.length > 0) {
+      const locationRows = await db("locations")
+        .whereIn("id", distinctLocationIds)
+        .select(
+          "id",
+          "location_competitor_onboarding_status",
+          "location_competitor_onboarding_finalized_at"
+        );
+      for (const row of locationRows) {
+        onboardingByLocationId.set(row.id, {
+          status: row.location_competitor_onboarding_status,
+          finalizedAt: row.location_competitor_onboarding_finalized_at ?? null,
+        });
+      }
+    }
+
+    // Step 3b: For each ranking in the batch, get the previous analysis for trend comparison
     const rankingsWithPrevious = await Promise.all(
       batchRankings.map(async (ranking) => {
         // Get the previous completed ranking for this location (excluding current batch)
@@ -1029,7 +1076,11 @@ export async function getLatestRankings(
           .orderBy("created_at", "desc")
           .first();
 
-        return formatLatestRanking(ranking, previous || null);
+        const onboarding = ranking.location_id
+          ? onboardingByLocationId.get(ranking.location_id) || null
+          : null;
+
+        return formatLatestRanking(ranking, previous || null, onboarding);
       }),
     );
 
@@ -1044,6 +1095,114 @@ export async function getLatestRankings(
       success: false,
       error: "LATEST_ERROR",
       message: error.message || "Failed to get latest rankings",
+    });
+  }
+}
+
+// =====================================================================
+// GET /history
+// =====================================================================
+
+export async function getRankingHistory(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { googleAccountId, locationId, range } = req.query;
+
+    if (!googleAccountId) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PARAMS",
+        message: "googleAccountId is required",
+      });
+    }
+
+    const orgId = Number(googleAccountId);
+    if (!Number.isFinite(orgId) || orgId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_PARAMS",
+        message: "googleAccountId must be a positive integer",
+      });
+    }
+
+    let locId: number | null = null;
+    if (locationId !== undefined && locationId !== null && locationId !== "") {
+      locId = Number(locationId);
+      if (!Number.isFinite(locId) || locId <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: "INVALID_PARAMS",
+          message: "locationId must be a positive integer",
+        });
+      }
+    }
+
+    const rangeStr = typeof range === "string" ? range : "6m";
+    const months = rangeStr === "3m" ? 3 : 6;
+    const intervalLiteral = months === 3 ? "3 months" : "6 months";
+
+    let query = db("practice_rankings")
+      .where({
+        organization_id: orgId,
+        status: "completed",
+      })
+      .andWhereRaw(`observed_at >= NOW() - INTERVAL '${intervalLiteral}'`)
+      .orderBy("observed_at", "asc")
+      .select(
+        "observed_at",
+        "rank_score",
+        "rank_position",
+        "ranking_factors",
+      );
+
+    if (locId !== null) {
+      query = query.andWhere({ location_id: locId });
+    }
+
+    const rows = await query;
+
+    const rankings = rows.map((row: any) => {
+      const parsed = parseJsonField(row.ranking_factors) as
+        | Record<string, { score?: number } | number | null>
+        | null;
+      const factorScores: Record<string, number> = {};
+      if (parsed && typeof parsed === "object") {
+        for (const [name, val] of Object.entries(parsed)) {
+          if (val && typeof val === "object" && "score" in val) {
+            const s = (val as { score?: unknown }).score;
+            if (typeof s === "number" && Number.isFinite(s)) {
+              factorScores[name] = s;
+            }
+          } else if (typeof val === "number" && Number.isFinite(val)) {
+            factorScores[name] = val;
+          }
+        }
+      }
+
+      return {
+        observedAt:
+          row.observed_at instanceof Date
+            ? row.observed_at.toISOString()
+            : row.observed_at,
+        rankScore: row.rank_score === null ? 0 : Number(row.rank_score),
+        rankPosition:
+          row.rank_position === null ? 0 : Number(row.rank_position),
+        factorScores,
+      };
+    });
+
+    return res.json({
+      success: true,
+      rankings,
+    });
+  } catch (error: any) {
+    logError("GET /history", error);
+    return res.status(500).json({
+      success: false,
+      error: "HISTORY_ERROR",
+      message: error.message || "Failed to get ranking history",
     });
   }
 }
@@ -1136,3 +1295,351 @@ export async function getRankingTasks(
   }
 }
 
+// =====================================================================
+// v2 Curated Competitor Lists — location-scoped client endpoints
+// Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
+// =====================================================================
+
+// GET /locations/:locationId/competitors
+export async function getLocationCompetitors(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const v = validateLocationIdParam(req.params.locationId);
+    if (!v.valid) return res.status(v.status).json(v.body);
+    const locationId = Number(req.params.locationId);
+
+    const [onboarding, competitors, location] = await Promise.all([
+      LocationCompetitorModel.getOnboardingStatus(locationId),
+      LocationCompetitorModel.findActiveByLocationId(locationId),
+      LocationModel.findById(locationId),
+    ]);
+
+    const practiceLocation =
+      location?.client_place_id &&
+      location.client_lat !== null &&
+      location.client_lng !== null
+        ? {
+            placeId: location.client_place_id,
+            lat: Number(location.client_lat),
+            lng: Number(location.client_lng),
+          }
+        : null;
+
+    return res.json({
+      success: true,
+      onboarding: {
+        status: onboarding.status,
+        finalizedAt: onboarding.finalizedAt,
+      },
+      practiceLocation,
+      selfFilterStatus: location?.client_place_id ? "resolved" : "unresolved",
+      competitors: competitors.map((c) => ({
+        id: c.id,
+        placeId: c.place_id,
+        name: c.name,
+        address: c.address,
+        primaryType: c.primary_type,
+        rating: c.rating === null ? null : Number(c.rating),
+        reviewCount: c.review_count,
+        lat: c.lat === null ? null : Number(c.lat),
+        lng: c.lng === null ? null : Number(c.lng),
+        phone: c.phone,
+        website: c.website,
+        photoName: c.photo_name,
+        source: c.source,
+        addedAt: c.added_at,
+        addedByUserId: c.added_by_user_id,
+      })),
+      count: competitors.length,
+      cap: MAX_COMPETITORS_PER_LOCATION,
+    });
+  } catch (error: any) {
+    logError("GET /locations/:locationId/competitors", error);
+    return res.status(500).json({
+      success: false,
+      error: "GET_COMPETITORS_ERROR",
+      message: error.message || "Failed to load competitors",
+    });
+  }
+}
+
+// POST /locations/:locationId/competitors/discover
+export async function discoverLocationCompetitors(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const v = validateLocationIdParam(req.params.locationId);
+    if (!v.valid) return res.status(v.status).json(v.body);
+    const locationId = Number(req.params.locationId);
+
+    const result = await runDiscoveryForLocation(locationId);
+    return res.json({ success: true, ...result });
+  } catch (error: any) {
+    logError("POST /locations/:locationId/competitors/discover", error);
+    if (
+      typeof error?.message === "string" &&
+      error.message.includes("already finalized")
+    ) {
+      return res.status(409).json({
+        success: false,
+        error: "LOCATION_FINALIZED",
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      error: "DISCOVERY_ERROR",
+      message: error.message || "Discovery failed",
+    });
+  }
+}
+
+// POST /locations/:locationId/competitors  (body: { placeId })
+export async function addLocationCompetitor(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const locV = validateLocationIdParam(req.params.locationId);
+    if (!locV.valid) return res.status(locV.status).json(locV.body);
+    const placeV = validatePlaceIdInput(req.body?.placeId);
+    if (!placeV.valid) return res.status(placeV.status).json(placeV.body);
+
+    const locationId = Number(req.params.locationId);
+    const placeId = String(req.body.placeId).trim();
+    const userId = (req as RBACRequest).userId ?? null;
+
+    const result = await addCustomCompetitor(locationId, placeId, userId);
+    return res.json({
+      success: true,
+      added: {
+        id: result.added.id,
+        placeId: result.added.place_id,
+        name: result.added.name,
+        address: result.added.address,
+        primaryType: result.added.primary_type,
+        rating:
+          result.added.rating === null ? null : Number(result.added.rating),
+        reviewCount: result.added.review_count,
+        lat: result.added.lat === null ? null : Number(result.added.lat),
+        lng: result.added.lng === null ? null : Number(result.added.lng),
+        source: result.added.source,
+        addedAt: result.added.added_at,
+        addedByUserId: result.added.added_by_user_id,
+      },
+      activeCount: result.activeCount,
+      cap: MAX_COMPETITORS_PER_LOCATION,
+    });
+  } catch (error: any) {
+    logError("POST /locations/:locationId/competitors", error);
+    if (error?.code === "COMPETITOR_CAP_REACHED") {
+      return res.status(409).json({
+        success: false,
+        error: "COMPETITOR_CAP_REACHED",
+        message: error.message,
+      });
+    }
+    if (error?.code === "PLACES_LOOKUP_FAILED") {
+      return res.status(502).json({
+        success: false,
+        error: "PLACES_LOOKUP_FAILED",
+        message: error.message,
+      });
+    }
+    if (
+      typeof error?.message === "string" &&
+      error.message.includes("already finalized")
+    ) {
+      return res.status(409).json({
+        success: false,
+        error: "LOCATION_FINALIZED",
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      error: "ADD_COMPETITOR_ERROR",
+      message: error.message || "Failed to add competitor",
+    });
+  }
+}
+
+// DELETE /locations/:locationId/competitors/:placeId
+export async function deleteLocationCompetitor(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const locV = validateLocationIdParam(req.params.locationId);
+    if (!locV.valid) return res.status(locV.status).json(locV.body);
+    const placeV = validatePlaceIdInput(req.params.placeId);
+    if (!placeV.valid) return res.status(placeV.status).json(placeV.body);
+
+    const locationId = Number(req.params.locationId);
+    const placeId = String(req.params.placeId).trim();
+
+    const result = await removeCompetitorFromList(locationId, placeId);
+    return res.json({
+      success: true,
+      removed: result.removed,
+      activeCount: result.activeCount,
+      cap: MAX_COMPETITORS_PER_LOCATION,
+    });
+  } catch (error: any) {
+    logError("DELETE /locations/:locationId/competitors/:placeId", error);
+    if (
+      typeof error?.message === "string" &&
+      error.message.includes("already finalized")
+    ) {
+      return res.status(409).json({
+        success: false,
+        error: "LOCATION_FINALIZED",
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      error: "REMOVE_COMPETITOR_ERROR",
+      message: error.message || "Failed to remove competitor",
+    });
+  }
+}
+
+// POST /locations/:locationId/competitors/finalize-and-run
+export async function finalizeLocationAndRun(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const v = validateLocationIdParam(req.params.locationId);
+    if (!v.valid) return res.status(v.status).json(v.body);
+    const locationId = Number(req.params.locationId);
+
+    const result = await finalizeAndTriggerRun(locationId);
+    return res.json({
+      success: true,
+      batchId: result.batchId,
+      rankingId: result.rankingId,
+      reused: result.reused,
+    });
+  } catch (error: any) {
+    logError("POST /locations/:locationId/competitors/finalize-and-run", error);
+    return res.status(500).json({
+      success: false,
+      error: "FINALIZE_ERROR",
+      message: error.message || "Failed to finalize and trigger run",
+    });
+  }
+}
+
+// GET /photo?name=places/.../photos/...
+// Authed proxy for Google Places Photo media. Each call hits the paid Place
+// Photo SKU; do not expose unauthenticated.
+export async function getCompetitorPhoto(
+  req: Request,
+  res: Response
+): Promise<Response | void> {
+  try {
+    const photoName = String(req.query.name || "");
+    // Validate shape: Google's photo resource names are "places/<id>/photos/<id>".
+    // Reject anything else to prevent abuse against arbitrary upstream paths.
+    if (!/^places\/[^/]+\/photos\/[^/]+$/.test(photoName)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_PHOTO_NAME",
+        message: "name must look like places/<id>/photos/<id>",
+      });
+    }
+    const maxHeightPx = Math.min(
+      Math.max(parseInt(String(req.query.h || "200"), 10) || 200, 64),
+      800
+    );
+    const { buffer, contentType } = await getPlacePhotoMedia(
+      photoName,
+      maxHeightPx
+    );
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Length", String(buffer.length));
+    return res.end(buffer);
+  } catch (error: any) {
+    logError("GET /practice-ranking/photo", error);
+    return res.status(502).json({
+      success: false,
+      error: "PHOTO_FETCH_FAILED",
+      message: error.message || "Failed to fetch photo",
+    });
+  }
+}
+
+// =====================================================================
+// GET /in-flight
+// Returns the most-recent pending/processing ranking for an org (and
+// optionally a specific location). The client dashboard polls/uses this
+// to auto-render the in-flight progress banner without needing a batchId
+// in the URL.
+// Spec: plans/04282026-no-ticket-rankings-auto-detect-in-flight-sticky/spec.md
+// =====================================================================
+
+export async function getInFlightRanking(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { googleAccountId, locationId } = req.query;
+    if (!googleAccountId) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PARAMS",
+        message: "googleAccountId is required",
+      });
+    }
+
+    const filters: Record<string, unknown> = {
+      organization_id: Number(googleAccountId),
+    };
+    if (locationId) filters.location_id = Number(locationId);
+
+    const row = await db("practice_rankings")
+      .where(filters)
+      .whereIn("status", ["pending", "processing"])
+      .orderBy("created_at", "desc")
+      .select(
+        "id",
+        "batch_id",
+        "status",
+        "status_detail",
+        "gbp_location_name",
+        "created_at",
+        "updated_at"
+      )
+      .first();
+
+    if (!row) {
+      return res.json({ success: true, ranking: null });
+    }
+
+    return res.json({
+      success: true,
+      ranking: {
+        rankingId: row.id,
+        batchId: row.batch_id,
+        status: row.status,
+        statusDetail: parseJsonField(row.status_detail),
+        gbpLocationName: row.gbp_location_name,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      },
+    });
+  } catch (error: any) {
+    logError("GET /practice-ranking/in-flight", error);
+    return res.status(500).json({
+      success: false,
+      error: "IN_FLIGHT_FETCH_FAILED",
+      message: error.message || "Failed to fetch in-flight ranking",
+    });
+  }
+}

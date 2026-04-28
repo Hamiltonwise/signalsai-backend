@@ -24,6 +24,7 @@ import {
   Settings,
   BarChart3,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { AdminPageHeader, Badge } from "../../components/ui/DesignSystem";
@@ -37,6 +38,7 @@ import { OrgSubscriptionSection } from "../../components/Admin/OrgSubscriptionSe
 import { OrgUsersSection } from "../../components/Admin/OrgUsersSection";
 import { OrgConnectionsSection } from "../../components/Admin/OrgConnectionsSection";
 import { OrgSettingsSection } from "../../components/Admin/OrgSettingsSection";
+import { ResetOrgDataModal } from "../../components/Admin/ResetOrgDataModal";
 import type { AdminLocation } from "../../api/admin-organizations";
 
 // ---------------------------------------------------------------------------
@@ -144,6 +146,10 @@ export default function OrganizationDetail() {
   const [selectedLocation, setSelectedLocation] =
     useState<AdminLocation | null>(null);
 
+  // Reset Data modal — destructive action, page is already super-admin gated
+  // by AdminGuard so no extra role check is needed here.
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+
   useEffect(() => {
     if (!orgId) {
       toast.error("Invalid organization ID");
@@ -216,7 +222,19 @@ export default function OrganizationDetail() {
             title={org.name}
             description={org.domain || "No domain assigned"}
             actionButtons={
-              <Badge variant="orange">DFY</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="orange">DFY</Badge>
+                {activeSection === "agent" && (
+                  <button
+                    onClick={() => setResetModalOpen(true)}
+                    title="Wipe selected agent outputs and PMS data for this org"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 border border-red-300 bg-transparent rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Reset Data
+                  </button>
+                )}
+              </div>
             }
           />
         </div>
@@ -403,6 +421,13 @@ export default function OrganizationDetail() {
           )}
         </div>
       </div>
+
+      {/* Reset Data destructive modal — super-admin only via AdminGuard */}
+      <ResetOrgDataModal
+        org={{ id: orgId, name: org.name }}
+        open={resetModalOpen}
+        onClose={() => setResetModalOpen(false)}
+      />
     </div>
   );
 }

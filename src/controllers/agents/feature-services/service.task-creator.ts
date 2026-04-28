@@ -5,10 +5,10 @@
  * output structure and task creation logic.
  *
  * Agent types handled:
- * - Opportunity: USER tasks from opportunities[]
- * - CRO Optimizer: ALLORO tasks from opportunities[]
- * - Referral Engine: ALLORO from alloro_automation_opportunities, USER from practice_action_plan
+ * - Summary v2: USER tasks from top_actions[] (Plan 1 — sole writer of practice-facing tasks)
+ * - Referral Engine: ALLORO tasks ONLY from alloro_automation_opportunities (USER branch removed in Plan 1; practice_action_plan items now feed Summary as input)
  * - Copy Companion: USER tasks from recommendations with verdict filtering
+ * - Opportunity / CRO Optimizer: DISABLED in orchestrator (preserved here for revival path)
  */
 
 import { db } from "../../../database/connection";
@@ -17,6 +17,8 @@ import type {
   OpportunityAgentOutput,
   CroOptimizerAgentOutput,
   ReferralEngineAgentOutput,
+  SummaryV2Output,
+  TopAction,
 } from "../types/agent-output-schemas";
 
 // =====================================================================
@@ -209,19 +211,18 @@ export async function createTasksFromReferralEngineOutput(
     // ALLORO tasks from alloro_automation_opportunities (internal/agency tasks)
     const alloroItems = referralOutput?.alloro_automation_opportunities || [];
 
-    // USER tasks from practice_action_plan (client tasks)
-    const userItems = referralOutput?.practice_action_plan || [];
+    // NOTE: Plan 1 removed the USER task creation branch from RE.
+    // `practice_action_plan` items now feed Summary v2 as INPUT (in additional_data.referral_engine_output).
+    // Summary picks the highest-priority action across all domains and writes USER tasks via createTasksFromSummaryV2Output.
+    // RE writes ALLORO (agency-internal) only.
 
-    log(`  [MONTHLY] Referral Engine output shape: ${Array.isArray(referralEngineOutput) ? `array(${(referralEngineOutput as any).length})` : typeof referralEngineOutput}, alloroItems: ${alloroItems.length}, userItems: ${userItems.length}`);
+    log(`  [MONTHLY] Referral Engine output shape: ${Array.isArray(referralEngineOutput) ? `array(${(referralEngineOutput as any).length})` : typeof referralEngineOutput}, alloroItems: ${alloroItems.length}`);
 
-    const totalReferralTasks = alloroItems.length + userItems.length;
-
-    if (totalReferralTasks > 0) {
+    if (alloroItems.length > 0) {
       log(
-        `  [MONTHLY] Creating ${totalReferralTasks} Referral Engine task(s) (${alloroItems.length} ALLORO, ${userItems.length} USER)`,
+        `  [MONTHLY] Creating ${alloroItems.length} Referral Engine ALLORO task(s) from alloro_automation_opportunities`,
       );
 
-      // Create ALLORO tasks from alloro_automation_opportunities
       for (const item of alloroItems) {
         const taskData = {
           organization_id: organizationId ?? null,
@@ -256,51 +257,93 @@ export async function createTasksFromReferralEngineOutput(
         }
       }
 
-      // Create USER tasks from practice_action_plan
-      for (const item of userItems) {
-        const taskData = {
-          organization_id: organizationId ?? null,
-          location_id: locationId ?? null,
-          title: item.title || "Untitled Practice Action",
-          description: item.description || null,
-          category: "USER",
-          agent_type: "REFERRAL_ENGINE_ANALYSIS",
-          status: "pending",
-          is_approved: false,
-          created_by_admin: true,
-          due_date: item.due_date ? new Date(item.due_date) : null,
-          metadata: JSON.stringify({
-            source_field: "practice_action_plan",
-            priority: item.priority || null,
-            impact: item.impact || null,
-            effort: item.effort || null,
-            category: item.category || null,
-            owner: item.owner || null,
-          }),
-          created_at: new Date(),
-          updated_at: new Date(),
-        };
-
-        try {
-          const [result] = await db("tasks").insert(taskData).returning("id");
-          const taskId = result.id;
-          log(`    \u2713 Created USER task (ID: ${taskId}): ${taskData.title}`);
-        } catch (taskError: any) {
-          log(
-            `    \u26a0 Failed to create USER task "${taskData.title}": ${taskError.message}`,
-          );
-        }
-      }
-
       log(`  [MONTHLY] \u2713 Referral Engine task creation completed`);
     } else {
-      log(`  [MONTHLY] No Referral Engine action items found in output`);
+      log(`  [MONTHLY] No Referral Engine ALLORO automation opportunities found`);
     }
   } catch (taskCreationError: any) {
     // Don't fail the entire operation if task creation fails
     log(
       `  [MONTHLY] \u26a0 Error creating Referral Engine tasks: ${taskCreationError.message}`,
     );
+  }
+}
+
+// =====================================================================
+// SUMMARY V2 TASKS (Plan 1)
+// =====================================================================
+
+/**
+ * Creates USER tasks from Summary v2's `top_actions[]` array.
+ *
+ * Each top_action becomes one row in the tasks table with the entire
+ * TopAction object stored in `metadata` (jsonb) so the dashboard can render
+ * the full hero/queue payload (rationale, highlights, supporting_metrics,
+ * outcome, cta, priority_score) without a separate fetch.
+ *
+ * is_approved is true by default — Summary v2 is the curated monthly
+ * priority surface for the practice and renders immediately in the
+ * dashboard. (Earlier agents wrote with is_approved=false; that flow
+ * required admin approval. Summary v2 is engineered for direct render.)
+ */
+export async function createTasksFromSummaryV2Output(
+  summaryOutput: SummaryV2Output,
+  googleAccountId: number,
+  organizationId?: number | null,
+  locationId?: number | null,
+): Promise<void> {
+  try {
+    const topActions: TopAction[] = summaryOutput?.top_actions || [];
+
+    log(
+      `  [MONTHLY] Summary v2 output: ${topActions.length} top_actions`,
+    );
+
+    if (topActions.length === 0) {
+      log(`  [MONTHLY] ⚠ Summary v2 produced no top_actions`);
+      return;
+    }
+
+    log(
+      `  [MONTHLY] Creating ${topActions.length} SUMMARY USER task(s) from top_actions`,
+    );
+
+    for (const action of topActions) {
+      const taskData = {
+        organization_id: organizationId ?? null,
+        location_id: locationId ?? null,
+        title: action.title,
+        description: action.rationale,
+        category: "USER",
+        agent_type: "SUMMARY",
+        status: "pending",
+        is_approved: true,
+        created_by_admin: true,
+        due_date: action.due_at ? new Date(action.due_at) : null,
+        metadata: JSON.stringify(action),
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      try {
+        const [result] = await db("tasks").insert(taskData).returning("id");
+        const taskId = result.id;
+        log(
+          `    ✓ Created SUMMARY USER task (ID: ${taskId}, priority=${action.priority_score.toFixed(2)}, domain=${action.domain}): ${action.title}`,
+        );
+      } catch (taskError: any) {
+        log(
+          `    ⚠ Failed to create SUMMARY task "${action.title}": ${taskError.message}`,
+        );
+      }
+    }
+
+    log(`  [MONTHLY] ✓ Summary v2 task creation completed`);
+  } catch (taskCreationError: any) {
+    log(
+      `  [MONTHLY] ⚠ Error creating Summary v2 tasks: ${taskCreationError.message}`,
+    );
+    void googleAccountId;
   }
 }
 

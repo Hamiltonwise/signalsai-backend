@@ -14,6 +14,7 @@ import {
   CheckCircle,
   Calendar,
   AlertCircle,
+  GitBranch,
 } from "lucide-react";
 import {
   fetchPmsJobs,
@@ -26,6 +27,7 @@ import {
 import { fetchOrganizations } from "../../api/agentOutputs";
 import { PMSAutomationProgressDropdown } from "./PMSAutomationProgressDropdown";
 import { PMSDataViewer } from "../PMS/PMSDataViewer";
+import { PMSPipelineModal } from "./PMSPipelineModal";
 import {
   AdminPageHeader,
   FilterBar,
@@ -341,6 +343,7 @@ export function PMSAutomationCards() {
   const [approvingJobId, setApprovingJobId] = useState<number | null>(null);
   const [, setSavingResponseJobId] = useState<number | null>(null);
   const [activeModalJobId, setActiveModalJobId] = useState<number | null>(null);
+  const [pipelineJobId, setPipelineJobId] = useState<number | null>(null);
   const [editorStates, setEditorStates] = useState<
     Record<number, JobEditorState>
   >({});
@@ -861,6 +864,17 @@ export function PMSAutomationCards() {
             const hasAutomationStatus = !!job.automation_status_detail;
             const isAutomationExpanded = expandedAutomationJobIds.has(job.id);
             const isPending = job.status === "pending";
+            // Pipeline data only exists once monthly_agents has produced
+            // agent_results rows. Show the button when the run reached
+            // task_creation/complete, or when monthly_agents itself is at
+            // least processing (RE/Summary outputs may already be persisted).
+            const automationCurrentStep =
+              job.automation_status_detail?.currentStep;
+            const showPipelineButton =
+              hasAutomationStatus &&
+              (automationCurrentStep === "task_creation" ||
+                automationCurrentStep === "complete" ||
+                automationCurrentStep === "monthly_agents");
 
             return (
               <motion.div
@@ -963,6 +977,19 @@ export function PMSAutomationCards() {
                         <Eye className="h-3.5 w-3.5" />
                         View
                       </motion.button>
+                      {showPipelineButton && (
+                        <motion.button
+                          onClick={() => setPipelineJobId(job.id)}
+                          disabled={isPending}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-alloro-navy/20 bg-white px-3 py-1.5 text-xs font-semibold text-alloro-navy transition hover:border-alloro-navy/40 hover:bg-alloro-navy/5 disabled:opacity-50 disabled:cursor-not-allowed"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          title="View agent inputs and outputs for this run"
+                        >
+                          <GitBranch className="h-3.5 w-3.5" />
+                          Pipeline
+                        </motion.button>
+                      )}
                       {isDeleting ? (
                         <span className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700">
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1113,6 +1140,12 @@ export function PMSAutomationCards() {
         message={confirmModal.message}
         type={confirmModal.type}
         confirmText="Delete"
+      />
+
+      <PMSPipelineModal
+        jobId={pipelineJobId}
+        isOpen={pipelineJobId !== null}
+        onClose={() => setPipelineJobId(null)}
       />
     </div>
   );

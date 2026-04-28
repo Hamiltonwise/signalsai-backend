@@ -7,6 +7,17 @@ export type SearchPositionStatus =
   | "bias_unavailable"
   | "api_error";
 
+/**
+ * Source of the persisted `search_position` value.
+ *
+ * - `apify_maps` : Apify Google Maps actor (matches the Maps panel ordering)
+ * - `places_text`: legacy Places API `searchText` (soft fallback when Apify fails)
+ * - null         : pre-cutover row, before the Apify swap shipped
+ *
+ * Spec: plans/04282026-no-ticket-live-google-rank-apify-maps-swap/spec.md (T3)
+ */
+export type SearchPositionSource = "apify_maps" | "places_text";
+
 export interface SearchResultEntry {
   placeId: string;
   name: string;
@@ -46,6 +57,7 @@ export interface IPracticeRanking {
   search_results: SearchResultEntry[] | null;
   search_checked_at: Date | null;
   search_status: SearchPositionStatus | null;
+  search_position_source: SearchPositionSource | null;
   llm_analysis: Record<string, unknown> | null;
   ranking_factors: Record<string, unknown> | null;
   raw_data: Record<string, unknown> | null;

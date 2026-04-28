@@ -33,6 +33,7 @@ export interface DiscoveredCompetitor {
   hasHours: boolean;
   hoursComplete: boolean;
   photosCount: number;
+  photoName?: string;
   location?: {
     lat: number;
     lng: number;
@@ -220,6 +221,7 @@ function placesToCompetitors(places: any[]): DiscoveredCompetitor[] {
       hasHours,
       hoursComplete,
       photosCount: place.photos?.length ?? 0,
+      photoName: place.photos?.[0]?.name,
       location: place.location
         ? { lat: place.location.latitude, lng: place.location.longitude }
         : undefined,

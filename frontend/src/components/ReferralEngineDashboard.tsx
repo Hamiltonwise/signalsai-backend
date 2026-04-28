@@ -626,12 +626,12 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                 Revenue Tracking On
               </div>
             </div>
-            <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
+            <h1 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight leading-tight mb-2">
               Revenue Details.
             </h1>
-            <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
+            <p className="text-base lg:text-lg text-slate-500 font-medium tracking-tight leading-relaxed max-w-3xl">
               See which{" "}
-              <span className="text-alloro-orange underline underline-offset-8 font-black">
+              <span className="text-alloro-orange underline underline-offset-4 font-semibold">
                 Marketing or Doctors
               </span>{" "}
               are sending you the most work.

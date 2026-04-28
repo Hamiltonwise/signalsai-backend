@@ -15,6 +15,7 @@ import {
   enrichCompetitorReviewCounts,
   auditWebsite,
   getSpecialtyKeywords,
+  getSearchPositionViaApifyMaps,
 } from "./service.apify";
 import {
   discoverCompetitorsViaPlaces,
@@ -25,6 +26,7 @@ import {
   getCachedCompetitors,
   setCachedCompetitors,
 } from "./service.competitor-cache";
+import { resolveCompetitorsForRanking } from "./service.competitor-source-resolver";
 import {
   calculateRankingScore,
   rankPractices,
@@ -324,42 +326,120 @@ export async function processLocationRanking(
     }
   }
 
-  // Sub-step 3: Find client in results by exact placeId
-  if (searchStatus !== "api_error" && clientPlaceId) {
-    const clientIndex = discoveredCompetitors.findIndex(
+  // Sub-step 2.5: Photos-count freshening — independent of position source.
+  // The searchText field mask returns a photos count we may want to prefer over
+  // the Step 0 lookup. Keep this even after the Apify swap so Practice Health
+  // scoring continues to see the freshest photos count.
+  if (clientPlaceId) {
+    const clientFromDiscovery = discoveredCompetitors.find(
       (c: any) => c.placeId === clientPlaceId,
     );
-    if (clientIndex >= 0) {
-      searchPosition = clientIndex + 1;
-      searchStatus = "ok";
-      // Prefer the photos count from the searchText result if it's higher
-      // (the searchText field mask includes photos, so we may get a fresher count)
-      const clientFromSearch = discoveredCompetitors[clientIndex];
-      if ((clientFromSearch.photosCount ?? 0) > clientPhotosCountFromStep0) {
-        clientPhotosCountFromStep0 = clientFromSearch.photosCount;
-      }
-      log(
-        `[RANKING] [${rankingId}] Step 0: client found at position ${searchPosition}`,
-      );
-    } else if (searchStatus === "ok") {
-      searchStatus = "not_in_top_20";
-      log(
-        `[RANKING] [${rankingId}] Step 0: client not found in top ${discoveredCompetitors.length} results`,
-      );
+    if (
+      clientFromDiscovery &&
+      (clientFromDiscovery.photosCount ?? 0) > clientPhotosCountFromStep0
+    ) {
+      clientPhotosCountFromStep0 = clientFromDiscovery.photosCount;
     }
   }
 
-  // Sub-step 4: Build search_results jsonb with isClient flag
-  const searchResultsPayload = discoveredCompetitors.map((c: any, idx: number) => ({
-    placeId: c.placeId,
-    name: c.name,
-    position: idx + 1,
-    rating: c.totalScore ?? 0,
-    reviewCount: c.reviewsCount ?? 0,
-    primaryType: c.primaryType ?? "",
-    types: c.types ?? [],
-    isClient: clientPlaceId !== null && c.placeId === clientPlaceId,
-  }));
+  // Sub-step 3: Live Google Maps position lookup via Apify.
+  // The Maps panel ordering for "{specialty} in {marketLocation}" — what a real
+  // searcher in the area sees — is what users perceive as "Live Google Rank".
+  // This is a different surface from the Places API `searchText` ranking used
+  // above for competitor discovery; the two coexist intentionally.
+  // Spec: plans/04282026-no-ticket-live-google-rank-apify-maps-swap/spec.md (T2)
+  let searchPositionSource: "apify_maps" | "places_text" | null = null;
+  let apifyOrderedResults: Array<{
+    placeId: string;
+    name: string;
+    position: number;
+    rating: number;
+    reviewCount: number;
+    primaryType: string;
+    isClient: boolean;
+  }> | null = null;
+
+  if (clientPlaceId) {
+    // Pass the Identifier Agent's resolved city/state/county/postalCode straight
+    // through to Apify so the Maps query is scoped correctly even when the
+    // composite marketLocation string is a placeholder like "Unknown, XX".
+    const apifyResult = await getSearchPositionViaApifyMaps(
+      searchQuery,
+      clientPlaceId,
+      locationParams,
+    );
+
+    if (apifyResult.status === "ok") {
+      searchPosition = apifyResult.position;
+      searchStatus = "ok";
+      searchPositionSource = "apify_maps";
+      apifyOrderedResults = apifyResult.orderedResults;
+      log(
+        `[RANKING] [${rankingId}] Step 0: Apify Maps position = ${searchPosition} of ${apifyResult.resultCount}`,
+      );
+    } else if (apifyResult.status === "not_in_top_20") {
+      searchPosition = null;
+      searchStatus = "not_in_top_20";
+      searchPositionSource = "apify_maps";
+      apifyOrderedResults = apifyResult.orderedResults;
+      log(
+        `[RANKING] [${rankingId}] Step 0: Apify Maps returned ${apifyResult.resultCount} results, client not in top set`,
+      );
+    } else {
+      // Apify failed — leave searchStatus as it was set by Sub-step 1/2 (which
+      // may already be "bias_unavailable" or "api_error"). If Sub-step 2 still
+      // succeeded with a placeId match in the Places API result set, fall back
+      // to that for continuity.
+      log(
+        `[RANKING] [${rankingId}] Step 0: Apify Maps failed — falling back to Places API position if available`,
+      );
+      const clientIndex = discoveredCompetitors.findIndex(
+        (c: any) => c.placeId === clientPlaceId,
+      );
+      if (clientIndex >= 0) {
+        searchPosition = clientIndex + 1;
+        searchStatus = "ok";
+        searchPositionSource = "places_text";
+        log(
+          `[RANKING] [${rankingId}] Step 0: Places API fallback position = ${searchPosition}`,
+        );
+      } else {
+        searchStatus = "api_error";
+        searchPositionSource = null;
+      }
+    }
+  } else {
+    log(
+      `[RANKING] [${rankingId}] Step 0: skipping Apify Maps lookup (no clientPlaceId)`,
+    );
+  }
+
+  // Sub-step 4: Build search_results jsonb. Prefer the Apify ordered list so
+  // the rankings UI table reflects the Maps panel that the Live Google Rank
+  // number measures. Fall back to Places API discoveries when Apify did not
+  // produce results, so the table still has *something* to render.
+  const searchResultsPayload =
+    apifyOrderedResults !== null && apifyOrderedResults.length > 0
+      ? apifyOrderedResults.map((r) => ({
+          placeId: r.placeId,
+          name: r.name,
+          position: r.position,
+          rating: r.rating,
+          reviewCount: r.reviewCount,
+          primaryType: r.primaryType,
+          types: [] as string[],
+          isClient: r.isClient,
+        }))
+      : discoveredCompetitors.map((c: any, idx: number) => ({
+          placeId: c.placeId,
+          name: c.name,
+          position: idx + 1,
+          rating: c.totalScore ?? 0,
+          reviewCount: c.reviewsCount ?? 0,
+          primaryType: c.primaryType ?? "",
+          types: c.types ?? [],
+          isClient: clientPlaceId !== null && c.placeId === clientPlaceId,
+        }));
 
   // Sub-step 5: Persist Step 0 fields immediately so they survive later-step failures
   await db("practice_rankings")
@@ -373,13 +453,36 @@ export async function processLocationRanking(
       search_results: JSON.stringify(searchResultsPayload),
       search_checked_at: new Date(),
       search_status: searchStatus,
+      search_position_source: searchPositionSource,
       updated_at: new Date(),
     });
 
   log(
     `[RANKING] [${rankingId}] Step 0 complete: status=${searchStatus}, position=${
       searchPosition ?? "n/a"
-    }, results=${discoveredCompetitors.length}`,
+    }, source=${searchPositionSource ?? "n/a"}, places_api_competitors=${discoveredCompetitors.length}`,
+  );
+
+  // ========== STEP 0.5: Competitor Source Resolution (v2) ==========
+  // For finalized locations (user has curated their competitor list), swap
+  // discoveredCompetitors with the curated set so Practice Health scoring runs
+  // against the user's chosen comparison group. Search Position above is
+  // unaffected — it always uses raw Google top-N.
+  // Spec: plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md
+  const resolved = await resolveCompetitorsForRanking(
+    rankingId,
+    discoveredCompetitors,
+    log,
+  );
+  discoveredCompetitors = resolved.competitors;
+  await db("practice_rankings")
+    .where({ id: rankingId })
+    .update({
+      competitor_source: resolved.source,
+      updated_at: new Date(),
+    });
+  log(
+    `[RANKING] [${rankingId}] Competitor source resolved: ${resolved.source}, ${discoveredCompetitors.length} competitors used for Practice Health`,
   );
 
   // ========== STEP 1: Fetch GBP Data ==========

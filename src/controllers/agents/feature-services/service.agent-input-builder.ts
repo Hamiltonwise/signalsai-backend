@@ -197,6 +197,16 @@ export function buildSummaryPayload(params: {
   monthData: any;
   pmsData?: any;
   websiteAnalytics?: { currentMonth: any; previousMonth: any } | null;
+  /** Plan 1: Summary v2 also receives RE's full output (Chief-of-Staff role). */
+  referralEngineOutput?: any;
+  /** Plan 1: Summary v2 receives the deterministic metrics dictionary computed
+   *  by service.dashboard-metrics.ts. Used to ground supporting_metrics[*] picks. */
+  dashboardMetrics?: any;
+  /** Latest LLM-curated ranking recommendations (top_recommendations[]) from
+   *  the most recent completed practice_ranking for this location. Sibling
+   *  to dashboard_metrics: interpretive (not deterministic), so values must
+   *  not be cited via supporting_metrics[*].source_field. */
+  rankingRecommendations?: any[] | null;
 }): any {
   return {
     agent: "summary",
@@ -210,6 +220,11 @@ export function buildSummaryPayload(params: {
       ...params.monthData,
       pms: params.pmsData || null,
       ...(params.websiteAnalytics ? { website_analytics: params.websiteAnalytics } : {}),
+      ...(params.referralEngineOutput ? { referral_engine_output: params.referralEngineOutput } : {}),
+      ...(params.dashboardMetrics ? { dashboard_metrics: params.dashboardMetrics } : {}),
+      ...(params.rankingRecommendations && params.rankingRecommendations.length > 0
+        ? { ranking_recommendations: params.rankingRecommendations }
+        : {}),
     },
   };
 }
@@ -247,6 +262,8 @@ export function buildReferralEnginePayload(params: {
   startDate: string;
   endDate: string;
   pmsData?: any;
+  gbpData?: any;
+  websiteAnalytics?: any;
 }): any {
   return {
     agent: "referral_engine",
@@ -257,7 +274,9 @@ export function buildReferralEnginePayload(params: {
       end: params.endDate,
     },
     additional_data: {
-      pms: params.pmsData || null,
+      pms: params.pmsData ?? null,
+      gbp: params.gbpData ?? null,
+      website_analytics: params.websiteAnalytics ?? null,
     },
   };
 }

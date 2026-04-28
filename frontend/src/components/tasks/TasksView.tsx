@@ -531,7 +531,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
           <div className="p-4 bg-slate-100 rounded-2xl w-fit mx-auto mb-4">
             <AlertCircle className="w-10 h-10 text-slate-400" />
           </div>
-          <h3 className="text-xl font-bold text-alloro-navy font-heading mb-2 tracking-tight">
+          <h3 className="font-display text-xl font-medium text-alloro-navy mb-2 tracking-tight">
             No Account Selected
           </h3>
           <p className="text-slate-500 text-sm font-medium">
@@ -553,7 +553,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
           <div className="p-4 bg-red-50 rounded-2xl w-fit mx-auto mb-4">
             <AlertCircle className="w-10 h-10 text-red-500" />
           </div>
-          <h3 className="text-xl font-bold text-alloro-navy font-heading mb-2 tracking-tight">
+          <h3 className="font-display text-xl font-medium text-alloro-navy mb-2 tracking-tight">
             Unable to Load Tasks
           </h3>
           <p className="text-slate-500 text-sm font-medium mb-6">{error}</p>
@@ -643,25 +643,6 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
       </header>
 
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-12 lg:space-y-16">
-        {/* HERO SECTION */}
-        <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 text-left pt-2">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-[10px] font-black uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-alloro-orange"></span>
-              Actionable Growth
-            </div>
-          </div>
-          <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
-            Practice Roadmap.
-          </h1>
-          <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
-            Complete these{" "}
-            <span className="text-alloro-orange underline underline-offset-8 font-black">
-              Team Tasks
-            </span>{" "}
-            to capture high-value revenue leakage.
-          </p>
-        </section>
 
         {/* TEAM TASKS - MAIN VIEW */}
         <section data-wizard-target="tasks-team" className="space-y-10">
@@ -671,7 +652,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
                 <Layout size={24} />
               </div>
               <div className="text-left">
-                <h2 className="text-2xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                <h2 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight leading-tight">
                   Team Tasks
                 </h2>
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">

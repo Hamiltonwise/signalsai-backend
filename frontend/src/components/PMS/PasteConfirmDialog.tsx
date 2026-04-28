@@ -1,6 +1,6 @@
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ClipboardPaste, Loader2, Sparkles, X } from "lucide-react";
+import { ClipboardPaste, FileText, Loader2, Sparkles, X } from "lucide-react";
 import type { PasteInfo } from "./types";
 import type { PastePhase } from "./usePasteHandler";
 
@@ -11,6 +11,9 @@ interface PasteConfirmDialogProps {
   batchProgress: { current: number; total: number } | null;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Set when the user dropped a file (vs pasting). Switches the
+   *  dialog wording from "Paste detected" to "File detected". */
+  droppedFileName?: string | null;
 }
 
 const ALORO_ORANGE = "#C9765E";
@@ -38,9 +41,11 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
   batchProgress,
   onConfirm,
   onCancel,
+  droppedFileName,
 }) => {
   if (!pasteInfo) return null;
 
+  const isFile = Boolean(droppedFileName);
   const phaseConfig = phase !== "idle" ? PHASE_CONFIG[phase] : null;
 
   const getOverallProgress = (): number => {
@@ -81,13 +86,19 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
               className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
               style={{ backgroundColor: `${ALORO_ORANGE}18` }}
             >
-              <ClipboardPaste size={24} style={{ color: ALORO_ORANGE }} />
+              {isFile ? (
+                <FileText size={24} style={{ color: ALORO_ORANGE }} />
+              ) : (
+                <ClipboardPaste size={24} style={{ color: ALORO_ORANGE }} />
+              )}
             </div>
 
             <h3 className="text-lg font-semibold text-gray-900 mb-1">
               {isPasting
                 ? phaseConfig?.label || "Processing..."
-                : "Paste detected"}
+                : isFile
+                  ? "File detected"
+                  : "Paste detected"}
             </h3>
 
             {!isPasting && (
@@ -95,7 +106,9 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
                 <p className="text-sm text-gray-500 text-center mb-4">
                   {pasteInfo.chunksRequired > 1
                     ? `That's a lot of data! We'll process it in ${pasteInfo.chunksRequired} batches of ${50} rows each.`
-                    : "Ready to parse your pasted data."}
+                    : isFile
+                      ? `Ready to parse ${droppedFileName}.`
+                      : "Ready to parse your pasted data."}
                 </p>
 
                 <div className="w-full bg-gray-50 rounded-xl p-3 mb-5 space-y-1">
@@ -133,8 +146,8 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
                     className="flex-1 rounded-full px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 flex items-center justify-center gap-2"
                     style={{ backgroundColor: ALORO_ORANGE }}
                   >
-                    <ClipboardPaste size={14} />
-                    Parse Data
+                    {isFile ? <FileText size={14} /> : <ClipboardPaste size={14} />}
+                    {isFile ? "Parse File" : "Parse Data"}
                   </button>
                 </div>
               </>

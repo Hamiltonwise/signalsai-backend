@@ -1,5 +1,9 @@
 import db from "../../database/connection";
 
+// Threshold (5%) for flagging when sum(sources.referrals) diverges from
+// total_referrals on a given month. Informational only — never blocks.
+const SOURCE_SUM_TOLERANCE = 0.05;
+
 type RawPmsSource = {
   name?: string;
   referrals?: number | string;
@@ -41,6 +45,13 @@ export type AggregatedPmsData = {
     totalProduction: number;
   };
   patientRecords: any[];
+  /**
+   * Deterministic data-quality flags computed during aggregation.
+   * Surfaced into the LLM input so the agent can echo them in its
+   * own data_quality_flags output (see ReferralEngineAnalysis.md →
+   * UPSTREAM DATA QUALITY ACKNOWLEDGEMENT).
+   */
+  dataQualityFlags: string[];
 };
 
 /**
@@ -166,6 +177,7 @@ export async function aggregatePmsData(
         totalProduction: 0,
       },
       patientRecords: [],
+      dataQualityFlags: [],
     };
   }
 
@@ -262,6 +274,33 @@ export async function aggregatePmsData(
     a.month.localeCompare(b.month)
   );
 
+  // Sum reconciliation (D1 in spec): for each month, verify that the sum of
+  // per-source referrals matches the month's total_referrals within
+  // SOURCE_SUM_TOLERANCE. Anything beyond that gets flagged for the LLM.
+  // Skip months where totalReferrals <= 0 (avoid div-by-zero; empty months
+  // are valid per the n8n contract).
+  const dataQualityFlags: string[] = [];
+  for (const monthData of months) {
+    if (monthData.totalReferrals <= 0) {
+      continue;
+    }
+
+    const sumOfSourceReferrals = monthData.sources.reduce(
+      (acc, s) => acc + (toNumber(s.referrals) || 0),
+      0,
+    );
+
+    const delta =
+      Math.abs(sumOfSourceReferrals - monthData.totalReferrals) /
+      monthData.totalReferrals;
+
+    if (delta > SOURCE_SUM_TOLERANCE) {
+      dataQualityFlags.push(
+        `Sum-of-sources mismatch in ${monthData.month}: sources=${sumOfSourceReferrals}, total=${monthData.totalReferrals}`,
+      );
+    }
+  }
+
   const sources = Array.from(sourceMap.values())
     .sort((a, b) => b.production - a.production)
     .map((source, index) => {
@@ -287,5 +326,6 @@ export async function aggregatePmsData(
       totalProduction: Number(totalProduction.toFixed(2)),
     },
     patientRecords: allPatientRecords,
+    dataQualityFlags,
   };
 }

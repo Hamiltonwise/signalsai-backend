@@ -1145,7 +1145,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 Setup Required
               </span>
             </div>
-            <h1 className="text-4xl font-black text-alloro-navy font-heading tracking-tight mb-3">
+            <h1 className="font-display text-3xl font-medium text-alloro-navy tracking-tight mb-3">
               Let's Set Up Your Dashboard
             </h1>
             <p className="text-lg text-slate-500 font-medium">
@@ -1170,7 +1170,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 {/* Content */}
                 <div className="flex-1 text-left">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-black text-alloro-navy tracking-tight">
+                    <h3 className="font-display text-xl font-medium text-alloro-navy tracking-tight">
                       Connect Your Google Business Profile
                     </h3>
                     <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg">
@@ -1415,7 +1415,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
               <div className="px-6 sm:px-10 py-8 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
                   <Calendar size={20} className="text-alloro-orange" />
-                  <h2 className="text-xl font-bold font-heading text-alloro-navy tracking-tight">
+                  <h2 className="font-display text-xl font-medium text-alloro-navy tracking-tight">
                     Referral Velocity
                   </h2>
                 </div>
@@ -1561,7 +1561,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <h3 className="text-2xl sm:text-3xl font-bold font-heading text-alloro-navy tracking-tight leading-tight">
+                    <h3 className="font-display text-2xl sm:text-3xl font-medium text-alloro-navy tracking-tight leading-tight">
                       Update your referral data
                     </h3>
                     <p className="text-base sm:text-lg text-slate-400 font-normal tracking-tight leading-relaxed max-w-xl mx-auto">
@@ -1607,7 +1607,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                     )}
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold font-heading text-alloro-navy mb-2">
+                    <h3 className="font-display text-xl font-medium text-alloro-navy mb-2">
                       {!hasProperties && !isWizardActive ? "Connect Properties First" : "Upload Restricted"}
                     </h3>
                     <p className="text-sm text-slate-500 font-medium max-w-md">

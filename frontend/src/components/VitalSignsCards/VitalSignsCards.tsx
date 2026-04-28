@@ -284,7 +284,7 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
         <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
           <div className="max-w-[1200px] mx-auto px-6 sm:px-12 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
-              <h1 className="text-2xl font-black font-heading text-alloro-navy tracking-tight">
+              <h1 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight">
                 Patient Journey Insights
               </h1>
               <p className="text-slate-400 font-medium text-[11px] uppercase tracking-wider flex items-center gap-2 mt-1">

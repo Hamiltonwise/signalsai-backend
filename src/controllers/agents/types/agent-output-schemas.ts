@@ -10,6 +10,8 @@
  * to these schemas.
  */
 
+import { z } from "zod";
+
 // =====================================================================
 // PROOFLINE AGENT (DAILY)
 // =====================================================================
@@ -29,12 +31,46 @@ export interface ProoflineAgentOutput {
   metric_signal?: string;
   source_type?: "visibility" | "engagement" | "reviews";
   citations?: string[];
+  /**
+   * Up to 2 phrases pulled verbatim from `trajectory` that the dashboard
+   * highlights inline. Additive (optional) — legacy outputs without this
+   * field remain valid.
+   */
+  highlights?: string[];
 }
 
 export interface ProoflineSkippedOutput {
   skipped: true;
   reason: string;
 }
+
+// ---------------------------------------------------------------------
+// Zod schema for ProoflineAgentOutput
+// ---------------------------------------------------------------------
+//
+// Mirrors the TS interface above. `highlights` is additive and optional
+// (max 2 entries). Nested fields stay permissive; the runner does a
+// post-Zod substring check for `highlights[*]` against `trajectory`
+// (mismatched entries dropped with a [proofline] warning, not rejected).
+//
+// Top-level uses `.passthrough()` rather than `.strict()` so legacy
+// Proofline outputs that may include incidental extra keys still pass.
+
+export const ProoflineAgentOutputSchema = z
+  .object({
+    title: z.string().min(1),
+    proof_type: z.enum(["win", "loss"]),
+    trajectory: z.string().min(1),
+    explanation: z.string().min(1),
+    value_change: z.string().optional(),
+    metric_signal: z.string().optional(),
+    source_type: z.enum(["visibility", "engagement", "reviews"]).optional(),
+    citations: z.array(z.string()).optional(),
+    highlights: z.array(z.string()).max(2).default([]),
+  })
+  .passthrough();
+
+export type ProoflineAgentOutputZ = z.infer<typeof ProoflineAgentOutputSchema>;
 
 // =====================================================================
 // SUMMARY AGENT
@@ -193,3 +229,176 @@ export interface ReferralEngineAgentOutput {
   data_quality_flags?: string[];
   confidence?: number;
 }
+
+// ---------------------------------------------------------------------
+// Zod schema for ReferralEngineAgentOutput
+// ---------------------------------------------------------------------
+//
+// Mirrors the TS interface above. The top-level object is `.strict()` so
+// unknown keys at the root fail validation. Nested objects are NOT strict,
+// so minor LLM verbosity inside matrix rows / nested blocks does not cause
+// hard validation failures (those are the most common drift points).
+//
+// Enums are tightened past the TS interface for `priority` and
+// `source_type` to match the prompt's JSON output spec
+// (`ReferralEngineAnalysis.md` lines 130-194). The TS interface keeps
+// `priority: string` for backward compat with already-stored agent_results
+// rows; this schema is the forward-going contract.
+
+const trendLabelSchema = z.enum([
+  "increasing",
+  "decreasing",
+  "new",
+  "dormant",
+  "stable",
+]);
+
+const prioritySchema = z.enum(["low", "medium", "high"]);
+
+const sourceTypeSchema = z.enum(["digital", "patient", "other"]);
+
+const referralTopFixSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  impact: z.string(),
+});
+
+const referralGrowthSummarySchema = z.object({
+  top_three_fixes: z.array(referralTopFixSchema),
+  estimated_additional_annual_revenue: z.number(),
+});
+
+const referralDoctorReferralSchema = z.object({
+  referrer_name: z.string(),
+  referred: z.number(),
+  net_production: z.number(),
+  avg_production_per_referral: z.number(),
+  trend_label: trendLabelSchema,
+  notes: z.string(),
+});
+
+const referralNonDoctorReferralSchema = z.object({
+  source_label: z.string(),
+  source_key: z.string(),
+  source_type: sourceTypeSchema,
+  referred: z.number(),
+  net_production: z.number(),
+  avg_production_per_referral: z.number(),
+  trend_label: trendLabelSchema,
+  notes: z.string(),
+});
+
+const referralAutomationOpportunitySchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  priority: prioritySchema,
+  impact: z.string(),
+  effort: z.string(),
+  category: z.string(),
+  due_date: z.string().optional(),
+});
+
+const referralPracticeActionSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  priority: prioritySchema,
+  impact: z.string(),
+  effort: z.string(),
+  category: z.string(),
+  owner: z.string(),
+  due_date: z.string().optional(),
+});
+
+export const ReferralEngineAgentOutputSchema = z
+  .object({
+    executive_summary: z.array(z.string()).optional(),
+    growth_opportunity_summary: referralGrowthSummarySchema,
+    doctor_referral_matrix: z.array(referralDoctorReferralSchema),
+    non_doctor_referral_matrix: z.array(referralNonDoctorReferralSchema),
+    alloro_automation_opportunities: z.array(referralAutomationOpportunitySchema),
+    practice_action_plan: z.array(referralPracticeActionSchema),
+    observed_period: z
+      .object({
+        start_date: z.string(),
+        end_date: z.string(),
+      })
+      .optional(),
+    data_quality_flags: z.array(z.string()).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+  })
+  .strict();
+
+export type ReferralEngineAgentOutputZ = z.infer<
+  typeof ReferralEngineAgentOutputSchema
+>;
+
+// =====================================================================
+// SUMMARY V2 AGENT (Chief-of-Staff)
+// =====================================================================
+//
+// Forward-going contract for Summary v2 (see
+// plans/04282026-no-ticket-monthly-agents-v2-backend/spec.md). Replaces
+// the legacy `SummaryAgentOutput` interface as the validation target —
+// the legacy interface is intentionally kept for backward compat with
+// already-stored agent_results rows. Top-level `.strict()` forbids
+// unknown keys at the root; nested objects (cta, outcome) stay
+// permissive to tolerate model verbosity.
+
+export const SupportingMetricSchema = z.object({
+  label: z.string().min(1).max(40),
+  value: z.string().min(1),
+  sub: z.string().optional(),
+  source_field: z.string().min(1),
+});
+
+export const TopActionSchema = z.object({
+  title: z.string().min(1).max(160),
+  urgency: z.enum(["high", "medium", "low"]),
+  priority_score: z.number().min(0).max(1),
+  domain: z.enum([
+    "review",
+    "gbp",
+    "ranking",
+    "form-submission",
+    "pms-data-quality",
+    "referral",
+  ]),
+  rationale: z.string().min(1),
+  highlights: z.array(z.string()).max(2).default([]),
+  supporting_metrics: z.array(SupportingMetricSchema).length(3),
+  outcome: z.object({
+    deliverables: z.string().min(1),
+    mechanism: z.string().min(1),
+  }),
+  cta: z.object({
+    primary: z.object({
+      label: z.string().min(1),
+      action_url: z.string().min(1),
+    }),
+    secondary: z
+      .object({
+        label: z.string().min(1),
+        action_url: z.string().min(1),
+      })
+      .optional(),
+  }),
+  due_at: z.string().optional(),
+});
+
+export const SummaryV2OutputSchema = z
+  .object({
+    top_actions: z.array(TopActionSchema).min(3).max(5),
+    data_quality_flags: z.array(z.string()).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    observed_period: z
+      .object({
+        start_date: z.string(),
+        end_date: z.string(),
+      })
+      .optional(),
+  })
+  .strict();
+
+export type SupportingMetric = z.infer<typeof SupportingMetricSchema>;
+export type TopAction = z.infer<typeof TopActionSchema>;
+export type SummaryV2Output = z.infer<typeof SummaryV2OutputSchema>;

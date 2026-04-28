@@ -2,6 +2,380 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.38] - April 2026
+
+### Summary as Sole USER Task Writer + Pipeline Debug Modal
+
+Two coordination problems shared one root cause and got fixed together: (1) the ranking pipeline was writing its own `agent_type="RANKING"` USER tasks in parallel to Summary's `top_actions`, so clients on `/to-do-list` could see duplicate or contradictory tasks; (2) admins had no way to debug a monthly run because `agent_results.agent_input` was nulled out for any payload >50KB and `dashboard_metrics`/GBP/Rybbit were never persisted. Folding ranking into Summary's input and removing the truncation fixes both with one coherent change.
+
+**Key Changes:**
+- `service.agent-orchestrator.ts` — removed the 50KB truncation on `agent_results.agent_input`; the column is already JSONB-shaped via `BaseModel.jsonFields`, so no migration was needed. The full payload sent to Claude (PMS rollup + GBP + RE output + dashboard_metrics + ranking_recommendations) is now persisted verbatim per run for both Referral Engine and Summary.
+- `service.ranking-recommendations.ts` (new) — `fetchLatestRankingRecommendations(orgId, locationId)` reads the most recent completed `practice_rankings.llm_analysis.top_recommendations[]` for a location.
+- `service.agent-input-builder.ts` — `buildSummaryPayload` accepts `rankingRecommendations` and emits it as `additional_data.ranking_recommendations` (sibling key, intentionally not folded into `dashboard_metrics` so the deterministic-dictionary contract stays intact).
+- `Summary.md` — listed `ranking_recommendations` in INPUTS as interpretive (not deterministic); added a usage rule that recommendations enrich `rationale`/`outcome` and merge with overlapping RE actions, but values must NOT be cited via `supporting_metrics[*].source_field` (those still must trace to `dashboard_metrics` paths).
+- `service.ranking-llm.ts` — removed the call to `archiveAndCreateTasks`. Summary v2 is now the sole writer of `category="USER"` tasks; ranking output reaches Summary on the next monthly run via the new payload field.
+- `service.llm-webhook-handler.ts` — deleted dead `archiveAndCreateTasks` and `WebhookBody`; renamed conceptual purpose in the header comment (file is now ranking-result persistence, no longer a webhook handler).
+- `20260429000001_archive_legacy_ranking_tasks.ts` (new) — one-shot data migration: snapshots existing `agent_type="RANKING"` pending/in_progress tasks to `tasks_ranking_archive_backup_20260429`, archives them, verifies, with full rollback support.
+- `PmsPipelineController.ts` + `routes/admin/pmsPipeline.ts` (new) — `GET /api/admin/pms-jobs/:id/pipeline` returns the PMS metadata plus full RE and Summary `agent_input`/`agent_output` rows. Linkage is primary via `pms_jobs.automation_status_detail.summary.agentResults.{agent}.resultId` (recorded at completion), with a fallback org+location ORDER BY join for legacy/partial-fail rows. Gated behind `authenticateToken + superAdminMiddleware`.
+- `PMSPipelineModal.tsx` (new) — admin debug modal: horizontal DAG (PMS → Referral Engine → Dashboard Metrics → Summary → Tasks) with click-to-expand raw-JSON drill-down for each node. Dashboard Metrics node reads its data from inside Summary's persisted `agent_input.additional_data.dashboard_metrics`. Renders a "Not captured (legacy run)" placeholder for runs that completed before the truncation fix.
+- `PMSAutomationCards.tsx` — added a "Pipeline" button next to the existing "View" button on each row. Visibility gated on `automation_status_detail.currentStep IN (monthly_agents, task_creation, complete)` so it only appears when pipeline data exists.
+
+**What this changes for clients:** existing pending RANKING-typed tasks become `archived` at deploy. New ranking insights surface on the next monthly Summary run as part of the unified `top_actions[]` list, instead of as a parallel pipeline.
+
+**What this changes for admins:** every monthly run from this version forward is fully replayable via the Pipeline modal — full RE input, full Summary input including dashboard_metrics, and both agent outputs.
+
+**Out of scope (deliberate):** RE → ALLORO tasks left untouched (different audience, agency-internal); cadence policy for ranking news between PMS uploads accepts the lag (option a from the planning thread); `pms_job_id` FK on `agent_results` deferred (current join sufficient); Rybbit website analytics path stays as-is (not yet emitting data).
+
+**Verification:** `tsc --noEmit` clean (backend + frontend). `npm run lint` clean for the changed files (264 pre-existing errors elsewhere, unchanged by this work).
+
+## [0.0.37] - April 2026
+
+### Rankings Polish — Eyebrow Pattern, Layout Repair, Tone & Brand Sweep
+
+Iterative refinement pass on the Rankings dashboard and the surrounding UI shell. Removed a redundant hero block, replaced overlapping section descriptors with `(i)`-icon hover tooltips (`InfoHint` helper), recovered from a layout regression where the eyebrow tooltip was rendering behind adjacent stacking contexts and one KPI label ("Practice Health") was wrapping to two lines, and finished the multi-page serif sweep that had been rolling out since 0.0.36. Brand bar in the sidebar now renders "Alloro" in bold Fraunces with the "Intelligence" subtitle dropped. The legacy v1 "auto-discovered competitors" notice on Practice Health was removed entirely.
+
+**Key Changes:**
+- `RankingsDashboard.tsx` — dropped Local Reputation hero block; restyled `client_summary` as a soft cream parchment callout (`#FCFAED` / `#EDE5C0`) with an "Practice insight" Info eyebrow and serif body; introduced `InfoHint` component for section eyebrows (Practice Health + Live Google Rank), replacing inline overflowing descriptors with bottom-positioned animated tooltips; grouped each `InfoHint` with its section in `space-y-4` containers so eyebrows hug their content while preserving 80px breathing room between major groups; tightened KPI label tracking (`0.25em` → `0.18em`) + added `whitespace-nowrap` so "PRACTICE HEALTH" stays on one line; removed the `LegacyRankingTag` v1 notice and its dead import.
+- `CompetitorOnboardingBanner.tsx` — slimmed v2 banner from a 3-line card to a single padded row (`px-4 py-2.5`, 28px icon); added animated Info hover tooltip explaining what curation does to ranking accuracy.
+- `focus/ActionQueue.tsx` — removed the explanatory footer paragraph ("Summary outputs 3–5 actions per month, ordered by priority_score…").
+- `focus/WebsiteCard.tsx` — added `NotReadyShell` with Globe2 icon + "Connect website →" CTA; routes 404 "No website found" responses to the not-ready path instead of the generic error shell.
+- `Sidebar.tsx` — brand block switched to `font-display font-bold text-2xl` Alloro and the "Intelligence" subtitle was removed; flex column collapsed.
+- **Serif sweep across the rest of the app:** `Help.tsx`, `Notifications.tsx` (notification card titles), `TasksView.tsx` (Team Tasks h2 + error states), `BillingTab.tsx` (plan name h3s), `PMSVisualPillars.tsx`, `DFYWebsite.tsx`, `VitalSignsCards/VitalSignsCards.tsx` (Patient Journey Insights), `ReferralEngineDashboard.tsx`, `Profile.tsx`, `Signin.tsx`, `Signup.tsx`, `ForgotPassword.tsx`, `LocationCompetitorOnboarding.tsx`.
+- **Tone shift in competitor copy** — "you compete with…" / "anyone you don't compete with" passive-aggressive phrasing replaced with neutral "local competitors" framing on the location curation page.
+
+**Tooltip layering fix (post-regression):** Initial `InfoHint` rendered tooltips above the icon (`bottom-full mb-2`) with a `-mb-6` negative margin on the row, causing the tooltip to clash with the previous section's stacking context and the eyebrow row to crowd against the next KPI grid. Flipped tooltip to render below (`top-full mt-2`), flipped the arrow (`border-b-alloro-navy`), replaced `-mb-6` with `pb-2`, bumped tooltip `z-50` → `z-[100]`, and added a per-instance `zIndex: 60` on the `InfoHint` root when the tooltip is open.
+
+**Commits:**
+- `e9927fdf` — drop hero header, restyle client summary as parchment callout
+- `f44ef3c2` — subtler cream callout + slim v2 banner above
+- `ced05757` — info tooltip on v2 banner explaining the curation upgrade
+- `17ae6dee` — passive 'local competitors' tone + serif headings on more pages
+- `61a47809` — bold serif 'Alloro' brand, drop 'Intelligence' subtitle
+- `50e8bd95` — drop queue footer note + WebsiteCard not-ready shell
+- `0753d3a1` — clarify Practice Health vs Live Google Rank + serif on remaining tabs
+- `4ad1df91` — rankings overflow + serif sweep across remaining pages
+- `ea8a323d` — replace overlapping section descriptors with InfoHint tooltips
+- `8c1eac84` — InfoHint tooltip layering + spacing
+- `375062b2` — group eyebrows with sections, attach legacy tag to Practice Health
+- `b84d467f` — keep KPI label on one line (tighter tracking + nowrap)
+- `22ef6bc5` — remove v1 legacy auto-discovered competitor notice
+
+**Verification:** `tsc --noEmit` clean. `npm run build` clean (~4.3s) on each iteration.
+
+## [0.0.36] - April 2026
+
+### Page Headings Cleanup — Drop 4, Shrink 1, Apply Serif
+
+Stripped page-level eyebrow + headline + subtitle blocks that were taking first-fold space without adding signal. Tasks, Notifications, Help, and Settings lose their headers entirely; Rankings keeps its header but at a much smaller scale and switches to Fraunces (`font-display`). Two remaining setup-state headings (PMS Visual Pillars, DFY Website) also pick up Fraunces for consistency with the Focus dashboard's typography.
+
+**Removed entirely (no replacement):**
+- `TasksView.tsx` — "Actionable Growth · Practice Roadmap. Complete these Team Tasks to capture high-value revenue leakage."
+- `Notifications.tsx` — "Notifications Active · Practice Updates. A live feed of Important Events that need your attention."
+- `Help.tsx` — "We are here to help · How can we help? Talk to your Alloro Strategist for help with your practice growth."
+- `Settings.tsx` — avatar circle + "Hamilton Wise's Organization" h1 + "Manage your practice details and connect your Google integrations" subtitle, plus the entire `<header>` shell that wrapped them.
+
+**Shrunk + serif:**
+- `RankingsDashboard.tsx` — "Local Reputation." heading dropped from `text-5xl/6xl font-black font-heading` to `font-display text-2xl md:text-3xl font-medium tracking-tight`. Subtitle dropped from `text-xl/2xl` to `text-base/lg`. The "Local SEO Tracking On" eyebrow + structure preserved.
+
+**Serif applied to remaining prominent page headings:**
+- `PMSVisualPillars.tsx:1148` setup-state heading — `font-display text-3xl font-medium`
+- `DFYWebsite.tsx:888` building-state heading — `font-display text-2xl md:text-3xl font-medium`
+
+**Settings cleanup also removed the unused `useAuth().userProfile` destructure** — caught by `tsc -b` after the header removal.
+
+**Verification:** `tsc --noEmit` clean (backend + frontend). `npm run build` clean (4.39s).
+
+## [0.0.35] - April 2026
+
+### Restore Sidebar — Keep New Dashboard Content
+
+Walked back the most visible part of 0.0.34 (the global sidebar → top-bar swap) while preserving every other piece of that release. The sidebar returns as the live navigation across all authenticated pages; the new Focus dashboard content (Hero, Trajectory, Action Queue, three product cards), the new fonts (Fraunces, Inter, JetBrains Mono), the `mark.hl` highlight class, and the brand-orange wizard outline all stay.
+
+**Code changes:**
+- `PageWrapper.tsx` — restored to its pre-0.0.34 shape (sidebar mount + mobile header + sidebar-aware main padding via `useSidebar` collapsed state). `TopBar` and `Ticker` are no longer mounted.
+- `Sidebar.tsx` — `@deprecated` JSDoc block from 0.0.34 removed; the sidebar is fully live again.
+- `components/layout/TopBar.tsx` + `components/layout/Ticker.tsx` — `@deprecated` JSDoc added (mirrors the pattern we just removed from Sidebar). Components preserved on disk and trivially revivable with a one-line `PageWrapper` edit if a top-bar rethink lands later.
+
+**Unchanged from 0.0.34:**
+- All 11 components under `components/dashboard/focus/` (Hero, Trajectory, ActionQueue, WebsiteCard, LocalRankingCard, PMSCard, ProoflineModal, SetupProgressBanner, HighlightedText, Sparkline, FactorBar, icons)
+- The thin `DashboardOverview.tsx` composition rendering them
+- 3 new API clients (`dashboardMetrics`, `formSubmissionsTimeseries`, `rankingHistory`)
+- 5 new React Query hooks
+- `frontend/src/types/dashboardMetrics.ts`
+- `index.html` font links (Fraunces, Inter, JetBrains Mono)
+- `index.css` additions (`mark.hl` class, `--font-display`/`--font-mono` vars, domain icon tile classes)
+- Wizard `wizard-highlight` outline brand-orange fix in `SpotlightOverlay.tsx`
+
+**Visual outcome:** `/dashboard` renders the new Focus content (Hero card on dark, Trajectory + Action Queue 2-col row, three product cards 3-col row) inside the sidebar-constrained main area. All other authenticated routes (Settings, Help, Notifications, DFY Website) look exactly as they did before 0.0.34. Mobile uses the legacy mobile-header burger + slide-in sidebar drawer + bottom nav.
+
+**Verification:** `npx tsc --noEmit` clean (backend + frontend). `npm run build` clean (4.35s, 4.7MB main chunk per pre-existing pattern).
+
+**Out of scope (deferred):**
+Decide within ~1 release cycle whether to delete `TopBar.tsx` + `Ticker.tsx` or commit to a different navigation rethink that revives them. Adjust new dashboard card spacing if the Hero or product cards feel cramped at typical sidebar-open desktop widths. Reintroduce a refresh affordance on the new dashboard surface (none currently surfaced — TanStack Query's automatic refetch is keeping data current). Mobile redesign of the new dashboard cards.
+
+## [0.0.34] - April 2026
+
+### Focus Dashboard — Frontend Redesign
+
+The practice-facing dashboard at `/dashboard` is fully redesigned. The global left sidebar is replaced with a top-bar nav across all authenticated pages. The dashboard's "Focus" tab gets a single dominant Hero card surfacing Summary v2's `top_actions[0]`, a Trajectory + Action Queue row, and three product cards (Website / Local Ranking / PMS) that surface real grounded metrics with month-over-month context. The 1700-line legacy `DashboardOverview.tsx` is replaced by a 95-line composition that delegates all rendering to small focused components under `frontend/src/components/dashboard/focus/`.
+
+**Layout shell (global):**
+- `PageWrapper.tsx` rewritten — sidebar mount removed, replaced with `<TopBar>` at top + `<Ticker>` (only on dashboard routes). Content area no longer reserves sidebar width. Mobile header consolidated into `TopBar`'s mobile variant. `MobileBottomNav` continues to render as primary mobile nav until the mobile redesign lands.
+- New `components/layout/TopBar.tsx` — brand mark · 6-tab nav (Focus/Journey/PMS/Rankings/Tasks·count/Referral Engine) via `<NavLink>` for URL-driven active state · live pulse pill · refresh icon (wires to `useQueryClient().invalidateQueries()`) · location selector consuming `useLocationContext` · avatar with initials from `useAuth().userProfile`. Mobile: collapses to brand + avatar + hamburger drawer.
+- New `components/layout/Ticker.tsx` — today strip with ambient signals + refreshed-at timestamp.
+- `components/Sidebar.tsx` preserved on disk (with `@deprecated` JSDoc) for revert path. Not mounted.
+
+**Focus dashboard composition** (`components/dashboard/focus/`):
+- `Hero.tsx` (+ `useTopAction` hook) — reads tasks where `agent_type='SUMMARY'` filtered to highest `metadata.priority_score`. Renders dark card with 3 pills (1-thing-that-matters · urgency · domain), Fraunces display headline with inline `<mark class="hl">` highlights, rationale paragraph, primary/secondary/tertiary CTAs, and a right-side "Why this first" panel with 3 grounded stats + outcome (deliverables in green-bold + mechanism muted).
+- `Trajectory.tsx` — reads existing `useAgentData` for Proofline. Renders salutation ("Good morning, {firstName}." with time-of-day) + body with highlights + "Read full explanation →" link triggering `ProoflineModal` + 3 mini-stats (Production MTD / New patient starts / Visibility score) sourced from `useDashboardMetrics`.
+- `ActionQueue.tsx` (+ `useActionQueue` hook) — reads remaining tasks (Summary `priority_score < hero` + RE ALLORO), sorts desc, slices to 5 rows. Each row: domain icon tile via `getDomainIcon` lookup · title · color-coded urgency · due date · agent pill (Summary/Referral Engine) · chevron. Footer note explains the priority_score ordering rule.
+- `WebsiteCard.tsx` — verified leads count headline + MoM trend computed from timeseries · 12-month area sparkline (new `/timeseries` endpoint) · "Coming soon: Rybbit" annotation · view submissions link.
+- `LocalRankingCard.tsx` — rank position + history trend (new `/history` endpoint) · two factor sub-sections "Google Search" + "Practice Health" each with 4 weighted `<FactorBar>` rows + computed sub-score · lowest-factor annotation.
+- `PMSCard.tsx` — production headline + MoM trend · 12-month sparkline from `pmsKeyData.months[]` · referral mix bar (doctor vs self) · top-3 sources from `sources[]` with optional drop pill.
+- `ProoflineModal.tsx` — extracted from legacy `DashboardOverview` with framer-motion AnimatePresence pattern.
+- `SetupProgressBanner.tsx` — thin orange-tinted banner above hero, only when `useAuth().onboardingCompleted === false`. CTA to `/new-account-onboarding`.
+
+**Helper components:**
+- `HighlightedText.tsx` — pure-text deterministic substring → `<mark class="hl">` JSX wrap. Sorts highlights longest-first, escapes regex specials, never injects raw HTML from agent output. Mismatched phrases silently dropped.
+- `Sparkline.tsx` — area + line + last-point dot SVG. `viewBox` + `preserveAspectRatio="none"` for responsive scaling.
+- `FactorBar.tsx` — labeled horizontal progress bar with color tier (green ≥0.7, orange 0.5-0.7, red <0.5). Score clamped to [0,1].
+- `icons.ts` — `DOMAIN_ICONS` lookup map (review→MessageSquare, gbp→MapPin, ranking→TrendingUp, form-submission→Inbox, pms-data-quality→Database, referral→UserPlus). Frontend-derived per Plan 1's domain enum; agent never picks an icon.
+
+**Typography & tokens:**
+- New fonts: Fraunces (display, weights 400/500/600), Inter (400/500/600/700), JetBrains Mono (400/500/600). Loaded via Google Fonts in `index.html` alongside existing Plus Jakarta Sans + Literata. CSS vars `--font-display`, `--font-mono`, `--font-inter` added to `index.css`.
+- `mark.hl` class added with light + dark variants (toggled by `focus-card-dark` wrapper class on the Hero). Brand orange `#D66853`.
+- Domain icon tile classes (`.di-review`, `.di-gbp`, `.di-ranking`, `.di-form`, `.di-pms`, `.di-referral`) added to `index.css` with their respective tints.
+
+**Onboarding wizard fix:**
+- `SpotlightOverlay.tsx` — `wizard-highlight` outline color updated from off-brand `rgba(255,138,61,X)` to brand orange `rgba(214,104,83,X)` matching `--color-alloro-orange`. Pulse animation pattern unchanged. Now reads correctly against the new dashboard's dark hero card.
+
+**API clients (consume Plan 1 endpoints):**
+- `frontend/src/api/dashboardMetrics.ts` + `useDashboardMetrics` hook
+- `frontend/src/api/formSubmissionsTimeseries.ts` + `useFormSubmissionsTimeseries` hook
+- `frontend/src/api/rankingHistory.ts` + `useRankingHistory` hook
+- `frontend/src/types/dashboardMetrics.ts` mirrors backend shape
+
+**Refresh wiring:** TopBar's refresh icon dispatches `queryClient.invalidateQueries()` from PageWrapper, refetching every TanStack key (cards dedupe identical keys, so it's cheap). Replaces the legacy `handleRefresh` that lived inside DashboardOverview.
+
+**Verification:** `npx tsc --noEmit` zero new errors backend + frontend. Live visual smoke (hero card hierarchy, hover states, mobile collapse, wizard outline against new layout) is gated on dev-server execution by the user.
+
+**Out of scope (deferred):**
+Mobile-first redesign of the new layout (current mobile is "works, doesn't crash"). Per-page reflow for Settings/Help/Notifications/DFY Website if the new TopBar reveals broken spacing. Touch device interaction patterns. Full WCAG accessibility audit. Sidebar component full removal (kept for revert path until v2 is proven). TopBar feature flag for staged rollout. Performance optimization (lazy-load Sparkline/FactorBar, defer below-fold). Animation polish (tab underline, hero entrance, queue stagger).
+
+## [0.0.33] - April 2026
+
+### Monthly Agents v2 — Summary as Chief-of-Staff
+
+The monthly agent chain is reorganized so a single agent (Summary v2) writes practice-facing tasks, with Referral Engine providing specialist input and a new deterministic metrics service grounding every claim. Opportunity and CRO Optimizer are disabled (preserved on disk for revival). Two new endpoints land for the upcoming dashboard redesign (Plan 2 — frontend).
+
+**Architecture:**
+- **New chain order:** `Referral Engine → service.dashboard-metrics.ts → Summary v2`. RE runs first to produce specialist analysis (matrices, growth opportunity summary). The new dashboard-metrics service computes a deterministic dictionary of org-specific numbers (review/GBP/ranking/form-submission/PMS/referral) consuming RE's output. Summary v2 runs last with the full context (PMS, GBP, analytics, RE output, dashboard metrics) and picks 3-5 monthly priorities across all six domains.
+- **Opportunity + CRO disabled** in `service.agent-orchestrator.ts` via `if (false)` blocks. Their prompt files, payload builders, and task-creator branches are preserved on disk; revival is a one-line orchestrator change.
+- **Summary v2 schema** (`SummaryV2OutputSchema` in `agent-output-schemas.ts`): top-level `.strict()` Zod, requires `top_actions: TopAction[]` of length 3-5. Each `TopAction` carries `title · urgency · priority_score (0-1) · domain · rationale · highlights[≤2] · supporting_metrics[exactly 3] · outcome.{deliverables, mechanism} · cta · due_at?`. The domain enum is `review | gbp | ranking | form-submission | pms-data-quality | referral` — Summary now picks across all six (the earlier "exclude referral" rule is dropped).
+- **Summary v2 prompt** (`src/agents/monthlyAgents/Summary.md` rewritten): Chief-of-Staff role, 154 lines. Mirrors the RE Tier-1 grounding pattern with new sections — GROUNDING RULES STRICT, SINGLE-MONTH RULE, UPSTREAM DATA QUALITY ACKNOWLEDGEMENT, PASSTHROUGH RULE (preserve specialist wording verbatim), CROSS-SOURCE CONSOLIDATION RULE (merge actions referencing the same entity), OUTCOME RULE — NO MAGNITUDE PREDICTIONS (forbidden patterns: "+2 positions", "+5 patients/mo", "$3,200 revenue est."), HIGHLIGHTS RULE.
+- **Post-Zod value validator hook** in the orchestrator: walks every `top_actions[*].supporting_metrics[*].source_field` against the dashboard_metrics dictionary at the dotted path. Mismatch (numeric-normalized + substring-tolerant comparison) throws to trigger the runner's outer 3-attempt retry. Means the agent literally cannot invent values — every `value` in the stat strip traces to a deterministic backend computation.
+- **Highlights post-validator** (warn-only): logs mismatched entries; frontend silently drops at render time.
+- **Summary writes USER tasks** via the new `createTasksFromSummaryV2Output` branch in `service.task-creator.ts`. Each `top_actions[i]` becomes one row with `agent_type='SUMMARY', category='USER', is_approved=true` and the entire TopAction object stored in `metadata` (jsonb) so the dashboard renders hero/queue without a separate fetch.
+- **RE keeps ALLORO task writes only**. The `practice_action_plan → USER` branch was removed from `service.task-creator.ts`; those items now feed Summary as input. The `alloro_automation_opportunities → ALLORO` branch (agency-internal automation tasks) is unchanged.
+- **Proofline `highlights[]`** field added (additive). `ProoflineAgentOutputSchema` is new (Proofline previously had only a TS interface). Same pattern as Summary — max 2 phrases, must appear verbatim in `trajectory`.
+- **3-attempt retry on Summary v2** (mirrors RE's pattern). Each attempt: Zod corrective retry inside the runner + value/highlights validators outside. Failure of all 3 attempts returns `{ success: false }` with the error.
+
+**New backend endpoints (consumed by Plan 2 frontend):**
+- `GET /api/dashboard/metrics?organization_id=X[&location_id=Y]` — wraps `computeDashboardMetrics`. Validates output via `DashboardMetricsSchema` before returning.
+- `GET /api/user/website/form-submissions/timeseries?range=12m|6m|3m` — returns `[{ month, verified, unread, flagged }]` zero-filled, oldest-first. Filters via the existing `is_flagged` / `is_read` columns + `form_name` exclusion that match the existing `/stats` semantics (so dashboard counts stay consistent).
+- `GET /api/practice-ranking/history?googleAccountId=X[&locationId=Y]&range=6m|3m` — returns `[{ observedAt, rankScore, rankPosition, factorScores }]` oldest-first, with `factorScores` flattened from the `ranking_factors` jsonb to a `Record<string, number>` of just the score numbers.
+
+**`service.dashboard-metrics.ts` — the deterministic dictionary:**
+Pure function — no LLM calls. Six sections:
+- `reviews` — oldest_unanswered_hours, unanswered_count, current_rating, rating_change_30d, reviews_this_month
+- `gbp` — days_since_last_post, posts_last_quarter, call/direction_clicks_last_30d
+- `ranking` — position, total_competitors, score, lowest_factor, highest_factor, score_gap_to_top
+- `form_submissions` — unread_count, oldest_unread_hours, verified_count, verified_this_week, flagged_count
+- `pms` — distinct_months, last_upload_days_ago, missing_months_in_period, production_total, production_change_30d, total/doctor/self_referrals
+- `referral` (sourced from RE output) — top_dropping_source, top_growing_source, sources_count
+
+Each section is wrapped in try/catch — a failure in one section logs a warning and emits zero/null defaults rather than failing the whole dictionary. The result is `safeParse`'d through `DashboardMetricsSchema` and throws on schema violation (programming-error signal). The dotted-path keys ARE the legal `source_field` values for Summary's `supporting_metrics[*]` validator.
+
+**Smoke verification (Plan 1 T15) is gated on live infrastructure** — running monthly agents end-to-end on a real test org and inspecting `tasks` table + `agent_results.response_log` shape compliance. Code is TypeScript-clean (`npx tsc --noEmit` zero new errors backend + frontend). Recommended pre-merge: smoke-test against a staging copy of prod data.
+
+**Out of scope (deferred):**
+Frontend redesign (Plan 2 — separate spec at `plans/04282026-no-ticket-focus-dashboard-frontend/`). Removal (full delete) of Opportunity/CRO Optimizer prompt files + task-creator branches. Future specialist agents (ranking-analyzer, website-analyzer) feeding Summary. Backfill of historical Summary outputs into the new shape. Per-claim confidence scoring inside top_actions[*]. Daily-cadence Summary.
+
+## [0.0.32] - April 2026
+
+### PMS Column Mapping with AI Inference
+
+PMS uploads now run through a column-mapping system that handles arbitrary export shapes — not just the 4-col Alloro template. The previous positional parser silently misclassified procedure-log exports (e.g., Open Dental: `Treatment Date | Procedure | Patient | … | Referring Practice | …`) by treating procedure codes as source names and per-procedure rows as per-referral rows. New flow hashes the file's headers into a signature and resolves through three tiers: **org cache → global library → AI inference (Haiku 4.5)**. On first upload of an unknown shape, the user reviews/edits the mapping in a side drawer; on confirm (or "Re-process and save") it clones into the org's cache so subsequent uploads of the same shape are silent. The n8n PMS parsing webhook is no longer called — paste and file-upload paths now run the same code in this repo.
+
+**Architecture:**
+- New `pms_column_mappings` table (jsonb mapping payload, `is_global` flag, partial unique indexes for org rows and global rows). `pms_jobs.column_mapping_id` added as additive nullable FK with `ON DELETE SET NULL`.
+- Three-tier resolver in `src/utils/pms/resolveColumnMapping.ts` with `[pms-mapping]` telemetry on every dispatch (`{ signatureHash, source, confidence, orgId, success }`). One-way fallback chain — never reversed, never merged.
+- AI inference (`src/utils/pms/columnMappingInference.ts`) reuses the same Zod + corrective-retry plumbing the Referral Engine got in 0.0.31. 8s hard timeout, Haiku 4.5, temperature 0, prompt cache enabled (`cachedSystemBlocks: []`). On timeout or repeat-Zod-failure, falls through to manual-mapping UI.
+- Two adapters under `src/utils/pms/adapters/`: `templateAdapter` (1 row = 1 referral, byte-identical to the previous parser for Alloro template signatures) and `procedureLogAdapter` (group rows, count groups). Dispatcher (`applyColumnMapping.ts`) picks based on which roles are mapped (`source` vs. `referring_practice`); throws on both-mapped or neither-mapped.
+- Procedure-log adapter strips leading/trailing `*` characters from referring-practice values (handles `***Cox Family Dentistry & Orthodontics***` style annotations) and classifies blank → `self`, non-blank → `doctor`. No keyword inference on text.
+- Production formula is an array of `{ op: "+" | "-", column }` ops — no expression strings, no parentheses, no multiplication/division. Evaluator reuses `toNumber()` from `pmsAggregator.ts` for currency-aware coercion (`"$1,234.56"`, parenthesised negatives `"(91.6)"`, signed strings).
+- Initial global library seeded with two entries: Alloro 4-col template and the Open Dental procedure-log shape derived from the Fredericksburg test fixture. Engineering-controlled — global writes are seed-only; app code can only read from the library and write to the org cache.
+
+**Frontend:**
+- `PMSManualEntryModal.tsx` rewritten with a state-machine CSV parser. The previous naive `split(',')` shifted all columns silently whenever a quoted field contained a comma (patient names like `"Diab, Zied"`). State machine handles quoted fields, escaped quotes (`""`), and CRLF.
+- New `ColumnMappingDrawer.tsx` — 3 main fields (Date, Source, Production) + Advanced collapsible (Patient + status filter). Inverted from the original per-header dropdown matrix because doctors found the role-enum-first UX unintuitive — "tell us where Date / Source / Production live" matches the mental model of someone who knows their PMS export but not the role enum. Single "Re-process and save" CTA, disabled until edits exist.
+- New `ProductionFormulaBuilder.tsx` — `+` / `−` ops over column dropdowns with live preview against the first row (`Gross Revenue − Total Writeoffs = $1,234.56`). The target-of-formula dropdown was removed during execution (overengineered — defaults to `production_net` silently).
+- 4 new typed API client wrappers in `frontend/src/api/pms.ts`: `previewMapping`, `uploadWithMapping`, `reprocessJob`, `getCachedMapping`.
+
+**Behavior changes from spec (logged in spec Revision Log):**
+- **Dedup model** changed from per-`(patient, date, practice)` triplet (D8) to per-`(patient, practice)` pair after verification against Hamilton Wise's reference pivot on the Fredericksburg Feb 2026 dataset. The spreadsheet treats a patient referred by Practice X as one referral for the period regardless of visit count — per-patient mental model, not per-visit. Multiple visits collapse into one referral; production sums across visits. Per-source counts and production now match the pivot exactly.
+- **Zero-production skip rule** was prototyped then removed. The reference pivot retains zero-production referrals (post-op visits) as legitimate referral events. The `flags?: string[]` parameter on `applyMapping` and `applyProcedureLogMapping` is preserved for future data-quality use.
+- **Clone-on-confirm cache write** now also fires from the drawer's "Re-process and save" CTA, not just initial Submit. User edits made during the preview flow weren't being persisted before, so re-uploads after Clear Data showed the seed/global mapping again instead of the edited version.
+- **Backend response shape**: adapter returns a flat `MonthlyRollupForJob` array; controller now wraps it as `{ monthly_rollup: parsedPreview }` in both override and normal branches before responding, matching what the existing UI consumes.
+- **Re-process-and-save** sends the full row set (`mappingAllRows`), not just the 5-row sample — sample-only re-processing didn't update toast counts or rollup totals.
+- **Drawer auto-open** deferred to fire from `handleParsedPaste` after the legacy paste-detected modal completes (sequenced via `pastedRawTextRef` and `runMappingPreviewRef`) to avoid the drawer opening over the legacy modal.
+- **`seed-second-location.ts`** moved from `src/database/seeds/` to `scripts/`. Adding the `seeds:` config block to `src/database/config.ts` (required for the new global-library seed) made the knex seed loader pick up the standalone ts-node script, which isn't compatible with knex's seed contract. Both files remain runnable in their new locations.
+
+**Out of scope (deferred):**
+Admin UI for managing the global library, AI inference for the dedup step, multi-mapping per file (sectioned exports), drag-drop UI redesign, multiplication/division/parentheses in production formulas, telemetry dashboard, backfill of historical `pms_jobs` rows, per-uploader (vs per-org) mappings, telemetry-driven auto-promotion of org cache entries into the global library.
+### Practice Ranking v2 — User-Curated Competitor Lists
+
+Replaces the auto-discovered competitor set with a user-curated list per location. Clients control exactly which practices their Practice Health score is benchmarked against — no more drift run-to-run, no more nearby-but-irrelevant competitors, no more missing real ones. Search Position stays untouched (still pure-Google top-20) so the live rank signal remains a real Google rank, not a relative position within a curated set.
+
+**Architecture:**
+- New `location_competitors` table (per-location, soft-deletable via `removed_at`, partial unique index on `(location_id, place_id) WHERE removed_at IS NULL` so re-add revives instead of duplicates). FK cascades from `locations`; `added_by_user_id` SET NULL on user deletion.
+- New `LocationCompetitorModel` mirrors the `PracticeRankingModel` style — find-active, find-including-removed, addCompetitor (handles soft-delete revival), removeCompetitor (soft), countActive, getOnboardingStatus, setOnboardingStatus, findLatestInitialScrapeAt.
+- Per-location v2 lifecycle on `locations`: `location_competitor_onboarding_status` (`pending` → `curating` → `finalized`) + `location_competitor_onboarding_finalized_at`. Verbose name to disambiguate from the existing organization-level onboarding.
+- New `competitor_source` column on `practice_rankings` (`curated` / `discovered_v2_pending` / `discovered_v1_legacy`) with backfill of all pre-v2 rows as `discovered_v1_legacy`. Enables history rendering with explicit provenance.
+- Dead `competitor_cache` table dropped — bypassed by the location-bias rewrite per `service.ranking-pipeline.ts:421` comment.
+- Existing `agent_key='ranking'` schedule row updated in-place from drifting `interval_days=15` to calendar-aligned cron `0 0 1,15 * *` UTC. No new scheduler entry; the worker recomputes `next_run_at` via `cron-parser`.
+
+**Pipeline branching (single decision point):**
+- New `service.competitor-source-resolver.ts:resolveCompetitorsForRanking` resolves the competitor set used for Practice Health scoring. For finalized locations: loads the curated list, batch-fetches fresh `getPlaceDetails`, returns hydrated `DiscoveredCompetitor[]`. For pending/curating: passes through the Step 0 Places top-N. Falls back to the discovered set on any curated-path failure (graceful degradation).
+- Resolver wired into `service.ranking-pipeline.ts` after Step 0 sub-step 5 (search_position persisted), before Step 1. Step 0 sub-steps 1-5 (Places top-20 → search_position fields) are UNCHANGED — Search Position math is fully isolated from curation status.
+- `competitor_source` persisted on the `practice_rankings` row at the same point.
+
+**Scheduler filter:**
+- `service.ranking-executor.ts:setupRankingBatches` skips locations whose `location_competitor_onboarding_status !== 'finalized'`. Logged per-location with status. Existing admin trigger flow (`POST /api/practice-ranking/trigger`) is unchanged — admins can still trigger any location regardless of onboarding status.
+
+**Backend endpoints (location-scoped, JWT + RBAC + locationScope gated):**
+- `GET    /api/practice-ranking/locations/:locationId/competitors` — list active curated competitors + onboarding status + cap.
+- `POST   /api/practice-ranking/locations/:locationId/competitors/discover` — runs initial Places discovery (top 10), populates `location_competitors` with `source='initial_scrape'`, flips status to `curating`. Idempotent: skips if existing initial_scrape <7 days old.
+- `POST   /api/practice-ranking/locations/:locationId/competitors` — adds a user-chosen competitor by Place ID (cap enforced server-side at 10).
+- `DELETE /api/practice-ranking/locations/:locationId/competitors/:placeId` — soft-deletes from the active list.
+- `POST   /api/practice-ranking/locations/:locationId/competitors/finalize-and-run` — single-click finalize: flips status to `finalized`, creates `practice_rankings` row tagged `competitor_source='curated'`, kicks off pipeline async. Idempotent on rapid double-click via 5-min in-flight window check.
+- All write endpoints require `admin` or `manager` role; `viewer` cannot mutate the curated list.
+
+**Places API rate limiting:**
+- `placesAutocompleteLimiter` (60/min/IP), `placesDetailsLimiter` (60/min/IP), `placesSearchLimiter` (30/min/IP) added to the existing `publicRateLimiter.ts`. Wired into `routes/places.ts`. Generous enough that the leadgen-tool's onboarding flow (which shares these public endpoints) is unaffected.
+
+**Frontend — 3-stage onboarding page:**
+- New route `/dashboard/competitors/:locationId/onboarding` → `LocationCompetitorOnboarding.tsx`.
+- Stage 1 — Discovering: framer-motion radar pulses + staggered pin reveal as the Places top-10 lands. No Google Maps iframe dependency (works without lat/lng up front).
+- Stage 2 — Curating: list with per-row Remove (soft delete, optimistic), Add via debounced autocomplete against `/api/places/autocomplete`. Counter shows N/10. Source tag distinguishes "you added" vs "auto" entries.
+- Stage 3 — Finalize: single button → `POST /finalize-and-run`, redirects to `/rankings?batchId=…` for the user to watch their first run.
+
+**Frontend — Dashboard banner + v1 legacy tag:**
+- `CompetitorOnboardingBanner.tsx` renders for `pending`/`curating` locations with copy + CTA to the onboarding page.
+- `LegacyRankingTag` renders next to Practice Health when the latest ranking row has `competitor_source='discovered_v1_legacy'` — explains the score predates curation and prompts setup.
+- `/latest` controller now returns `competitorSource` and `locationOnboarding` per ranking; `RankingResult` interface extended; `wizardDemoData` updated to satisfy the new fields.
+
+**Out of scope (v1 — explicit deferrals):**
+- Admin-side curate UI (admin trigger flow stays as-is — read-only competitor list view via existing endpoints).
+- Re-discovery UX ("suggest competitors I might have missed").
+- Per-competitor scoring weight overrides.
+- Geographic radius slider on the curate page.
+- Email templates / send infrastructure (announce email sent manually by ops).
+- Reminder/nudge automation for un-finalized locations.
+- Minimum competitor count enforcement (lists may be 0–10).
+
+**Runtime verification:**
+- `tsc --noEmit` clean across backend and frontend (one pre-existing unused-var error in `FieldMappingDropdown.tsx` predates this work).
+- ESLint clean for all newly-authored files (one benign React hooks warning about ref cleanup in `LocationCompetitorOnboarding.tsx`).
+- Migration applied successfully against the configured DB; `competitor_cache` dropped, `location_competitors` created, `locations` and `practice_rankings` columns added, `schedules.ranking` row switched to cron `0 0 1,15 * *` UTC.
+- End-to-end manual verification (3-stage onboarding walkthrough, scheduler skip behavior, dashboard banner + v1 tag rendering, Search Position non-cross-contamination) is the deployment owner's responsibility — Done checklist captured in spec.
+
+**Commits:**
+- `src/database/migrations/20260428000001_practice_ranking_v2_curated_competitors.ts` — drops `competitor_cache`, creates `location_competitors`, adds onboarding columns to `locations`, `competitor_source` to `practice_rankings` (with backfill), updates the `agent_key='ranking'` schedule row.
+- `src/models/LocationCompetitorModel.ts` — new model.
+- `src/models/LocationModel.ts` — `ILocation` extended with v2 columns; `create()` signature widened so callers don't need to pass the defaulted onboarding fields.
+- `src/controllers/practice-ranking/feature-services/service.location-competitor-onboarding.ts` — runDiscoveryForLocation, addCustomCompetitor, removeCompetitorFromList, finalizeAndTriggerRun.
+- `src/controllers/practice-ranking/feature-services/service.competitor-source-resolver.ts` — single-decision-point pipeline branch.
+- `src/controllers/practice-ranking/feature-services/service.ranking-pipeline.ts` — resolver call + `competitor_source` persist after Step 0 sub-step 5.
+- `src/controllers/practice-ranking/feature-utils/util.competitor-validator.ts` — locationId / placeId / cap validators.
+- `src/controllers/practice-ranking/feature-utils/util.ranking-formatter.ts` — `competitorSource` + `locationOnboarding` + `locationId` added to `formatLatestRanking` payload.
+- `src/controllers/practice-ranking/PracticeRankingController.ts` — 5 new endpoint handlers + extended `/latest` response with onboarding metadata.
+- `src/controllers/agents/feature-services/service.ranking-executor.ts` — scheduler filter on `location_competitor_onboarding_status === 'finalized'`.
+- `src/routes/practiceRanking.ts` — 5 new gated routes (authenticateToken + rbacMiddleware + locationScopeMiddleware + requireRole on writes).
+- `src/middleware/publicRateLimiter.ts` — 3 new Places limiters.
+- `src/routes/places.ts` — limiters wired.
+- `frontend/src/api/practiceRanking.ts` — typed client for all 5 v2 endpoints.
+- `frontend/src/components/dashboard/CompetitorOnboardingBanner.tsx` — banner + legacy-tag components.
+- `frontend/src/components/dashboard/RankingsDashboard.tsx` — `RankingResult` interface extended; banner injected above PerformanceDashboard; legacy tag injected at top of PerformanceDashboard for `discovered_v1_legacy` rows.
+- `frontend/src/pages/competitor-onboarding/LocationCompetitorOnboarding.tsx` — 3-stage page with framer-motion radar discovery animation.
+- `frontend/src/App.tsx` — `/dashboard/competitors/:locationId/onboarding` route registered inside the protected layout.
+- `plans/04282026-no-ticket-practice-ranking-v2-user-curated-competitors/spec.md` — 12-decision spec with Risk Level 3 analysis (pipeline branching, Search Position non-cross-contamination, blast radius, deployment-mid-batch resilience).
+
+## [0.0.31] - April 2026
+
+### Per-Organization Data Reset (Admin)
+
+Admin can now wipe agent outputs and PMS data for a single organization via a "Reset Data" button on `/admin/organizations/:id`, scoped to the Agent Results section. v1 ships two reset groups — **PMS Ingestion** (clears `pms_jobs`) and **Referral Engine output** (clears `agent_results` + `agent_recommendations` where `agent_type='referral_engine'`) — with a one-way cascade: checking PMS auto-checks-and-disables Referral Engine because the analysis output is derived from PMS source data. Wiping PMS without RE would leave stale analysis pointing at deleted source data, so the modal forces them together. RE alone remains independent so admins can re-run analysis on existing PMS data without disturbing the source.
+
+**Architecture:**
+- Backend: `GET /api/admin/organizations/:id/reset-data/preview` returns live row counts for both groups; `POST /api/admin/organizations/:id/reset-data` accepts `{ groups, confirmName }` and runs all selected deletes inside a single `knex.transaction()` so partial failure rolls back. Returns per-table `deletedCounts`.
+- `agent_recommendations` deleted manually first via subquery on `agent_results` — there's no FK CASCADE from `agent_results.id`, confirmed during the prior one-off org-36 reset.
+- Audit trail via console-logged `[admin-reset]` structured JSON line on every successful commit (`adminEmail`, `orgId`, `orgName`, `groups`, `deletedCounts`, `timestamp`). No new audit table for v1.
+- RBAC: existing `superAdminMiddleware` (env-allowlist via `SUPER_ADMIN_EMAILS`). Defense-in-depth — backend route enforces super-admin even though the entire `/admin/*` tree is already gated by `AdminGuard` on the frontend.
+
+**Frontend:**
+- `ResetOrgDataModal.tsx` mirrors the existing `OrgSettingsSection` delete-org modal pattern (framer-motion `motion.div`, react-hot-toast feedback, type-org-name confirm input, `lucide-react` icons). On open, fetches preview counts and renders 2 checkboxes with row-count badges.
+- Cascade UX: when PMS checkbox is checked, RE is force-checked + disabled with hint "PMS reset also clears Referral Engine output (derived data)." When PMS is unchecked, RE becomes independently toggleable.
+- Submit button disabled until `confirmText === org.name` AND ≥1 group selected. On success: toasts deletion summary, fires `queryClient.invalidateQueries` for `adminOrgPmsJobsAll(orgId)` and `adminOrgAgentOutputsAll(orgId)`, closes modal.
+- Button placement gated to `?section=agent` only — hidden on Subscription/Users/Connections/Settings to reduce accidental-click surface (Rev 2 of the spec).
+
+**One-off org-36 PMS reset (prior plan, now in version control):**
+- `src/database/migrations/20260423000002_reset_pms_data_org_36.ts` — the manual prod reset that motivated this feature. Snapshot-rollback via `<table>_reset_backup_org36_20260423` tables; `down()` restores rows with original IDs and JSONB intact.
+- Dual env-var guarded: `RESET_ORG_36_CONFIRM=true` AND `RESET_ORG_36_DB_NAME=<DB_NAME>` both required, plus `DB_NAME` must match `RESET_ORG_36_DB_NAME`. Migration is a no-op in any future env that doesn't explicitly opt in. Deletion order is FK-safe: `agent_recommendations` (subquery) → `agent_results` → `tasks` → `pms_jobs`. `agent_recommendations` for org 36 had 0 rows; backups still created for rollback symmetry.
+
+**Out of scope (v1 — explicit deferrals):**
+The other 7 reset groups (Rankings, Tasks Hub, Notifications, Proofline, Summary, Opportunity, CRO) — modal architecture is structured to scale (just add list entries). In-flight job cancellation / org-lock during reset. Per-tab inline reset buttons. Admin audit log table + viewer. `google_data_store` reset (Proofline source data) as a separate group.
+
+### Referral Engine Accuracy — Tier 1 Fixes
+
+Six surgical accuracy improvements identified during a deep map of the Referral Engine flow. Bounded scope: no model change, no n8n contract change, no parser internals.
+
+**Key Changes:**
+- `buildReferralEnginePayload` now emits `additional_data.{pms, gbp, website_analytics}`. Prompt previously promised GBP + analytics enrichment but the code only sent PMS — the model was told to weigh data it never saw. Reuses the GBP fetch already wired into Summary; no new fetches.
+- New `ReferralEngineAgentOutputSchema` (Zod, top-level `.strict()`, nested permissive) validates every Referral Engine output. On shape mismatch the runner sends a corrective user message with formatted Zod issues and re-calls Anthropic once; both attempts logged with `[zod-retry]` prefix. Falls through to legacy `isValidAgentOutput` if the corrective retry also fails. Cap is one retry per outer attempt — outer retry budget unchanged at 3.
+- Three additive prompt sections in `src/agents/monthlyAgents/ReferralEngineAnalysis.md` (no existing rule reworded):
+    - **GROUNDING RULES — STRICT:** cite only source names, months, and numbers that appear verbatim in the input JSON. Omit claims with numbers not in the input. Do not infer, estimate, or interpolate.
+    - **SINGLE-MONTH RULE:** when `monthly_rollup` has one month, force `trend_label='new'` for every source in both matrices and add the corresponding `data_quality_flags` entry. Do not invent prior-month numbers.
+    - **UPSTREAM DATA QUALITY ACKNOWLEDGEMENT:** surface upstream flags from `additional_data.pms.data_quality_flags` verbatim — they are deterministic checks already run before the model saw the data.
+- `pmsAggregator`: new `SOURCE_SUM_TOLERANCE = 0.05` constant. Per-month reconciliation pushes `Sum-of-sources mismatch in <month>: sources=N, total=M` entries into a new `dataQualityFlags: string[]` field on the aggregator output. The orchestrator propagates this through its existing camelCase→snake_case PMS payload transform to `additional_data.pms.data_quality_flags`, which the new prompt section instructs the model to surface.
+- Prompt caching enabled at the Referral Engine `runAgent` call site (5-min ephemeral). `cache_creation_input_tokens` / `cache_read_input_tokens` visible in `llm-runner` logs from the second within-window call onward.
+- Runner cache condition relaxed: `cachedSystemBlocks !== undefined` (was: `length > 0`). Callers can now pass `[]` to cache only the auto-appended `systemPrompt` without duplicating it as a prefix block — fixes a double-send bug discovered during integration verification (the runner auto-appends the systemPrompt as a cached block; passing `[systemPrompt]` would have produced two identical cached blocks per call).
+
+**Backward compat:**
+No new dependencies (Zod 4.3.6 already in deps). No schema migration. Other agents (Proofline, Summary, Opportunity, CRO Optimizer) byte-identical at the runner call — `runAgent` and `runMonthlyAgent` extensions are optional params; existing callers behave exactly as before.
+
+**Out of scope (Tier 2 / Tier 3 — explicit follow-ups):**
+AI-driven type classification (replace keyword matching at parse time), date-format detection by sampling, parser unit test suite, "review parsed data" admin UI step, self-critique second pass (Haiku), n8n parser repatriation, per-claim confidence scoring, output cache keyed by PMS data fingerprint, 1-hour cache TTL (Anthropic beta).
+
+**Commits:**
+- `src/types/adminReset.ts` — `ResetGroupKey` union + request/response types.
+- `src/controllers/admin-organizations/feature-services/service.reset-org-data.ts` — transactional reset service with `[admin-reset]` audit log.
+- `src/controllers/admin-organizations/AdminOrganizationsController.ts` — `previewResetData` + `resetOrgData` handlers with org-name confirmation validation.
+- `src/routes/admin/organizations.ts` — 2 super-admin gated routes (`GET /:id/reset-data/preview`, `POST /:id/reset-data`).
+- `src/database/migrations/20260423000002_reset_pms_data_org_36.ts` — prior one-off prod reset, snapshot-rollback, dual env-var guarded.
+- `frontend/src/components/Admin/ResetOrgDataModal.tsx` — type-org-name confirm modal with PMS→RE cascade UX.
+- `frontend/src/api/admin-organizations.ts` — typed API client (`adminPreviewResetData`, `adminResetOrgData`).
+- `frontend/src/pages/admin/OrganizationDetail.tsx` — Reset Data button next to DFY badge, gated to `?section=agent`.
+- `src/agents/monthlyAgents/ReferralEngineAnalysis.md` — three new rule sections.
+- `src/agents/service.llm-runner.ts` — `outputSchema` optional param + corrective single-retry; relaxed cache condition.
+- `src/controllers/agents/feature-services/service.agent-input-builder.ts` — `buildReferralEnginePayload` payload extension.
+- `src/controllers/agents/feature-services/service.agent-orchestrator.ts` — Referral Engine call passes GBP + analytics + `enableCache` + `outputSchema`; PMS payload transform now includes `data_quality_flags`.
+- `src/controllers/agents/types/agent-output-schemas.ts` — `ReferralEngineAgentOutputSchema` Zod export alongside the existing TS interface.
+- `src/utils/pms/pmsAggregator.ts` — `SOURCE_SUM_TOLERANCE` + per-month sum reconciliation.
+
+**Runtime verification:**
+**Deferred.** Code is `tsc --noEmit` clean across backend and frontend. UI walkthrough of the Reset Data modal and end-to-end Referral Engine smoke test (cache token logs, Zod-valid output, single-month trend behavior, upstream-flag surfacing) are flagged in their respective spec Done checklists. Treat 0.0.31 as code-complete; runtime gate fires the first time a super-admin uses Reset Data on Hamilton Wise's org and the next Referral Engine run that produces `cache_creation_input_tokens` logs and a Zod-valid output.
+
 ## [0.0.30] - April 2026
 
 ### Website Integrations — HubSpot Form-to-Contact Mapping (v1)

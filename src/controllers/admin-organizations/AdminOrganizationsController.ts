@@ -24,6 +24,14 @@ import * as TierManagementService from "./feature-services/TierManagementService
 import * as AdminOrgCreationService from "./feature-services/AdminOrgCreationService";
 import * as hostnameGenerator from "./feature-utils/hostnameGenerator";
 import { deleteOrganization } from "../settings/feature-services/service.delete-organization";
+import {
+  previewResetCounts,
+  resetOrgData as resetOrgDataService,
+} from "./feature-services/service.reset-org-data";
+import {
+  RESET_GROUP_KEYS,
+  ResetGroupKey,
+} from "../../types/adminReset";
 import { sendEmail } from "../../emails/emailService";
 import { getStripe, isStripeConfigured } from "../../config/stripe";
 import { v4 as uuid } from "uuid";
@@ -202,6 +210,113 @@ export async function deleteOrg(
     return res.status(204).send();
   } catch (error) {
     return handleError(res, error, "Delete organization");
+  }
+}
+
+/**
+ * GET /api/admin/organizations/:id/reset-data/preview
+ * Read-only row counts per reset group, used by the Reset Data modal.
+ * Super-admin only.
+ */
+export async function previewResetData(
+  req: AuthRequest,
+  res: Response,
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    const data = await previewResetCounts(orgId);
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return handleError(res, error, "Preview reset data");
+  }
+}
+
+/**
+ * POST /api/admin/organizations/:id/reset-data
+ * Hard-delete selected reset groups (pms_ingestion, agent_referral) for an org
+ * inside a single transaction. Requires `confirmName === org.name` and a
+ * non-empty subset of RESET_GROUP_KEYS. Super-admin only.
+ */
+export async function resetOrgData(
+  req: AuthRequest,
+  res: Response,
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    const { groups, confirmName } = (req.body ?? {}) as {
+      groups?: unknown;
+      confirmName?: unknown;
+    };
+
+    if (typeof confirmName !== "string" || confirmName !== organization.name) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Confirmation failed. `confirmName` must match the organization name exactly.",
+      });
+    }
+
+    if (!Array.isArray(groups) || groups.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "`groups` must be a non-empty array of reset group keys.",
+      });
+    }
+
+    const allowed = new Set<string>(RESET_GROUP_KEYS);
+    const invalid = groups.filter(
+      (g): g is unknown => typeof g !== "string" || !allowed.has(g),
+    );
+    if (invalid.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid reset group key(s): ${invalid
+          .map((g) => JSON.stringify(g))
+          .join(", ")}. Allowed: ${RESET_GROUP_KEYS.join(", ")}.`,
+      });
+    }
+
+    const adminEmail = req.user?.email;
+    if (!adminEmail) {
+      return res.status(401).json({
+        success: false,
+        error: "Authenticated admin email not found on request.",
+      });
+    }
+
+    // De-dupe while preserving order — guards against `["pms_ingestion","pms_ingestion"]`.
+    const uniqueGroups = Array.from(new Set(groups as ResetGroupKey[]));
+
+    const data = await resetOrgDataService(orgId, uniqueGroups, adminEmail);
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return handleError(res, error, "Reset organization data");
   }
 }
 

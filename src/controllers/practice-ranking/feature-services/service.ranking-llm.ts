@@ -191,14 +191,10 @@ export async function runRankingAnalysis(
     // Ensure practice_ranking_id is set correctly
     llmAnalysis.practice_ranking_id = rankingId;
 
-    // Archive old tasks + create new ones (transactional)
-    await llmWebhookHandler.archiveAndCreateTasks(
-      ranking,
-      rankingId,
-      llmAnalysis,
-    );
-
-    // Save LLM analysis and mark completed
+    // Save LLM analysis and mark completed.
+    // Note: ranking no longer creates its own USER tasks. Summary v2 is the
+    // sole writer of category="USER" tasks; it consumes top_recommendations
+    // via additional_data.ranking_recommendations on the next monthly run.
     await llmWebhookHandler.saveLlmAnalysis(rankingId, llmAnalysis);
 
     _log(`[RANKING] [${rankingId}] LLM analysis saved successfully`);
