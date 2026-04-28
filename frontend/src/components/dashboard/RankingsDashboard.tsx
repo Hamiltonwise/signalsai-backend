@@ -369,7 +369,7 @@ const KPICard = ({
             </div>
           </div>
         )}
-        <span className="text-[10px] font-black text-alloro-navy uppercase tracking-[0.25em] leading-none">
+        <span className="text-[10px] font-black text-alloro-navy uppercase tracking-[0.18em] leading-none whitespace-nowrap">
           {label}
         </span>
       </div>
