@@ -20,6 +20,7 @@ import {
   Lightbulb,
   X,
   ChevronLeft,
+  Info,
 } from "lucide-react";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
 import {
@@ -785,20 +786,10 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
         </div>
       </header>
 
-      <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-12 lg:space-y-20">
-        {/* CLIENT SUMMARY CARD — parchment-yellow callout, serif body */}
-        {selectedRanking?.llmAnalysis?.client_summary && (
-          <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-150">
-            <div className="bg-[#FAF3D9] border border-[#E8DBA3] rounded-2xl px-5 py-4 lg:px-6 lg:py-5">
-              <p className="font-display text-sm lg:text-[15px] text-[#1A1A1A] leading-relaxed">
-                {selectedRanking.llmAnalysis.client_summary}
-              </p>
-            </div>
-          </section>
-        )}
-
-        {/* v2 Competitor onboarding banner — only shown for pending/curating
-            locations. Final-state locations render normally. */}
+      <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-8 lg:space-y-12">
+        {/* v2 Competitor onboarding banner — slim row, shown for pending/curating
+            locations. Sits above the client summary so the action prompt is the
+            first thing visible. Final-state locations render normally. */}
         {selectedRanking?.locationId &&
           selectedRanking.locationOnboarding &&
           (selectedRanking.locationOnboarding.status === "pending" ||
@@ -809,6 +800,23 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               status={selectedRanking.locationOnboarding.status}
             />
           )}
+
+        {/* CLIENT SUMMARY CARD — soft cream callout, serif body, info eyebrow */}
+        {selectedRanking?.llmAnalysis?.client_summary && (
+          <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-150">
+            <div className="bg-[#FCFAED] border border-[#EDE5C0] rounded-2xl px-5 py-4 lg:px-6 lg:py-5">
+              <div className="flex items-center gap-1.5 mb-2 text-[#8A7A4A]">
+                <Info size={12} />
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em]">
+                  Practice insight
+                </span>
+              </div>
+              <p className="font-display text-sm lg:text-[15px] text-[#1A1A1A] leading-relaxed">
+                {selectedRanking.llmAnalysis.client_summary}
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* Selected Location Detail */}
         {selectedRanking && (

@@ -23,45 +23,34 @@ export function CompetitorOnboardingBanner({
 }: CompetitorOnboardingBannerProps) {
   const headline =
     status === "pending"
-      ? "Set up your competitor list"
-      : "Finish setting up your competitor list";
-  const sub =
-    status === "pending"
-      ? "Pick the practices you actually compete with so your Practice Health score reflects reality."
-      : "You started picking competitors — finish the list so your next ranking runs against the right practices.";
+      ? "v2 competitor curation — improving ranking accuracy"
+      : "Finish your v2 competitor list — improving ranking accuracy";
 
   return (
     <section className="animate-in fade-in slide-in-from-bottom-2 duration-700">
       <a
         href={`/dashboard/competitors/${locationId}/onboarding`}
-        className="block bg-gradient-to-r from-alloro-orange/10 to-alloro-orange/5 border border-alloro-orange/30 rounded-3xl p-6 lg:p-7 hover:from-alloro-orange/15 hover:to-alloro-orange/10 transition-all duration-200 group"
+        className="flex items-center gap-3 bg-gradient-to-r from-alloro-orange/10 to-alloro-orange/5 border border-alloro-orange/25 rounded-xl px-4 py-2.5 hover:from-alloro-orange/15 hover:to-alloro-orange/10 transition-all duration-200 group"
       >
-        <div className="flex items-start gap-4">
-          <div className="w-11 h-11 bg-alloro-orange text-white rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-            <Sparkles size={20} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2 py-0.5 bg-alloro-orange/15 rounded-md text-alloro-orange text-[9px] font-black uppercase tracking-widest">
-                Action needed
-              </span>
-              {locationName && (
-                <span className="text-[10px] font-bold text-alloro-textDark/40 uppercase tracking-widest truncate">
-                  {locationName}
-                </span>
-              )}
-            </div>
-            <h3 className="text-lg lg:text-xl font-black font-heading text-alloro-navy tracking-tight mb-1">
-              {headline}
-            </h3>
-            <p className="text-sm text-slate-600 font-medium leading-relaxed pr-4">
-              {sub}
-            </p>
-          </div>
-          <div className="flex items-center text-alloro-orange font-bold text-sm gap-1.5 group-hover:translate-x-1 transition-transform duration-200 flex-shrink-0 hidden sm:flex">
-            Set up
-            <ArrowRight size={16} />
-          </div>
+        <div className="w-7 h-7 bg-alloro-orange text-white rounded-lg flex items-center justify-center flex-shrink-0">
+          <Sparkles size={13} />
+        </div>
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <span className="px-1.5 py-0.5 bg-alloro-orange/15 rounded text-alloro-orange text-[9px] font-black uppercase tracking-widest flex-shrink-0">
+            Action needed
+          </span>
+          <span className="text-sm font-semibold text-alloro-navy truncate">
+            {headline}
+          </span>
+          {locationName && (
+            <span className="text-[10px] font-bold text-alloro-textDark/40 uppercase tracking-widest truncate hidden md:inline">
+              · {locationName}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center text-alloro-orange font-bold text-xs gap-1 group-hover:translate-x-0.5 transition-transform duration-200 flex-shrink-0">
+          Set up
+          <ArrowRight size={13} />
         </div>
       </a>
     </section>
