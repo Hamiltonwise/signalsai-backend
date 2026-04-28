@@ -2,6 +2,55 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.34] - April 2026
+
+### Focus Dashboard — Frontend Redesign
+
+The practice-facing dashboard at `/dashboard` is fully redesigned. The global left sidebar is replaced with a top-bar nav across all authenticated pages. The dashboard's "Focus" tab gets a single dominant Hero card surfacing Summary v2's `top_actions[0]`, a Trajectory + Action Queue row, and three product cards (Website / Local Ranking / PMS) that surface real grounded metrics with month-over-month context. The 1700-line legacy `DashboardOverview.tsx` is replaced by a 95-line composition that delegates all rendering to small focused components under `frontend/src/components/dashboard/focus/`.
+
+**Layout shell (global):**
+- `PageWrapper.tsx` rewritten — sidebar mount removed, replaced with `<TopBar>` at top + `<Ticker>` (only on dashboard routes). Content area no longer reserves sidebar width. Mobile header consolidated into `TopBar`'s mobile variant. `MobileBottomNav` continues to render as primary mobile nav until the mobile redesign lands.
+- New `components/layout/TopBar.tsx` — brand mark · 6-tab nav (Focus/Journey/PMS/Rankings/Tasks·count/Referral Engine) via `<NavLink>` for URL-driven active state · live pulse pill · refresh icon (wires to `useQueryClient().invalidateQueries()`) · location selector consuming `useLocationContext` · avatar with initials from `useAuth().userProfile`. Mobile: collapses to brand + avatar + hamburger drawer.
+- New `components/layout/Ticker.tsx` — today strip with ambient signals + refreshed-at timestamp.
+- `components/Sidebar.tsx` preserved on disk (with `@deprecated` JSDoc) for revert path. Not mounted.
+
+**Focus dashboard composition** (`components/dashboard/focus/`):
+- `Hero.tsx` (+ `useTopAction` hook) — reads tasks where `agent_type='SUMMARY'` filtered to highest `metadata.priority_score`. Renders dark card with 3 pills (1-thing-that-matters · urgency · domain), Fraunces display headline with inline `<mark class="hl">` highlights, rationale paragraph, primary/secondary/tertiary CTAs, and a right-side "Why this first" panel with 3 grounded stats + outcome (deliverables in green-bold + mechanism muted).
+- `Trajectory.tsx` — reads existing `useAgentData` for Proofline. Renders salutation ("Good morning, {firstName}." with time-of-day) + body with highlights + "Read full explanation →" link triggering `ProoflineModal` + 3 mini-stats (Production MTD / New patient starts / Visibility score) sourced from `useDashboardMetrics`.
+- `ActionQueue.tsx` (+ `useActionQueue` hook) — reads remaining tasks (Summary `priority_score < hero` + RE ALLORO), sorts desc, slices to 5 rows. Each row: domain icon tile via `getDomainIcon` lookup · title · color-coded urgency · due date · agent pill (Summary/Referral Engine) · chevron. Footer note explains the priority_score ordering rule.
+- `WebsiteCard.tsx` — verified leads count headline + MoM trend computed from timeseries · 12-month area sparkline (new `/timeseries` endpoint) · "Coming soon: Rybbit" annotation · view submissions link.
+- `LocalRankingCard.tsx` — rank position + history trend (new `/history` endpoint) · two factor sub-sections "Google Search" + "Practice Health" each with 4 weighted `<FactorBar>` rows + computed sub-score · lowest-factor annotation.
+- `PMSCard.tsx` — production headline + MoM trend · 12-month sparkline from `pmsKeyData.months[]` · referral mix bar (doctor vs self) · top-3 sources from `sources[]` with optional drop pill.
+- `ProoflineModal.tsx` — extracted from legacy `DashboardOverview` with framer-motion AnimatePresence pattern.
+- `SetupProgressBanner.tsx` — thin orange-tinted banner above hero, only when `useAuth().onboardingCompleted === false`. CTA to `/new-account-onboarding`.
+
+**Helper components:**
+- `HighlightedText.tsx` — pure-text deterministic substring → `<mark class="hl">` JSX wrap. Sorts highlights longest-first, escapes regex specials, never injects raw HTML from agent output. Mismatched phrases silently dropped.
+- `Sparkline.tsx` — area + line + last-point dot SVG. `viewBox` + `preserveAspectRatio="none"` for responsive scaling.
+- `FactorBar.tsx` — labeled horizontal progress bar with color tier (green ≥0.7, orange 0.5-0.7, red <0.5). Score clamped to [0,1].
+- `icons.ts` — `DOMAIN_ICONS` lookup map (review→MessageSquare, gbp→MapPin, ranking→TrendingUp, form-submission→Inbox, pms-data-quality→Database, referral→UserPlus). Frontend-derived per Plan 1's domain enum; agent never picks an icon.
+
+**Typography & tokens:**
+- New fonts: Fraunces (display, weights 400/500/600), Inter (400/500/600/700), JetBrains Mono (400/500/600). Loaded via Google Fonts in `index.html` alongside existing Plus Jakarta Sans + Literata. CSS vars `--font-display`, `--font-mono`, `--font-inter` added to `index.css`.
+- `mark.hl` class added with light + dark variants (toggled by `focus-card-dark` wrapper class on the Hero). Brand orange `#D66853`.
+- Domain icon tile classes (`.di-review`, `.di-gbp`, `.di-ranking`, `.di-form`, `.di-pms`, `.di-referral`) added to `index.css` with their respective tints.
+
+**Onboarding wizard fix:**
+- `SpotlightOverlay.tsx` — `wizard-highlight` outline color updated from off-brand `rgba(255,138,61,X)` to brand orange `rgba(214,104,83,X)` matching `--color-alloro-orange`. Pulse animation pattern unchanged. Now reads correctly against the new dashboard's dark hero card.
+
+**API clients (consume Plan 1 endpoints):**
+- `frontend/src/api/dashboardMetrics.ts` + `useDashboardMetrics` hook
+- `frontend/src/api/formSubmissionsTimeseries.ts` + `useFormSubmissionsTimeseries` hook
+- `frontend/src/api/rankingHistory.ts` + `useRankingHistory` hook
+- `frontend/src/types/dashboardMetrics.ts` mirrors backend shape
+
+**Refresh wiring:** TopBar's refresh icon dispatches `queryClient.invalidateQueries()` from PageWrapper, refetching every TanStack key (cards dedupe identical keys, so it's cheap). Replaces the legacy `handleRefresh` that lived inside DashboardOverview.
+
+**Verification:** `npx tsc --noEmit` zero new errors backend + frontend. Live visual smoke (hero card hierarchy, hover states, mobile collapse, wizard outline against new layout) is gated on dev-server execution by the user.
+
+**Out of scope (deferred):**
+Mobile-first redesign of the new layout (current mobile is "works, doesn't crash"). Per-page reflow for Settings/Help/Notifications/DFY Website if the new TopBar reveals broken spacing. Touch device interaction patterns. Full WCAG accessibility audit. Sidebar component full removal (kept for revert path until v2 is proven). TopBar feature flag for staged rollout. Performance optimization (lazy-load Sparkline/FactorBar, defer below-fold). Animation polish (tab underline, hero entrance, queue stagger).
+
 ## [0.0.33] - April 2026
 
 ### Monthly Agents v2 — Summary as Chief-of-Staff
