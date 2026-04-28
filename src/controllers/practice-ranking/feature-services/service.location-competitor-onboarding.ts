@@ -214,15 +214,20 @@ export async function runDiscoveryForLocation(
     `[ONBOARDING] [${locationId}] Running discovery for "${specialty}" in "${marketLocation}"`
   );
 
-  // Find vantage point (client's lat/lng on Places) for location-biased search
+  // Find vantage point (client's lat/lng on Places) for location-biased search.
+  // Also captures the client's own placeId so we can filter the practice out of
+  // its own competitor list (a Place result for the client's name + market will
+  // include the client itself, which is meaningless as a competitor).
   let locationBias:
     | { lat: number; lng: number; radiusMeters: number }
     | undefined;
+  let clientPlaceId: string | null = null;
   try {
     const clientLookup = await getClientPhotosViaPlaces(
       ctx.locationName,
       marketLocation
     );
+    clientPlaceId = clientLookup.placeId;
     if (clientLookup.lat !== null && clientLookup.lng !== null) {
       locationBias = {
         lat: clientLookup.lat,
@@ -232,18 +237,31 @@ export async function runDiscoveryForLocation(
     }
   } catch (err: any) {
     log(
-      `[ONBOARDING] [${locationId}] Client lookup failed: ${err.message} — continuing without location bias`
+      `[ONBOARDING] [${locationId}] Client lookup failed: ${err.message} — continuing without location bias and without own-practice filter`
     );
   }
 
-  // Discover top N competitors (cap matches the curated list cap so the user
-  // lands on a list they can immediately work with).
-  const discovered = await discoverCompetitorsViaPlaces(
+  // Discover top N+2 competitors so we can backfill after filtering out the
+  // client's own placeId (defensive against an off-by-one when the practice
+  // ranks #11 in its own market). Then take top N.
+  const RAW_DISCOVERY_OVERSAMPLE = 2;
+  const rawDiscovered = await discoverCompetitorsViaPlaces(
     specialty,
     marketLocation,
-    MAX_COMPETITORS_PER_LOCATION,
+    MAX_COMPETITORS_PER_LOCATION + RAW_DISCOVERY_OVERSAMPLE,
     locationBias
   );
+
+  const filtered = clientPlaceId
+    ? rawDiscovered.filter((c) => c.placeId !== clientPlaceId)
+    : rawDiscovered;
+  const discovered = filtered.slice(0, MAX_COMPETITORS_PER_LOCATION);
+
+  if (clientPlaceId && filtered.length < rawDiscovered.length) {
+    log(
+      `[ONBOARDING] [${locationId}] Filtered own practice (${clientPlaceId}) out of competitor set`
+    );
+  }
 
   // Insert as initial_scrape, soft-deleting nothing — model handles revival
   // of any prior soft-deleted rows for the same place_id (rare, but defensive).
@@ -256,6 +274,8 @@ export async function runDiscoveryForLocation(
           name: comp.name,
           address: comp.address || null,
           primaryType: comp.primaryType || null,
+          rating: comp.totalScore ?? null,
+          reviewCount: comp.reviewsCount ?? null,
           lat: comp.location?.lat ?? null,
           lng: comp.location?.lng ?? null,
           source: "initial_scrape",
@@ -341,6 +361,12 @@ export async function addCustomCompetitor(
     "Unknown business";
   const address = placeDetails?.formattedAddress || null;
   const primaryType = placeDetails?.primaryType || null;
+  const rating =
+    typeof placeDetails?.rating === "number" ? placeDetails.rating : null;
+  const reviewCount =
+    typeof placeDetails?.userRatingCount === "number"
+      ? placeDetails.userRatingCount
+      : null;
   const lat = placeDetails?.location?.latitude ?? null;
   const lng = placeDetails?.location?.longitude ?? null;
 
@@ -349,6 +375,8 @@ export async function addCustomCompetitor(
     name,
     address,
     primaryType,
+    rating,
+    reviewCount,
     lat,
     lng,
     source: "user_added",

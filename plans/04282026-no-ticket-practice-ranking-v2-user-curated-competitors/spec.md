@@ -225,3 +225,21 @@ Class with static methods (match `PracticeRankingModel.ts` style):
 - [ ] Search Position values on a finalized location match what the same location would produce on the discovery path (split is clean — no cross-contamination).
 - [ ] No regressions in `RankingsDashboard.tsx` rendering for existing finalized clients.
 - [ ] Lint passes.
+
+## Revision Log
+
+### Rev 1 — 2026-04-28
+
+**Changes:**
+1. **Discovery filters out the practice's own placeId.** The first round of testing surfaced that the practice itself was appearing in its own competitor list (e.g. "Winter Garden Smiles" landing in its own list). Discovery now oversamples by 2 and filters by `clientPlaceId` from `getClientPhotosViaPlaces`, then takes top 10. The pipeline already filtered the client by placeId for ranking math; this fix brings parity to the curate flow.
+2. **`location_competitors` gains `rating` (DECIMAL(3,2)) and `review_count` (INT).** Stage 2 cards were too sparse — no ⭐, no review count — so users had nothing to base their keep/remove decisions on. New migration `20260428000002_add_rating_reviews_to_location_competitors.ts`. Both columns populated during `initial_scrape` (from `discoverCompetitorsViaPlaces` results) and during `user_added` (from `getPlaceDetails`). Surfaced in the curate UI.
+3. **Stage 1 replaces the radar pulse with a real Google Maps iframe.** Previous design used framer-motion radar pulses + abstract pin reveals; user feedback was "not showing a map at all." Stage now renders a static Google Maps embed centered on the competitor centroid, with competitor pins overlaid via lat/lng-to-percentage projection (port of the leadgen tool's `CompetitorMapStage` pattern). Falls back to the radar shimmer while the discovery POST is in flight.
+4. **Stage 2 row redesign.** Each row now shows: clickable name (deep-link to Google Maps via `place_id`), primary type label, ⭐ rating, review count (formatted with locale), and address. Source tag and Remove button moved to the right rail.
+
+**Reason:** First-pass UX feedback during testing — the curate page didn't give users enough signal to make confident keep/remove decisions, and the discovery view didn't visually communicate "we're looking at a real geographic area."
+
+**Updated Done criteria (additions):**
+- [ ] Discovery on a fresh `pending` location does NOT include the practice's own listing (compare to running `getClientPhotosViaPlaces` for the same name+market — the resulting `placeId` should not appear in `location_competitors`).
+- [ ] Stage 2 rows show ⭐ rating + review count for every competitor that has them in Google Places.
+- [ ] Stage 1 shows a real Google Maps embed centered on the competitor cluster; pins reveal in stagger as data lands.
+- [ ] `npx knex migrate:latest` applies migration `20260428000002_add_rating_reviews_to_location_competitors.ts` cleanly.
