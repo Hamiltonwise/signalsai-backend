@@ -461,14 +461,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 alt="Alloro"
                 className="w-10 h-10 rounded-xl shadow-soft-glow transition-transform group-hover:scale-105"
               />
-              <div className="flex flex-col">
-                <h1 className="font-heading font-black text-xl tracking-tight leading-none">
-                  Alloro
-                </h1>
-                <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.25em] mt-1.5 leading-none">
-                  Intelligence
-                </span>
-              </div>
+              <h1 className="font-display font-bold text-2xl tracking-tight leading-none">
+                Alloro
+              </h1>
             </div>
             <button
               onClick={onClose}
