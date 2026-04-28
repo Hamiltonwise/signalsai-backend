@@ -326,7 +326,7 @@ export default function LocationCompetitorOnboarding() {
   return (
     <div className="min-h-screen bg-alloro-bg font-body text-alloro-textDark pb-32 selection:bg-alloro-orange selection:text-white">
       <header className="glass-header border-b border-black/5">
-        <div className="max-w-[900px] mx-auto px-6 lg:px-10 py-6 flex items-center gap-5">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-10 py-6 flex items-center gap-5">
           <div className="w-10 h-10 bg-alloro-orange text-white rounded-xl flex items-center justify-center shadow-lg">
             <Sparkles size={20} />
           </div>
@@ -341,7 +341,7 @@ export default function LocationCompetitorOnboarding() {
         </div>
       </header>
 
-      <main className="w-full max-w-[900px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-10">
+      <main className="w-full max-w-[1400px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-10">
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-700 text-sm font-medium">
             {error}
