@@ -28,10 +28,7 @@ import {
   useWizardDemoData,
 } from "../../contexts/OnboardingWizardContext";
 import { useLocationContext } from "../../contexts/locationContext";
-import {
-  CompetitorOnboardingBanner,
-  LegacyRankingTag,
-} from "./CompetitorOnboardingBanner";
+import { CompetitorOnboardingBanner } from "./CompetitorOnboardingBanner";
 
 /**
  * Date when the Practice Health scoring methodology changed (Practice Health +
@@ -1286,19 +1283,8 @@ function PerformanceDashboard({
       {/* 2. MARKET VITALS - KPIS — Practice Health diagnostic snapshot.
             Distinct from the Live Google Rank section below: this is Alloro's
             internal score (review velocity, rating, NAP consistency, sentiment),
-            not the live Google search position. The legacy v2 tag (when present)
-            sits inside this group so the "auto-discovered competitors" notice is
-            visually attached to the score it qualifies. */}
+            not the live Google search position. */}
       <div className="space-y-4">
-        {result.competitorSource === "discovered_v1_legacy" && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <LegacyRankingTag />
-            <span className="text-[11px] text-slate-500 font-medium">
-              This score used auto-discovered competitors. Curate your list to
-              refresh it.
-            </span>
-          </div>
-        )}
         <InfoHint
           title="Practice Health"
           dotColor="#D66853"
