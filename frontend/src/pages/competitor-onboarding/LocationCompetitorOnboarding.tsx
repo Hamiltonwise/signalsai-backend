@@ -374,7 +374,7 @@ function DiscoveringStage({
           <Loader2 className="w-3 h-3 animate-spin" />
           Step 1 of 3
         </div>
-        <h2 className="text-3xl font-black font-heading text-alloro-navy tracking-tight mb-2">
+        <h2 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight mb-2">
           Discovering competitors near you
         </h2>
         <p className="text-base text-slate-500 font-medium leading-relaxed">
@@ -451,12 +451,12 @@ function CuratingStage({
           <div className="px-2 py-0.5 inline-flex items-center gap-2 bg-alloro-navy/10 rounded-md text-alloro-navy text-[10px] font-black uppercase tracking-widest mb-3">
             Step 2 of 3
           </div>
-          <h2 className="text-3xl font-black font-heading text-alloro-navy tracking-tight mb-2">
+          <h2 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight mb-2">
             Your competitor list
           </h2>
           <p className="text-base text-slate-500 font-medium leading-relaxed">
-            Remove anyone you don't compete with. Add anyone we missed. Up to{" "}
-            <strong>{cap}</strong> competitors.
+            Remove any practices that aren't local competitors. Add any we
+            missed. Up to <strong>{cap}</strong> competitors.
           </p>
         </div>
 

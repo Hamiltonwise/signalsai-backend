@@ -67,7 +67,7 @@ const Profile = () => {
               {userProfile?.lastName?.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1">
-              <h2 className="text-3xl font-black font-heading text-alloro-textDark tracking-tight">
+              <h2 className="font-display text-3xl font-medium text-alloro-textDark tracking-tight">
                 {userProfile?.firstName} {userProfile?.lastName}
               </h2>
               <p className="text-slate-500 mt-1">{userProfile?.email}</p>

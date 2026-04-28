@@ -74,7 +74,7 @@ export function CompetitorOnboardingBanner({
                   className="absolute z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 bg-alloro-navy text-white text-[11px] font-medium leading-relaxed rounded-lg px-3 py-2 shadow-lg pointer-events-none"
                   role="tooltip"
                 >
-                  v2 lets you curate the practices you actually compete with — instead of auto-discovered ones — so your ranking score reflects reality.
+                  v2 lets you curate your local competitors — instead of auto-discovered ones — so your ranking score reflects reality.
                   <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-[5px] border-transparent border-t-alloro-navy" />
                 </motion.span>
               )}

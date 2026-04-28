@@ -534,7 +534,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               <Sparkles className="w-4 h-4 text-alloro-orange" />
               <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">Almost There</span>
             </div>
-            <h1 className="text-3xl font-black text-alloro-navy font-heading tracking-tight mb-3">
+            <h1 className="font-display text-2xl md:text-3xl font-medium text-alloro-navy tracking-tight mb-3">
               Local Rankings Coming Soon
             </h1>
             <p className="text-base text-slate-500 font-medium max-w-md mx-auto">
