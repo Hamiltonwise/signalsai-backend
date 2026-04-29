@@ -248,33 +248,49 @@ async function runMonthlyAgent(opts: {
   /** Optional per-agent model override. When unset, runAgent uses its
    *  DEFAULT_MODEL (process.env.AGENTS_LLM_MODEL or claude-sonnet-4-6). */
   model?: string;
+  /** Override default maxTokens (16384). Use for agents with large output. */
+  maxTokens?: number;
 }): Promise<{ agentOutput: any; agentResultId: number }> {
   const systemPrompt = loadPrompt(opts.promptPath);
   const userMessage = JSON.stringify(opts.payload, null, 2);
+  const maxTokens = opts.maxTokens ?? 16384;
 
   log(
     `  → Running ${opts.agentName} via Claude directly${
       opts.model ? ` (model: ${opts.model})` : ""
-    }`
+    } (system=${systemPrompt.length}ch, user=${userMessage.length}ch, maxTokens=${maxTokens})`
   );
 
-  const result = await runAgent({
-    systemPrompt,
-    userMessage,
-    maxTokens: 16384,
-    // Empty array enables caching of the auto-appended systemPrompt block
-    // without duplicating it as a prefix block. See service.llm-runner.ts.
-    ...(opts.enableCache ? { cachedSystemBlocks: [] } : {}),
-    ...(opts.outputSchema ? { outputSchema: opts.outputSchema } : {}),
-    ...(opts.model ? { model: opts.model } : {}),
-  });
+  let result;
+  try {
+    result = await runAgent({
+      systemPrompt,
+      userMessage,
+      maxTokens,
+      ...(opts.enableCache ? { cachedSystemBlocks: [] } : {}),
+      ...(opts.outputSchema ? { outputSchema: opts.outputSchema } : {}),
+      ...(opts.model ? { model: opts.model } : {}),
+    });
+  } catch (apiError: any) {
+    const status = apiError?.status ?? apiError?.response?.status ?? "unknown";
+    const errorType = status === 429 ? "rate_limit" : status === 529 ? "overloaded" : status === 500 ? "server_error" : `api_error_${status}`;
+    log(`  ✗ ${opts.agentName} API call failed: type=${errorType} status=${status} message="${apiError.message}"`);
+    throw apiError;
+  }
 
   log(
-    `  ✓ ${opts.agentName} responded (${result.inputTokens} in / ${result.outputTokens} out)`
+    `  ✓ ${opts.agentName} responded (${result.inputTokens} in / ${result.outputTokens} out, model=${result.model})`
   );
 
   if (!result.parsed) {
-    throw new Error(`${opts.agentName} returned non-JSON output`);
+    const truncated = result.stopReason === "max_tokens";
+    log(`  ✗ ${opts.agentName} returned non-JSON output (stop=${result.stopReason}, raw=${result.raw.length}ch, tokens=${result.outputTokens}/${maxTokens})`);
+    if (truncated) {
+      log(`  ✗ ${opts.agentName} OUTPUT TRUNCATED at maxTokens=${maxTokens} — JSON incomplete. Increase maxTokens for this agent.`);
+    } else {
+      log(`  ✗ ${opts.agentName} first 300ch of raw: ${result.raw.substring(0, 300)}`);
+    }
+    throw new Error(`${opts.agentName} returned non-JSON output (stop=${result.stopReason}, raw=${result.raw.length}ch, tokens=${result.outputTokens}/${maxTokens})`);
   }
 
   // Persist to agent_results (replaces what n8n used to write)
@@ -493,8 +509,9 @@ export async function processMonthlyAgents(
   const { id: googleAccountId, domain_name: domain, organization_id: organizationId } = account;
   const { startDate, endDate } = monthRange;
 
+  const monthlyStartTime = Date.now();
   log(
-    `  [MONTHLY] Processing Summary + Opportunity + CRO Optimizer + Referral Engine for ${domain} (${startDate} to ${endDate})`,
+    `  [MONTHLY] Processing monthly agents for ${domain} (${startDate} to ${endDate})`,
   );
 
   // Use passed locationId if available, otherwise resolve from org
@@ -636,8 +653,12 @@ export async function processMonthlyAgents(
       updated_at: new Date(),
     };
 
+    const dataFetchDuration = Date.now() - monthlyStartTime;
+    log(`  [MONTHLY] Data fetch complete (${dataFetchDuration}ms) — PMS: ${pmsData ? 'yes' : 'no'}, Rybbit: ${websiteAnalyticsMonthly ? 'yes' : 'no'}`);
+
     // === STEP 1: Referral Engine (Plan 1: now runs first to feed Summary as input) ===
     if (onProgress) await onProgress("referral_engine", "Running Referral Engine Agent...");
+    const reStartTime = Date.now();
     log(`  [MONTHLY] Running Referral Engine agent (max 3 attempts)`);
 
     let referralEngineOutput: ReferralEngineAgentOutput | undefined;
@@ -669,13 +690,8 @@ export async function processMonthlyAgents(
           meta: { ...agentMeta, agentType: "referral_engine" },
           enableCache: true,
           outputSchema: ReferralEngineAgentOutputSchema,
-          // Per-agent model override: RE_AGENT_MODEL env var lets prod swap
-          // RE to a faster model (e.g. claude-haiku-4-5-20251001) without a
-          // code change. When unset, runAgent's DEFAULT_MODEL kicks in.
-          // Rollback: `unset RE_AGENT_MODEL` and restart the dev server.
-          // Summary call site below intentionally does NOT read this var —
-          // Summary stays on the default (Sonnet) for quality reasons.
           model: process.env.RE_AGENT_MODEL || undefined,
+          maxTokens: 32768,
         });
 
         referralEngineOutput = referralResult.agentOutput;
@@ -686,14 +702,19 @@ export async function processMonthlyAgents(
           throw new Error("Referral Engine agent returned empty or invalid output");
         }
 
-        log(`  [MONTHLY] \u2713 Referral Engine completed successfully on attempt ${refAttempt}`);
+        const reDuration = Date.now() - reStartTime;
+        log(`  [MONTHLY] \u2713 Referral Engine completed on attempt ${refAttempt} (${reDuration}ms, ${referralEngineOutput?.doctor_referral_matrix?.length || 0} doctor rows, ${referralEngineOutput?.non_doctor_referral_matrix?.length || 0} non-doctor rows)`);
         break;
       } catch (refError: any) {
-        log(`  [MONTHLY] \u26a0 Referral Engine attempt ${refAttempt} failed: ${refError.message}`);
+        const apiStatus = refError?.status ?? refError?.response?.status ?? null;
+        const errorType = apiStatus === 429 ? "rate_limit" : apiStatus === 529 ? "overloaded" : apiStatus ? `api_${apiStatus}` : refError.message?.includes("non-JSON") ? "parse_failure" : "unknown";
+        log(`  [MONTHLY] \u26a0 Referral Engine attempt ${refAttempt}/${MAX_REFERRAL_ATTEMPTS} failed: type=${errorType} status=${apiStatus} message="${refError.message}"`);
+        if (refError.stack) log(`  [MONTHLY] Stack: ${refError.stack.split("\n").slice(0, 3).join(" \u2192 ")}`);
+        if (onProgress) await onProgress("referral_engine", `Referral Engine attempt ${refAttempt} failed (${errorType}). ${refAttempt < MAX_REFERRAL_ATTEMPTS ? "Retrying..." : "All attempts exhausted."}`);
         if (refAttempt === MAX_REFERRAL_ATTEMPTS) {
           return {
             success: false,
-            error: `Referral Engine failed after ${MAX_REFERRAL_ATTEMPTS} attempts: ${refError.message}`,
+            error: `Referral Engine failed after ${MAX_REFERRAL_ATTEMPTS} attempts (last error: ${errorType}): ${refError.message}`,
           };
         }
       }
@@ -726,6 +747,7 @@ export async function processMonthlyAgents(
     // ("dashboard_metrics") was an invalid MonthlyAgentKey and got silently
     // dropped, leaving RE stuck at the clock icon throughout Summary.
     if (onProgress) await onProgress("summary_agent", "Running Summary v2 agent...", "referral_engine");
+    const summaryStartTime = Date.now();
     log(`  [MONTHLY] Running Summary v2 agent (max 3 attempts)`);
 
     // Pull latest LLM-curated ranking recommendations for this org+location.
@@ -794,15 +816,20 @@ export async function processMonthlyAgents(
         // Highlights validator: warn-only (mismatched entries dropped at render time).
         validateSummaryHighlights(summaryOutput);
 
-        log(`  [MONTHLY] \u2713 Summary v2 completed successfully on attempt ${summaryAttempt}`);
+        const summaryDuration = Date.now() - summaryStartTime;
+        log(`  [MONTHLY] \u2713 Summary v2 completed on attempt ${summaryAttempt} (${summaryDuration}ms, ${summaryOutput.top_actions.length} actions)`);
         log(`  [summary-v2] ${JSON.stringify({ event: "success", orgId: organizationId, locationId, n_actions: summaryOutput.top_actions.length, domains: summaryOutput.top_actions.map((a) => a.domain), attempt: summaryAttempt })}`);
         break;
       } catch (sumError: any) {
-        log(`  [MONTHLY] \u26a0 Summary v2 attempt ${summaryAttempt} failed: ${sumError.message}`);
+        const apiStatus = sumError?.status ?? sumError?.response?.status ?? null;
+        const errorType = apiStatus === 429 ? "rate_limit" : apiStatus === 529 ? "overloaded" : apiStatus ? `api_${apiStatus}` : sumError.message?.includes("non-JSON") ? "parse_failure" : sumError.message?.includes("supporting_metrics") ? "metrics_validation" : "unknown";
+        log(`  [MONTHLY] \u26a0 Summary v2 attempt ${summaryAttempt}/${MAX_SUMMARY_ATTEMPTS} failed: type=${errorType} status=${apiStatus} message="${sumError.message}"`);
+        if (sumError.stack) log(`  [MONTHLY] Stack: ${sumError.stack.split("\n").slice(0, 3).join(" \u2192 ")}`);
+        if (onProgress) await onProgress("summary_agent", `Summary attempt ${summaryAttempt} failed (${errorType}). ${summaryAttempt < MAX_SUMMARY_ATTEMPTS ? "Retrying..." : "All attempts exhausted."}`);
         if (summaryAttempt === MAX_SUMMARY_ATTEMPTS) {
           return {
             success: false,
-            error: `Summary v2 failed after ${MAX_SUMMARY_ATTEMPTS} attempts: ${sumError.message}`,
+            error: `Summary v2 failed after ${MAX_SUMMARY_ATTEMPTS} attempts (last error: ${errorType}): ${sumError.message}`,
           };
         }
       }
@@ -832,6 +859,9 @@ export async function processMonthlyAgents(
       await createTasksFromSummaryV2Output(summaryOutput, googleAccountId, organizationId, locationId);
     }
     await createTasksFromReferralEngineOutput(referralEngineOutput!, googleAccountId, organizationId, locationId);
+
+    const totalDuration = Date.now() - monthlyStartTime;
+    log(`  [MONTHLY] ✓ All monthly agents complete for ${domain} (${totalDuration}ms / ${(totalDuration / 1000).toFixed(1)}s)`);
 
     return {
       success: true,

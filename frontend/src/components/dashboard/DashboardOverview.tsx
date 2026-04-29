@@ -115,7 +115,7 @@ export function DashboardOverview(props: DashboardOverviewProps) {
     isLoading || !organizationId ? true : period.hasPmsData;
 
   return (
-    <div className="max-w-[1320px] mx-auto px-4 lg:px-8 py-6 pb-16 space-y-6">
+    <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-16 space-y-6">
       <SetupProgressBanner />
       <PmsUploadNudge period={period} />
       <FocusHeader period={period} />

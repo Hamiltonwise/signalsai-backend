@@ -2,6 +2,41 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.46] - April 2026
+
+### Fix: RE Agent Token Truncation + Agent Pipeline Observability
+
+Fixed Referral Engine agent failing on orgs with large referral networks (60+ sources) due to output hitting the 16K max_tokens ceiling. JSON was truncated mid-stream, causing parse failures and unnecessary retries. Also added structured error logging across the entire monthly agent pipeline so failures are diagnosable from the log file without needing server console access.
+
+**Key Changes:**
+- RE agent maxTokens bumped from 16,384 → 32,768 to accommodate large referral matrices
+- `runMonthlyAgent` now accepts per-agent `maxTokens` override instead of hardcoding
+- LLM runner returns `stopReason` ("end_turn" / "max_tokens") — truncation detected and warned explicitly
+- RE and Summary retry catch blocks now log error type classification (rate_limit, overloaded, parse_failure, metrics_validation), API status codes, and stack traces
+- Failed retry attempts are pushed to `onProgress` so the admin UI shows why a retry happened
+- Timing instrumentation added: data fetch phase, RE duration, Summary duration, total pipeline
+
+**Commits:**
+- `src/agents/service.llm-runner.ts` — `stopReason` in result interface, truncation warning on max_tokens + null parse
+- `src/controllers/agents/feature-services/service.agent-orchestrator.ts` — RE maxTokens=32768, per-agent maxTokens param, structured error logging, timing, API error classification
+
+## [0.0.45] - April 2026
+
+### Dashboard & PMS Page UI Polish
+
+Unified visual consistency between the main dashboard and PMS statistics page.
+
+**Key Changes:**
+- Background color changed from cool gray (`#F3F4F6`) to warm parchment (`#F7F5F3`) across both pages
+- Top padding aligned so headings sit at the same vertical position on both pages
+- PMS processing status card: "Background PMS Processing" label replaced with "Est. 3-5 minutes" in muted gray; animated typewriter text thinned from black to normal weight while keeping the orange/dark gradient
+
+**Commits:**
+- `frontend/src/pages/Dashboard.tsx` — warm parchment background + content top padding
+- `frontend/src/components/dashboard/DashboardOverview.tsx` — matching padding
+- `frontend/src/components/PMS/PMSVisualPillars.tsx` — removed duplicate top padding (inherits from parent)
+- `frontend/src/components/PMS/dashboard/PmsProcessingStatusCard.tsx` — label and font weight changes
+
 ## [0.0.44] - April 2026
 
 ### Fix: Multi-File PMS Upload Cross-Month Dedup

@@ -232,10 +232,10 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto min-h-screen flex flex-col bg-alloro-bg font-body text-alloro-navy">
+    <div className="w-full max-w-[1600px] mx-auto min-h-screen flex flex-col bg-[#F7F5F3] font-body text-alloro-navy">
       {/* Show loading state while checking onboarding */}
       {!ready || checkingOnboarding ? (
-        <div className="flex-1 flex items-center justify-center bg-alloro-bg">
+        <div className="flex-1 flex items-center justify-center bg-[#F7F5F3]">
           <div className="text-center">
             <div className="relative flex items-center justify-center h-16 w-16 mx-auto mb-2">
               <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-alloro-orange/15 border-t-alloro-orange" style={{ animationDuration: "1.2s" }} />
@@ -245,7 +245,7 @@ export default function Dashboard() {
           </div>
         </div>
       ) : clientLoading ? (
-        <div className="h-full flex items-center justify-center bg-alloro-bg">
+        <div className="h-full flex items-center justify-center bg-[#F7F5F3]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-alloro-orange/20 border-t-alloro-orange mx-auto mb-4"></div>
             <p className="text-slate-600 font-medium">Resolving client access...</p>
@@ -387,7 +387,7 @@ export default function Dashboard() {
           </div>
         ) : (
           // Dashboard Content
-          <div className="w-full  mx-auto space-y-8 pb-20">
+          <div className="w-full  mx-auto space-y-8 pt-10 pb-20">
             <div className="space-y-8">
               <AnimatePresence mode="wait">
                 <motion.div

@@ -62,13 +62,13 @@ export function PmsProcessingStatusCard() {
         </div>
 
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-alloro-orange">
-            Background PMS Processing
+          <p className="text-[10px] font-medium text-slate-400">
+            Est. 3-5 minutes
           </p>
           <h2 className="mt-2 font-display text-2xl font-medium tracking-tight text-alloro-navy">
             Alloro is analyzing your latest PMS data
           </h2>
-          <p className="mt-2 min-h-6 max-w-2xl text-sm font-black leading-6">
+          <p className="mt-2 min-h-6 max-w-2xl text-sm font-normal leading-6">
             <span className="cogitating-gradient">{displayedMessage}</span>
             <span className="ml-[1px] inline-flex w-[1.5em] justify-start">
               <span className="cogitating-dot">.</span>
