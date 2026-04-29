@@ -618,6 +618,8 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
 
       // Read all files in parallel, concatenate text, feed as one paste.
       // Same column format assumed across files (same practice → same PMS).
+      // Header line from files 2+ is stripped so embedded headers don't
+      // become garbage data rows.
       Promise.all(
         files.map(
           (file) =>
@@ -629,7 +631,15 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
             })
         )
       ).then((texts) => {
-        const combined = texts.filter(Boolean).join("\n");
+        const nonEmpty = texts.filter(Boolean);
+        const combined = nonEmpty
+          .map((text, i) => {
+            if (i === 0) return text;
+            const firstNewline = text.indexOf("\n");
+            return firstNewline === -1 ? "" : text.slice(firstNewline + 1);
+          })
+          .filter(Boolean)
+          .join("\n");
         if (!combined) return;
         setDroppedFileName(
           files.length === 1

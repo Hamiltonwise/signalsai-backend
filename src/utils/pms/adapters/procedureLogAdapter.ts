@@ -119,15 +119,12 @@ export function applyProcedureLogMapping(
   const statusFilter = mapping.statusFilter;
   const actualProductionByMonth = buildActualProductionByMonth(rows, mapping);
 
-  // Step 1 — group rows by `(patient, practiceClean)`. One referral per
-  // unique patient → practice relationship within the file. Multiple visits
-  // by the same patient to the same practice within the period collapse to
-  // one referral; their production rolls up. Date is NOT in the dedup key —
-  // matches Hamilton Wise's per-patient mental model (verified against
-  // their pivot table on the Fredericksburg Feb 2026 dataset).
-  //
-  // Month bucketing uses the FIRST date encountered per (patient, practice)
-  // pair (typically the earliest visit, since PMS exports are chronological).
+  // Step 1 — group rows by `(patient, month, practiceClean)`. One referral
+  // per unique patient → practice relationship per month. Multiple visits
+  // by the same patient to the same practice within a single month collapse
+  // to one referral; their production rolls up. Cross-month visits count as
+  // separate referral events (a patient returning to the same referrer in a
+  // different month is a new referral).
   type PatientGroup = {
     patient: string;
     firstDate: string;
@@ -155,7 +152,7 @@ export function applyProcedureLogMapping(
     if (!patient || !dateRaw) continue;
 
     const month = parseDateToMonth(dateRaw, UNKNOWN_MONTH);
-    const groupKey = `${patient}::${practiceClean}`;
+    const groupKey = `${patient}::${month}::${practiceClean}`;
     const rowProduction = getRowProduction(row, mapping);
 
     const existing = groups.get(groupKey);
