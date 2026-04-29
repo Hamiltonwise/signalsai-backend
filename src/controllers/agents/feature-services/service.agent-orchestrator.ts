@@ -547,10 +547,12 @@ export async function processMonthlyAgents(
     // Fetch aggregated PMS data across all approved submissions
     log(`  [MONTHLY] Fetching aggregated PMS data for org ${organizationId}`);
     let pmsData = null;
+    let pmsDataForRE = null;
     try {
       const aggregated = await aggregatePmsData(organizationId, locationId ?? undefined);
 
       if (aggregated.months.length > 0) {
+        // Full shape for Summary (includes per-month sources for narrative context)
         pmsData = {
           monthly_rollup: aggregated.months.map((month) => ({
             month: month.month,
@@ -565,8 +567,26 @@ export async function processMonthlyAgents(
           patient_records: aggregated.patientRecords,
           data_quality_flags: aggregated.dataQualityFlags,
         };
+
+        // Leaner shape for RE: pre-computed trends + dedup candidates
+        // instead of raw per-month source arrays. O(1) on Claude input.
+        pmsDataForRE = {
+          monthly_totals: aggregated.months.map((month) => ({
+            month: month.month,
+            self_referrals: month.selfReferrals,
+            doctor_referrals: month.doctorReferrals,
+            total_referrals: month.totalReferrals,
+            production_total: month.productionTotal,
+          })),
+          sources_summary: aggregated.sources,
+          source_trends: aggregated.sourceTrends,
+          dedup_candidates: aggregated.dedupCandidates,
+          totals: aggregated.totals,
+          data_quality_flags: aggregated.dataQualityFlags,
+        };
+
         log(
-          `  [MONTHLY] \u2713 Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources, ${aggregated.patientRecords.length} patient records)`,
+          `  [MONTHLY] \u2713 Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources, ${aggregated.sourceTrends.length} trends, ${aggregated.dedupCandidates.length} dedup candidates)`,
         );
       } else {
         log(`  [MONTHLY] \u26a0 No approved PMS data found`);
@@ -638,9 +658,8 @@ export async function processMonthlyAgents(
           googleAccountId,
           startDate,
           endDate,
-          pmsData,
+          pmsData: pmsDataForRE,
           websiteAnalytics: websiteAnalyticsMonthly,
-          // GBP deliberately not passed — see buildReferralEnginePayload comment.
         });
 
         const referralResult = await runMonthlyAgent({

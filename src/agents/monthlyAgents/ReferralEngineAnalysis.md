@@ -12,58 +12,55 @@ TRIGGER
 Run on each new PMS upload. Manual re-run permitted on new data.
 
 INPUTS
-- PMS monthly rollup data → required
-  Available fields: month, source name, referral count per source,
-  production per source, inferred_referral_type (doctor/marketing/other),
-  sources_summary (all-time rank, totals, %), overall totals
+- PMS data → required. Contains:
+  - monthly_totals: per-month aggregates (month, self_referrals,
+    doctor_referrals, total_referrals, production_total). No
+    per-source breakdown — see source_trends for that.
+  - sources_summary: all-time ranked source list (rank, name,
+    referrals, production, percentage).
+  - source_trends: pre-computed per-source trend data (name,
+    trend_label, referrals_current, referrals_prior, referrals_delta,
+    production_current, production_prior). Use these directly — do NOT
+    re-derive trends from monthly_totals.
+  - dedup_candidates: pairs of source names flagged as potential
+    duplicates by upstream string matching (name_a, name_b, reason).
+    Review and decide — see DEDUP HANDLING below.
+  - totals: overall referral and production totals.
+  - data_quality_flags: upstream flags to surface verbatim.
 - Website analytics → enrich if available
 
 NOTE: Patient-level records are not available in this data structure.
 Funnel metrics (% scheduled, % examined, % started) cannot be computed.
 Do not output or reference these fields. Flag their absence in data_quality_flags.
 
-PRE-PROCESSING — RUN BEFORE ANY ANALYSIS
-
-Deduplicate source names before building any matrix or trend:
-- Normalize all source names to title case
-- Flag any sources that are likely the same practice using these rules:
-  → Same first word + same city/location context
-  → One is an abbreviation or acronym of the other
-  → Names differ only by punctuation, spacing, or "Dr." prefix variations
-- Merge flagged duplicates into one row, summing referrals and production
-- Add a note on the merged row listing the original names that were combined
-- If unsure whether two names are the same practice, do NOT merge —
-  flag in data_quality_flags and leave them separate
-- Never include "(merged)" in any task title or description shown to the doctor
-- When duplicates are found, generate a USER task (not ALLORO) telling the 
-  doctor to fix the duplicate name in their own patient management software
-
-Example merges:
-"Altman Dental" + "Altman Dentistry" → merge → one row, note original names
-"DR BLACK DENTAL CARE" + "Dr. Black and Dr. Dickson Dental Care" → flag,
-do not merge (different enough to be potentially separate practices)
+DEDUP HANDLING
+Duplicate-name detection is done upstream. You receive dedup_candidates —
+pairs flagged by string similarity. For each pair:
+- If clearly the same practice: merge into one matrix row, sum referrals
+  and production, note original names in the notes field.
+- If ambiguous or clearly different: do NOT merge. Add to
+  data_quality_flags and keep them as separate rows.
+- When duplicates are confirmed, generate a USER task telling the
+  doctor to fix the duplicate name in their own patient management
+  software. Never include "(merged)" in task titles.
+- Do NOT scan for additional duplicates beyond what's in
+  dedup_candidates. The upstream detection is conservative; if it
+  missed a pair, that's acceptable.
 
 WHAT YOU CAN DERIVE
-- Referral volume per source per month
-- Production per source per month
-- Average production per referral (net_production / referred)
-- Month-over-month trend per source (compare monthly rollups):
-  → increasing: higher referrals vs prior month
-  → decreasing: lower referrals vs prior month
-  → new: appeared this month, not in any prior month
-  → dormant: had referrals in prior months, zero this month
-  → stable: no meaningful change
-- All-time source ranking and share %
-- Sources going dormant or reactivating
+- All-time source ranking and share % (from sources_summary)
+- Per-source trend direction (from source_trends — pre-computed)
+- Average production per referral (from sources_summary: production / referrals)
 - Revenue concentration risk (e.g. top 2 sources = 44% of all referrals)
+- Sources going dormant or reactivating (from source_trends: trend_label)
 
 TREND RULES
-- Use monthly_rollup to compare the most recent month vs the prior 
-  available month
-- If a source appears in the current month but not in any prior month → new
-- If a source had referrals in prior months but zero this month → dormant
-- Flag gaps in monthly data in data_quality_flags
-- Never treat a missing month in the export as a zero-referral month
+- Use the pre-computed trend_label from source_trends. Do NOT override
+  or re-derive from raw monthly data.
+- trend_label values: increasing, decreasing, new, dormant, stable.
+- When all sources have trend_label "new" (single-month data), respect
+  the SINGLE-MONTH RULE below.
+- Flag gaps in monthly data in data_quality_flags.
 
 DATA QUALITY FLAGS
 Only flag things that affect the numbers in this report:

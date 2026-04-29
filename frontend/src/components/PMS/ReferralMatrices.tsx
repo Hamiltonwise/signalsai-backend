@@ -1,7 +1,76 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import Lottie from "lottie-react";
+import cogitatingSpinner from "../../assets/cogitating-spinner.json";
 import { ClientProgressTimeline } from "./ClientProgressTimeline";
 import type { AutomationStatusDetail } from "../../api/pms";
+
+const COGITATING_PHRASES = [
+  "Mapping your referral sources",
+  "Ranking top referrers",
+  "Tracing production per source",
+  "Comparing month over month",
+  "Spotting dormant referrers",
+  "Flagging new sources",
+  "Calculating revenue per referral",
+  "Analyzing referral trends",
+  "Building your attribution matrix",
+  "Detecting duplicate sources",
+  "Measuring referral concentration",
+  "Identifying growth opportunities",
+  "Scoring referral efficiency",
+  "Tracking doctor referrals",
+  "Surfacing declining sources",
+  "Prioritizing action items",
+  "Grounding insights to your data",
+  "Matching sources to production",
+  "Preparing your action plan",
+];
+
+function CogitatingTitle() {
+  const [targetPhrase, setTargetPhrase] = useState(() =>
+    COGITATING_PHRASES[Math.floor(Math.random() * COGITATING_PHRASES.length)]
+  );
+  const [displayed, setDisplayed] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    if (isTyping) {
+      if (displayed.length < targetPhrase.length) {
+        const t = setTimeout(
+          () => setDisplayed(targetPhrase.slice(0, displayed.length + 1)),
+          35
+        );
+        return () => clearTimeout(t);
+      }
+      const hold = setTimeout(() => setIsTyping(false), 1800);
+      return () => clearTimeout(hold);
+    }
+    setTargetPhrase((prev) => {
+      let next: string;
+      do {
+        next =
+          COGITATING_PHRASES[
+            Math.floor(Math.random() * COGITATING_PHRASES.length)
+          ];
+      } while (next === prev);
+      return next;
+    });
+    setDisplayed("");
+    setIsTyping(true);
+  }, [displayed, isTyping, targetPhrase]);
+
+  return (
+    <h3 className="text-lg font-bold font-display mb-3">
+      <span className="cogitating-gradient">{displayed}</span>
+      <span className="inline-flex w-[1.5em] justify-start ml-[1px]">
+        <span className="cogitating-dot" style={{ animationDelay: "0s" }}>.</span>
+        <span className="cogitating-dot" style={{ animationDelay: "0.15s" }}>.</span>
+        <span className="cogitating-dot" style={{ animationDelay: "0.3s" }}>.</span>
+      </span>
+    </h3>
+  );
+}
 
 // Types for Referral Engine Data
 export interface DoctorReferral {
@@ -257,33 +326,51 @@ const MatricesProcessingState: React.FC<MatricesProcessingStateProps> = ({
   automationStatus,
   onConfirmationClick,
 }) => {
-  // Determine if we're waiting for client approval
   const isAwaitingClientApproval =
     automationStatus?.status === "awaiting_approval" &&
     automationStatus?.currentStep === "client_approval";
 
-  // Dynamic title and subtitle based on state
-  const title = isAwaitingClientApproval
-    ? "Your PMS Data is Ready for Review"
-    : "Generating Your Attribution Matrix";
-
-  const subtitle = isAwaitingClientApproval
-    ? "Please review your data and confirm using the banner above"
-    : "Full transparency • Keep track of your progress below";
+  if (isAwaitingClientApproval) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-premium p-8 sm:p-12">
+        <div className="text-center mb-8">
+          <h3 className="text-lg font-bold text-alloro-navy mb-2">
+            Your PMS Data is Ready for Review
+          </h3>
+          <p className="text-sm text-slate-500 font-medium">
+            Please review your data and confirm using the banner above
+          </p>
+        </div>
+        <div className="border-t border-slate-100 pt-8">
+          <ClientProgressTimeline
+            automationStatus={automationStatus ?? null}
+            onConfirmationClick={onConfirmationClick}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-premium p-8 sm:p-12">
-      <div className="text-center mb-8">
-        <h3 className="text-lg font-bold text-alloro-navy mb-2">{title}</h3>
-        <p className="text-sm text-slate-500 font-medium">{subtitle}</p>
-      </div>
+      <div className="flex flex-col items-center justify-center py-8">
+        <div className="relative flex items-center justify-center h-16 w-16 mb-6">
+          <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-alloro-orange/15 border-t-alloro-orange" style={{ animationDuration: "1.2s" }} />
+          <Lottie
+            animationData={cogitatingSpinner}
+            loop
+            className="relative z-10 w-9 h-9"
+          />
+        </div>
 
-      {/* Progress Timeline */}
-      <div className="border-t border-slate-100 pt-8">
-        <ClientProgressTimeline
-          automationStatus={automationStatus ?? null}
-          onConfirmationClick={onConfirmationClick}
-        />
+        <CogitatingTitle />
+
+        <p className="text-sm text-gray-900 mb-4">
+          Alloro is analyzing your data to generate actionable insights
+        </p>
+        <p className="text-xs text-slate-400">
+          Estimated time: ~3–4 minutes
+        </p>
       </div>
     </div>
   );

@@ -1148,3 +1148,29 @@ mark.hl {
 .font-inter { font-family: var(--font-inter); }
 .font-mono-display { font-family: var(--font-mono); }
 
+/* Cogitating loading state */
+@keyframes cogitating-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.cogitating-gradient {
+  background: linear-gradient(90deg, #D66853, #4a5568, #D66853, #4a5568);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: cogitating-gradient 1.5s ease infinite;
+}
+@keyframes cogitating-dot {
+  0%, 20% { opacity: 0; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+  80%, 100% { opacity: 0; transform: translateY(0); }
+}
+.cogitating-dot {
+  display: inline-block;
+  color: #D66853;
+  -webkit-text-fill-color: #D66853;
+  animation: cogitating-dot 1s ease-in-out infinite;
+}
+

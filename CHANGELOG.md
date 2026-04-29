@@ -2,6 +2,28 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.42] - April 2026
+
+### Deterministic RE Matrix Pre-Compute + Loading UX Overhaul
+
+Two changes shipped together: (1) the PMS aggregator now pre-computes per-source trend labels and duplicate-name candidates deterministically in JS, stripping raw per-month source arrays from RE's input to make Claude latency O(1) regardless of CSV size; (2) the client-facing "Generating Your Attribution Matrix" view and the global Dashboard loading state both got a visual overhaul with the Alloro Lottie leaf, spinning ring, and typewriter-animated loading phrases.
+
+**Key Changes:**
+
+1. **Deterministic trends + dedup in pmsAggregator.ts.** After the existing source aggregation, a second pass computes per-source `trend_label` (increasing/decreasing/new/dormant/stable) by comparing the latest two months, and flags `dedup_candidates` via Levenshtein distance ≤ 3 or same-first-word heuristic. Both fields added to `AggregatedPmsData` and included in the leaner RE-specific payload.
+
+2. **Leaner RE payload (O(1) on Claude input).** The orchestrator now builds a separate `pmsDataForRE` shape: `monthly_totals` (month-level totals without per-source arrays) + `sources_summary` + pre-computed `source_trends` + `dedup_candidates`. Summary continues to receive the full pmsData with per-month sources for narrative context.
+
+3. **RE prompt rewrite.** INPUTS section updated for the new shape. PRE-PROCESSING dedup section replaced with DEDUP HANDLING (review upstream-flagged pairs only). TREND RULES simplified to "use pre-computed trend_label, don't re-derive." NOTES RULE added to stop the model from restating rank/percentage already visible in the table columns.
+
+4. **Attribution matrix loading state.** Replaced the 4-step progress timeline with a single centered view: Alloro Lottie leaf inside a spinning orange ring, typewriter-animated referral-specific loading phrases ("Mapping your referral sources", "Ranking top referrers", etc.), plain-text description, and estimated time.
+
+5. **Global Dashboard loading state.** Added the same spinning ring around the existing Lottie leaf, upgraded CogitatingText to typewriter animation (35ms/char, 1.8s hold between phrases).
+
+6. **lottie-react dependency.** Added to frontend/package.json + cogitating-spinner.json asset + cogitating CSS animations in index.css.
+
+**Verification:** `tsc --noEmit` clean (backend + frontend). End-to-end run verified — RE receives the pre-computed payload, Summary passes validator attempt 1, tasks created.
+
 ## [0.0.41] - April 2026
 
 ### RE Input Optimization + Per-Agent Model Override + FE Pill Cleanup

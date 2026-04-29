@@ -37,6 +37,22 @@ type AggregatedSourceData = {
   percentage: number;
 };
 
+export type SourceTrendData = {
+  name: string;
+  trend_label: "increasing" | "decreasing" | "new" | "dormant" | "stable";
+  referrals_current: number;
+  referrals_prior: number | null;
+  referrals_delta: number | null;
+  production_current: number;
+  production_prior: number | null;
+};
+
+export type DedupCandidate = {
+  name_a: string;
+  name_b: string;
+  reason: string;
+};
+
 export type AggregatedPmsData = {
   months: AggregatedMonthData[];
   sources: AggregatedSourceData[];
@@ -52,6 +68,10 @@ export type AggregatedPmsData = {
    * UPSTREAM DATA QUALITY ACKNOWLEDGEMENT).
    */
   dataQualityFlags: string[];
+  /** Per-source trend labels computed by comparing the last two months. */
+  sourceTrends: SourceTrendData[];
+  /** Source name pairs flagged as potential duplicates by string similarity. */
+  dedupCandidates: DedupCandidate[];
 };
 
 /**
@@ -176,6 +196,8 @@ export async function aggregatePmsData(
         totalReferrals: 0,
         totalProduction: 0,
       },
+      sourceTrends: [],
+      dedupCandidates: [],
       patientRecords: [],
       dataQualityFlags: [],
     };
@@ -318,6 +340,132 @@ export async function aggregatePmsData(
       };
     });
 
+  // ── Per-source trend computation ──────────────────────────────────
+  // Compare the latest month vs the prior month for each source.
+  // When only one month exists, all sources get trend_label "new".
+  const sortedMonths = [...months].sort((a, b) =>
+    a.month.localeCompare(b.month)
+  );
+  const latestMonth = sortedMonths[sortedMonths.length - 1];
+  const priorMonth = sortedMonths.length >= 2
+    ? sortedMonths[sortedMonths.length - 2]
+    : null;
+
+  const buildSourceMap = (m: AggregatedMonthData | null) => {
+    const map = new Map<string, { referrals: number; production: number }>();
+    if (!m) return map;
+    for (const s of m.sources) {
+      const name = s.name?.trim();
+      if (name) {
+        map.set(name, {
+          referrals: toNumber(s.referrals),
+          production: toNumber(s.production),
+        });
+      }
+    }
+    return map;
+  };
+
+  const latestSourceMap = buildSourceMap(latestMonth);
+  const priorSourceMap = buildSourceMap(priorMonth);
+  const allSourceNames = new Set([
+    ...latestSourceMap.keys(),
+    ...priorSourceMap.keys(),
+  ]);
+
+  const sourceTrends: SourceTrendData[] = [];
+  for (const name of allSourceNames) {
+    const curr = latestSourceMap.get(name);
+    const prev = priorSourceMap.get(name);
+
+    let trend_label: SourceTrendData["trend_label"];
+    if (!priorMonth) {
+      trend_label = "new";
+    } else if (curr && !prev) {
+      trend_label = "new";
+    } else if (!curr && prev) {
+      trend_label = "dormant";
+    } else if (curr && prev) {
+      if (curr.referrals > prev.referrals) trend_label = "increasing";
+      else if (curr.referrals < prev.referrals) trend_label = "decreasing";
+      else trend_label = "stable";
+    } else {
+      trend_label = "stable";
+    }
+
+    sourceTrends.push({
+      name,
+      trend_label,
+      referrals_current: curr?.referrals ?? 0,
+      referrals_prior: prev?.referrals ?? null,
+      referrals_delta:
+        curr && prev ? curr.referrals - prev.referrals : null,
+      production_current: curr?.production ?? 0,
+      production_prior: prev?.production ?? null,
+    });
+  }
+
+  sourceTrends.sort((a, b) => b.referrals_current - a.referrals_current);
+
+  // ── Duplicate-name candidate detection ──────────────────────────
+  // Conservative: flag obvious matches only (normalized Levenshtein ≤ 3
+  // or identical first word with both names ≥ 3 words).
+  const normalize = (s: string): string =>
+    s.toLowerCase()
+      .replace(/^dr\.?\s*/i, "")
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const levenshtein = (a: string, b: string): number => {
+    const m = a.length;
+    const n = b.length;
+    const dp: number[][] = Array.from({ length: m + 1 }, () =>
+      Array(n + 1).fill(0)
+    );
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] =
+          a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+    return dp[m][n];
+  };
+
+  const dedupCandidates: DedupCandidate[] = [];
+  const sourceNames = sources.map((s) => s.name);
+  for (let i = 0; i < sourceNames.length; i++) {
+    const normA = normalize(sourceNames[i]);
+    const wordsA = normA.split(" ");
+    for (let j = i + 1; j < sourceNames.length; j++) {
+      const normB = normalize(sourceNames[j]);
+      const wordsB = normB.split(" ");
+      const dist = levenshtein(normA, normB);
+
+      if (dist <= 3 && dist > 0) {
+        dedupCandidates.push({
+          name_a: sourceNames[i],
+          name_b: sourceNames[j],
+          reason: `Levenshtein distance ${dist} on normalized names`,
+        });
+      } else if (
+        wordsA[0] === wordsB[0] &&
+        wordsA.length >= 2 &&
+        wordsB.length >= 2
+      ) {
+        dedupCandidates.push({
+          name_a: sourceNames[i],
+          name_b: sourceNames[j],
+          reason: `Same first word "${wordsA[0]}"`,
+        });
+      }
+    }
+  }
+
   return {
     months,
     sources,
@@ -327,5 +475,7 @@ export async function aggregatePmsData(
     },
     patientRecords: allPatientRecords,
     dataQualityFlags,
+    sourceTrends,
+    dedupCandidates,
   };
 }
