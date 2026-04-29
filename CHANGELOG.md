@@ -2,6 +2,90 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.44] - April 2026
+
+### Fix: Multi-File PMS Upload Cross-Month Dedup
+
+Fixed a bug where dropping multiple CSV files (e.g. Jan + Feb + Mar) onto the PMS modal produced incorrect per-month production and referral counts. Patients visiting the same referring practice across different months were collapsed into a single referral because the dedup key lacked a month component. Mar showed $167,692 instead of the correct $193,763.
+
+**Key Changes:**
+- Backend: procedure log adapter dedup key changed from `patient::practice` to `patient::month::practice`, making cross-month visits count as separate referral events
+- Frontend: multi-file drop now strips header lines from files 2+ before concatenating, preventing embedded CSV headers from becoming garbage data rows
+
+**Commits:**
+- `src/utils/pms/adapters/procedureLogAdapter.ts` — month-aware dedup grouping key
+- `frontend/src/components/PMS/PMSManualEntryModal.tsx` — header-stripping in multi-file concatenation
+
+## [0.0.43] - April 2026
+
+### PMS Modal: Multi-Month Merge + Multi-File Drop
+
+The PMS upload modal now supports additive multi-month data entry. Previously, each paste/drop replaced all existing data. Now months merge intelligently: new months insert silently, existing months prompt for confirmation before replacing.
+
+**Key Changes:**
+
+1. **Month-merge logic.** `handleParsedPaste` no longer calls `setMonths(parsedMonths)` (the wipe). Instead, incoming months are classified as "new" or "conflict" against existing state. New-only → silent merge. Any conflicts → modal dialog listing affected months with ⚠️/✅ indicators and row counts.
+
+2. **Month-conflict dialog.** Inline `AnimatePresence` modal shows per-month status: ⚠️ amber for existing months that will be replaced (with row count + manual-edit warning), ✅ green for new months. "Existing months not listed above will be kept as-is." Confirm & Merge / Cancel.
+
+3. **Mapping-refinement guard.** The `parsedPreview` effect (column-mapping pipeline) skips while the conflict dialog is open, preventing the mapping re-parse from silently dismissing the dialog. After user confirms, the effect re-fires and applies the mapping-refined version.
+
+4. **Multi-file drop.** Drop handler reads ALL dropped files via `Promise.all`, concatenates text with newline separator, feeds as a single paste. Validates all files have supported extensions. Filename display shows "3 files" for multi-file drops.
+
+5. **`mappingAllRows` accumulation.** Fixed a bug where each paste replaced `mappingAllRows` (the raw CSV rows sent to `uploadWithMapping`). Now accumulates across pastes so multi-paste submissions include all months' data, not just the last paste.
+
+**Verification:** Multi-file drop of 3 CSVs (Jan+Feb+Mar) → all 3 months detected → 3 month tabs → submit → aggregator confirms "3 months, 64 sources" → full pipeline completes.
+
+## [0.0.42] - April 2026
+
+### Deterministic RE Matrix Pre-Compute + Loading UX Overhaul
+
+Two changes shipped together: (1) the PMS aggregator now pre-computes per-source trend labels and duplicate-name candidates deterministically in JS, stripping raw per-month source arrays from RE's input to make Claude latency O(1) regardless of CSV size; (2) the client-facing "Generating Your Attribution Matrix" view and the global Dashboard loading state both got a visual overhaul with the Alloro Lottie leaf, spinning ring, and typewriter-animated loading phrases.
+
+**Key Changes:**
+
+1. **Deterministic trends + dedup in pmsAggregator.ts.** After the existing source aggregation, a second pass computes per-source `trend_label` (increasing/decreasing/new/dormant/stable) by comparing the latest two months, and flags `dedup_candidates` via Levenshtein distance ≤ 3 or same-first-word heuristic. Both fields added to `AggregatedPmsData` and included in the leaner RE-specific payload.
+
+2. **Leaner RE payload (O(1) on Claude input).** The orchestrator now builds a separate `pmsDataForRE` shape: `monthly_totals` (month-level totals without per-source arrays) + `sources_summary` + pre-computed `source_trends` + `dedup_candidates`. Summary continues to receive the full pmsData with per-month sources for narrative context.
+
+3. **RE prompt rewrite.** INPUTS section updated for the new shape. PRE-PROCESSING dedup section replaced with DEDUP HANDLING (review upstream-flagged pairs only). TREND RULES simplified to "use pre-computed trend_label, don't re-derive." NOTES RULE added to stop the model from restating rank/percentage already visible in the table columns.
+
+4. **Attribution matrix loading state.** Replaced the 4-step progress timeline with a single centered view: Alloro Lottie leaf inside a spinning orange ring, typewriter-animated referral-specific loading phrases ("Mapping your referral sources", "Ranking top referrers", etc.), plain-text description, and estimated time.
+
+5. **Global Dashboard loading state.** Added the same spinning ring around the existing Lottie leaf, upgraded CogitatingText to typewriter animation (35ms/char, 1.8s hold between phrases).
+
+6. **lottie-react dependency.** Added to frontend/package.json + cogitating-spinner.json asset + cogitating CSS animations in index.css.
+
+**Verification:** `tsc --noEmit` clean (backend + frontend). End-to-end run verified — RE receives the pre-computed payload, Summary passes validator attempt 1, tasks created.
+
+## [0.0.41] - April 2026
+
+### RE Input Optimization + Per-Agent Model Override + FE Pill Cleanup
+
+Bundle of five changes that reduce RE latency, clean up the FE progress UI, and add optional per-agent model selection infrastructure. Verified across multiple trial runs — RE input tokens dropped 61% (18k → 7k), total monthly run time dropped ~18-21% depending on API variance.
+
+**Key Changes:**
+
+1. **GBP stripped from RE input.** RE's prompt (`ReferralEngineAnalysis.md`) explicitly states GBP is "enrich if available" and the GROUNDING RULES forbid citing GBP fields — yet RE was receiving the full `monthData` GBP blob, which dominated its input tokens on big-org runs. Removed: `gbpData` param from `buildReferralEnginePayload`, the `gbp` field from `additional_data`, and the three GBP references from the RE prompt. Summary still receives GBP (via `monthData` spread) — only RE lost it.
+
+2. **RE NOTES RULE added to prompt.** Matrix row notes were repeating data already visible in the table columns ("Rank 1 source, February 2026. 21.6% of all referral production."). New NOTES RULE with explicit good/bad examples: notes should add context not in the columns (merged source names, trend detail, relationship context, concentration risk, efficiency outliers) or be empty. Single-month notes no longer restate "New source" since the trend_label column already says "new".
+
+3. **Per-agent model override via `RE_AGENT_MODEL` env var.** `runMonthlyAgent` opts now accepts `model?: string`, passed through to `runAgent`. RE call site reads `process.env.RE_AGENT_MODEL || undefined`. When unset (default), RE runs on the global model (Sonnet 4.6). When set to e.g. `claude-haiku-4-5-20251001`, RE runs on Haiku. Summary call site intentionally untouched — stays on default. Log line includes `(model: <name>)` when overridden. Rollback: remove the env var from `.env`, restart. Eval procedure: compare RE `agent_output` via Pipeline modal at `/admin/ai-pms-automation`.
+
+4. **RE pill checkmark fix.** The `onProgress` call transitioning from RE → Summary was passing `agentCompleted: "dashboard_metrics"` (an invalid `MonthlyAgentKey`), so the FE silently dropped it and never marked RE's pill as completed during the Summary phase. Fixed to `agentCompleted: "referral_engine"`.
+
+5. **Disabled agents hidden from FE.** Opportunity Agent and CRO Optimizer are disabled in the orchestrator (`if (false)` blocks) but were still rendering in both the AGENT PROGRESS strip (as pills with clock icons) and the AUTOMATION COMPLETE summary (as "opportunity 0" and "cro optimizer 0" pills). `MONTHLY_AGENT_CONFIG` in `frontend/src/api/pms.ts` now only lists the three active agents (Fetching data, Summary Agent, Referral Engine), and the AUTOMATION COMPLETE pill renderer filters out `opportunity` and `cro_optimizer` keys.
+
+**Measured impact (org-36, 1 month PMS, same org+location+date_range across runs):**
+
+| Metric | Sonnet + GBP (baseline) | Sonnet + no GBP + Haiku RE | Change |
+|---|---|---|---|
+| RE input tokens | 18,283 | 7,161–7,510 | -60% |
+| RE call duration | 105.1s | 42–46s | -58% |
+| Total run duration | 217.2s | 172–182s | -18–21% |
+
+**Verification:** `tsc --noEmit` clean (backend + frontend). Multiple end-to-end runs verified — Summary v2 passes validator attempt 1, tasks created cleanly, Pipeline modal renders correctly, FE pills show only active agents with proper checkmarks.
+
 ## [0.0.40] - April 2026
 
 ### Fix: Summary v2 Validator + Prompt Contract — Monthly Runs Actually Pass

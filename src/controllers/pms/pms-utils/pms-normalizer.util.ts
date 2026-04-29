@@ -11,6 +11,8 @@ export type RawPmsMonthEntry = {
   self_referrals?: number | string;
   total_referrals?: number | string;
   doctor_referrals?: number | string;
+  actual_production_total?: number | string;
+  attributed_production_total?: number | string;
   production_total?: number | string;
 };
 

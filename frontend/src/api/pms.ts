@@ -257,6 +257,8 @@ export interface PmsKeyDataMonth {
   doctorReferrals: number;
   totalReferrals: number;
   productionTotal: number;
+  actualProductionTotal?: number;
+  attributedProductionTotal?: number;
 }
 
 export interface PmsKeyDataSource {
@@ -276,6 +278,7 @@ export interface PmsKeyDataResponse {
     totals: {
       totalReferrals: number;
       totalProduction: number;
+      totalAttributedProduction?: number;
     };
     stats: {
       jobCount: number;
@@ -677,20 +680,22 @@ export async function retryPmsStep(
  * Restart a completed monthly agents run.
  * Deletes all data from the run and re-triggers from scratch.
  */
-export async function restartPmsJob(
-  jobId: number
-): Promise<{
+export type RestartPmsJobResponse = {
   success: boolean;
   message?: string;
   data?: { jobId: number; restarted: boolean; deletionCounts: Record<string, number> };
   error?: string;
-}> {
+};
+
+export async function restartPmsJob(
+  jobId: number
+): Promise<RestartPmsJobResponse> {
   try {
     const result = await apiPost({
       path: `/pms/jobs/${jobId}/restart`,
       passedData: {},
     });
-    return result as any;
+    return result as RestartPmsJobResponse;
   } catch (error) {
     console.error("PMS restart API error:", error);
     return {
@@ -743,13 +748,16 @@ export const STEP_CONFIG: Record<StepKey, { label: string; icon: string }> = {
   complete: { label: "Complete", icon: "✓" },
 };
 
-export const MONTHLY_AGENT_CONFIG: Record<MonthlyAgentKey, { label: string }> =
+// Only the agents that actually run today appear here. Opportunity Agent
+// and CRO Optimizer are intentionally omitted — they're disabled in the
+// orchestrator (`if (false)` blocks). Keep them in the MonthlyAgentKey
+// union type for back-compat with any legacy automation_status_detail
+// rows that still list them in agentsCompleted.
+export const MONTHLY_AGENT_CONFIG: Partial<Record<MonthlyAgentKey, { label: string }>> =
   {
     data_fetch: { label: "Fetching data" },
     summary_agent: { label: "Summary Agent" },
     referral_engine: { label: "Referral Engine" },
-    opportunity_agent: { label: "Opportunity Agent" },
-    cro_optimizer: { label: "CRO Optimizer" },
   };
 
 // =====================================================================

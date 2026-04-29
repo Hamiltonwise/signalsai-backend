@@ -43,6 +43,7 @@
     "dompurify": "^3.3.3",
     "framer-motion": "^12.23.12",
     "leaflet": "^1.9.4",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^0.541.0",
     "papaparse": "^5.5.3",
     "prettier": "^3.8.1",

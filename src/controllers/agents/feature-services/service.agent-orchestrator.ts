@@ -245,11 +245,18 @@ async function runMonthlyAgent(opts: {
   enableCache?: boolean;
   /** Optional Zod schema; runner runs safeParse + corrective retry on failure. */
   outputSchema?: ZodTypeAny;
+  /** Optional per-agent model override. When unset, runAgent uses its
+   *  DEFAULT_MODEL (process.env.AGENTS_LLM_MODEL or claude-sonnet-4-6). */
+  model?: string;
 }): Promise<{ agentOutput: any; agentResultId: number }> {
   const systemPrompt = loadPrompt(opts.promptPath);
   const userMessage = JSON.stringify(opts.payload, null, 2);
 
-  log(`  → Running ${opts.agentName} via Claude directly`);
+  log(
+    `  → Running ${opts.agentName} via Claude directly${
+      opts.model ? ` (model: ${opts.model})` : ""
+    }`
+  );
 
   const result = await runAgent({
     systemPrompt,
@@ -259,6 +266,7 @@ async function runMonthlyAgent(opts: {
     // without duplicating it as a prefix block. See service.llm-runner.ts.
     ...(opts.enableCache ? { cachedSystemBlocks: [] } : {}),
     ...(opts.outputSchema ? { outputSchema: opts.outputSchema } : {}),
+    ...(opts.model ? { model: opts.model } : {}),
   });
 
   log(
@@ -539,10 +547,12 @@ export async function processMonthlyAgents(
     // Fetch aggregated PMS data across all approved submissions
     log(`  [MONTHLY] Fetching aggregated PMS data for org ${organizationId}`);
     let pmsData = null;
+    let pmsDataForRE = null;
     try {
       const aggregated = await aggregatePmsData(organizationId, locationId ?? undefined);
 
       if (aggregated.months.length > 0) {
+        // Full shape for Summary (includes per-month sources for narrative context)
         pmsData = {
           monthly_rollup: aggregated.months.map((month) => ({
             month: month.month,
@@ -557,8 +567,26 @@ export async function processMonthlyAgents(
           patient_records: aggregated.patientRecords,
           data_quality_flags: aggregated.dataQualityFlags,
         };
+
+        // Leaner shape for RE: pre-computed trends + dedup candidates
+        // instead of raw per-month source arrays. O(1) on Claude input.
+        pmsDataForRE = {
+          monthly_totals: aggregated.months.map((month) => ({
+            month: month.month,
+            self_referrals: month.selfReferrals,
+            doctor_referrals: month.doctorReferrals,
+            total_referrals: month.totalReferrals,
+            production_total: month.productionTotal,
+          })),
+          sources_summary: aggregated.sources,
+          source_trends: aggregated.sourceTrends,
+          dedup_candidates: aggregated.dedupCandidates,
+          totals: aggregated.totals,
+          data_quality_flags: aggregated.dataQualityFlags,
+        };
+
         log(
-          `  [MONTHLY] \u2713 Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources, ${aggregated.patientRecords.length} patient records)`,
+          `  [MONTHLY] \u2713 Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources, ${aggregated.sourceTrends.length} trends, ${aggregated.dedupCandidates.length} dedup candidates)`,
         );
       } else {
         log(`  [MONTHLY] \u26a0 No approved PMS data found`);
@@ -630,8 +658,7 @@ export async function processMonthlyAgents(
           googleAccountId,
           startDate,
           endDate,
-          pmsData,
-          gbpData: monthData,
+          pmsData: pmsDataForRE,
           websiteAnalytics: websiteAnalyticsMonthly,
         });
 
@@ -642,6 +669,13 @@ export async function processMonthlyAgents(
           meta: { ...agentMeta, agentType: "referral_engine" },
           enableCache: true,
           outputSchema: ReferralEngineAgentOutputSchema,
+          // Per-agent model override: RE_AGENT_MODEL env var lets prod swap
+          // RE to a faster model (e.g. claude-haiku-4-5-20251001) without a
+          // code change. When unset, runAgent's DEFAULT_MODEL kicks in.
+          // Rollback: `unset RE_AGENT_MODEL` and restart the dev server.
+          // Summary call site below intentionally does NOT read this var —
+          // Summary stays on the default (Sonnet) for quality reasons.
+          model: process.env.RE_AGENT_MODEL || undefined,
         });
 
         referralEngineOutput = referralResult.agentOutput;
@@ -687,7 +721,11 @@ export async function processMonthlyAgents(
     }
 
     // === STEP 3: Summary v2 \u2014 Chief-of-Staff (Plan 1: runs last with full context) ===
-    if (onProgress) await onProgress("summary_agent", "Running Summary v2 agent...", "dashboard_metrics");
+    // agentCompleted="referral_engine": flips RE's pill to \u2713 in the FE
+    // progress dropdown the moment Summary starts. Previous value
+    // ("dashboard_metrics") was an invalid MonthlyAgentKey and got silently
+    // dropped, leaving RE stuck at the clock icon throughout Summary.
+    if (onProgress) await onProgress("summary_agent", "Running Summary v2 agent...", "referral_engine");
     log(`  [MONTHLY] Running Summary v2 agent (max 3 attempts)`);
 
     // Pull latest LLM-curated ranking recommendations for this org+location.

@@ -181,6 +181,8 @@ export function applyTemplateMapping(
         self_referrals: 0,
         doctor_referrals: 0,
         total_referrals: 0,
+        actual_production_total: 0,
+        attributed_production_total: 0,
         production_total: 0,
         sources: [],
       };
@@ -200,11 +202,21 @@ export function applyTemplateMapping(
     }
     monthEntry.total_referrals += bucket.referrals;
     monthEntry.production_total += bucket.production;
+    monthEntry.actual_production_total =
+      (monthEntry.actual_production_total ?? 0) + bucket.production;
+    monthEntry.attributed_production_total =
+      (monthEntry.attributed_production_total ?? 0) + bucket.production;
   }
 
   return Array.from(months.values())
     .map((m) => ({
       ...m,
+      actual_production_total: Number(
+        (m.actual_production_total ?? m.production_total).toFixed(2)
+      ),
+      attributed_production_total: Number(
+        (m.attributed_production_total ?? m.production_total).toFixed(2)
+      ),
       production_total: Number(m.production_total.toFixed(2)),
     }))
     .sort((a, b) => a.month.localeCompare(b.month));

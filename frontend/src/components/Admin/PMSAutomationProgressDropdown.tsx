@@ -471,28 +471,36 @@ export function PMSAutomationProgressDropdown({
               </div>
               {summary.agentResults && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {Object.entries(summary.agentResults).map(([key, result]) => (
-                    <span
-                      key={key}
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
-                        result?.success
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {result?.success ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <AlertCircle className="h-3 w-3" />
-                      )}
-                      {key.replace(/_/g, " ")}
-                      {result?.resultId && (
-                        <span className="text-xs opacity-70">
-                          #{result.resultId}
-                        </span>
-                      )}
-                    </span>
-                  ))}
+                  {Object.entries(summary.agentResults)
+                    // Filter out disabled agents (Opportunity, CRO Optimizer)
+                    // — they're never run today (`if (false)` blocks in
+                    // service.agent-orchestrator.ts) but legacy automation
+                    // status rows still list them with resultId 0.
+                    .filter(
+                      ([key]) => key !== "opportunity" && key !== "cro_optimizer"
+                    )
+                    .map(([key, result]) => (
+                      <span
+                        key={key}
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
+                          result?.success
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {result?.success ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <AlertCircle className="h-3 w-3" />
+                        )}
+                        {key.replace(/_/g, " ")}
+                        {result?.resultId && (
+                          <span className="text-xs opacity-70">
+                            #{result.resultId}
+                          </span>
+                        )}
+                      </span>
+                    ))}
                 </div>
               )}
             </div>

@@ -1,4 +1,7 @@
-import db from "../../database/connection";
+import { PmsColumnMappingModel } from "../../models/PmsColumnMappingModel";
+import { PmsJobModel, type IPmsJob } from "../../models/PmsJobModel";
+import type { ColumnMapping } from "../../types/pmsMapping";
+import { buildActualProductionByMonth } from "./monthlyProduction";
 
 // Threshold (5%) for flagging when sum(sources.referrals) diverges from
 // total_referrals on a given month. Informational only — never blocks.
@@ -16,6 +19,8 @@ type RawPmsMonthEntry = {
   self_referrals?: number | string;
   total_referrals?: number | string;
   doctor_referrals?: number | string;
+  actual_production_total?: number | string;
+  attributed_production_total?: number | string;
   production_total?: number | string;
 };
 
@@ -25,7 +30,9 @@ type AggregatedMonthData = {
   doctorReferrals: number;
   totalReferrals: number;
   productionTotal: number;
-  timestamp: string;
+  actualProductionTotal: number;
+  attributedProductionTotal: number;
+  timestamp: string | Date;
   sources: RawPmsSource[];
 };
 
@@ -37,12 +44,29 @@ type AggregatedSourceData = {
   percentage: number;
 };
 
+export type SourceTrendData = {
+  name: string;
+  trend_label: "increasing" | "decreasing" | "new" | "dormant" | "stable";
+  referrals_current: number;
+  referrals_prior: number | null;
+  referrals_delta: number | null;
+  production_current: number;
+  production_prior: number | null;
+};
+
+export type DedupCandidate = {
+  name_a: string;
+  name_b: string;
+  reason: string;
+};
+
 export type AggregatedPmsData = {
   months: AggregatedMonthData[];
   sources: AggregatedSourceData[];
   totals: {
     totalReferrals: number;
     totalProduction: number;
+    totalAttributedProduction: number;
   };
   patientRecords: any[];
   /**
@@ -52,6 +76,10 @@ export type AggregatedPmsData = {
    * UPSTREAM DATA QUALITY ACKNOWLEDGEMENT).
    */
   dataQualityFlags: string[];
+  /** Per-source trend labels computed by comparing the last two months. */
+  sourceTrends: SourceTrendData[];
+  /** Source name pairs flagged as potential duplicates by string similarity. */
+  dedupCandidates: DedupCandidate[];
 };
 
 /**
@@ -150,6 +178,101 @@ const extractAdditionalDataFromResponse = (responseLog: unknown): any[] => {
   return [];
 };
 
+const extractRawRowsFromJob = (
+  rawInputData: unknown
+): Record<string, unknown>[] => {
+  if (rawInputData === null || rawInputData === undefined) {
+    return [];
+  }
+
+  let candidate = rawInputData;
+  if (typeof candidate === "string") {
+    try {
+      candidate = JSON.parse(candidate);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  if (typeof candidate !== "object" || candidate === null) {
+    return [];
+  }
+
+  const container = candidate as Record<string, unknown>;
+  return Array.isArray(container.rows)
+    ? (container.rows as Record<string, unknown>[])
+    : [];
+};
+
+const isProcedureLogMapping = (mapping: ColumnMapping): boolean => {
+  const hasReferringPractice = mapping.assignments.some(
+    (assignment) => assignment.role === "referring_practice"
+  );
+  const hasSource = mapping.assignments.some(
+    (assignment) => assignment.role === "source"
+  );
+  return hasReferringPractice && !hasSource;
+};
+
+const getMappingForJob = async (
+  job: IPmsJob,
+  cache: Map<number, ColumnMapping | null>
+): Promise<ColumnMapping | null> => {
+  const mappingId = job.column_mapping_id;
+  if (!mappingId) {
+    return null;
+  }
+
+  if (!cache.has(mappingId)) {
+    const mappingRow = await PmsColumnMappingModel.findMappingById(mappingId);
+    cache.set(mappingId, mappingRow?.mapping ?? null);
+  }
+
+  return cache.get(mappingId) ?? null;
+};
+
+const recoverActualProductionByMonth = async (
+  job: IPmsJob,
+  cache: Map<number, ColumnMapping | null>
+): Promise<Map<string, number>> => {
+  const rawRows = extractRawRowsFromJob(job.raw_input_data);
+  if (!rawRows.length) {
+    return new Map();
+  }
+
+  const mapping = await getMappingForJob(job, cache);
+  if (!mapping || !isProcedureLogMapping(mapping)) {
+    return new Map();
+  }
+
+  return buildActualProductionByMonth(rawRows, mapping);
+};
+
+const addRecoveredOnlyEntries = (
+  entries: RawPmsMonthEntry[],
+  actualProductionByMonth: Map<string, number>
+): RawPmsMonthEntry[] => {
+  const knownMonths = new Set(
+    entries
+      .map((entry) => entry.month?.trim())
+      .filter((month): month is string => Boolean(month))
+  );
+  const recoveredEntries = Array.from(actualProductionByMonth.entries())
+    .filter(([month]) => !knownMonths.has(month))
+    .map(([month, production]) => ({
+      month,
+      self_referrals: 0,
+      doctor_referrals: 0,
+      total_referrals: 0,
+      production_total: 0,
+      attributed_production_total: 0,
+      actual_production_total: production,
+      sources: [],
+    }));
+
+  return [...entries, ...recoveredEntries];
+};
+
 /**
  * Aggregate PMS data across all approved jobs for an organization.
  * This function implements smart deduplication - keeps only the latest data for each month.
@@ -161,12 +284,10 @@ export async function aggregatePmsData(
   organizationId: number,
   locationId?: number
 ): Promise<AggregatedPmsData> {
-  // Fetch all approved jobs for this organization (optionally scoped by location)
-  let query = db("pms_jobs")
-    .select("id", "timestamp", "response_log")
-    .where({ organization_id: organizationId, is_approved: 1 });
-  if (locationId) query = query.where("location_id", locationId);
-  const approvedJobs = await query.orderBy("timestamp", "asc");
+  const approvedJobs = await PmsJobModel.findApprovedJobsForPmsAggregation(
+    organizationId,
+    locationId
+  );
 
   if (!approvedJobs.length) {
     return {
@@ -175,7 +296,10 @@ export async function aggregatePmsData(
       totals: {
         totalReferrals: 0,
         totalProduction: 0,
+        totalAttributedProduction: 0,
       },
+      sourceTrends: [],
+      dedupCandidates: [],
       patientRecords: [],
       dataQualityFlags: [],
     };
@@ -183,6 +307,7 @@ export async function aggregatePmsData(
 
   // Track month data with timestamps to keep only the latest
   const monthMap = new Map<string, AggregatedMonthData>();
+  const mappingCache = new Map<number, ColumnMapping | null>();
 
   // Collect all patient records from all approved jobs
   const allPatientRecords: any[] = [];
@@ -190,6 +315,11 @@ export async function aggregatePmsData(
   // Process jobs to build month map (keeping only latest data per month)
   for (const job of approvedJobs) {
     const entries = extractMonthEntriesFromResponse(job.response_log);
+    const actualProductionByMonth = await recoverActualProductionByMonth(
+      job,
+      mappingCache
+    );
+    const allEntries = addRecoveredOnlyEntries(entries, actualProductionByMonth);
 
     // Extract and collect additional_data (patient records)
     const patientRecords = extractAdditionalDataFromResponse(job.response_log);
@@ -197,13 +327,13 @@ export async function aggregatePmsData(
       allPatientRecords.push(...patientRecords);
     }
 
-    if (!entries.length) {
+    if (!allEntries.length) {
       continue;
     }
 
     const jobTimestamp = job.timestamp;
 
-    for (const entry of entries) {
+    for (const entry of allEntries) {
       const monthKey = entry?.month?.trim();
 
       if (!monthKey) {
@@ -216,7 +346,14 @@ export async function aggregatePmsData(
         entry.total_referrals !== undefined
           ? toNumber(entry.total_referrals)
           : selfReferrals + doctorReferrals;
-      const entryProductionTotal = toNumber(entry.production_total);
+      const entryAttributedProductionTotal = toNumber(
+        entry.attributed_production_total ?? entry.production_total
+      );
+      const entryActualProductionTotal =
+        entry.actual_production_total !== undefined
+          ? toNumber(entry.actual_production_total)
+          : actualProductionByMonth.get(monthKey) ??
+            entryAttributedProductionTotal;
 
       const existingMonth = monthMap.get(monthKey);
 
@@ -230,7 +367,9 @@ export async function aggregatePmsData(
           selfReferrals,
           doctorReferrals,
           totalReferrals: entryTotalReferrals,
-          productionTotal: entryProductionTotal,
+          productionTotal: entryActualProductionTotal,
+          actualProductionTotal: entryActualProductionTotal,
+          attributedProductionTotal: entryAttributedProductionTotal,
           timestamp: jobTimestamp,
           sources: ensureArray<RawPmsSource>(entry.sources),
         });
@@ -246,10 +385,12 @@ export async function aggregatePmsData(
 
   let totalReferrals = 0;
   let totalProduction = 0;
+  let totalAttributedProduction = 0;
 
   for (const monthData of monthMap.values()) {
     totalReferrals += monthData.totalReferrals;
     totalProduction += monthData.productionTotal;
+    totalAttributedProduction += monthData.attributedProductionTotal;
 
     for (const source of monthData.sources) {
       const name = source?.name?.trim();
@@ -304,9 +445,10 @@ export async function aggregatePmsData(
   const sources = Array.from(sourceMap.values())
     .sort((a, b) => b.production - a.production)
     .map((source, index) => {
+      const percentageDenominator = totalAttributedProduction || totalProduction;
       const percentage =
-        totalProduction > 0
-          ? Number(((source.production / totalProduction) * 100).toFixed(2))
+        percentageDenominator > 0
+          ? Number(((source.production / percentageDenominator) * 100).toFixed(2))
           : 0;
 
       return {
@@ -318,14 +460,143 @@ export async function aggregatePmsData(
       };
     });
 
+  // ── Per-source trend computation ──────────────────────────────────
+  // Compare the latest month vs the prior month for each source.
+  // When only one month exists, all sources get trend_label "new".
+  const sortedMonths = [...months].sort((a, b) =>
+    a.month.localeCompare(b.month)
+  );
+  const latestMonth = sortedMonths[sortedMonths.length - 1];
+  const priorMonth = sortedMonths.length >= 2
+    ? sortedMonths[sortedMonths.length - 2]
+    : null;
+
+  const buildSourceMap = (m: AggregatedMonthData | null) => {
+    const map = new Map<string, { referrals: number; production: number }>();
+    if (!m) return map;
+    for (const s of m.sources) {
+      const name = s.name?.trim();
+      if (name) {
+        map.set(name, {
+          referrals: toNumber(s.referrals),
+          production: toNumber(s.production),
+        });
+      }
+    }
+    return map;
+  };
+
+  const latestSourceMap = buildSourceMap(latestMonth);
+  const priorSourceMap = buildSourceMap(priorMonth);
+  const allSourceNames = new Set([
+    ...latestSourceMap.keys(),
+    ...priorSourceMap.keys(),
+  ]);
+
+  const sourceTrends: SourceTrendData[] = [];
+  for (const name of allSourceNames) {
+    const curr = latestSourceMap.get(name);
+    const prev = priorSourceMap.get(name);
+
+    let trend_label: SourceTrendData["trend_label"];
+    if (!priorMonth) {
+      trend_label = "new";
+    } else if (curr && !prev) {
+      trend_label = "new";
+    } else if (!curr && prev) {
+      trend_label = "dormant";
+    } else if (curr && prev) {
+      if (curr.referrals > prev.referrals) trend_label = "increasing";
+      else if (curr.referrals < prev.referrals) trend_label = "decreasing";
+      else trend_label = "stable";
+    } else {
+      trend_label = "stable";
+    }
+
+    sourceTrends.push({
+      name,
+      trend_label,
+      referrals_current: curr?.referrals ?? 0,
+      referrals_prior: prev?.referrals ?? null,
+      referrals_delta:
+        curr && prev ? curr.referrals - prev.referrals : null,
+      production_current: curr?.production ?? 0,
+      production_prior: prev?.production ?? null,
+    });
+  }
+
+  sourceTrends.sort((a, b) => b.referrals_current - a.referrals_current);
+
+  // ── Duplicate-name candidate detection ──────────────────────────
+  // Conservative: flag obvious matches only (normalized Levenshtein ≤ 3
+  // or identical first word with both names ≥ 3 words).
+  const normalize = (s: string): string =>
+    s.toLowerCase()
+      .replace(/^dr\.?\s*/i, "")
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const levenshtein = (a: string, b: string): number => {
+    const m = a.length;
+    const n = b.length;
+    const dp: number[][] = Array.from({ length: m + 1 }, () =>
+      Array(n + 1).fill(0)
+    );
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] =
+          a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+    return dp[m][n];
+  };
+
+  const dedupCandidates: DedupCandidate[] = [];
+  const sourceNames = sources.map((s) => s.name);
+  for (let i = 0; i < sourceNames.length; i++) {
+    const normA = normalize(sourceNames[i]);
+    const wordsA = normA.split(" ");
+    for (let j = i + 1; j < sourceNames.length; j++) {
+      const normB = normalize(sourceNames[j]);
+      const wordsB = normB.split(" ");
+      const dist = levenshtein(normA, normB);
+
+      if (dist <= 3 && dist > 0) {
+        dedupCandidates.push({
+          name_a: sourceNames[i],
+          name_b: sourceNames[j],
+          reason: `Levenshtein distance ${dist} on normalized names`,
+        });
+      } else if (
+        wordsA[0] === wordsB[0] &&
+        wordsA.length >= 2 &&
+        wordsB.length >= 2
+      ) {
+        dedupCandidates.push({
+          name_a: sourceNames[i],
+          name_b: sourceNames[j],
+          reason: `Same first word "${wordsA[0]}"`,
+        });
+      }
+    }
+  }
+
   return {
     months,
     sources,
     totals: {
       totalReferrals: Number(totalReferrals.toFixed(2)),
       totalProduction: Number(totalProduction.toFixed(2)),
+      totalAttributedProduction: Number(totalAttributedProduction.toFixed(2)),
     },
     patientRecords: allPatientRecords,
     dataQualityFlags,
+    sourceTrends,
+    dedupCandidates,
   };
 }

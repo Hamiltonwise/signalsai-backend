@@ -34,6 +34,8 @@ export interface MonthlyRollupEntry {
   self_referrals: number;
   doctor_referrals: number;
   total_referrals: number;
+  actual_production_total?: number;
+  attributed_production_total?: number;
   production_total: number;
   sources: RollupSource[];
 }
