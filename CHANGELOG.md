@@ -2,6 +2,20 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.44] - April 2026
+
+### Fix: Multi-File PMS Upload Cross-Month Dedup
+
+Fixed a bug where dropping multiple CSV files (e.g. Jan + Feb + Mar) onto the PMS modal produced incorrect per-month production and referral counts. Patients visiting the same referring practice across different months were collapsed into a single referral because the dedup key lacked a month component. Mar showed $167,692 instead of the correct $193,763.
+
+**Key Changes:**
+- Backend: procedure log adapter dedup key changed from `patient::practice` to `patient::month::practice`, making cross-month visits count as separate referral events
+- Frontend: multi-file drop now strips header lines from files 2+ before concatenating, preventing embedded CSV headers from becoming garbage data rows
+
+**Commits:**
+- `src/utils/pms/adapters/procedureLogAdapter.ts` — month-aware dedup grouping key
+- `frontend/src/components/PMS/PMSManualEntryModal.tsx` — header-stripping in multi-file concatenation
+
 ## [0.0.43] - April 2026
 
 ### PMS Modal: Multi-Month Merge + Multi-File Drop
