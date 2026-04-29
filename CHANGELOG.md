@@ -2,6 +2,23 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.45] - April 2026
+
+### Dashboard & PMS Page UI Polish
+
+Unified visual consistency between the main dashboard and PMS statistics page.
+
+**Key Changes:**
+- Background color changed from cool gray (`#F3F4F6`) to warm parchment (`#F7F5F3`) across both pages
+- Top padding aligned so headings sit at the same vertical position on both pages
+- PMS processing status card: "Background PMS Processing" label replaced with "Est. 3-5 minutes" in muted gray; animated typewriter text thinned from black to normal weight while keeping the orange/dark gradient
+
+**Commits:**
+- `frontend/src/pages/Dashboard.tsx` — warm parchment background + content top padding
+- `frontend/src/components/dashboard/DashboardOverview.tsx` — matching padding
+- `frontend/src/components/PMS/PMSVisualPillars.tsx` — removed duplicate top padding (inherits from parent)
+- `frontend/src/components/PMS/dashboard/PmsProcessingStatusCard.tsx` — label and font weight changes
+
 ## [0.0.44] - April 2026
 
 ### Fix: Multi-File PMS Upload Cross-Month Dedup
