@@ -239,6 +239,12 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
     number | null
   >(null);
 
+  // Month-merge conflict state
+  const [pendingMonths, setPendingMonths] = useState<MonthBucket[] | null>(null);
+  const [monthConflicts, setMonthConflicts] = useState<
+    Array<{ month: string; status: "new" | "conflict"; existingRowCount: number }> | null
+  >(null);
+
   // Drag & drop state
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
@@ -275,21 +281,74 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
   // is declared before runMappingPreview so we use a ref to avoid TDZ.
   const runMappingPreviewRef = useRef<(rawText: string) => void>(() => {});
 
+  // ─── Month merge helpers ────────────────────────────────────────
+  const applyMerge = useCallback(
+    (incomingMonths: MonthBucket[]) => {
+      const incomingKeys = new Set(incomingMonths.map((m) => m.month));
+      setMonths((prev) => [
+        ...prev.filter((m) => !incomingKeys.has(m.month)),
+        ...incomingMonths,
+      ]);
+      const sorted = [...incomingMonths].sort((a, b) =>
+        a.month.localeCompare(b.month)
+      );
+      const first = sorted.find((m) => m.rows.length > 0) || sorted[0];
+      if (first) setActiveMonthId(first.id);
+      setPendingMonths(null);
+      setMonthConflicts(null);
+    },
+    []
+  );
+
+  const mergeOrConfirm = useCallback(
+    (incomingMonths: MonthBucket[]) => {
+      const existingMap = new Map(
+        months
+          .filter((m) => m.rows.length > 0)
+          .map((m) => [m.month, m])
+      );
+      const conflicts = incomingMonths.map((incoming) => ({
+        month: incoming.month,
+        status: (existingMap.has(incoming.month) ? "conflict" : "new") as
+          | "new"
+          | "conflict",
+        existingRowCount: existingMap.get(incoming.month)?.rows.length ?? 0,
+      }));
+      const hasConflicts = conflicts.some((c) => c.status === "conflict");
+      if (!hasConflicts) {
+        applyMerge(incomingMonths);
+        showUploadToast(
+          "Data parsed!",
+          `${incomingMonths.reduce((s, m) => s + m.rows.length, 0)} rows added across ${incomingMonths.length} month(s).`
+        );
+      } else {
+        setPendingMonths(incomingMonths);
+        setMonthConflicts(conflicts);
+      }
+    },
+    [months, applyMerge]
+  );
+
+  const confirmMerge = useCallback(() => {
+    if (pendingMonths) {
+      const count = pendingMonths.reduce((s, m) => s + m.rows.length, 0);
+      applyMerge(pendingMonths);
+      showUploadToast(
+        "Data merged!",
+        `${count} rows merged. Conflicting months replaced.`
+      );
+    }
+  }, [pendingMonths, applyMerge]);
+
+  const cancelMerge = useCallback(() => {
+    setPendingMonths(null);
+    setMonthConflicts(null);
+  }, []);
+
   // Paste handler
   const handleParsedPaste = useCallback(
     (parsedMonths: MonthBucket[]) => {
-      // Replace existing data with freshly parsed data
-      setMonths(parsedMonths);
-      // Select earliest month that has data
-      const sorted = [...parsedMonths].sort((a, b) => a.month.localeCompare(b.month));
-      const first = sorted.find((m) => m.rows.length > 0) || sorted[0];
-      if (first) {
-        setActiveMonthId(first.id);
-      }
-      showUploadToast(
-        "Data parsed!",
-        `${parsedMonths.reduce((s, m) => s + m.rows.length, 0)} rows added. Review and submit when ready.`
-      );
+      mergeOrConfirm(parsedMonths);
 
       // Now that legacy parsing is done and the user can see the result, kick
       // off the column-mapping resolver. This is what eventually opens the
@@ -300,7 +359,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
         pastedRawTextRef.current = "";
       }
     },
-    []
+    [mergeOrConfirm]
   );
 
   const handlePasteWarnings = useCallback((warnings: string[]) => {
@@ -349,7 +408,10 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
       if (headers.length === 0 || rows.length === 0) return;
 
       setMappingHeaders(headers);
-      setMappingAllRows(rows);
+      // Accumulate rows across pastes so multi-paste submissions
+      // include all months. Previous behavior replaced on each paste,
+      // causing only the last paste's rows to reach the backend.
+      setMappingAllRows((prev) => [...prev, ...rows]);
       // Keep a small sample around for any UI that wants to show example values
       // (e.g. the production formula preview). The backend always gets ALL
       // rows so the parsed preview reflects the entire file, not a sample.
@@ -421,7 +483,10 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
   // months bucket UI with it so the user can review/edit the parsed result
   // alongside the drawer.
   useEffect(() => {
-    if (!parsedPreview) return;
+    // Skip while the month-conflict dialog is open — the user hasn't
+    // confirmed yet. Once they confirm (monthConflicts clears), this
+    // effect re-fires and silently applies the mapping-refined version.
+    if (!parsedPreview || monthConflicts) return;
     const rows = parsedPreview.monthly_rollup;
     if (!rows?.length) return;
     const buckets: MonthBucket[] = rows.map((m, i) => ({
@@ -435,11 +500,8 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
         production: String(s.production),
       })),
     }));
-    setMonths(buckets);
-    const sorted = [...buckets].sort((a, b) => a.month.localeCompare(b.month));
-    const first = sorted.find((m) => m.rows.length > 0) || sorted[0];
-    if (first) setActiveMonthId(first.id);
-  }, [parsedPreview]);
+    applyMerge(buckets);
+  }, [parsedPreview, applyMerge, monthConflicts]);
 
   // Reset mapping state on modal close so re-opens get a clean slate.
   useEffect(() => {
@@ -540,27 +602,47 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
       setIsDragging(false);
       dragCounter.current = 0;
 
-      const file = e.dataTransfer.files?.[0];
-      if (!file) return;
+      const files = Array.from(e.dataTransfer.files ?? []);
+      if (files.length === 0) return;
 
-      if (!file.name.endsWith(".csv") && !file.name.endsWith(".tsv") && !file.name.endsWith(".txt")) {
-        setError("Please drop a CSV, TSV, or TXT file.");
+      const validExts = [".csv", ".tsv", ".txt"];
+      const invalid = files.find(
+        (f) => !validExts.some((ext) => f.name.toLowerCase().endsWith(ext))
+      );
+      if (invalid) {
+        setError(
+          `"${invalid.name}" is not a supported file. Please drop CSV, TSV, or TXT files.`
+        );
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const text = evt.target?.result as string;
-        if (!text) return;
-        setDroppedFileName(file.name);
+      // Read all files in parallel, concatenate text, feed as one paste.
+      // Same column format assumed across files (same practice → same PMS).
+      Promise.all(
+        files.map(
+          (file) =>
+            new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (evt) =>
+                resolve((evt.target?.result as string) || "");
+              reader.readAsText(file);
+            })
+        )
+      ).then((texts) => {
+        const combined = texts.filter(Boolean).join("\n");
+        if (!combined) return;
+        setDroppedFileName(
+          files.length === 1
+            ? files[0].name
+            : `${files.length} files`
+        );
         const fakeEvent = {
-          clipboardData: { getData: () => text },
+          clipboardData: { getData: () => combined },
           target: document.body,
           preventDefault: () => {},
         } as unknown as React.ClipboardEvent;
         handlePasteEvent(fakeEvent);
-      };
-      reader.readAsText(file);
+      });
     },
     [handlePasteEvent, setError]
   );
@@ -1424,6 +1506,83 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
               droppedFileName={droppedFileName}
             />
           )}
+
+          {/* Month-conflict merge dialog */}
+          <AnimatePresence>
+            {monthConflicts && pendingMonths && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/30 flex items-center justify-center z-[110]"
+                onClick={cancelMerge}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white rounded-2xl p-6 w-96 shadow-xl"
+                >
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    Data already exists
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Some months in this data already have entries. Confirm which
+                    to replace.
+                  </p>
+                  <div className="space-y-2 mb-5">
+                    {monthConflicts.map((c) => {
+                      const label = new Date(c.month + "-01").toLocaleDateString(
+                        "en-US",
+                        { month: "long", year: "numeric" }
+                      );
+                      return (
+                        <div
+                          key={c.month}
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
+                            c.status === "conflict"
+                              ? "bg-amber-50 border border-amber-200"
+                              : "bg-green-50 border border-green-200"
+                          }`}
+                        >
+                          <span className="text-xs font-medium">
+                            {c.status === "conflict" ? "⚠️" : "✅"}
+                          </span>
+                          <span className="flex-1 font-medium text-gray-900">
+                            {label}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {c.status === "conflict"
+                              ? `Replaces ${c.existingRowCount} existing rows`
+                              : "New month"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-gray-400 mb-4">
+                    Existing months not listed above will be kept as-is.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={cancelMerge}
+                      className="flex-1 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmMerge}
+                      className="flex-1 rounded-full px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
+                      style={{ backgroundColor: "#C9765E" }}
+                    >
+                      Confirm & Merge
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Month Picker Modal */}
           <AnimatePresence>

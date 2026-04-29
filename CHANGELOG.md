@@ -2,6 +2,26 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.43] - April 2026
+
+### PMS Modal: Multi-Month Merge + Multi-File Drop
+
+The PMS upload modal now supports additive multi-month data entry. Previously, each paste/drop replaced all existing data. Now months merge intelligently: new months insert silently, existing months prompt for confirmation before replacing.
+
+**Key Changes:**
+
+1. **Month-merge logic.** `handleParsedPaste` no longer calls `setMonths(parsedMonths)` (the wipe). Instead, incoming months are classified as "new" or "conflict" against existing state. New-only → silent merge. Any conflicts → modal dialog listing affected months with ⚠️/✅ indicators and row counts.
+
+2. **Month-conflict dialog.** Inline `AnimatePresence` modal shows per-month status: ⚠️ amber for existing months that will be replaced (with row count + manual-edit warning), ✅ green for new months. "Existing months not listed above will be kept as-is." Confirm & Merge / Cancel.
+
+3. **Mapping-refinement guard.** The `parsedPreview` effect (column-mapping pipeline) skips while the conflict dialog is open, preventing the mapping re-parse from silently dismissing the dialog. After user confirms, the effect re-fires and applies the mapping-refined version.
+
+4. **Multi-file drop.** Drop handler reads ALL dropped files via `Promise.all`, concatenates text with newline separator, feeds as a single paste. Validates all files have supported extensions. Filename display shows "3 files" for multi-file drops.
+
+5. **`mappingAllRows` accumulation.** Fixed a bug where each paste replaced `mappingAllRows` (the raw CSV rows sent to `uploadWithMapping`). Now accumulates across pastes so multi-paste submissions include all months' data, not just the last paste.
+
+**Verification:** Multi-file drop of 3 CSVs (Jan+Feb+Mar) → all 3 months detected → 3 month tabs → submit → aggregator confirms "3 months, 64 sources" → full pipeline completes.
+
 ## [0.0.42] - April 2026
 
 ### Deterministic RE Matrix Pre-Compute + Loading UX Overhaul
