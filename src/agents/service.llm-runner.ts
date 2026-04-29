@@ -94,6 +94,8 @@ export interface LlmRunnerResult {
   /** Prompt cache metrics (when cachedSystemBlocks was used) */
   cacheCreationInputTokens?: number;
   cacheReadInputTokens?: number;
+  /** Why the model stopped: "end_turn", "max_tokens", "stop_sequence" */
+  stopReason: string;
 }
 
 // =====================================================================
@@ -230,11 +232,19 @@ export async function runAgent(
     ? ` cacheWrite=${cacheCreationTokens} cacheRead=${cacheReadTokens}`
     : "";
 
+  const stopReason = response.stop_reason ?? "unknown";
   console.log(
     `[LLM] ✓ ${response.model} (${Date.now() - callStart}ms) ` +
       `tokens=${response.usage.input_tokens}/${response.usage.output_tokens}${cacheSuffix} ` +
-      `parsed=${parsed ? "ok" : "null"} raw=${raw.length}ch`
+      `stop=${stopReason} parsed=${parsed ? "ok" : "null"} raw=${raw.length}ch`
   );
+
+  if (stopReason === "max_tokens" && !parsed) {
+    console.warn(
+      `[LLM] ⚠ Output truncated at max_tokens=${maxTokens} — JSON likely incomplete. ` +
+      `Consider increasing maxTokens for this agent.`
+    );
+  }
 
   if (costContext) {
     await safeLogAiCostEvent({
@@ -390,6 +400,7 @@ export async function runAgent(
     model: responseModel,
     inputTokens: inputTokensTotal,
     outputTokens: outputTokensTotal,
+    stopReason,
   };
 }
 
