@@ -1149,7 +1149,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
 
   return (
     <div className="pm-light min-h-screen bg-[var(--color-pm-bg-primary)] font-body text-alloro-navy">
-      <main className="mx-auto w-full max-w-[1320px] space-y-4 px-4 pt-6 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-[1320px] space-y-4 px-4 pb-6 sm:px-6 lg:px-8">
         {/* Client Approval Banner */}
         {showClientApprovalBanner && (
           <motion.div
