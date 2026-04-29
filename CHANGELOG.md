@@ -2,6 +2,34 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.41] - April 2026
+
+### RE Input Optimization + Per-Agent Model Override + FE Pill Cleanup
+
+Bundle of five changes that reduce RE latency, clean up the FE progress UI, and add optional per-agent model selection infrastructure. Verified across multiple trial runs — RE input tokens dropped 61% (18k → 7k), total monthly run time dropped ~18-21% depending on API variance.
+
+**Key Changes:**
+
+1. **GBP stripped from RE input.** RE's prompt (`ReferralEngineAnalysis.md`) explicitly states GBP is "enrich if available" and the GROUNDING RULES forbid citing GBP fields — yet RE was receiving the full `monthData` GBP blob, which dominated its input tokens on big-org runs. Removed: `gbpData` param from `buildReferralEnginePayload`, the `gbp` field from `additional_data`, and the three GBP references from the RE prompt. Summary still receives GBP (via `monthData` spread) — only RE lost it.
+
+2. **RE NOTES RULE added to prompt.** Matrix row notes were repeating data already visible in the table columns ("Rank 1 source, February 2026. 21.6% of all referral production."). New NOTES RULE with explicit good/bad examples: notes should add context not in the columns (merged source names, trend detail, relationship context, concentration risk, efficiency outliers) or be empty. Single-month notes no longer restate "New source" since the trend_label column already says "new".
+
+3. **Per-agent model override via `RE_AGENT_MODEL` env var.** `runMonthlyAgent` opts now accepts `model?: string`, passed through to `runAgent`. RE call site reads `process.env.RE_AGENT_MODEL || undefined`. When unset (default), RE runs on the global model (Sonnet 4.6). When set to e.g. `claude-haiku-4-5-20251001`, RE runs on Haiku. Summary call site intentionally untouched — stays on default. Log line includes `(model: <name>)` when overridden. Rollback: remove the env var from `.env`, restart. Eval procedure: compare RE `agent_output` via Pipeline modal at `/admin/ai-pms-automation`.
+
+4. **RE pill checkmark fix.** The `onProgress` call transitioning from RE → Summary was passing `agentCompleted: "dashboard_metrics"` (an invalid `MonthlyAgentKey`), so the FE silently dropped it and never marked RE's pill as completed during the Summary phase. Fixed to `agentCompleted: "referral_engine"`.
+
+5. **Disabled agents hidden from FE.** Opportunity Agent and CRO Optimizer are disabled in the orchestrator (`if (false)` blocks) but were still rendering in both the AGENT PROGRESS strip (as pills with clock icons) and the AUTOMATION COMPLETE summary (as "opportunity 0" and "cro optimizer 0" pills). `MONTHLY_AGENT_CONFIG` in `frontend/src/api/pms.ts` now only lists the three active agents (Fetching data, Summary Agent, Referral Engine), and the AUTOMATION COMPLETE pill renderer filters out `opportunity` and `cro_optimizer` keys.
+
+**Measured impact (org-36, 1 month PMS, same org+location+date_range across runs):**
+
+| Metric | Sonnet + GBP (baseline) | Sonnet + no GBP + Haiku RE | Change |
+|---|---|---|---|
+| RE input tokens | 18,283 | 7,161–7,510 | -60% |
+| RE call duration | 105.1s | 42–46s | -58% |
+| Total run duration | 217.2s | 172–182s | -18–21% |
+
+**Verification:** `tsc --noEmit` clean (backend + frontend). Multiple end-to-end runs verified — Summary v2 passes validator attempt 1, tasks created cleanly, Pipeline modal renders correctly, FE pills show only active agents with proper checkmarks.
+
 ## [0.0.40] - April 2026
 
 ### Fix: Summary v2 Validator + Prompt Contract — Monthly Runs Actually Pass

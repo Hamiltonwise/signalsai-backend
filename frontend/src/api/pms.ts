@@ -743,13 +743,16 @@ export const STEP_CONFIG: Record<StepKey, { label: string; icon: string }> = {
   complete: { label: "Complete", icon: "✓" },
 };
 
-export const MONTHLY_AGENT_CONFIG: Record<MonthlyAgentKey, { label: string }> =
+// Only the agents that actually run today appear here. Opportunity Agent
+// and CRO Optimizer are intentionally omitted — they're disabled in the
+// orchestrator (`if (false)` blocks). Keep them in the MonthlyAgentKey
+// union type for back-compat with any legacy automation_status_detail
+// rows that still list them in agentsCompleted.
+export const MONTHLY_AGENT_CONFIG: Partial<Record<MonthlyAgentKey, { label: string }>> =
   {
     data_fetch: { label: "Fetching data" },
     summary_agent: { label: "Summary Agent" },
     referral_engine: { label: "Referral Engine" },
-    opportunity_agent: { label: "Opportunity Agent" },
-    cro_optimizer: { label: "CRO Optimizer" },
   };
 
 // =====================================================================

@@ -262,9 +262,13 @@ export function buildReferralEnginePayload(params: {
   startDate: string;
   endDate: string;
   pmsData?: any;
-  gbpData?: any;
   websiteAnalytics?: any;
 }): any {
+  // GBP intentionally excluded. ReferralEngineAnalysis.md grounding rules
+  // permit citing only PMS-shaped fields (source names, months, referral
+  // counts, production figures); GBP outputs (reviews, posts, calls) are
+  // never cited in RE's deliverables. Including GBP just inflates input
+  // tokens and Claude latency without affecting the output schema.
   return {
     agent: "referral_engine",
     domain: params.domain,
@@ -275,7 +279,6 @@ export function buildReferralEnginePayload(params: {
     },
     additional_data: {
       pms: params.pmsData ?? null,
-      gbp: params.gbpData ?? null,
       website_analytics: params.websiteAnalytics ?? null,
     },
   };

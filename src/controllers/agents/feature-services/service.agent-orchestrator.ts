@@ -245,11 +245,18 @@ async function runMonthlyAgent(opts: {
   enableCache?: boolean;
   /** Optional Zod schema; runner runs safeParse + corrective retry on failure. */
   outputSchema?: ZodTypeAny;
+  /** Optional per-agent model override. When unset, runAgent uses its
+   *  DEFAULT_MODEL (process.env.AGENTS_LLM_MODEL or claude-sonnet-4-6). */
+  model?: string;
 }): Promise<{ agentOutput: any; agentResultId: number }> {
   const systemPrompt = loadPrompt(opts.promptPath);
   const userMessage = JSON.stringify(opts.payload, null, 2);
 
-  log(`  → Running ${opts.agentName} via Claude directly`);
+  log(
+    `  → Running ${opts.agentName} via Claude directly${
+      opts.model ? ` (model: ${opts.model})` : ""
+    }`
+  );
 
   const result = await runAgent({
     systemPrompt,
@@ -259,6 +266,7 @@ async function runMonthlyAgent(opts: {
     // without duplicating it as a prefix block. See service.llm-runner.ts.
     ...(opts.enableCache ? { cachedSystemBlocks: [] } : {}),
     ...(opts.outputSchema ? { outputSchema: opts.outputSchema } : {}),
+    ...(opts.model ? { model: opts.model } : {}),
   });
 
   log(
@@ -631,8 +639,8 @@ export async function processMonthlyAgents(
           startDate,
           endDate,
           pmsData,
-          gbpData: monthData,
           websiteAnalytics: websiteAnalyticsMonthly,
+          // GBP deliberately not passed — see buildReferralEnginePayload comment.
         });
 
         const referralResult = await runMonthlyAgent({
@@ -642,6 +650,13 @@ export async function processMonthlyAgents(
           meta: { ...agentMeta, agentType: "referral_engine" },
           enableCache: true,
           outputSchema: ReferralEngineAgentOutputSchema,
+          // Per-agent model override: RE_AGENT_MODEL env var lets prod swap
+          // RE to a faster model (e.g. claude-haiku-4-5-20251001) without a
+          // code change. When unset, runAgent's DEFAULT_MODEL kicks in.
+          // Rollback: `unset RE_AGENT_MODEL` and restart the dev server.
+          // Summary call site below intentionally does NOT read this var —
+          // Summary stays on the default (Sonnet) for quality reasons.
+          model: process.env.RE_AGENT_MODEL || undefined,
         });
 
         referralEngineOutput = referralResult.agentOutput;
@@ -687,7 +702,11 @@ export async function processMonthlyAgents(
     }
 
     // === STEP 3: Summary v2 \u2014 Chief-of-Staff (Plan 1: runs last with full context) ===
-    if (onProgress) await onProgress("summary_agent", "Running Summary v2 agent...", "dashboard_metrics");
+    // agentCompleted="referral_engine": flips RE's pill to \u2713 in the FE
+    // progress dropdown the moment Summary starts. Previous value
+    // ("dashboard_metrics") was an invalid MonthlyAgentKey and got silently
+    // dropped, leaving RE stuck at the clock icon throughout Summary.
+    if (onProgress) await onProgress("summary_agent", "Running Summary v2 agent...", "referral_engine");
     log(`  [MONTHLY] Running Summary v2 agent (max 3 attempts)`);
 
     // Pull latest LLM-curated ranking recommendations for this org+location.
