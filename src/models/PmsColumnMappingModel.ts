@@ -34,6 +34,14 @@ export class PmsColumnMappingModel extends BaseModel {
   protected static tableName = "pms_column_mappings";
   protected static jsonFields = ["mapping"];
 
+  static async findMappingById(
+    id: number,
+    trx?: QueryContext
+  ): Promise<IPmsColumnMapping | undefined> {
+    const row = await this.findById(id, trx);
+    return row as IPmsColumnMapping | undefined;
+  }
+
   /**
    * Tier 1 dispatch: look up an org-cached mapping by signature.
    * Returns `undefined` when the org has never confirmed this signature.

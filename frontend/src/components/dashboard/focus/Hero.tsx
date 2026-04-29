@@ -1,6 +1,5 @@
 import React from "react";
-import { ArrowRight, Clock, AlertCircle, RotateCw } from "lucide-react";
-import { format } from "date-fns";
+import { AlertCircle, RotateCw } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLocationContext } from "../../../contexts/locationContext";
 import {
@@ -27,19 +26,6 @@ import { getDomainIcon } from "./icons";
 // =====================================================================
 // Helpers
 // =====================================================================
-
-function urgencyToTag(urgency: TopAction["urgency"]): string {
-  switch (urgency) {
-    case "high":
-      return "TIME-SENSITIVE";
-    case "medium":
-      return "COMPOUNDING";
-    case "low":
-      return "STEADY";
-    default:
-      return "HIGH ROI";
-  }
-}
 
 function urgencyPillClasses(urgency: TopAction["urgency"]): string {
   switch (urgency) {
@@ -74,14 +60,6 @@ const DOMAIN_LABELS: Record<string, string> = {
   "pms-data-quality": "PMS Data",
   referral: "Referrals",
 };
-
-function formatDue(dueAt?: string, taskDueDate?: string): string {
-  const raw = dueAt ?? taskDueDate;
-  if (!raw) return "DUE SOON";
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return `DUE ${raw}`;
-  return `DUE ${format(d, "MMM d, yyyy").toUpperCase()}`;
-}
 
 /**
  * Splits the deliverables string at the first " (" so the leading noun
@@ -130,28 +108,27 @@ const StatCell: React.FC<{ stat: TopActionSupportingMetric; index: number }> = (
 }) => {
   const accent = index === 0;
   return (
-    <div className="min-w-0">
-      <div
-        className={`font-display flex items-baseline gap-1 text-[30px] font-medium leading-none tracking-[-0.02em] ${
-          accent ? "text-alloro-orange" : "text-[#F5F1EA]"
-        }`}
-      >
-        <span className="truncate">{stat.value}</span>
-        {stat.sub && (
-          <span
-            className={`text-[14px] font-normal ${
-              accent ? "text-[rgba(201,118,94,0.5)]" : "text-[#8E8579]"
-            }`}
-          >
-            {stat.sub}
-          </span>
-        )}
-      </div>
-      <div className="mt-2 text-[9.5px] font-bold uppercase tracking-[0.12em] text-[#C5BEB1]">
-        {stat.label}
-      </div>
-      <div className="font-mono-display mt-1 text-[8.5px] uppercase tracking-[0.04em] text-[#58544D]">
-        {stat.source_field}
+    <div className="rounded-[10px] border border-white/10 bg-white/[0.035] px-4 py-3">
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#C5BEB1]">
+          {stat.label}
+        </div>
+        <div
+          className={`font-display max-w-full break-words text-left text-[24px] font-medium leading-[1.05] tracking-[-0.02em] sm:max-w-[58%] sm:text-right ${
+            accent ? "text-alloro-orange" : "text-[#F5F1EA]"
+          }`}
+        >
+          {stat.value}
+          {stat.sub && (
+            <span
+              className={`ml-1 text-[13px] font-normal ${
+                accent ? "text-[rgba(201,118,94,0.65)]" : "text-[#8E8579]"
+              }`}
+            >
+              {stat.sub}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -163,7 +140,7 @@ const StatCell: React.FC<{ stat: TopActionSupportingMetric; index: number }> = (
 
 const HeroLoading: React.FC = () => (
   <HeroShell>
-    <div className="grid gap-10 px-10 py-9 lg:grid-cols-[minmax(0,1fr)_420px]">
+    <div className="grid gap-10 px-10 py-9 lg:grid-cols-[minmax(0,1fr)_460px]">
       <div className="min-w-0 space-y-5">
         <div className="flex gap-2">
           <div className="h-5 w-40 animate-pulse rounded-full bg-white/10" />
@@ -178,23 +155,66 @@ const HeroLoading: React.FC = () => (
           <div className="h-3 w-10/12 animate-pulse rounded bg-white/5" />
           <div className="h-3 w-8/12 animate-pulse rounded bg-white/5" />
         </div>
-        <div className="flex gap-2">
-          <div className="h-10 w-32 animate-pulse rounded-full bg-white/10" />
-          <div className="h-10 w-32 animate-pulse rounded-full bg-white/5" />
-        </div>
       </div>
       <aside className="self-start rounded-xl border border-white/10 bg-black/30 p-6">
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-5">
           <div className="h-3 w-24 animate-pulse rounded bg-white/10" />
-          <div className="h-3 w-16 animate-pulse rounded bg-white/10" />
         </div>
-        <div className="grid grid-cols-3 gap-3.5">
+        <div className="grid gap-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="space-y-2">
               <div className="h-8 w-full animate-pulse rounded bg-white/10" />
               <div className="h-2 w-3/4 animate-pulse rounded bg-white/5" />
             </div>
           ))}
+        </div>
+      </aside>
+    </div>
+  </HeroShell>
+);
+
+const HeroPmsEmpty: React.FC = () => (
+  <HeroShell>
+    <div className="grid gap-10 px-10 py-10 lg:grid-cols-[minmax(0,1fr)_460px]">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(201,118,94,0.18)] px-2.5 py-[5px] text-[10px] font-bold uppercase tracking-[0.1em] text-[#F0A98E]">
+            <span className="h-[5px] w-[5px] rounded-full bg-[#F0A98E]" />
+            PMS data needed
+          </span>
+          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-[5px] text-[10px] font-bold uppercase tracking-[0.1em] text-[#D6CFC2]">
+            First focus
+          </span>
+        </div>
+        <h1 className="font-display mt-[22px] mb-[22px] max-w-[650px] text-[40px] font-medium leading-[1.04] tracking-[-0.02em] text-[#F5F1EA] lg:text-[44px]">
+          Upload PMS data to unlock your first monthly focus
+        </h1>
+        <p className="max-w-[620px] text-[14.5px] leading-[1.65] text-[#C5BEB1]">
+          Once an approved PMS dataset is available, Alloro will turn
+          production trends, referral mix, source movement, and growth signals
+          into the one priority that matters most.
+        </p>
+      </div>
+      <aside className="self-start rounded-xl border border-white/10 bg-black/30 p-[22px]">
+        <div className="mb-[18px] text-[10px] font-bold uppercase tracking-[0.16em] text-[#8E8579]">
+          What will show here
+        </div>
+        <div className="grid gap-3">
+          {["Production trend", "Referral mix", "Top source movement"].map(
+            (label) => (
+              <div
+                key={label}
+                className="rounded-[10px] border border-white/10 bg-white/[0.035] px-4 py-3"
+              >
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#C5BEB1]">
+                  {label}
+                </div>
+                <div className="mt-1 text-[12.5px] leading-relaxed text-[#8E8579]">
+                  Appears after PMS data is uploaded and approved.
+                </div>
+              </div>
+            ),
+          )}
         </div>
       </aside>
     </div>
@@ -248,25 +268,11 @@ const HeroBody: React.FC<HeroBodyProps> = ({ topAction }) => {
   const { Comp: DomainIcon } = getDomainIcon(topAction.domain);
   const domainLabel =
     DOMAIN_LABELS[topAction.domain] ?? topAction.domain.toUpperCase();
-  const dueLabel = formatDue(topAction.due_at, topAction.dueDate);
   const { head, tail } = splitDeliverables(topAction.outcome.deliverables);
-
-  const handlePrimary = () => {
-    const url = topAction.cta?.primary?.action_url;
-    if (url) {
-      // Internal vs external — internal links route via window location to
-      // keep the implementation framework-agnostic at this layer.
-      if (url.startsWith("http")) {
-        window.open(url, "_blank", "noopener,noreferrer");
-      } else {
-        window.location.assign(url);
-      }
-    }
-  };
 
   return (
     <HeroShell>
-      <div className="grid gap-10 px-10 py-9 lg:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-10 px-10 py-9 lg:grid-cols-[minmax(0,1fr)_460px] xl:grid-cols-[minmax(0,1fr)_500px]">
         {/* LEFT */}
         <div className="min-w-0">
           {/* Pills row */}
@@ -303,50 +309,17 @@ const HeroBody: React.FC<HeroBodyProps> = ({ topAction }) => {
               highlights={topAction.highlights}
             />
           </p>
-
-          {/* CTA row */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handlePrimary}
-              className="inline-flex items-center gap-2 rounded-full bg-alloro-orange px-5 py-[11px] text-[13px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.15)_inset,0_6px_16px_rgba(201,118,94,0.35)] transition-all hover:-translate-y-px hover:bg-[#B86650] hover:shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_8px_22px_rgba(201,118,94,0.45)]"
-            >
-              {topAction.cta?.primary?.label ?? "Open task"}
-              <ArrowRight size={14} />
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center rounded-full border border-white/20 bg-transparent px-5 py-[11px] text-[13px] font-semibold text-[#F5F1EA] transition-colors hover:border-white/30 hover:bg-white/5"
-            >
-              Assign to team
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center rounded-full bg-transparent px-3 py-[11px] text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8E8579] transition-colors hover:text-[#C5BEB1]"
-            >
-              Not now
-            </button>
-          </div>
-
-          {/* Due footer */}
-          <div className="mt-[22px] flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#8E8579]">
-            <Clock size={11} className="text-[#8E8579]" />
-            {dueLabel}
-          </div>
         </div>
 
         {/* RIGHT — Why panel */}
         <aside className="self-start rounded-xl border border-white/10 bg-black/30 p-[22px]">
-          <div className="mb-[18px] flex items-center justify-between">
+          <div className="mb-[18px]">
             <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8E8579]">
               Why this first
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-alloro-orange">
-              {urgencyToTag(topAction.urgency)}
-            </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-3.5">
+          <div className="grid gap-3">
             {topAction.supporting_metrics.slice(0, 3).map((stat, i) => (
               <StatCell key={i} stat={stat} index={i} />
             ))}
@@ -372,7 +345,11 @@ const HeroBody: React.FC<HeroBodyProps> = ({ topAction }) => {
   );
 };
 
-export function Hero() {
+export type HeroProps = {
+  hasPmsData?: boolean;
+};
+
+export function Hero({ hasPmsData = true }: HeroProps) {
   const { userProfile } = useAuth();
   const organizationId = userProfile?.organizationId ?? null;
   const { selectedLocation } = useLocationContext();
@@ -383,6 +360,7 @@ export function Hero() {
     locationId
   );
 
+  if (!hasPmsData) return <HeroPmsEmpty />;
   if (isLoading) return <HeroLoading />;
   if (error) {
     return <HeroError message={error.message} onRetry={refetch} />;

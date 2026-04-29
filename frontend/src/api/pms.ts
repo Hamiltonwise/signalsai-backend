@@ -257,6 +257,8 @@ export interface PmsKeyDataMonth {
   doctorReferrals: number;
   totalReferrals: number;
   productionTotal: number;
+  actualProductionTotal?: number;
+  attributedProductionTotal?: number;
 }
 
 export interface PmsKeyDataSource {
@@ -276,6 +278,7 @@ export interface PmsKeyDataResponse {
     totals: {
       totalReferrals: number;
       totalProduction: number;
+      totalAttributedProduction?: number;
     };
     stats: {
       jobCount: number;
@@ -677,20 +680,22 @@ export async function retryPmsStep(
  * Restart a completed monthly agents run.
  * Deletes all data from the run and re-triggers from scratch.
  */
-export async function restartPmsJob(
-  jobId: number
-): Promise<{
+export type RestartPmsJobResponse = {
   success: boolean;
   message?: string;
   data?: { jobId: number; restarted: boolean; deletionCounts: Record<string, number> };
   error?: string;
-}> {
+};
+
+export async function restartPmsJob(
+  jobId: number
+): Promise<RestartPmsJobResponse> {
   try {
     const result = await apiPost({
       path: `/pms/jobs/${jobId}/restart`,
       passedData: {},
     });
-    return result as any;
+    return result as RestartPmsJobResponse;
   } catch (error) {
     console.error("PMS restart API error:", error);
     return {

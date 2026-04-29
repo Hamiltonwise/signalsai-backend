@@ -120,6 +120,8 @@ export const QUERY_KEYS = {
     ["agent-data", orgId, locationId] as const,
   tasks: (orgId: number | null, locationId?: number | null) =>
     ["tasks", orgId, locationId] as const,
+  pmsFocusPeriod: (orgId: number | null, locationId?: number | null) =>
+    ["pms-focus-period", orgId, locationId] as const,
 
   // Client — DFY website
   userWebsite: ["user", "website"] as const,

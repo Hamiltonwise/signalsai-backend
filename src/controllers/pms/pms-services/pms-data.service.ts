@@ -16,32 +16,14 @@ export async function aggregateKeyData(
   organizationId: number,
   locationId?: number
 ) {
-  // Build and execute jobs query directly
-  let jobsQuery = db("pms_jobs")
-    .select(
-      "id",
-      "timestamp",
-      "response_log",
-      "is_approved",
-      "is_client_approved"
-    )
-    .where("organization_id", organizationId);
-  if (locationId) jobsQuery = jobsQuery.where("location_id", locationId);
-  const jobsRaw = await jobsQuery.orderBy("timestamp", "asc");
-
-  // Build and execute latest job query directly
-  let latestQuery = db("pms_jobs")
-    .select(
-      "id",
-      "timestamp",
-      "status",
-      "is_approved",
-      "is_client_approved",
-      "response_log"
-    )
-    .where("organization_id", organizationId);
-  if (locationId) latestQuery = latestQuery.where("location_id", locationId);
-  const latestJob = await latestQuery.orderBy("timestamp", "desc").first();
+  const jobsRaw = await PmsJobModel.findJobsForKeyDataByOrganization(
+    organizationId,
+    locationId
+  );
+  const latestJob = await PmsJobModel.findLatestJobForKeyDataByOrganization(
+    organizationId,
+    locationId
+  );
 
   const approvedJobs = jobsRaw.filter(
     (job: any) => normalizeApproval(job.is_approved) === true
@@ -55,6 +37,7 @@ export async function aggregateKeyData(
       totals: {
         totalReferrals: 0,
         totalProduction: 0,
+        totalAttributedProduction: 0,
       },
       stats: {
         jobCount: 0,

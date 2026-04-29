@@ -12,6 +12,7 @@ export interface IPmsJob {
   response_log: Record<string, unknown> | null;
   raw_input_data: Record<string, unknown> | null;
   automation_status_detail: Record<string, unknown> | null;
+  column_mapping_id?: number | null;
   timestamp: Date;
 }
 
@@ -199,11 +200,61 @@ export class PmsJobModel extends BaseModel {
       .select(
         "id",
         "timestamp",
+        "status",
         "response_log",
         "is_approved",
         "is_client_approved"
       )
       .where("organization_id", organizationId)
+      .orderBy("timestamp", "asc");
+
+    if (locationId) {
+      query = query.where("location_id", locationId);
+    }
+
+    const rows = await query;
+    return rows.map((row: IPmsJob) => this.deserializeJsonFields(row));
+  }
+
+  static async findLatestJobForKeyDataByOrganization(
+    organizationId: number,
+    locationId?: number | null,
+    trx?: QueryContext
+  ): Promise<IPmsJob | undefined> {
+    let query = this.table(trx)
+      .select(
+        "id",
+        "timestamp",
+        "status",
+        "is_approved",
+        "is_client_approved",
+        "response_log"
+      )
+      .where("organization_id", organizationId)
+      .orderBy("timestamp", "desc");
+
+    if (locationId) {
+      query = query.where("location_id", locationId);
+    }
+
+    const row = await query.first();
+    return row ? this.deserializeJsonFields(row) : undefined;
+  }
+
+  static async findApprovedJobsForPmsAggregation(
+    organizationId: number,
+    locationId?: number | null,
+    trx?: QueryContext
+  ): Promise<IPmsJob[]> {
+    let query = this.table(trx)
+      .select(
+        "id",
+        "timestamp",
+        "response_log",
+        "raw_input_data",
+        "column_mapping_id"
+      )
+      .where({ organization_id: organizationId, is_approved: 1 })
       .orderBy("timestamp", "asc");
 
     if (locationId) {

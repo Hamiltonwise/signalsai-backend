@@ -1,4 +1,7 @@
-import db from "../../database/connection";
+import { PmsColumnMappingModel } from "../../models/PmsColumnMappingModel";
+import { PmsJobModel, type IPmsJob } from "../../models/PmsJobModel";
+import type { ColumnMapping } from "../../types/pmsMapping";
+import { buildActualProductionByMonth } from "./monthlyProduction";
 
 // Threshold (5%) for flagging when sum(sources.referrals) diverges from
 // total_referrals on a given month. Informational only — never blocks.
@@ -16,6 +19,8 @@ type RawPmsMonthEntry = {
   self_referrals?: number | string;
   total_referrals?: number | string;
   doctor_referrals?: number | string;
+  actual_production_total?: number | string;
+  attributed_production_total?: number | string;
   production_total?: number | string;
 };
 
@@ -25,7 +30,9 @@ type AggregatedMonthData = {
   doctorReferrals: number;
   totalReferrals: number;
   productionTotal: number;
-  timestamp: string;
+  actualProductionTotal: number;
+  attributedProductionTotal: number;
+  timestamp: string | Date;
   sources: RawPmsSource[];
 };
 
@@ -59,6 +66,7 @@ export type AggregatedPmsData = {
   totals: {
     totalReferrals: number;
     totalProduction: number;
+    totalAttributedProduction: number;
   };
   patientRecords: any[];
   /**
@@ -170,6 +178,101 @@ const extractAdditionalDataFromResponse = (responseLog: unknown): any[] => {
   return [];
 };
 
+const extractRawRowsFromJob = (
+  rawInputData: unknown
+): Record<string, unknown>[] => {
+  if (rawInputData === null || rawInputData === undefined) {
+    return [];
+  }
+
+  let candidate = rawInputData;
+  if (typeof candidate === "string") {
+    try {
+      candidate = JSON.parse(candidate);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  if (typeof candidate !== "object" || candidate === null) {
+    return [];
+  }
+
+  const container = candidate as Record<string, unknown>;
+  return Array.isArray(container.rows)
+    ? (container.rows as Record<string, unknown>[])
+    : [];
+};
+
+const isProcedureLogMapping = (mapping: ColumnMapping): boolean => {
+  const hasReferringPractice = mapping.assignments.some(
+    (assignment) => assignment.role === "referring_practice"
+  );
+  const hasSource = mapping.assignments.some(
+    (assignment) => assignment.role === "source"
+  );
+  return hasReferringPractice && !hasSource;
+};
+
+const getMappingForJob = async (
+  job: IPmsJob,
+  cache: Map<number, ColumnMapping | null>
+): Promise<ColumnMapping | null> => {
+  const mappingId = job.column_mapping_id;
+  if (!mappingId) {
+    return null;
+  }
+
+  if (!cache.has(mappingId)) {
+    const mappingRow = await PmsColumnMappingModel.findMappingById(mappingId);
+    cache.set(mappingId, mappingRow?.mapping ?? null);
+  }
+
+  return cache.get(mappingId) ?? null;
+};
+
+const recoverActualProductionByMonth = async (
+  job: IPmsJob,
+  cache: Map<number, ColumnMapping | null>
+): Promise<Map<string, number>> => {
+  const rawRows = extractRawRowsFromJob(job.raw_input_data);
+  if (!rawRows.length) {
+    return new Map();
+  }
+
+  const mapping = await getMappingForJob(job, cache);
+  if (!mapping || !isProcedureLogMapping(mapping)) {
+    return new Map();
+  }
+
+  return buildActualProductionByMonth(rawRows, mapping);
+};
+
+const addRecoveredOnlyEntries = (
+  entries: RawPmsMonthEntry[],
+  actualProductionByMonth: Map<string, number>
+): RawPmsMonthEntry[] => {
+  const knownMonths = new Set(
+    entries
+      .map((entry) => entry.month?.trim())
+      .filter((month): month is string => Boolean(month))
+  );
+  const recoveredEntries = Array.from(actualProductionByMonth.entries())
+    .filter(([month]) => !knownMonths.has(month))
+    .map(([month, production]) => ({
+      month,
+      self_referrals: 0,
+      doctor_referrals: 0,
+      total_referrals: 0,
+      production_total: 0,
+      attributed_production_total: 0,
+      actual_production_total: production,
+      sources: [],
+    }));
+
+  return [...entries, ...recoveredEntries];
+};
+
 /**
  * Aggregate PMS data across all approved jobs for an organization.
  * This function implements smart deduplication - keeps only the latest data for each month.
@@ -181,12 +284,10 @@ export async function aggregatePmsData(
   organizationId: number,
   locationId?: number
 ): Promise<AggregatedPmsData> {
-  // Fetch all approved jobs for this organization (optionally scoped by location)
-  let query = db("pms_jobs")
-    .select("id", "timestamp", "response_log")
-    .where({ organization_id: organizationId, is_approved: 1 });
-  if (locationId) query = query.where("location_id", locationId);
-  const approvedJobs = await query.orderBy("timestamp", "asc");
+  const approvedJobs = await PmsJobModel.findApprovedJobsForPmsAggregation(
+    organizationId,
+    locationId
+  );
 
   if (!approvedJobs.length) {
     return {
@@ -195,6 +296,7 @@ export async function aggregatePmsData(
       totals: {
         totalReferrals: 0,
         totalProduction: 0,
+        totalAttributedProduction: 0,
       },
       sourceTrends: [],
       dedupCandidates: [],
@@ -205,6 +307,7 @@ export async function aggregatePmsData(
 
   // Track month data with timestamps to keep only the latest
   const monthMap = new Map<string, AggregatedMonthData>();
+  const mappingCache = new Map<number, ColumnMapping | null>();
 
   // Collect all patient records from all approved jobs
   const allPatientRecords: any[] = [];
@@ -212,6 +315,11 @@ export async function aggregatePmsData(
   // Process jobs to build month map (keeping only latest data per month)
   for (const job of approvedJobs) {
     const entries = extractMonthEntriesFromResponse(job.response_log);
+    const actualProductionByMonth = await recoverActualProductionByMonth(
+      job,
+      mappingCache
+    );
+    const allEntries = addRecoveredOnlyEntries(entries, actualProductionByMonth);
 
     // Extract and collect additional_data (patient records)
     const patientRecords = extractAdditionalDataFromResponse(job.response_log);
@@ -219,13 +327,13 @@ export async function aggregatePmsData(
       allPatientRecords.push(...patientRecords);
     }
 
-    if (!entries.length) {
+    if (!allEntries.length) {
       continue;
     }
 
     const jobTimestamp = job.timestamp;
 
-    for (const entry of entries) {
+    for (const entry of allEntries) {
       const monthKey = entry?.month?.trim();
 
       if (!monthKey) {
@@ -238,7 +346,14 @@ export async function aggregatePmsData(
         entry.total_referrals !== undefined
           ? toNumber(entry.total_referrals)
           : selfReferrals + doctorReferrals;
-      const entryProductionTotal = toNumber(entry.production_total);
+      const entryAttributedProductionTotal = toNumber(
+        entry.attributed_production_total ?? entry.production_total
+      );
+      const entryActualProductionTotal =
+        entry.actual_production_total !== undefined
+          ? toNumber(entry.actual_production_total)
+          : actualProductionByMonth.get(monthKey) ??
+            entryAttributedProductionTotal;
 
       const existingMonth = monthMap.get(monthKey);
 
@@ -252,7 +367,9 @@ export async function aggregatePmsData(
           selfReferrals,
           doctorReferrals,
           totalReferrals: entryTotalReferrals,
-          productionTotal: entryProductionTotal,
+          productionTotal: entryActualProductionTotal,
+          actualProductionTotal: entryActualProductionTotal,
+          attributedProductionTotal: entryAttributedProductionTotal,
           timestamp: jobTimestamp,
           sources: ensureArray<RawPmsSource>(entry.sources),
         });
@@ -268,10 +385,12 @@ export async function aggregatePmsData(
 
   let totalReferrals = 0;
   let totalProduction = 0;
+  let totalAttributedProduction = 0;
 
   for (const monthData of monthMap.values()) {
     totalReferrals += monthData.totalReferrals;
     totalProduction += monthData.productionTotal;
+    totalAttributedProduction += monthData.attributedProductionTotal;
 
     for (const source of monthData.sources) {
       const name = source?.name?.trim();
@@ -326,9 +445,10 @@ export async function aggregatePmsData(
   const sources = Array.from(sourceMap.values())
     .sort((a, b) => b.production - a.production)
     .map((source, index) => {
+      const percentageDenominator = totalAttributedProduction || totalProduction;
       const percentage =
-        totalProduction > 0
-          ? Number(((source.production / totalProduction) * 100).toFixed(2))
+        percentageDenominator > 0
+          ? Number(((source.production / percentageDenominator) * 100).toFixed(2))
           : 0;
 
       return {
@@ -472,6 +592,7 @@ export async function aggregatePmsData(
     totals: {
       totalReferrals: Number(totalReferrals.toFixed(2)),
       totalProduction: Number(totalProduction.toFixed(2)),
+      totalAttributedProduction: Number(totalAttributedProduction.toFixed(2)),
     },
     patientRecords: allPatientRecords,
     dataQualityFlags,

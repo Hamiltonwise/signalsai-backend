@@ -1,10 +1,13 @@
 import type { ColumnMapping } from "../../../types/pmsMapping";
-import { evaluateFormula } from "../productionFormula";
 import {
   type MonthlyRollupForJob,
   type RollupSource,
   findHeaderForRole,
 } from "../applyColumnMapping";
+import {
+  buildActualProductionByMonth,
+  getRowProduction,
+} from "../monthlyProduction";
 
 /**
  * Procedure-log adapter — for raw PMS exports where one row equals one
@@ -114,7 +117,7 @@ export function applyProcedureLogMapping(
   }
 
   const statusFilter = mapping.statusFilter;
-  const formula = mapping.productionFormula;
+  const actualProductionByMonth = buildActualProductionByMonth(rows, mapping);
 
   // Step 1 — group rows by `(patient, practiceClean)`. One referral per
   // unique patient → practice relationship within the file. Multiple visits
@@ -153,7 +156,7 @@ export function applyProcedureLogMapping(
 
     const month = parseDateToMonth(dateRaw, UNKNOWN_MONTH);
     const groupKey = `${patient}::${practiceClean}`;
-    const rowProduction = formula ? evaluateFormula(row, formula) : 0;
+    const rowProduction = getRowProduction(row, mapping);
 
     const existing = groups.get(groupKey);
     if (existing) {
@@ -216,6 +219,8 @@ export function applyProcedureLogMapping(
         self_referrals: 0,
         doctor_referrals: 0,
         total_referrals: 0,
+        actual_production_total: 0,
+        attributed_production_total: 0,
         production_total: 0,
         sources: [],
       };
@@ -235,11 +240,38 @@ export function applyProcedureLogMapping(
     }
     monthEntry.total_referrals += bucket.referrals;
     monthEntry.production_total += bucket.production;
+    monthEntry.attributed_production_total =
+      (monthEntry.attributed_production_total ?? 0) + bucket.production;
+  }
+
+  for (const [month, actualProduction] of actualProductionByMonth.entries()) {
+    let monthEntry = months.get(month);
+    if (!monthEntry) {
+      monthEntry = {
+        month,
+        self_referrals: 0,
+        doctor_referrals: 0,
+        total_referrals: 0,
+        actual_production_total: 0,
+        attributed_production_total: 0,
+        production_total: 0,
+        sources: [],
+      };
+      months.set(month, monthEntry);
+    }
+    monthEntry.actual_production_total =
+      (monthEntry.actual_production_total ?? 0) + actualProduction;
   }
 
   return Array.from(months.values())
     .map((m) => ({
       ...m,
+      actual_production_total: Number(
+        (m.actual_production_total ?? m.production_total).toFixed(2)
+      ),
+      attributed_production_total: Number(
+        (m.attributed_production_total ?? m.production_total).toFixed(2)
+      ),
       production_total: Number(m.production_total.toFixed(2)),
     }))
     .sort((a, b) => a.month.localeCompare(b.month));

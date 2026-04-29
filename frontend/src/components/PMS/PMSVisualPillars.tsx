@@ -9,20 +9,11 @@ import { motion } from "framer-motion";
 import { showSparkleToast } from "../../lib/toast";
 import {
   AlertCircle,
-  ArrowUpRight,
-  BarChart3,
-  Calendar,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Clock,
   Lock,
-  PenLine,
-  Plus,
   Settings,
-  ShieldCheck,
-  // Target, // Temporarily unused - Practice Diagnosis hidden
-  TrendingDown,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -39,7 +30,7 @@ import { PMSUploadWizardModal } from "./PMSUploadWizardModal";
 import { TemplateUploadModal } from "./TemplateUploadModal";
 import { DirectUploadModal } from "./DirectUploadModal";
 import { PMSManualEntryModal } from "./PMSManualEntryModal";
-import { ReferralMatrices, type ReferralEngineData } from "./ReferralMatrices";
+import type { ReferralEngineData } from "./ReferralMatrices";
 import {
   useIsWizardActive,
   useWizardDemoData,
@@ -47,6 +38,7 @@ import {
 import { useLocationContext } from "../../contexts/locationContext";
 import { apiGet } from "../../api";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
+import { PmsDashboardSurface } from "./dashboard/PmsDashboardSurface";
 
 interface PMSVisualPillarsProps {
   domain?: string;
@@ -73,65 +65,6 @@ const formatMonthLabel = (value: string): string => {
     year: "numeric",
   });
 };
-
-// New Design Components - Matching PMSStatistics.tsx
-const MetricCard = ({
-  label,
-  value,
-  sub,
-  trend,
-  isHighlighted,
-  isLoading,
-}: {
-  label: string;
-  value: string | number;
-  sub: string;
-  trend?: string;
-  isHighlighted?: boolean;
-  isLoading?: boolean;
-}) => (
-  <div
-    className={`flex flex-col p-5 lg:p-6 rounded-2xl border transition-all ${
-      isHighlighted
-        ? "bg-white border-alloro-orange/20 shadow-premium"
-        : "bg-white/60 border-slate-100 hover:bg-white"
-    }`}
-  >
-    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">
-      {label}
-    </span>
-    <div className="flex items-center justify-between mb-2">
-      {isLoading ? (
-        <div className="h-8 w-20 bg-slate-200 rounded animate-pulse" />
-      ) : (
-        <span
-          className={`text-2xl font-bold font-heading tracking-tighter leading-none ${
-            isHighlighted ? "text-alloro-orange" : "text-alloro-navy"
-          }`}
-        >
-          {value}
-        </span>
-      )}
-      {!isLoading && trend && (
-        <span
-          className={`text-[9px] font-bold flex items-center gap-0.5 ${
-            trend.startsWith("+") ? "text-green-600" : "text-red-500"
-          }`}
-        >
-          {trend}{" "}
-          {trend.startsWith("+") ? (
-            <ArrowUpRight size={12} />
-          ) : (
-            <TrendingDown size={12} />
-          )}
-        </span>
-      )}
-    </div>
-    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest leading-none">
-      {sub}
-    </span>
-  </div>
-);
 
 // Temporarily hidden - Practice Diagnosis section
 // const DiagnosisBlock = ({ title, desc }: { title: string; desc: string }) => (
@@ -184,14 +117,11 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
   const [, setIsConfirming] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isIngestionHighlighted, setIsIngestionHighlighted] = useState(false);
-  const [isApprovalBannerHighlighted, setIsApprovalBannerHighlighted] =
-    useState(false);
 
   // Referral Engine data state
   const [referralData, setReferralData] = useState<ReferralEngineData | null>(
     null,
   );
-  const [referralLoading, setReferralLoading] = useState(false);
   const [referralPending, setReferralPending] = useState(false);
   const [automationStatus, setAutomationStatus] =
     useState<AutomationStatusDetail | null>(null);
@@ -415,16 +345,12 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
   const loadReferralData = useCallback(async () => {
     // Skip during wizard mode - use demo data instead
     if (isWizardActive) {
-      setReferralLoading(false);
       return;
     }
 
     if (!organizationId) {
-      setReferralLoading(false);
       return;
     }
-
-    setReferralLoading(true);
 
     try {
       const locParam = locationId ? `?locationId=${locationId}` : "";
@@ -459,8 +385,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
       console.error("Failed to fetch referral engine data:", err);
       setReferralData(null);
       setReferralPending(false);
-    } finally {
-      setReferralLoading(false);
     }
   }, [organizationId, locationId, isWizardActive]);
 
@@ -586,9 +510,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
           );
           setAutomationStatus(null);
           setReferralPending(false);
-          // Set loading state while we fetch the actual matrix data
-          setReferralLoading(true);
-          // Refresh referral data to show the actual matrix
+          // Refresh referral data after automation completion
           loadReferralData();
         } else {
           setAutomationStatus(null);
@@ -853,7 +775,12 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
       const selfReferrals = Number(month.selfReferrals ?? 0);
       const doctorReferrals = Number(month.doctorReferrals ?? 0);
       const totalReferrals = Number(month.totalReferrals ?? 0);
-      const productionTotal = Number(month.productionTotal ?? 0);
+      const productionTotal = Number(
+        month.actualProductionTotal ?? month.productionTotal ?? 0
+      );
+      const attributedProductionTotal = Number(
+        month.attributedProductionTotal ?? month.productionTotal ?? 0
+      );
 
       return {
         month: formatMonthLabel(month.month),
@@ -862,6 +789,8 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
         total: totalReferrals || selfReferrals + doctorReferrals,
         totalReferrals: totalReferrals || selfReferrals + doctorReferrals,
         productionTotal,
+        actualProductionTotal: productionTotal,
+        attributedProductionTotal,
       };
     });
   }, [keyData, isWizardActive, wizardMonthlyData]);
@@ -873,10 +802,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     }
     return referralData;
   }, [isWizardActive, referralData, wizardReferralEngineData]);
-
-  const latestTimestamp = keyData?.stats?.latestJobTimestamp
-    ? new Date(keyData.stats.latestJobTimestamp)
-    : null;
 
   // Temporarily unused - Data Confidence card removed
   // const monthCount = keyData?.stats?.distinctMonths ?? 0;
@@ -986,6 +911,22 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     latestJobIsApproved !== true &&
     (localProcessing || latestJobStatus?.toLowerCase() === "pending");
 
+  const isAutomationAwaitingClientApproval =
+    automationStatus?.status === "awaiting_approval" &&
+    automationStatus.currentStep === "client_approval";
+
+  const isAutomationRunning =
+    Boolean(automationStatus) &&
+    automationStatus?.status !== "completed" &&
+    !isAutomationAwaitingClientApproval;
+
+  const showDashboardProcessingStatus =
+    !isWizardActive &&
+    !isLoading &&
+    !showClientApprovalBanner &&
+    !isAutomationAwaitingClientApproval &&
+    (showProcessingNotice || referralPending || isAutomationRunning);
+
   // Auto-open disabled - user requested manual control
   // useEffect(() => {
   //   if (showClientApprovalBanner && hasLatestJobRaw && latestJobId) {
@@ -1067,15 +1008,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     await loadAutomationStatus();
   }, [loadKeyData, loadAutomationStatus]);
 
-  // Get max value for bar chart scaling
-  const maxBarValue = useMemo(() => {
-    if (!monthlyData.length) return 25;
-    return Math.max(
-      ...monthlyData.map((m) => m.selfReferrals + m.doctorReferrals),
-      25,
-    );
-  }, [monthlyData]);
-
   // Scroll to Data Ingestion Hub section with highlight animation
   const scrollToIngestionHub = useCallback(() => {
     const ingestionSection = document.getElementById("data-ingestion-hub");
@@ -1103,31 +1035,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
       }, 500);
     }
   }, [scrollToIngestionHub]);
-
-  // Scroll to Client Approval Banner with highlight animation
-  const scrollToApprovalBanner = () => {
-    const tryScroll = (attempts = 0) => {
-      const approvalBanner = document.getElementById("client-approval-banner");
-      if (approvalBanner) {
-        approvalBanner.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Trigger highlight animation after short delay
-        setTimeout(() => {
-          setIsApprovalBannerHighlighted(true);
-          // Remove highlight after 700ms
-          setTimeout(() => {
-            setIsApprovalBannerHighlighted(false);
-          }, 700);
-        }, 200);
-      } else if (attempts < 3) {
-        // Banner might not be rendered yet, retry after short delay
-        setTimeout(() => tryScroll(attempts + 1), 100);
-      } else {
-        // Fallback: scroll to top where banner should appear
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    };
-    tryScroll();
-  };
 
   // Show setup required screen if not all services are connected
   if (!connectionStatus.isLoading && !allServicesConnected && !isWizardActive) {
@@ -1241,81 +1148,15 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-body text-alloro-navy">
-      {/* Professional Header - Matching newdesign */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 lg:sticky lg:top-0 z-40">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-alloro-navy text-white rounded-xl flex items-center justify-center shadow-lg">
-              <BarChart3 size={20} />
-            </div>
-            <div>
-              <h1 className="text-[10px] font-bold font-heading text-alloro-navy uppercase tracking-[0.2em]">
-                Revenue Attribution
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                  PMS Sync Verified
-                </span>
-                {latestTimestamp && (
-                  <>
-                    <span className="text-slate-300 mx-1">•</span>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                      Updated {latestTimestamp.toLocaleDateString()}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* CTA Button - Always visible */}
-          <button
-            onClick={scrollToIngestionHub}
-            className="flex items-center gap-2.5 px-5 py-3 bg-alloro-orange hover:brightness-110 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg shadow-alloro-orange/20 active:scale-[0.98]"
-          >
-            <Plus size={16} />
-            Enter Referral Data
-          </button>
-        </div>
-      </header>
-
-      <main className="w-full max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 space-y-12 lg:space-y-16">
-        {/* Processing Notice Banner */}
-        {showProcessingNotice && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-alloro-teal/20 bg-alloro-teal/5 p-5 text-sm text-alloro-navy shadow-premium"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-alloro-teal/10 rounded-xl">
-                <Clock className="h-5 w-5 text-alloro-teal" />
-              </div>
-              <div>
-                <p className="font-bold text-alloro-navy text-sm">
-                  Your latest PMS data is now being processed.
-                </p>
-                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-0.5">
-                  We'll notify you when the analysis is complete.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
+    <div className="pm-light min-h-screen bg-[var(--color-pm-bg-primary)] font-body text-alloro-navy">
+      <main className="mx-auto w-full max-w-[1320px] space-y-4 px-4 pt-6 sm:px-6 lg:px-8">
         {/* Client Approval Banner */}
         {showClientApprovalBanner && (
           <motion.div
             id="client-approval-banner"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`flex flex-col gap-4 rounded-2xl border bg-alloro-orange/5 p-6 sm:flex-row sm:items-center sm:justify-between shadow-premium transition-all duration-300 ${
-              isApprovalBannerHighlighted
-                ? "border-2 border-alloro-orange ring-8 ring-alloro-orange/30 scale-[1.01]"
-                : "border-alloro-orange/20"
-            }`}
+            className="flex flex-col gap-4 rounded-2xl border border-alloro-orange/20 bg-alloro-orange/5 p-6 sm:flex-row sm:items-center sm:justify-between shadow-premium transition-all duration-300"
           >
             <div className="flex-1 space-y-1">
               <div className="font-bold text-alloro-navy text-base">
@@ -1367,309 +1208,29 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
           </motion.div>
         )}
 
-        {/* Main Content - Show titles during loading, with skeleton placeholders for data */}
-        {!error && (keyData || isWizardActive || isLoading) && (
-          <>
-            {/* 1. ATTRIBUTION VITALS - Matching newdesign */}
-            <section data-wizard-target="pms-attribution" className="space-y-4">
-              <div className="flex items-center gap-4 px-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
-                  Your PMS Vitals (YTD)
-                </h3>
-                <div className="h-px flex-1 bg-slate-100"></div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                <MetricCard
-                  label="MKT Production"
-                  value={`$${(totalProduction / 1000).toFixed(1)}K`}
-                  sub="Marketing Attribution"
-                  trend={monthlyData.length > 1 ? "+11%" : undefined}
-                  isHighlighted
-                  isLoading={isLoading}
-                />
-                <MetricCard
-                  label="DOC Production"
-                  value={`$${(
-                    (totalProduction * doctorPercentage) /
-                    100 /
-                    1000
-                  ).toFixed(1)}K`}
-                  sub="Referral Attribution"
-                  trend={monthlyData.length > 1 ? "+4%" : undefined}
-                  isLoading={isLoading}
-                />
-                <MetricCard
-                  label="Total Referrals"
-                  value={totalReferrals.toString()}
-                  sub="Synced Ledger"
-                  isLoading={isLoading}
-                />
-              </div>
-            </section>
-
-            {/* 2. REFERRAL VELOCITY - Matching newdesign */}
-            <section
-              data-wizard-target="pms-velocity"
-              className="bg-white rounded-2xl border border-slate-200 shadow-premium overflow-hidden"
-            >
-              <div className="px-6 sm:px-10 py-8 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <Calendar size={20} className="text-alloro-orange" />
-                  <h2 className="font-display text-xl font-medium text-alloro-navy tracking-tight">
-                    Referral Velocity
-                  </h2>
-                </div>
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-alloro-orange"></div>
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                      Marketing
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-alloro-navy"></div>
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                      Doctor
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6 sm:p-10 space-y-8 max-h-[500px] overflow-y-auto">
-                {isLoading ? (
-                  // Loading skeleton for velocity chart
-                  <div className="space-y-6 animate-pulse">
-                    {[...Array(4)].map((_, i) => (
-                      <div key={i} className="flex items-center gap-8">
-                        <div className="w-16 shrink-0">
-                          <div className="h-4 w-12 bg-slate-200 rounded" />
-                          <div className="h-2 w-8 bg-slate-100 rounded mt-1" />
-                        </div>
-                        <div className="flex-1 space-y-2">
-                          <div className="h-4 bg-slate-200 rounded-lg" style={{ width: `${70 - i * 15}%` }} />
-                          <div className="h-2.5 bg-slate-100 rounded-lg" style={{ width: `${40 - i * 8}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <>
-                    {monthlyData.map((data, index) => (
-                      <div
-                        key={index}
-                        className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8"
-                      >
-                        <div className="w-16 sm:text-right shrink-0">
-                          <div className="text-[12px] font-bold text-alloro-navy uppercase">
-                            {data.month}
-                          </div>
-                        </div>
-                        <div className="flex-1 space-y-2.5">
-                          <div className="relative h-4 flex items-center gap-4">
-                            <motion.div
-                              className="h-full bg-alloro-orange rounded-lg shadow-sm"
-                              initial={{ width: 0 }}
-                              animate={{
-                                width: `${
-                                  (data.selfReferrals / maxBarValue) * 100
-                                }%`,
-                              }}
-                              transition={{
-                                delay: index * 0.05 + 0.2,
-                                duration: 0.6,
-                                ease: "easeOut",
-                              }}
-                            />
-                            <span className="text-[11px] font-bold text-alloro-navy tabular-nums">
-                              {data.selfReferrals}
-                            </span>
-                          </div>
-                          {data.doctorReferrals > 0 && (
-                            <div className="relative h-2.5 flex items-center gap-4">
-                              <motion.div
-                                className="h-full bg-alloro-navy rounded-lg opacity-80"
-                                initial={{ width: 0 }}
-                                animate={{
-                                  width: `${
-                                    (data.doctorReferrals / maxBarValue) * 100
-                                  }%`,
-                                }}
-                                transition={{
-                                  delay: index * 0.05 + 0.3,
-                                  duration: 0.6,
-                                  ease: "easeOut",
-                                }}
-                              />
-                              <span className="text-[10px] font-bold text-slate-400 tabular-nums">
-                                {data.doctorReferrals}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {monthlyData.length === 0 && (
-                      <div className="text-center py-12 text-slate-400">
-                        <Calendar size={32} className="mx-auto mb-3 opacity-50" />
-                        <p className="text-sm font-semibold">
-                          No monthly data available
-                        </p>
-                        <p className="text-[10px] uppercase tracking-widest mt-1">
-                          Upload PMS data to see trends
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </section>
-
-            {/* 3. INTELLIGENCE HUB MATRICES - Always show, including during client approval */}
-            {/* When client approval banner is shown, show the progress timeline at "Your confirmation" step */}
-            <section data-wizard-target="pms-matrices" className="space-y-4">
-              <div className="flex items-center gap-4 px-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
-                  Intelligence Hub Matrices
-                </h3>
-                <div className="h-px flex-1 bg-slate-100"></div>
-              </div>
-              <>
-                <ReferralMatrices
-                  referralData={effectiveReferralData}
-                  isLoading={(isLoading || referralLoading) && !isWizardActive}
-                  isPending={(referralPending || showClientApprovalBanner) && !isWizardActive}
-                  automationStatus={isWizardActive ? null : automationStatus}
-                  onConfirmationClick={scrollToApprovalBanner}
-                />
-              </>
-            </section>
-
-            {/* 4. INGESTION HUB - Matching newdesign full-width style */}
-            {canUploadPMS ? (
-              <section
-                id="data-ingestion-hub"
-                data-wizard-target="pms-upload"
-                className={`bg-white rounded-2xl shadow-premium p-6 sm:p-10 lg:p-14 flex flex-col md:flex-row items-center justify-between gap-12 transition-all duration-300 ${
-                  isIngestionHighlighted
-                    ? "border-2 border-alloro-orange ring-8 ring-alloro-orange/30 scale-[1.01]"
-                    : "border border-slate-100"
-                }`}
-              >
-                <div className="space-y-8 flex-1 text-center">
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="w-12 h-12 bg-alloro-orange/10 text-alloro-orange rounded-2xl flex items-center justify-center">
-                      <PenLine size={24} />
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <h3 className="font-display text-2xl sm:text-3xl font-medium text-alloro-navy tracking-tight leading-tight">
-                      Update your referral data
-                    </h3>
-                    <p className="text-base sm:text-lg text-slate-400 font-normal tracking-tight leading-relaxed max-w-xl mx-auto">
-                      Enter your monthly referral numbers directly. Takes about 2 minutes.
-                      We recommend updating monthly for the most accurate analysis.
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => setShowManualEntry(true)}
-                      className="group inline-flex items-center gap-3 px-8 py-4 text-white rounded-2xl transition-all text-base font-semibold hover:brightness-110 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] bg-alloro-orange"
-                    >
-                      <PenLine size={20} />
-                      Upload Month's Data
-                    </button>
-                    <p className="text-xs text-slate-400">
-                      Need to backfill? You can enter data for any previous month too.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-center gap-6 pt-2">
-                    <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                      <Lock size={14} className="text-slate-300" /> HIPAA SECURE
-                    </div>
-                    <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                      <ShieldCheck size={14} className="text-green-500" /> ENCRYPTED
-                    </div>
-                  </div>
-                </div>
-              </section>
-            ) : (
-              <section
-                data-wizard-target="pms-upload"
-                className="bg-white rounded-2xl border border-slate-100 shadow-premium p-6 sm:p-10 lg:p-14"
-              >
-                <div className="flex flex-col items-center text-center space-y-6">
-                  <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center">
-                    {!hasProperties && !isWizardActive ? (
-                      <Lock size={32} className="text-amber-600" />
-                    ) : (
-                      <AlertCircle size={32} className="text-amber-600" />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-display text-xl font-medium text-alloro-navy mb-2">
-                      {!hasProperties && !isWizardActive ? "Connect Properties First" : "Upload Restricted"}
-                    </h3>
-                    <p className="text-sm text-slate-500 font-medium max-w-md">
-                      {!hasProperties && !isWizardActive
-                        ? "Please connect your Google Business Profile in Settings before uploading PMS data."
-                        : "Only admins and managers can upload PMS data"}
-                    </p>
-                    {!hasProperties && !isWizardActive && (
-                      <a
-                        href="/settings"
-                        className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 bg-alloro-orange text-white rounded-xl text-sm font-bold hover:bg-alloro-orange/90 transition-colors"
-                      >
-                        Go to Settings
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Practice Diagnosis Card - Temporarily hidden
-              <section className="bg-alloro-navy rounded-2xl p-8 lg:p-10 text-white shadow-xl relative overflow-hidden border border-white/5">
-                <div className="absolute top-0 right-0 p-40 bg-alloro-orange/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-                <div className="relative z-10 space-y-8">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-alloro-orange rounded-xl flex items-center justify-center shadow-lg border border-white/10">
-                      <Target size={20} className="text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold font-heading tracking-tight leading-none">
-                      Practice Diagnosis
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <DiagnosisBlock
-                      title="Acquisition Balance"
-                      desc={`Marketing volume accounts for ${marketingCapture}% of Starts. ${
-                        marketingCapture > 70
-                          ? "Expanding peer networks is your primary growth lever."
-                          : "Good balance between marketing and referrals."
-                      }`}
-                    />
-                    <DiagnosisBlock
-                      title="Data Confidence"
-                      desc={`${monthCount} month${
-                        monthCount !== 1 ? "s" : ""
-                      } of PMS data analyzed. ${
-                        monthCount >= 6
-                          ? "High confidence attribution."
-                          : "More data will improve insights."
-                      }`}
-                    />
-                  </div>
-                  <button className="w-full md:w-auto py-3.5 px-8 bg-alloro-orange rounded-xl text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg active:scale-95">
-                    View Strategic Plan
-                  </button>
-                </div>
-              </section>
-              */}
-          </>
-        )}
       </main>
+
+      {!error && (keyData || isWizardActive || isLoading || showDashboardProcessingStatus) && (
+        <PmsDashboardSurface
+          monthlyData={monthlyData}
+          topSources={topSources}
+          totalProduction={totalProduction}
+          totalReferrals={totalReferrals}
+          doctorReferralCount={doctorReferralCount}
+          doctorPercentage={doctorPercentage}
+          referralData={effectiveReferralData}
+          isLoading={isLoading}
+          isProcessingInsights={showDashboardProcessingStatus}
+          isWizardActive={isWizardActive}
+          canUploadPMS={canUploadPMS}
+          hasProperties={hasProperties}
+          isIngestionHighlighted={isIngestionHighlighted}
+          onJumpToIngestion={scrollToIngestionHub}
+          onOpenManualEntry={() => setShowManualEntry(true)}
+          onOpenSettings={() => navigate('/settings/integrations')}
+        />
+      )}
+
 
       {latestJobId && hasLatestJobRaw && (
         <PMSLatestJobEditor
