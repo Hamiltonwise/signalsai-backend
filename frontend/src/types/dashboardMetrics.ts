@@ -81,6 +81,9 @@ export interface PmsMetrics {
   total_referrals: number;
   doctor_referrals: number;
   self_referrals: number;
+  production_this_month: number | null;
+  doctor_referrals_this_month: number | null;
+  total_referrals_this_month: number | null;
 }
 
 // =====================================================================

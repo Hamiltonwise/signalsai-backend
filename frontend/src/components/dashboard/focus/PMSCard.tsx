@@ -265,21 +265,17 @@ const PMSCard: React.FC = () => {
   const keyData = usePmsKeyData(orgId, locationId);
 
   const monthName = currentMonthName();
-  const isLoading = metrics.isLoading || keyData.isLoading;
-  const isError = metrics.isError || keyData.isError;
 
   const retry = () => {
     metrics.refetch();
     keyData.refetch();
   };
 
-  if (isLoading) return <SkeletonShell monthName={monthName} />;
+  if (metrics.isLoading) return <SkeletonShell monthName={monthName} />;
 
-  if (isError) {
+  if (metrics.isError) {
     const msg =
-      (metrics.error as Error)?.message ||
-      (keyData.error as Error)?.message ||
-      "Could not load PMS data.";
+      (metrics.error as Error)?.message || "Could not load PMS data.";
     return (
       <ErrorShell monthName={monthName} onRetry={retry} message={msg} />
     );
@@ -290,15 +286,17 @@ const PMSCard: React.FC = () => {
   const months = data?.months ?? [];
   const sources = (data?.sources ?? []) as PmsKeyDataSourceWithTrend[];
 
-  if (!pms || (pms.production_total === 0 && months.length === 0)) {
+  const productionThisMonth = pms?.production_this_month ?? null;
+
+  if (!pms || (productionThisMonth === null && months.length === 0)) {
     return <EmptyShell monthName={monthName} />;
   }
 
-  const productionTotal = pms.production_total;
+  const productionTotal = productionThisMonth ?? 0;
   const productionChange = pms.production_change_30d;
-  const totalReferrals = pms.total_referrals;
-  const doctorRefs = pms.doctor_referrals;
-  const selfRefs = pms.self_referrals;
+  const totalReferrals = pms.total_referrals_this_month ?? 0;
+  const doctorRefs = pms.doctor_referrals_this_month ?? 0;
+  const selfRefs = totalReferrals - doctorRefs;
   const denom = doctorRefs + selfRefs;
   const doctorPct = denom > 0 ? Math.round((doctorRefs / denom) * 100) : 0;
   const selfPct = denom > 0 ? 100 - doctorPct : 0;
@@ -330,7 +328,7 @@ const PMSCard: React.FC = () => {
           ${productionTotal.toLocaleString()}
         </span>
         <span className="font-medium" style={{ fontSize: 12, color: MUTED }}>
-          production this month
+          current period
         </span>
         <TrendPill
           delta={productionChange === null ? null : Math.round(productionChange)}
@@ -345,7 +343,12 @@ const PMSCard: React.FC = () => {
         self
       </div>
 
-      {sparkData.length > 0 && (
+      {keyData.isLoading ? (
+        <div className="mt-4 space-y-3">
+          <div className="h-16 w-full animate-pulse rounded-md bg-neutral-100" />
+          <div className="h-2 w-full animate-pulse rounded-full bg-neutral-100" />
+        </div>
+      ) : sparkData.length > 0 && (
         <div className="mt-4">
           <Sparkline data={sparkData} color={PMS_GREEN} fillId="pms-grad" />
           <div
