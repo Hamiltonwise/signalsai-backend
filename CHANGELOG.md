@@ -2,6 +2,29 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.50] - April 2026
+
+### Fix: Location-Scoped PMS Uploads, Processing Cards, and Dashboard Data
+
+Fixed a chain of multi-location bugs where PMS uploads via the mapping path (`uploadWithMapping`) always attributed data to the primary location, processing cards appeared on all locations during any upload, and the main dashboard PMS card flashed org-wide totals before the location selector loaded.
+
+**Key Changes:**
+- Backend `uploadWithMapping` now reads `body.locationId` before falling back to `resolveLocationId()` — uploads land on the correct location
+- `pms:job-uploaded` event includes `locationId`; `PMSVisualPillars` only shows processing card for the matching location
+- Automation status polling (`fetchActiveAutomationJobs`) gated on `locationId` being available — no more org-wide active job leaks
+- `useDashboardMetrics` and `usePmsKeyData` hooks disabled until `locationId` is non-null — prevents org-wide data flash
+- Dashboard cogitating spinner holds until `selectedLocation` is populated — eliminates partial-sidebar layout shift
+- PMS modal header shows location name ("Enter PMS Data for Fredericksburg"); modal blocked from opening until location is loaded
+- PMSVisualPillars shows cogitating spinner until both key data and automation status have completed initial fetch
+
+**Commits:**
+- `src/controllers/pms/PmsController.ts` — read `body.locationId` in `uploadWithMapping`
+- `frontend/src/components/PMS/PMSManualEntryModal.tsx` — location name header, locationId in event
+- `frontend/src/components/PMS/PMSVisualPillars.tsx` — initial load gate, event scoping, automation fetch guards, cogitating spinner
+- `frontend/src/pages/Dashboard.tsx` — spinner holds for location context
+- `frontend/src/hooks/queries/useDashboardMetrics.ts` — gated on locationId
+- `frontend/src/components/dashboard/focus/PMSCard.tsx` — gated on locationId
+
 ## [0.0.49] - April 2026
 
 ### PMSUploadModal Retirement & 12-Month Aggregator Cap
