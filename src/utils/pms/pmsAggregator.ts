@@ -377,7 +377,16 @@ export async function aggregatePmsData(
     }
   }
 
-  // Now aggregate sources from the final month map
+  const MAX_MONTHS = 12;
+  const allMonthsSorted = Array.from(monthMap.values()).sort((a, b) =>
+    a.month.localeCompare(b.month)
+  );
+  const months =
+    allMonthsSorted.length > MAX_MONTHS
+      ? allMonthsSorted.slice(-MAX_MONTHS)
+      : allMonthsSorted;
+
+  // Aggregate sources and totals from the capped month window
   const sourceMap = new Map<
     string,
     { name: string; referrals: number; production: number }
@@ -387,7 +396,7 @@ export async function aggregatePmsData(
   let totalProduction = 0;
   let totalAttributedProduction = 0;
 
-  for (const monthData of monthMap.values()) {
+  for (const monthData of months) {
     totalReferrals += monthData.totalReferrals;
     totalProduction += monthData.productionTotal;
     totalAttributedProduction += monthData.attributedProductionTotal;
@@ -411,16 +420,17 @@ export async function aggregatePmsData(
     }
   }
 
-  const months = Array.from(monthMap.values()).sort((a, b) =>
-    a.month.localeCompare(b.month)
-  );
-
   // Sum reconciliation (D1 in spec): for each month, verify that the sum of
   // per-source referrals matches the month's total_referrals within
   // SOURCE_SUM_TOLERANCE. Anything beyond that gets flagged for the LLM.
   // Skip months where totalReferrals <= 0 (avoid div-by-zero; empty months
   // are valid per the n8n contract).
   const dataQualityFlags: string[] = [];
+  if (allMonthsSorted.length > MAX_MONTHS) {
+    dataQualityFlags.push(
+      `Capped to most recent ${MAX_MONTHS} months of data (${allMonthsSorted.length} months total available).`
+    );
+  }
   for (const monthData of months) {
     if (monthData.totalReferrals <= 0) {
       continue;

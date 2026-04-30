@@ -1,3 +1,8 @@
+/**
+ * @deprecated — Retired 2026-04-30. File upload functionality moved to
+ * PMSManualEntryModal which supports multi-file drag-and-drop with column
+ * mapping. This file is preserved for git history only.
+ */
 import React, { useState, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { showUploadToast } from "../../lib/toast";

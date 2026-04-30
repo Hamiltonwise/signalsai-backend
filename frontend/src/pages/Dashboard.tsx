@@ -16,7 +16,6 @@ import { RankingsDashboard } from "../components/dashboard/RankingsDashboard";
 // Integration Modal Components
 import { GBPIntegrationModal } from "../components/GBPIntegrationModal";
 import { ClarityIntegrationModal } from "../components/ClarityIntegrationModal";
-import { PMSUploadModal } from "../components/PMS/PMSUploadModal";
 import { VitalSignsCards } from "@/components/VitalSignsCards/VitalSignsCards";
 import { TasksView } from "../components/tasks/TasksView";
 import { AnimatePresence, motion } from "framer-motion";
@@ -124,7 +123,6 @@ export default function Dashboard() {
   // Modal state management
   const [showGBPModal, setShowGBPModal] = useState(false);
   const [showClarityModal, setShowClarityModal] = useState(false);
-  const [showPMSUpload, setShowPMSUpload] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -492,16 +490,6 @@ export default function Dashboard() {
               clientId={clientId}
               onSuccess={() => {
                 console.log("Clarity integration successful!");
-              }}
-            />
-
-            <PMSUploadModal
-              isOpen={showPMSUpload}
-              onClose={() => setShowPMSUpload(false)}
-              clientId={clientId}
-              locationId={locationId}
-              onSuccess={() => {
-                console.log("PMS upload successful!");
               }}
             />
 
