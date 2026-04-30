@@ -61,6 +61,19 @@ export class ProjectModel extends BaseModel {
     return super.updateById(id, data as Record<string, unknown>, trx);
   }
 
+  static async updateRecipientsByOrganization(
+    orgId: number,
+    recipients: string[],
+    trx?: QueryContext,
+  ): Promise<number> {
+    return this.table(trx)
+      .where({ organization_id: orgId })
+      .update({
+        recipients: JSON.stringify(recipients),
+        updated_at: new Date(),
+      });
+  }
+
   static async setReadOnly(orgId: number, trx?: QueryContext): Promise<number> {
     return this.table(trx)
       .where({ organization_id: orgId })

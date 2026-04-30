@@ -1,5 +1,6 @@
 import { db } from "../../database/connection";
 import { resolveLocationId } from "../locationResolver";
+import { resolveRecipients } from "../../services/recipientSettingsService";
 
 export type NotificationType = "task" | "pms" | "agent" | "system" | "ranking";
 import {
@@ -85,8 +86,19 @@ export async function createNotification(
     const notificationId = result?.id || null;
 
     // Send email notification in parallel (non-blocking)
-    if (!options?.skipEmail && account?.email) {
+    if (!options?.skipEmail) {
       const emailType = notificationTypeToEmailType[type] || "system";
+      const emailRecipients =
+        type === "agent"
+          ? (
+              await resolveRecipients({
+                organizationId,
+                channel: "agent_notifications",
+              })
+            ).recipients
+          : account?.email
+            ? [account.email]
+            : [];
 
       // Determine action URL based on notification type
       let actionUrl = options?.actionUrl;
@@ -116,21 +128,30 @@ export async function createNotification(
         }
       }
 
-      // Fire and forget - don't await, don't block
-      sendUserNotification({
-        recipientEmail: account.email,
-        recipientName: account.practice_name || account.domain_name || "Practice",
-        notificationType: emailType,
-        title,
-        message: message || "",
-        actionUrl,
-        actionLabel,
-        metadata: metadata || {},
-      }).catch((err) => {
-        console.error(
-          `[NotificationHelper] Failed to send user email for org ${organizationId}: ${err.message}`
-        );
-      });
+      if (emailRecipients.length > 0) {
+        const recipientName =
+          account?.practice_name || account?.domain_name || "Practice";
+
+        // Fire and forget - don't await, don't block
+        Promise.all(
+          emailRecipients.map((recipientEmail) =>
+            sendUserNotification({
+              recipientEmail,
+              recipientName,
+              notificationType: emailType,
+              title,
+              message: message || "",
+              actionUrl,
+              actionLabel,
+              metadata: metadata || {},
+            })
+          )
+        ).catch((err) => {
+          console.error(
+            `[NotificationHelper] Failed to send user email for org ${organizationId}: ${err.message}`
+          );
+        });
+      }
     }
 
     return notificationId;

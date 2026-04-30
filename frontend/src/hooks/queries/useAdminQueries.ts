@@ -15,12 +15,14 @@ import {
   adminListOrganizations,
   adminGetOrganization,
   adminGetOrganizationLocations,
+  adminGetRecipientSettings,
   type AdminOrganization,
   type AdminOrganizationDetail,
   type AdminUser,
   type AdminConnection,
   type AdminWebsite,
   type AdminLocation,
+  type AdminRecipientSettingsData,
 } from "../../api/admin-organizations";
 
 import { listMinds, type Mind } from "../../api/minds";
@@ -114,6 +116,29 @@ export function useAdminOrganizationLocations(orgId: number) {
     },
     enabled: orgId > 0,
     initialData: () => queryClient.getQueryData<AdminLocation[]>(queryKey),
+    initialDataUpdatedAt: () =>
+      queryClient.getQueryState(queryKey)?.dataUpdatedAt,
+  });
+}
+
+/**
+ * Recipient settings for a single organisation.
+ */
+export function useAdminOrganizationRecipientSettings(orgId: number) {
+  const queryKey = QUERY_KEYS.organizationRecipientSettings(orgId);
+
+  return useQuery({
+    queryKey,
+    queryFn: async () => {
+      const response = await adminGetRecipientSettings(orgId);
+      if (!response.success) {
+        throw new Error("Failed to fetch recipient settings");
+      }
+      return response.data;
+    },
+    enabled: orgId > 0,
+    initialData: () =>
+      queryClient.getQueryData<AdminRecipientSettingsData>(queryKey),
     initialDataUpdatedAt: () =>
       queryClient.getQueryState(queryKey)?.dataUpdatedAt,
   });

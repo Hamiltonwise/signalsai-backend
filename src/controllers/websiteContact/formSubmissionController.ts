@@ -29,7 +29,6 @@ import { analyzeContent } from "./websiteContact-services/aiContentAnalysisServi
 import { getSiteUrl, sendConfirmationEmail } from "./websiteContact-services/newsletterConfirmationService";
 import { buildEmailBody } from "./websiteContact-services/emailBodyBuilder";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
-import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { FormSubmissionModel, type FileValue, type FormSection, type FormContents } from "../../models/website-builder/FormSubmissionModel";
 import { WebsiteIntegrationModel } from "../../models/website-builder/WebsiteIntegrationModel";
 import { IntegrationFormMappingModel } from "../../models/website-builder/IntegrationFormMappingModel";
@@ -38,8 +37,7 @@ import { getCrmQueue } from "../../workers/queues";
 import { db } from "../../database/connection";
 import { NewsletterSignupModel } from "../../models/website-builder/NewsletterSignupModel";
 import { uploadToS3 } from "../../utils/core/s3";
-
-const FALLBACK_RECIPIENT = "laggy80@gmail.com";
+import { resolveRecipients } from "../../services/recipientSettingsService";
 
 const MAX_FIELDS = 100; // Raised from 20 to support onboarding forms with many repeater fields
 const MAX_KEY_LENGTH = 100;
@@ -407,30 +405,17 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       }
     }
 
-    // ── 12. Resolve recipients: project.recipients → org admins → fallback ──
+    // ── 12. Resolve recipients through canonical org recipient settings ──
     let recipients: string[] = [];
     try {
-      const projectRecipients = (project as any)?.recipients;
-      if (Array.isArray(projectRecipients) && projectRecipients.length > 0) {
-        recipients = projectRecipients.filter(Boolean);
-      }
-
-      if (recipients.length === 0 && project?.organization_id) {
-        const orgUsers = await OrganizationUserModel.listByOrgWithUsers(project.organization_id);
-        const adminEmails = orgUsers
-          .filter((u) => u.role === "admin")
-          .map((u) => u.email)
-          .filter(Boolean);
-        if (adminEmails.length > 0) {
-          recipients = adminEmails;
-        }
-      }
+      const resolution = await resolveRecipients({
+        organizationId: project?.organization_id,
+        channel: "website_form",
+        legacyProjectRecipients: project?.recipients,
+      });
+      recipients = resolution.recipients;
     } catch (lookupErr) {
       console.error("[Form Submission] Recipient lookup failed:", lookupErr);
-    }
-
-    if (recipients.length === 0) {
-      recipients = [FALLBACK_RECIPIENT];
     }
 
     // ── 13. Persist submission FIRST (unflagged) — guarantees DB record before AI call ──
@@ -535,7 +520,7 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
     }
 
     // ── 15. Email (only if not flagged by AI) ──
-    if (!flagged) {
+    if (!flagged && recipients.length > 0) {
       const emailBody = buildEmailBody(sanitizedFormName, finalContents);
       const fromEmail = process.env.CONTACT_FORM_FROM || "info@getalloro.com";
 
@@ -548,6 +533,10 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
         fromName: "Alloro Sites",
         recipients,
       });
+    } else if (!flagged) {
+      console.warn(
+        `[Form Submission] No recipients resolved for project ${projectId}; saved submission without sending email.`
+      );
     }
 
     return res.json({ success: true });

@@ -10,6 +10,12 @@ export { OrganizationUserModel, IOrganizationUser, IOrganizationUserWithUser } f
 export { InvitationModel, IInvitation } from "./InvitationModel";
 export { OtpCodeModel, IOtpCode } from "./OtpCodeModel";
 export { NotificationModel, INotification } from "./NotificationModel";
+export {
+  OrganizationRecipientSettingsModel,
+  IOrganizationRecipientSetting,
+  RecipientChannel,
+  RECIPIENT_CHANNELS,
+} from "./OrganizationRecipientSettingsModel";
 export { TaskModel, ITask, TaskAdminFilters } from "./TaskModel";
 export { AgentResultModel, IAgentResult, AgentResultFilters } from "./AgentResultModel";
 export { AgentRecommendationModel, IAgentRecommendation, AgentSummary, AgentDetailFilters } from "./AgentRecommendationModel";

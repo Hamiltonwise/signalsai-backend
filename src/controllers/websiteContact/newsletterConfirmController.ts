@@ -10,12 +10,11 @@
 import { Request, Response } from "express";
 import { NewsletterSignupModel } from "../../models/website-builder/NewsletterSignupModel";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
-import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { sendEmailWebhook } from "./websiteContact-services/emailWebhookService";
 import { getSiteUrl } from "./websiteContact-services/newsletterConfirmationService";
+import { resolveRecipients } from "../../services/recipientSettingsService";
 
-const FALLBACK_RECIPIENT = "laggy80@gmail.com";
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export async function handleNewsletterConfirm(req: Request, res: Response): Promise<void> {
@@ -58,28 +57,15 @@ export async function handleNewsletterConfirm(req: Request, res: Response): Prom
   let recipients: string[] = [];
   if (project) {
     try {
-      const projectRecipients = (project as any)?.recipients;
-      if (Array.isArray(projectRecipients) && projectRecipients.length > 0) {
-        recipients = projectRecipients.filter(Boolean);
-      }
-
-      if (recipients.length === 0 && project.organization_id) {
-        const orgUsers = await OrganizationUserModel.listByOrgWithUsers(project.organization_id);
-        const adminEmails = orgUsers
-          .filter((u) => u.role === "admin")
-          .map((u) => u.email)
-          .filter(Boolean);
-        if (adminEmails.length > 0) {
-          recipients = adminEmails;
-        }
-      }
+      const resolution = await resolveRecipients({
+        organizationId: project.organization_id,
+        channel: "website_form",
+        legacyProjectRecipients: project.recipients,
+      });
+      recipients = resolution.recipients;
     } catch (err) {
       console.error("[Newsletter Confirm] Recipient lookup failed:", err);
     }
-  }
-
-  if (recipients.length === 0) {
-    recipients = [FALLBACK_RECIPIENT];
   }
 
   // Persist to form_submissions so it shows in the dashboard
@@ -116,6 +102,14 @@ export async function handleNewsletterConfirm(req: Request, res: Response): Prom
   </div>`;
 
   try {
+    if (recipients.length === 0) {
+      console.warn(
+        `[Newsletter Confirm] No recipients resolved for project ${signup.project_id}; saved subscriber without sending owner email.`
+      );
+      res.redirect(`${siteUrl}/opt-in-confirmed`);
+      return;
+    }
+
     const fromEmail = process.env.CONTACT_FORM_FROM || "info@getalloro.com";
     await sendEmailWebhook({
       cc: [],

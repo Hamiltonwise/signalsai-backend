@@ -125,6 +125,9 @@ export interface PmsMetrics {
   total_referrals: number;
   doctor_referrals: number;
   self_referrals: number;
+  production_this_month: number | null;
+  doctor_referrals_this_month: number | null;
+  total_referrals_this_month: number | null;
 }
 
 export const PmsMetricsSchema = z.object({
@@ -136,6 +139,9 @@ export const PmsMetricsSchema = z.object({
   total_referrals: z.number(),
   doctor_referrals: z.number(),
   self_referrals: z.number(),
+  production_this_month: z.number().nullable(),
+  doctor_referrals_this_month: z.number().nullable(),
+  total_referrals_this_month: z.number().nullable(),
 });
 
 // =====================================================================
