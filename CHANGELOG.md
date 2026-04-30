@@ -2,6 +2,23 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.54] - May 2026
+
+### PMSCard Current Period Fix + PMS Statistics Page
+
+The Focus dashboard PMS card was showing total production across all months ($1.97M for a 10-month practice) labeled as "production this month." Now shows the latest month's production as "current period" and renders the headline immediately while the sparkline and top sources load progressively. Same card also added to the PMS Statistics page.
+
+**Key Changes:**
+- PMSCard uses `production_this_month`, `doctor_referrals_this_month`, `total_referrals_this_month` instead of aggregate totals
+- Frontend `PmsMetrics` type updated with `_this_month` fields
+- Card renders headline from `useDashboardMetrics` immediately — sparkline/sources section shows skeleton while `usePmsKeyData` loads
+- PMSCard added to PMS Statistics page (`PMSVisualPillars`) when data is available
+
+**Commits:**
+- `frontend/src/components/dashboard/focus/PMSCard.tsx` — current period data + progressive loading
+- `frontend/src/types/dashboardMetrics.ts` — added `_this_month` PMS fields
+- `frontend/src/components/PMS/PMSVisualPillars.tsx` — render PMSCard at top of PMS Statistics page
+
 ## [0.0.53] - May 2026
 
 ### Agent Pipeline Reliability Fixes + Zombie Job Cleanup
