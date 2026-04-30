@@ -2,6 +2,23 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.49] - April 2026
+
+### PMSUploadModal Retirement & 12-Month Aggregator Cap
+
+Retired the dead `PMSUploadModal` from Dashboard (no trigger ever opened it) — `PMSManualEntryModal` now handles all PMS upload paths with multi-file drag-and-drop and column mapping. Added a 12-month sliding window to `aggregatePmsData()` so sources, totals, and trends are computed from the most recent 12 months only, preventing unbounded payload growth for the RE and Summary agents.
+
+**Key Changes:**
+- Removed `PMSUploadModal` import, state, and render from `Dashboard.tsx`
+- Added `@deprecated` comment to `PMSUploadModal.tsx` (file preserved for git history)
+- `aggregatePmsData()` now sorts all months, slices to last 12, then computes source aggregation and trends from the capped window
+- Data quality flag added when months are capped: "Capped to most recent 12 months of data (N months total available)"
+
+**Commits:**
+- `frontend/src/pages/Dashboard.tsx` — removed PMSUploadModal dead code
+- `frontend/src/components/PMS/PMSUploadModal.tsx` — deprecation notice
+- `src/utils/pms/pmsAggregator.ts` — 12-month sliding window before source/trend computation
+
 ## [0.0.48] - April 2026
 
 ### Fix: Import from Identity Checkbox Bug
