@@ -58,13 +58,18 @@ function log(msg: string, data?: Record<string, unknown>): void {
 
 export type ImportPostType = "doctor" | "service" | "location";
 
+export interface ImportEntryObject {
+  source_url: string;
+  name: string;
+}
+
 export interface ImportFromIdentityArgs {
   postType: ImportPostType;
   /**
-   * For doctor/service: list of `source_url` values (one URL per entry).
-   * For location: list of `place_id` values.
+   * For location: list of `place_id` strings.
+   * For doctor/service: `{ source_url, name }` objects (or legacy bare-URL strings).
    */
-  entries: string[];
+  entries: Array<string | ImportEntryObject>;
   overwrite?: boolean;
 }
 
@@ -400,32 +405,39 @@ async function importDoctorOrServiceEntry(args: {
   postTypeId: string;
   postType: ImportPostType;
   entryUrl: string;
+  entryName: string | null;
+  compositeKey: string;
   identity: any;
   overwrite: boolean;
+  scrapeCache: Map<string, Awaited<ReturnType<typeof scrapeUrl>> | null>;
 }): Promise<ImportEntryResult> {
-  const { projectId, postTypeId, postType, entryUrl, identity, overwrite } = args;
+  const {
+    projectId, postTypeId, postType, entryUrl, entryName, compositeKey,
+    identity, overwrite, scrapeCache,
+  } = args;
 
-  // Lookup the source identity entry so we can use its name/blurb as a fallback
-  // if scraping fails to find a good title. A missing identity entry is fine —
-  // import is keyed on the URL, not the identity row.
+  const dedupKey = compositeKey;
+
   const list = postType === "doctor"
     ? identity?.content_essentials?.doctors
     : identity?.content_essentials?.services;
   const identityEntry = Array.isArray(list)
-    ? list.find((e: any) => e?.source_url === entryUrl)
+    ? entryName
+      ? list.find((e: any) => e?.name === entryName)
+      : list.find((e: any) => e?.source_url === entryUrl)
     : null;
 
-  // Dedup check
+  // Dedup check — match on composite key stored in source_url
   const existing = await db(POSTS_TABLE)
     .where({
       project_id: projectId,
       post_type_id: postTypeId,
-      source_url: entryUrl,
+      source_url: dedupKey,
     })
     .first();
   if (existing && !overwrite) {
     return {
-      key: entryUrl,
+      key: dedupKey,
       status: "skipped",
       title: existing.title,
       post_id: existing.id,
@@ -433,39 +445,42 @@ async function importDoctorOrServiceEntry(args: {
     };
   }
 
-  // Try the scrape strategy stack: fetch → browser → screenshot
-  const strategies: ScrapeStrategy[] = ["fetch", "browser", "screenshot"];
+  // Scrape with cache — reuse result when multiple entries share a URL
   let scraped: Awaited<ReturnType<typeof scrapeUrl>> | null = null;
   let used_fallback = false;
   let lastError: string | null = null;
 
-  for (let i = 0; i < strategies.length; i++) {
-    const strat = strategies[i];
-    try {
-      const r = await scrapeUrl(entryUrl, strat);
-      if (!r.was_blocked && Object.keys(r.pages).length > 0) {
-        scraped = r;
-        if (strat !== "fetch") used_fallback = true;
-        break;
+  if (scrapeCache.has(entryUrl)) {
+    scraped = scrapeCache.get(entryUrl) ?? null;
+    used_fallback = scraped ? scraped.strategy_used !== "fetch" : false;
+  } else {
+    const strategies: ScrapeStrategy[] = ["fetch", "browser", "screenshot"];
+    for (let i = 0; i < strategies.length; i++) {
+      const strat = strategies[i];
+      try {
+        const r = await scrapeUrl(entryUrl, strat);
+        if (!r.was_blocked && Object.keys(r.pages).length > 0) {
+          scraped = r;
+          if (strat !== "fetch") used_fallback = true;
+          break;
+        }
+        lastError = `${strat} returned empty`;
+      } catch (err: any) {
+        lastError = err?.message || String(err);
       }
-      lastError = `${strat} returned empty`;
-    } catch (err: any) {
-      lastError = err?.message || String(err);
     }
+    scrapeCache.set(entryUrl, scraped);
   }
 
   if (!scraped) {
     return {
-      key: entryUrl,
+      key: dedupKey,
       status: "failed",
       title: identityEntry?.name,
       error: `Scrape failed for all strategies: ${lastError || "unknown"}`,
     };
   }
 
-  // Parse main content. The screenshot strategy returns plaintext (already
-  // extracted by Claude) — for that path, treat the page as the body and skip
-  // cheerio.
   let extractedText = "";
   let extractedImage: string | null = null;
   let extractedTitle: string | null = null;
@@ -477,7 +492,7 @@ async function importDoctorOrServiceEntry(args: {
     const html = Object.values(scraped.pages)[0] || "";
     if (!html.trim()) {
       return {
-        key: entryUrl,
+        key: dedupKey,
         status: "failed",
         title: identityEntry?.name,
         error: "Scrape returned an empty document.",
@@ -490,8 +505,6 @@ async function importDoctorOrServiceEntry(args: {
       extractedImage = parsed.image_url || scraped.images[0] || null;
       extractedTitle = parsed.title;
     } catch (err: any) {
-      // cheerio failed — fall back to the raw scrape image list and let the
-      // identity entry name carry the post.
       log("cheerio parse failed, using raw scrape", {
         url: entryUrl,
         error: err?.message,
@@ -501,6 +514,7 @@ async function importDoctorOrServiceEntry(args: {
   }
 
   const title =
+    entryName?.trim() ||
     identityEntry?.name?.trim() ||
     extractedTitle?.trim() ||
     `Imported from ${entryUrl}`;
@@ -511,7 +525,7 @@ async function importDoctorOrServiceEntry(args: {
   }
 
   if (existing && overwrite) {
-    const slug = existing.slug; // keep existing slug to preserve URLs
+    const slug = existing.slug;
     await db(POSTS_TABLE)
       .where("id", existing.id)
       .update({
@@ -522,11 +536,11 @@ async function importDoctorOrServiceEntry(args: {
           ? clip(identityEntry.short_blurb, 1000)
           : null,
         featured_image: featuredImageUrl ?? existing.featured_image,
-        source_url: entryUrl,
+        source_url: dedupKey,
         updated_at: db.fn.now(),
       });
     return {
-      key: entryUrl,
+      key: dedupKey,
       status: "updated",
       post_id: existing.id,
       title,
@@ -534,7 +548,7 @@ async function importDoctorOrServiceEntry(args: {
     };
   }
 
-  const desiredSlug = slugify(title) || `post-${safeHash(entryUrl)}`;
+  const desiredSlug = slugify(title) || `post-${safeHash(dedupKey)}`;
   const slug = await uniqueSlug(projectId, postTypeId, desiredSlug);
 
   try {
@@ -549,20 +563,19 @@ async function importDoctorOrServiceEntry(args: {
           ? clip(identityEntry.short_blurb, 1000)
           : null,
         featured_image: featuredImageUrl,
-        source_url: entryUrl,
+        source_url: dedupKey,
         status: "draft",
         custom_fields: JSON.stringify({}),
       })
       .returning("*");
     return {
-      key: entryUrl,
+      key: dedupKey,
       status: "created",
       post_id: post.id,
       title,
       used_fallback,
     };
   } catch (err: any) {
-    // Race with another importer caught the unique index — treat as skipped.
     if (
       err?.code === "23505" ||
       String(err?.message || "").includes("idx_posts_project_type_source")
@@ -571,11 +584,11 @@ async function importDoctorOrServiceEntry(args: {
         .where({
           project_id: projectId,
           post_type_id: postTypeId,
-          source_url: entryUrl,
+          source_url: dedupKey,
         })
         .first();
       return {
-        key: entryUrl,
+        key: dedupKey,
         status: "skipped",
         post_id: collided?.id,
         title: collided?.title,
@@ -584,7 +597,7 @@ async function importDoctorOrServiceEntry(args: {
       };
     }
     return {
-      key: entryUrl,
+      key: dedupKey,
       status: "failed",
       title,
       error: err?.message || String(err),
@@ -777,21 +790,41 @@ export async function importFromIdentity(
     );
   }
 
-  // De-dupe entry keys defensively — admins occasionally double-tick.
-  const uniqueEntries = Array.from(new Set(entries.filter((e) => !!e)));
-  const total = uniqueEntries.length;
+  // Normalize entries: objects carry { source_url, name }, strings are bare keys.
+  type NormalizedEntry = { key: string; sourceUrl: string; entryName: string | null };
+  const seen = new Set<string>();
+  const normalizedEntries: NormalizedEntry[] = [];
+  for (const raw of entries) {
+    if (!raw) continue;
+    let ne: NormalizedEntry;
+    if (typeof raw === "object" && raw.source_url) {
+      const compositeKey = `${raw.source_url}#${slugify(raw.name || "")}`;
+      ne = { key: compositeKey, sourceUrl: raw.source_url, entryName: raw.name || null };
+    } else if (typeof raw === "string") {
+      ne = { key: raw, sourceUrl: raw, entryName: null };
+    } else {
+      continue;
+    }
+    if (seen.has(ne.key)) continue;
+    seen.add(ne.key);
+    normalizedEntries.push(ne);
+  }
 
+  const total = normalizedEntries.length;
   const results: ImportEntryResult[] = [];
   let completed = 0;
 
-  for (const key of uniqueEntries) {
+  // Scrape cache: avoids re-fetching the same URL when multiple entries share it.
+  const scrapeCache = new Map<string, Awaited<ReturnType<typeof scrapeUrl>> | null>();
+
+  for (const ne of normalizedEntries) {
     let result: ImportEntryResult;
     try {
       if (postType === "location") {
         result = await importLocationEntry({
           projectId,
           postTypeId,
-          placeId: key,
+          placeId: ne.sourceUrl,
           identity,
           overwrite,
         });
@@ -800,15 +833,18 @@ export async function importFromIdentity(
           projectId,
           postTypeId,
           postType,
-          entryUrl: key,
+          entryUrl: ne.sourceUrl,
+          entryName: ne.entryName,
+          compositeKey: ne.key,
           identity,
           overwrite,
+          scrapeCache,
         });
       }
     } catch (err: any) {
-      log("Entry handler threw", { key, error: err?.message });
+      log("Entry handler threw", { key: ne.key, error: err?.message });
       result = {
-        key,
+        key: ne.key,
         status: "failed",
         error: err?.message || String(err),
       };

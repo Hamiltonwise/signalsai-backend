@@ -333,11 +333,7 @@ export const updateWebsite = async (
 
 export interface StartPipelineRequest {
   projectId: string;
-  /**
-   * Optional when the project already has cached data (project_identity or
-   * legacy step_* columns). Required only when the project has nothing cached
-   * and the backend needs to run an Apify scrape.
-   */
+  /** Legacy input accepted by older callers. Generation now requires project_identity. */
   placeId?: string;
   templateId?: string;
   templatePageId?: string;
@@ -416,9 +412,7 @@ export const fetchLayoutsStatus = async (
   return response.json();
 };
 
-/**
- * Trigger the N8N pipeline to generate a website page
- */
+/** Enqueue backend page generation for a project with ready identity. */
 export const startPipeline = async (
   data: StartPipelineRequest,
 ): Promise<{ success: boolean; message: string }> => {
@@ -709,7 +703,8 @@ export interface DynamicSlotDef {
 
 export interface CreateAllFromTemplateRequest {
   templateId: string;
-  placeId: string;
+  /** Legacy input accepted by older callers. Generation now requires project_identity. */
+  placeId?: string;
   pages: Array<{
     templatePageId: string;
     path: string;
@@ -2170,7 +2165,7 @@ export const startPostImport = async (
   projectId: string,
   args: {
     postType: ImportPostType;
-    entries: string[];
+    entries: Array<string | { source_url: string; name: string }>;
     overwrite?: boolean;
   },
 ): Promise<{ success: boolean; data: { jobId: string; total: number } }> => {

@@ -19,6 +19,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { db } from "../../../database/connection";
+import { ProjectIdentityModel } from "../../../models/website-builder/ProjectIdentityModel";
 import { runAgent, type CostContext } from "../../../agents/service.llm-runner";
 import { loadPrompt } from "../../../agents/service.prompt-loader";
 import { uploadToS3 } from "../../../utils/core/s3";
@@ -146,7 +147,7 @@ export async function runIdentityWarmup(
   // Set status running (column added by Plan A T1? Actually no — warmup_status
   // would be on project_identity itself. For polling, we track status inline
   // in project_identity.meta. Read current first.)
-  await updateWarmupStatus(projectId, "running");
+  await ProjectIdentityModel.setWarmupStatus(projectId, "running");
 
   try {
     checkCancel(signal);
@@ -471,19 +472,16 @@ export async function runIdentityWarmup(
     };
 
     // Write to project + mirror colors/logo to legacy columns
-    await db(PROJECTS_TABLE)
-      .where("id", projectId)
-      .update({
-        project_identity: JSON.stringify(identity),
-        primary_color: brand.primary_color,
-        accent_color: brand.accent_color,
-        updated_at: db.fn.now(),
-      });
+    await ProjectIdentityModel.updateByProjectId(
+      projectId,
+      identity,
+      { mirrorBrand: true },
+    );
 
     log("Warmup complete", { projectId });
   } catch (err: any) {
     log("Warmup failed", { projectId, error: err.message });
-    await updateWarmupStatus(projectId, "failed");
+    await ProjectIdentityModel.setWarmupStatus(projectId, "failed");
     throw err;
   }
 }
@@ -491,52 +489,6 @@ export async function runIdentityWarmup(
 // ---------------------------------------------------------------------------
 // HELPERS
 // ---------------------------------------------------------------------------
-
-async function updateWarmupStatus(
-  projectId: string,
-  status: "queued" | "running" | "ready" | "failed",
-): Promise<void> {
-  // Stored on project_identity.meta.warmup_status — update or create minimal
-  // identity shell if no identity exists yet.
-  const project = await db(PROJECTS_TABLE)
-    .where("id", projectId)
-    .select("project_identity")
-    .first();
-
-  const existing = safeJsonParse(project?.project_identity);
-
-  if (existing) {
-    existing.meta = { ...(existing.meta || {}), warmup_status: status };
-    existing.last_updated_at = new Date().toISOString();
-    await db(PROJECTS_TABLE).where("id", projectId).update({
-      project_identity: JSON.stringify(existing),
-      updated_at: db.fn.now(),
-    });
-  } else {
-    const shell = {
-      version: 1,
-      meta: { warmup_status: status },
-      last_updated_at: new Date().toISOString(),
-    };
-    await db(PROJECTS_TABLE).where("id", projectId).update({
-      project_identity: JSON.stringify(shell),
-      updated_at: db.fn.now(),
-    });
-  }
-}
-
-function safeJsonParse(value: unknown): any {
-  if (!value) return null;
-  if (typeof value === "object") return value;
-  if (typeof value === "string") {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
 
 function capString(s: string, max: number = MAX_SOURCE_CHARS): string {
   if (!s) return "";

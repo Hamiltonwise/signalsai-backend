@@ -21,6 +21,7 @@ import { Job } from "bullmq";
 import {
   importFromIdentity,
   type ImportPostType,
+  type ImportEntryObject,
   type ImportEntryResult,
   type ImportResultSummary,
 } from "../../controllers/admin-websites/feature-services/service.post-importer";
@@ -30,7 +31,7 @@ const LOG_PREFIX = "[WB-POST-IMPORT]";
 export interface PostImportJobData {
   projectId: string;
   postType: ImportPostType;
-  entries: string[];
+  entries: Array<string | ImportEntryObject>;
   overwrite?: boolean;
 }
 

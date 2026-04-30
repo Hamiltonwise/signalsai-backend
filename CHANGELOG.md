@@ -2,6 +2,45 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.48] - April 2026
+
+### Fix: Import from Identity Checkbox Bug
+
+Fixed a bug where selecting one doctor/service checkbox in the Import from Identity modal would visually check all entries — but only count as 1 selected — when multiple entries shared the same source URL (e.g. all doctors listed on a single /our-team page). Each entry now gets a unique composite key (`url#name-slug`) throughout the full pipeline so checkboxes work independently, each creates a separate draft post, and shared URLs are scraped only once.
+
+**Key Changes:**
+- Frontend modal uses composite key (`source_url#slugified-name`) per entry instead of bare URL
+- API transport sends `{ source_url, name }` objects for doctor/service entries
+- Backend normalizes entries, builds composite dedup keys, and caches scrape results per URL
+- Retry flow resolves entries back to `{ source_url, name }` objects for correct identity lookup
+
+**Commits:**
+- `frontend/src/components/Admin/ImportFromIdentityModal.tsx` — composite keys, entry resolution, external link fix
+- `frontend/src/api/websites.ts` — entries type widened
+- `src/controllers/admin-websites/feature-services/service.post-importer.ts` — entry normalizer, scrape cache, name-based identity lookup
+- `src/workers/processors/postImporter.processor.ts` — job data type updated
+
+## [0.0.47] - April 2026
+
+### Project Identity Model + Identity-First Website Generation
+
+Centralized website-builder identity parsing/persistence and made page/layout generation depend on `project_identity` as the explicit source-of-truth contract. This removes redundant scrape fallback behavior from active generation paths while preserving the existing bulk endpoint for external compatibility.
+
+**Key Changes:**
+- Added `ProjectIdentityModel` plus shared identity helpers for parsing, saving, warmup status, brand-column mirroring, and generation readiness checks
+- Migrated identity endpoints, identity warmup, slot prefill, and slot generation away from local JSON parsing/update helpers
+- Updated single-page generation start to block with `IDENTITY_NOT_READY` instead of falling back to `project-scrape`
+- Retained bulk `create-all-from-template`, but made it identity-first and enqueue `page-generate` jobs directly
+- Removed the page-generation legacy shim that built identity from `step_*` scrape columns
+- Aligned layout generation with the same identity model/readiness path
+
+**Commits:**
+- `src/models/website-builder/ProjectIdentityModel.ts` — model-owned `project_identity` reads, writes, warmup status, patching, and brand mirroring
+- `src/controllers/admin-websites/feature-utils/util.project-identity.ts` — shared identity parse/save/readiness helpers
+- `src/controllers/admin-websites/AdminWebsitesController.ts` — identity endpoints and page creation flows now use the identity model and readiness checks
+- `src/controllers/admin-websites/feature-services/service.*` — warmup, slots, layout, and page generation moved to identity-first behavior
+- `frontend/src/api/websites.ts` — API contract updated for identity-first generation
+
 ## [0.0.46] - April 2026
 
 ### Fix: RE Agent Token Truncation + Agent Pipeline Observability

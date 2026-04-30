@@ -71,6 +71,14 @@ export interface ImportFromIdentityModalProps {
 
 const POLL_INTERVAL_MS = 1500;
 
+function feSlugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
 function titleCase(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -117,6 +125,8 @@ export default function ImportFromIdentityModal({
   // map, and the Set lookup against `existingSourceUrls`.
   const allEntries: Array<{
     key: string;
+    sourceUrl: string;
+    name: string;
     title: string;
     subtitle: string;
     metaPills: Array<{ label: string; tone: "default" | "primary" | "warn" }>;
@@ -139,6 +149,8 @@ export default function ImportFromIdentityModal({
         if (loc.stale) pills.push({ label: "Stale", tone: "warn" });
         return {
           key: loc.place_id,
+          sourceUrl: loc.place_id,
+          name: loc.name || "Untitled location",
           title: loc.name || "Untitled location",
           subtitle: loc.address || "No address on file",
           metaPills: pills,
@@ -148,26 +160,30 @@ export default function ImportFromIdentityModal({
       });
     }
 
-    // doctor / service
+    // doctor / service — composite key: source_url#slugified-name
     const list: ProjectIdentityListEntry[] =
       postType === "doctor"
         ? identity.content_essentials?.doctors || []
         : identity.content_essentials?.services || [];
     return list
-      .filter((e) => e?.source_url) // can't import an entry with no URL
+      .filter((e) => e?.source_url)
       .map((e) => {
+        const entryName = e.name || "(unnamed)";
+        const compositeKey = `${e.source_url}#${feSlugify(entryName)}`;
         const pills: Array<{
           label: string;
           tone: "default" | "primary" | "warn";
         }> = [];
         if (e.stale) pills.push({ label: "Stale", tone: "warn" });
         return {
-          key: e.source_url as string,
-          title: e.name || "(unnamed)",
+          key: compositeKey,
+          sourceUrl: e.source_url as string,
+          name: entryName,
+          title: entryName,
           subtitle: e.short_blurb || e.source_url || "",
           metaPills: pills,
           last_synced_at: e.last_synced_at,
-          alreadyImported: existingSourceUrls.has(e.source_url as string),
+          alreadyImported: existingSourceUrls.has(compositeKey),
         };
       });
   }, [identity, postType, existingSourceUrls]);
@@ -226,14 +242,24 @@ export default function ImportFromIdentityModal({
     // bins have selections: one with overwrite=false (fresh), one with
     // overwrite=true (overwrite bin). Empirically simplest, no backend change.
     try {
-      // Prefer the larger / fresh bin to render progress against, then merge.
+      const isLocation = postType === "location";
+      const entryMap = new Map(allEntries.map((e) => [e.key, e]));
+      const resolveEntries = (keys: Set<string>) =>
+        Array.from(keys).map((k) => {
+          if (isLocation) return k;
+          const found = entryMap.get(k);
+          return found
+            ? { source_url: found.sourceUrl, name: found.name }
+            : k;
+        });
+
       let primaryJobId: string | null = null;
       let secondaryJobId: string | null = null;
 
       if (selectedFresh.size > 0) {
         const freshRes = await startPostImport(projectId, {
           postType,
-          entries: Array.from(selectedFresh),
+          entries: resolveEntries(selectedFresh),
           overwrite: false,
         });
         primaryJobId = freshRes.data.jobId;
@@ -241,7 +267,7 @@ export default function ImportFromIdentityModal({
       if (overwriteSelected.size > 0) {
         const overwriteRes = await startPostImport(projectId, {
           postType,
-          entries: Array.from(overwriteSelected),
+          entries: resolveEntries(overwriteSelected),
           overwrite: true,
         });
         if (!primaryJobId) primaryJobId = overwriteRes.data.jobId;
@@ -324,13 +350,17 @@ export default function ImportFromIdentityModal({
     }
   };
 
-  // Single-entry retry (just enqueues another job for that one key).
   const retryEntry = async (entry: PostImportEntryResult) => {
     setRetrying((m) => ({ ...m, [entry.key]: true }));
     try {
+      const found = allEntries.find((e) => e.key === entry.key);
+      const retryEntries: Array<string | { source_url: string; name: string }> =
+        isLocation || !found
+          ? [entry.key]
+          : [{ source_url: found.sourceUrl, name: found.name }];
       const res = await startPostImport(projectId, {
         postType,
-        entries: [entry.key],
+        entries: retryEntries,
         overwrite: false,
       });
       // Poll briefly until this single-entry job lands, then merge into summary.
@@ -480,9 +510,9 @@ export default function ImportFromIdentityModal({
                               Last synced{" "}
                               {formatRelativeTime(entry.last_synced_at)}
                             </span>
-                            {!isLocation && entry.key && (
+                            {!isLocation && entry.sourceUrl && (
                               <a
-                                href={entry.key}
+                                href={entry.sourceUrl}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="inline-flex items-center gap-0.5 hover:text-gray-600"
