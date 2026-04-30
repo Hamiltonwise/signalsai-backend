@@ -2,6 +2,32 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.52] - May 2026
+
+### Unified Recipient Settings
+
+Added canonical organization-level recipient settings for website form emails and monthly agent notification emails. Admins can now manage Website Form Recipients and Agent Notification Recipients from Organization Settings, while the existing Website Detail recipient editor remains a shortcut to the same website form recipient source.
+
+**Key Changes:**
+- Added `organization_recipient_settings` with `website_form` and `agent_notifications` channels
+- Backfilled website form recipients from existing website projects during migration
+- Routed website submissions and confirmed newsletter owner notifications through the canonical `website_form` resolver
+- Routed monthly agent emails through `agent_notifications` before deterministic fallback
+- Added admin organization recipient settings API and Organization Settings UI
+- Preserved legacy website project recipient mirroring for compatibility
+
+**Commits:**
+- `src/database/migrations/20260501000000_create_organization_recipient_settings.ts` — recipient settings table, channel constraint, index, and website form backfill
+- `src/models/OrganizationRecipientSettingsModel.ts` — model for channel recipient lookup and upsert
+- `src/services/recipientSettingsService.ts` — normalization, validation, explicit/fallback resolution, and legacy mirror update
+- `src/controllers/websiteContact/formSubmissionController.ts` — website form email routing now uses `website_form`
+- `src/controllers/websiteContact/newsletterConfirmController.ts` — confirmed newsletter subscriber owner emails now use `website_form`
+- `src/utils/core/notificationHelper.ts` — agent notification emails now use `agent_notifications`
+- `src/controllers/admin-websites/AdminWebsitesController.ts` and `src/controllers/user-website/UserWebsiteController.ts` — website recipient endpoints read/write canonical settings
+- `src/controllers/admin-organizations/AdminOrganizationsController.ts` and `src/routes/admin/organizations.ts` — admin recipient settings read/update endpoints
+- `frontend/src/api/admin-organizations.ts`, `frontend/src/hooks/queries/useAdminQueries.ts`, and `frontend/src/lib/queryClient.ts` — typed client API/query plumbing
+- `frontend/src/components/Admin/OrgRecipientSettingsSection.tsx` and `frontend/src/components/Admin/OrgSettingsSection.tsx` — unified admin recipient settings UI
+
 ## [0.0.51] - April 2026
 
 ### Month-Scoped Review Verbiage + Domain Summary Strips
