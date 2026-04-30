@@ -140,6 +140,7 @@ function extractReviewSummary(gbpData: any): {
     createdAt: string | null;
     hasReply: boolean;
     replyDate: string | null;
+    reviewerName: string | null;
   }>;
 } {
   if (!gbpData || !Array.isArray(gbpData.locations)) {
@@ -153,6 +154,7 @@ function extractReviewSummary(gbpData: any): {
     createdAt: string | null;
     hasReply: boolean;
     replyDate: string | null;
+    reviewerName: string | null;
   }> = [];
 
   for (const loc of gbpData.locations) {
@@ -171,6 +173,7 @@ function extractReviewSummary(gbpData: any): {
           createdAt: r.createdAt ?? null,
           hasReply: Boolean(r.hasReply),
           replyDate: r.replyDate ?? null,
+          reviewerName: r.reviewerName ?? null,
         });
       }
     }
@@ -197,10 +200,16 @@ function buildReviewsMetrics(
   const now = new Date();
   let unanswered = 0;
   let oldestUnansweredHours: number | null = null;
+  const unansweredNames: string[] = [];
+  const windowStars: number[] = [];
 
   for (const r of reviewDetails) {
+    if (typeof r.stars === "number") windowStars.push(r.stars);
     if (r.hasReply) continue;
     unanswered += 1;
+    if (r.reviewerName && unansweredNames.length < 5) {
+      unansweredNames.push(r.reviewerName);
+    }
     const created = r.createdAt ? safeIso(r.createdAt) : null;
     if (created) {
       const ageH = hoursBetween(now, created);
@@ -215,9 +224,15 @@ function buildReviewsMetrics(
       ? Number((currentRating - reviewsPriorMonth.averageRating).toFixed(2))
       : null;
 
+  const avgRatingThisMonth = windowStars.length
+    ? Number((windowStars.reduce((a, b) => a + b, 0) / windowStars.length).toFixed(2))
+    : null;
+
   return {
     oldest_unanswered_hours: oldestUnansweredHours,
     unanswered_count: unanswered,
+    unanswered_reviewer_names: unansweredNames,
+    avg_rating_this_month: avgRatingThisMonth,
     current_rating: currentRating,
     rating_change_30d: ratingChange30d,
     reviews_this_month: reviewsThisMonth,

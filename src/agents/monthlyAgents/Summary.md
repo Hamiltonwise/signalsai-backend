@@ -78,6 +78,41 @@ dashboard_metrics dictionary. Specifically:
   or omit the action.
 - Dollar figures, percentages, ranks, counts: all must come from the inputs.
 
+REVIEW VERBIAGE RULES — STRICT
+The reviews.unanswered_count and reviews.reviews_this_month fields reflect
+ONLY reviews created during the observed period window — they are NOT a
+total backlog count. You MUST:
+- Always qualify the unanswered count with the month name derived from
+  observed_period.start_date (e.g. "26 March reviews without a reply",
+  never "26 unanswered reviews").
+- Name up to 3 reviewers from reviews.unanswered_reviewer_names with
+  "and N more" for the remainder. Example: "megan barbee, Bryan Smoot,
+  brooklyn smoot, and 23 more are waiting for a reply."
+- State sentiment for the period using reviews.avg_rating_this_month:
+  - 4.8-5.0 → "all 5-star" or "overwhelmingly positive"
+  - 4.0-4.7 → "mostly positive (X.X avg)"
+  - below 4.0 → "mixed — needs attention (X.X avg)"
+  Include this in the rationale for any review-domain action.
+- NEVER imply the count represents a total historical backlog.
+
+DOMAIN SUMMARIES
+In addition to top_actions, produce a domain_summaries array — one compact
+snapshot per domain where you have substantive data. These render as
+at-a-glance strips on the dashboard.
+
+Rules:
+- Allowed domains: review, gbp, ranking, referral. Include form-submission
+  or pms-data-quality only if something notable warrants attention.
+- Only emit a summary for a domain if the inputs contain real data for it.
+  If a domain has no data or all metrics are null, omit it entirely.
+- heading: 2-4 word noun phrase (e.g. "Reviews Unanswered",
+  "Profile Dormant", "Ranking Stable", "Referrals Shifting"). No verbs.
+- summary: 1 sentence, <=120 chars. The single most important signal.
+- detail: 2-3 sentences with specific findings. Name names, cite numbers.
+  Grounding rules apply — every number must trace to an input field.
+- domain_summaries are independent of top_actions — a domain can have a
+  summary strip even if no top_action targets that domain, and vice versa.
+
 SINGLE-MONTH RULE
 If pms.monthly_rollup contains only one month, set urgency conservatively
 (no "high" purely on a single-month signal), do not fabricate trends or
@@ -189,6 +224,20 @@ Respond with ONE valid JSON object matching SummaryV2OutputSchema:
       "due_at": "2026-05-12"
     }
   ],
+  "domain_summaries": [
+    {
+      "domain": "review",
+      "heading": "Reviews Unanswered",
+      "summary": "26 April reviews without a reply — all 5-star, sentiment is excellent.",
+      "detail": "megan barbee, Bryan Smoot, brooklyn smoot, and 23 more posted 5-star reviews this month and have not received a reply. Average rating for the period is 5.0. Replying promptly signals active management to Google and prospective patients."
+    },
+    {
+      "domain": "gbp",
+      "heading": "Profile Dormant",
+      "summary": "Zero posts in the last quarter — profile activity has stalled.",
+      "detail": "No Google Business Profile posts detected in 90+ days. Regular posting keeps the profile fresh in local search results and gives patients a reason to engage. Even one post per week would reactivate the signal."
+    }
+  ],
   "data_quality_flags": ["Single month of data — no trend comparison possible."],
   "confidence": 0.78,
   "observed_period": { "start_date": "2026-04-01", "end_date": "2026-04-30" }
@@ -199,6 +248,7 @@ every supporting_metric to the dashboard_metrics dictionary at its
 source_field. Preserve specialist wording when passing through RE actions.
 Consolidate cross-source signals about the same entity into one action.
 Describe outcomes concretely without predicting magnitude. Surface upstream
-data quality flags verbatim.
+data quality flags verbatim. Produce domain_summaries for each domain
+with substantive data.
 
 CRITICAL: Your entire response must be a single valid JSON object. No markdown fences. No explanation. No text outside the JSON.

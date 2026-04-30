@@ -17,6 +17,19 @@ export interface TopActionSupportingMetric {
   source_field: string;
 }
 
+export interface DomainSummary {
+  domain:
+    | "review"
+    | "gbp"
+    | "ranking"
+    | "form-submission"
+    | "pms-data-quality"
+    | "referral";
+  heading: string;
+  summary: string;
+  detail: string;
+}
+
 export interface TopActionCtaButton {
   label: string;
   action_url: string;
@@ -54,6 +67,7 @@ export interface TopAction {
 export interface ResolvedTopAction extends TopAction {
   taskId: number;
   dueDate?: string;
+  domain_summaries?: DomainSummary[];
 }
 
 /**
@@ -94,11 +108,18 @@ function parseTopAction(task: ActionItem): ResolvedTopAction | null {
     return null;
   }
 
-  return {
+  const parsed: ResolvedTopAction = {
     ...(m as TopAction),
     taskId: task.id,
     dueDate: task.due_date,
   };
+
+  const ds = (raw as Record<string, unknown>).domain_summaries;
+  if (Array.isArray(ds) && ds.length > 0) {
+    parsed.domain_summaries = ds as DomainSummary[];
+  }
+
+  return parsed;
 }
 
 interface UseTopActionResult {

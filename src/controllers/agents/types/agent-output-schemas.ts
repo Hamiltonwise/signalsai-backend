@@ -385,9 +385,24 @@ export const TopActionSchema = z.object({
   due_at: z.string().optional(),
 });
 
+export const DomainSummarySchema = z.object({
+  domain: z.enum([
+    "review",
+    "gbp",
+    "ranking",
+    "form-submission",
+    "pms-data-quality",
+    "referral",
+  ]),
+  heading: z.string().min(1).max(30),
+  summary: z.string().min(1).max(150),
+  detail: z.string().min(1).max(500),
+});
+
 export const SummaryV2OutputSchema = z
   .object({
     top_actions: z.array(TopActionSchema).min(3).max(5),
+    domain_summaries: z.array(DomainSummarySchema).max(6).optional(),
     data_quality_flags: z.array(z.string()).optional(),
     confidence: z.number().min(0).max(1).optional(),
     observed_period: z
@@ -401,4 +416,5 @@ export const SummaryV2OutputSchema = z
 
 export type SupportingMetric = z.infer<typeof SupportingMetricSchema>;
 export type TopAction = z.infer<typeof TopActionSchema>;
+export type DomainSummary = z.infer<typeof DomainSummarySchema>;
 export type SummaryV2Output = z.infer<typeof SummaryV2OutputSchema>;

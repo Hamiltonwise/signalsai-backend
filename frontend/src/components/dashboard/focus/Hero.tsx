@@ -1,5 +1,5 @@
-import React from "react";
-import { AlertCircle, RotateCw } from "lucide-react";
+import React, { useState } from "react";
+import { AlertCircle, RotateCw, ChevronDown } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLocationContext } from "../../../contexts/locationContext";
 import {
@@ -7,6 +7,7 @@ import {
   type ResolvedTopAction,
   type TopAction,
   type TopActionSupportingMetric,
+  type DomainSummary,
 } from "../../../hooks/queries/useTopAction";
 import HighlightedText from "./HighlightedText";
 import { getDomainIcon } from "./icons";
@@ -257,6 +258,66 @@ const HeroError: React.FC<{ message: string; onRetry: () => void }> = ({
 );
 
 // =====================================================================
+// Domain Strips
+// =====================================================================
+
+const DomainStripRow: React.FC<{ ds: DomainSummary }> = ({ ds }) => {
+  const [open, setOpen] = useState(false);
+  const { Comp, cls } = getDomainIcon(ds.domain);
+
+  return (
+    <button
+      type="button"
+      onClick={() => setOpen((v) => !v)}
+      className="w-full text-left"
+    >
+      <div className="flex items-center gap-3 py-2.5">
+        <span
+          className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md ${cls}`}
+          aria-hidden="true"
+        >
+          <Comp size={12} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-[#F5F1EA]">
+            {ds.heading}
+          </span>
+          <span className="ml-2 text-[12px] text-[#8E8579]">
+            {ds.summary}
+          </span>
+        </span>
+        <ChevronDown
+          size={13}
+          className={`shrink-0 text-[#8E8579] transition-transform duration-150 ${
+            open ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        />
+      </div>
+      {open && (
+        <p className="pb-2.5 pl-[38px] text-[12px] leading-[1.6] text-[#C5BEB1]">
+          {ds.detail}
+        </p>
+      )}
+    </button>
+  );
+};
+
+const DomainStrips: React.FC<{ summaries?: DomainSummary[] }> = ({
+  summaries,
+}) => {
+  if (!summaries || summaries.length === 0) return null;
+
+  return (
+    <div className="mt-4 divide-y divide-white/10 rounded-lg border border-white/10 bg-white/[0.03] px-4">
+      {summaries.map((ds) => (
+        <DomainStripRow key={ds.domain} ds={ds} />
+      ))}
+    </div>
+  );
+};
+
+// =====================================================================
 // Main render
 // =====================================================================
 
@@ -303,12 +364,15 @@ const HeroBody: React.FC<HeroBodyProps> = ({ topAction }) => {
           </h1>
 
           {/* Rationale */}
-          <p className="mb-7 max-w-[580px] text-[14.5px] leading-[1.65] text-[#C5BEB1]">
+          <p className="mb-5 max-w-[580px] text-[14.5px] leading-[1.65] text-[#C5BEB1]">
             <HighlightedText
               text={topAction.rationale}
               highlights={topAction.highlights}
             />
           </p>
+
+          {/* Domain summary strips */}
+          <DomainStrips summaries={topAction.domain_summaries} />
         </div>
 
         {/* RIGHT — Why panel */}
