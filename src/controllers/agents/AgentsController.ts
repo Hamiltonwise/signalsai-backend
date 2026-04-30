@@ -1289,13 +1289,16 @@ export async function getLatestReferralEngineOutput(
     }
 
     // Check for active automation (monthly agents processing)
-    const activeAutomation = await db("pms_jobs")
+    const pendingQuery = db("pms_jobs")
       .where({ organization_id: organizationId })
       .whereRaw(
         `automation_status_detail::jsonb->>'status' = 'processing'
          AND automation_status_detail::jsonb->>'currentStep' = 'monthly_agents'`,
-      )
-      .first();
+      );
+    if (locationId) {
+      pendingQuery.where("location_id", locationId);
+    }
+    const activeAutomation = await pendingQuery.first();
 
     if (activeAutomation) {
       log(

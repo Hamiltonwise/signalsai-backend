@@ -585,6 +585,12 @@ async function buildPmsMetrics(
       selfReferrals += m.selfReferrals;
     }
 
+    // Extract current (latest) month values for grounding monthly claims.
+    const sortedMonths = [...aggregated.months].sort((a, b) =>
+      a.month.localeCompare(b.month)
+    );
+    const latestMonth = sortedMonths.length > 0 ? sortedMonths[sortedMonths.length - 1] : null;
+
     return {
       distinct_months: distinctMonths,
       last_upload_days_ago: lastUploadDaysAgo,
@@ -594,6 +600,9 @@ async function buildPmsMetrics(
       total_referrals: Number(totalReferrals.toFixed(2)),
       doctor_referrals: Number(doctorReferrals.toFixed(2)),
       self_referrals: Number(selfReferrals.toFixed(2)),
+      production_this_month: latestMonth ? Number(latestMonth.productionTotal.toFixed(2)) : null,
+      doctor_referrals_this_month: latestMonth ? latestMonth.doctorReferrals : null,
+      total_referrals_this_month: latestMonth ? latestMonth.totalReferrals : null,
     };
   } catch (err: any) {
     console.warn(
@@ -610,6 +619,9 @@ async function buildPmsMetrics(
       total_referrals: 0,
       doctor_referrals: 0,
       self_referrals: 0,
+      production_this_month: null,
+      doctor_referrals_this_month: null,
+      total_referrals_this_month: null,
     };
   }
 }

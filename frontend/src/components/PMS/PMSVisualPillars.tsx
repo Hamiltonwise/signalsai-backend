@@ -646,8 +646,8 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
       }
 
       if (!isCancelled) {
-        // Wait 1 second after response before next poll
-        timeoutId = setTimeout(pollSequentially, 1000);
+        // Wait 5 seconds after response before next poll
+        timeoutId = setTimeout(pollSequentially, 5000);
       }
     };
 

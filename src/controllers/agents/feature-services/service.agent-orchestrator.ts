@@ -691,7 +691,7 @@ export async function processMonthlyAgents(
           enableCache: true,
           outputSchema: ReferralEngineAgentOutputSchema,
           model: process.env.RE_AGENT_MODEL || undefined,
-          maxTokens: 32768,
+          maxTokens: 65536,
         });
 
         referralEngineOutput = referralResult.agentOutput;
