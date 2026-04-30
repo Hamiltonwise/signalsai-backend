@@ -9,12 +9,16 @@
 
 import { runAgent } from "../../../agents/service.llm-runner";
 import { db } from "../../../database/connection";
+import { ProjectIdentityModel } from "../../../models/website-builder/ProjectIdentityModel";
 import {
   buildStableIdentityContext,
   type ProjectIdentity,
 } from "../feature-utils/util.identity-context";
+import {
+  hasUsableIdentityForSlotGeneration,
+  parseProjectIdentity,
+} from "../feature-utils/util.project-identity";
 
-const PROJECTS_TABLE = "website_builder.projects";
 const TEMPLATE_PAGES_TABLE = "website_builder.template_pages";
 
 interface SlotDef {
@@ -25,30 +29,14 @@ interface SlotDef {
   placeholder?: string;
 }
 
-function parseJson(value: unknown): any {
-  if (!value) return null;
-  if (typeof value === "object") return value;
-  if (typeof value === "string") {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
 export async function generateSlotValuesFromIdentity(
   projectId: string,
   templatePageId: string,
   pageContext?: string,
 ): Promise<{ values: Record<string, string> }> {
-  const project = await db(PROJECTS_TABLE)
-    .where("id", projectId)
-    .select("project_identity")
-    .first();
-  const identity: ProjectIdentity | null = parseJson(project?.project_identity);
-  if (!identity || !identity.business) {
+  const identity =
+    await ProjectIdentityModel.findByProjectId<ProjectIdentity>(projectId);
+  if (!identity || !hasUsableIdentityForSlotGeneration(identity)) {
     throw new Error("IDENTITY_NOT_READY");
   }
 
@@ -58,7 +46,7 @@ export async function generateSlotValuesFromIdentity(
     .first();
   if (!templatePage) throw new Error("TEMPLATE_PAGE_NOT_FOUND");
 
-  const rawSlots = parseJson(templatePage.dynamic_slots);
+  const rawSlots = parseProjectIdentity<SlotDef[]>(templatePage.dynamic_slots);
   const allSlots: SlotDef[] = Array.isArray(rawSlots) ? rawSlots : [];
   const textSlots = allSlots.filter((s) => s && s.key && s.type !== "url");
 

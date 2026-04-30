@@ -8,8 +8,10 @@
  */
 
 import { db } from "../../../database/connection";
+import { ProjectIdentityModel } from "../../../models/website-builder/ProjectIdentityModel";
+import { ProjectModel } from "../../../models/website-builder/ProjectModel";
+import { parseProjectIdentity } from "../feature-utils/util.project-identity";
 
-const PROJECTS_TABLE = "website_builder.projects";
 const TEMPLATE_PAGES_TABLE = "website_builder.template_pages";
 const TEMPLATES_TABLE = "website_builder.templates";
 
@@ -132,19 +134,6 @@ function findImageUrl(identity: IdentityType, useCase: string): string | null {
   return match?.s3_url || match?.source_url || null;
 }
 
-function parseIdentity(value: unknown): any {
-  if (!value) return null;
-  if (typeof value === "object") return value;
-  if (typeof value === "string") {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
 // ---------------------------------------------------------------------------
 // PUBLIC API
 // ---------------------------------------------------------------------------
@@ -175,18 +164,15 @@ export async function getPageSlotPrefill(
   projectId: string,
   templatePageId: string,
 ): Promise<{ slots: SlotDef[]; values: Record<string, string> }> {
-  const project = await db(PROJECTS_TABLE)
-    .where("id", projectId)
-    .select("project_identity")
-    .first();
+  const identity = await ProjectIdentityModel.findByProjectId(projectId);
 
   const templatePage = await db(TEMPLATE_PAGES_TABLE)
     .where("id", templatePageId)
     .select("dynamic_slots")
     .first();
 
-  const identity = parseIdentity(project?.project_identity);
-  const slots: SlotDef[] = parseIdentity(templatePage?.dynamic_slots) || [];
+  const slots: SlotDef[] =
+    parseProjectIdentity(templatePage?.dynamic_slots) || [];
 
   return {
     slots,
@@ -200,10 +186,7 @@ export async function getPageSlotPrefill(
 export async function getLayoutSlotPrefill(
   projectId: string,
 ): Promise<{ slots: SlotDef[]; values: Record<string, string> }> {
-  const project = await db(PROJECTS_TABLE)
-    .where("id", projectId)
-    .select("project_identity", "template_id")
-    .first();
+  const project = await ProjectModel.findById(projectId);
 
   if (!project) return { slots: [], values: {} };
 
@@ -214,8 +197,8 @@ export async function getLayoutSlotPrefill(
         .first()
     : null;
 
-  const identity = parseIdentity(project.project_identity);
-  const slots: SlotDef[] = parseIdentity(template?.layout_slots) || [];
+  const identity = await ProjectIdentityModel.findByProjectId(projectId);
+  const slots: SlotDef[] = parseProjectIdentity(template?.layout_slots) || [];
 
   return {
     slots,

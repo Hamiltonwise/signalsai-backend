@@ -32,6 +32,8 @@ import {
   resolveImageUrl,
   type ProjectIdentity,
 } from "../feature-utils/util.identity-context";
+import { hasUsableIdentityForPageGeneration } from "../feature-utils/util.project-identity";
+import { ProjectIdentityModel } from "../../../models/website-builder/ProjectIdentityModel";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -173,7 +175,7 @@ export async function scrapeAndCacheProject(
  * Generate HTML for a single page, section by section.
  *
  * Architecture:
- *  - Reads project_identity (not step_* columns — those are for legacy compat)
+ *  - Reads project_identity through ProjectIdentityModel
  *  - Gates on layouts being generated (refuses if project has no wrapper yet)
  *  - Sections only — wrapper/header/footer are owned by the Layouts pipeline
  *  - Per-component context derivation (~1-3kb per call instead of full identity)
@@ -212,11 +214,11 @@ export async function generatePageComponents(
     throw new Error("LAYOUTS_NOT_GENERATED");
   }
 
-  // Prefer project_identity; fall back to step_* if a project wasn't backfilled
-  const identity = (safeJsonParse(project.project_identity) ||
-    buildLegacyIdentityShim(project)) as ProjectIdentity;
+  const identity = await ProjectIdentityModel.findByProjectId<ProjectIdentity>(
+    projectId,
+  );
 
-  if (!identity?.business) {
+  if (!identity || !hasUsableIdentityForPageGeneration(identity)) {
     await markPageFailed(pageId, "IDENTITY_NOT_READY");
     throw new Error("IDENTITY_NOT_READY");
   }
@@ -790,56 +792,6 @@ async function runWholePageCritique(
   }
 }
 
-// Legacy shim: used only if project_identity is null (shouldn't happen post-backfill)
-function buildLegacyIdentityShim(project: any): ProjectIdentity {
-  const gbp = safeJsonParse(project.step_gbp_scrape) || {};
-  return {
-    version: 0,
-    business: {
-      name: gbp.title || gbp.name || null,
-      category: gbp.categoryName || gbp.category || null,
-      phone: gbp.phone || null,
-      address: gbp.address || null,
-      city: gbp.city || null,
-      state: gbp.state || null,
-      zip: gbp.postalCode || null,
-      rating: gbp.totalScore || gbp.rating || null,
-      review_count: gbp.reviewsCount || gbp.reviewCount || null,
-      website_url: gbp.website || null,
-      place_id: project.selected_place_id || null,
-    },
-    brand: {
-      primary_color: project.primary_color || null,
-      accent_color: project.accent_color || null,
-      gradient_enabled: !!project.gradient_enabled,
-      gradient_from: project.gradient_from || null,
-      gradient_to: project.gradient_to || null,
-      gradient_direction: project.gradient_direction || "to-br",
-      logo_s3_url: null,
-      logo_alt_text: gbp.title || gbp.name || null,
-    },
-    voice_and_tone: {
-      archetype: null,
-      tone_descriptor: null,
-      voice_samples: [],
-    },
-    content_essentials: {
-      unique_value_proposition: null,
-      founding_story: null,
-      core_values: [],
-      certifications: [],
-      service_areas: [],
-      social_links: {},
-      review_themes: [],
-      featured_testimonials: [],
-    },
-    extracted_assets: {
-      images: [],
-      discovered_pages: [],
-    },
-  };
-}
-
 // ---------------------------------------------------------------------------
 // 3. CANCEL
 // ---------------------------------------------------------------------------
@@ -908,19 +860,6 @@ async function markPageFailed(pageId: string, reason: string): Promise<void> {
     generation_progress: null,
     updated_at: db.fn.now(),
   });
-}
-
-function safeJsonParse(value: unknown): any {
-  if (!value) return null;
-  if (typeof value === "object") return value;
-  if (typeof value === "string") {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return null;
-    }
-  }
-  return null;
 }
 
 // GBP scrape, image collection, and image analysis live in shared utils

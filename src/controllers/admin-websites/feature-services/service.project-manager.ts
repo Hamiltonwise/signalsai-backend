@@ -557,7 +557,7 @@ export async function createAllFromTemplate(
   projectId: string,
   data: {
     templateId: string;
-    placeId: string;
+    placeId?: string;
     pages: Array<{
       templatePageId: string;
       path: string;

@@ -42,14 +42,21 @@ import { generateSlotValuesFromIdentity } from "./feature-services/service.slot-
 import { detectBlock } from "./feature-utils/util.url-block-detector";
 import { db } from "../../database/connection";
 import { getWbQueue } from "../../workers/wb-queues";
-import type { ProjectScrapeJobData } from "../../workers/processors/websiteGeneration.processor";
+import type { PageGenerateJobData } from "../../workers/processors/websiteGeneration.processor";
 import type { IdentityWarmupJobData } from "../../workers/processors/identityWarmup.processor";
 import type { LayoutGenerateJobData } from "../../workers/processors/websiteLayouts.processor";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
+import { ProjectIdentityModel } from "../../models/website-builder/ProjectIdentityModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { generatePresignedUrl } from "../../utils/core/s3";
 import { buildEmailBody } from "../websiteContact/websiteContact-services/emailBodyBuilder";
 import { sendEmailWebhook, WebhookError } from "../websiteContact/websiteContact-services/emailWebhookService";
+import {
+  getProjectIdentityWarmupStatus,
+  hasUsableIdentityForPageGeneration,
+  parseProjectIdentity,
+  prepareProjectIdentityForSave,
+} from "./feature-utils/util.project-identity";
 
 // =====================================================================
 // PROJECTS
@@ -235,7 +242,7 @@ export async function getPageProgressiveState(
   }
 }
 
-/** POST /:id/create-all-from-template — Bulk create all pages and kick off N8N per page */
+/** POST /:id/create-all-from-template — Bulk create all pages and enqueue page generation */
 export async function createAllFromTemplate(
   req: Request,
   res: Response
@@ -261,19 +268,28 @@ export async function createAllFromTemplate(
       dynamicSlotValues,
     } = req.body;
 
-    if (!placeId) {
-      return res.status(400).json({
-        success: false,
-        error: "INVALID_INPUT",
-        message: "placeId is required",
-      });
-    }
-
     if (!Array.isArray(pages) || pages.length === 0) {
       return res.status(400).json({
         success: false,
         error: "INVALID_INPUT",
         message: "pages array is required and must not be empty",
+      });
+    }
+
+    const identityEnvelope = await ProjectIdentityModel.findEnvelopeByProjectId(id);
+    if (!identityEnvelope.exists) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Project not found",
+      });
+    }
+
+    if (!hasUsableIdentityForPageGeneration(identityEnvelope.identity)) {
+      return res.status(409).json({
+        success: false,
+        error: "IDENTITY_NOT_READY",
+        message: "Run identity warmup before creating pages from a template.",
       });
     }
 
@@ -315,20 +331,16 @@ export async function createAllFromTemplate(
 
     const createdPages = createResult.pages!;
 
-    // Enqueue single BullMQ job for project scrape — fans out to per-page generation jobs
-    const jobData: ProjectScrapeJobData = {
-      projectId: id,
-      placeId,
-      practiceSearchString,
-      websiteUrl: pages[0]?.websiteUrl ?? undefined,
-      templateId,
-      pages: createdPages.map((cp: any) => ({
-        pageId: cp.id,
-        templatePageId: cp.templatePageId,
-        path: cp.path,
-      })),
+    const gradientParams = {
+      gradientEnabled: gradient?.enabled,
+      gradientFrom: gradient?.from,
+      gradientTo: gradient?.to,
+      gradientDirection: gradient?.direction,
+    };
+    const generateParams: Omit<PageGenerateJobData, "pageId" | "projectId"> = {
       primaryColor,
       accentColor,
+      pageContext: undefined,
       businessName,
       formattedAddress,
       city,
@@ -337,19 +349,27 @@ export async function createAllFromTemplate(
       category,
       rating,
       reviewCount,
-      gradientEnabled: gradient?.enabled,
-      gradientFrom: gradient?.from,
-      gradientTo: gradient?.to,
-      gradientDirection: gradient?.direction,
+      ...gradientParams,
       dynamicSlotValues,
     };
 
-    const queue = getWbQueue("project-scrape");
-    await queue.add("scrape-project", jobData, {
-      removeOnComplete: { count: 50 },
-      removeOnFail: { count: 25 },
-    });
-    console.log(`[Admin Websites] Enqueued wb-project-scrape for project ${id}`);
+    const queue = getWbQueue("page-generate");
+    await Promise.all(
+      createdPages.map((page: any) =>
+        queue.add(
+          "generate-page",
+          {
+            pageId: page.id,
+            projectId: id,
+            ...generateParams,
+          } satisfies PageGenerateJobData,
+          {
+            removeOnComplete: { count: 50 },
+            removeOnFail: { count: 25 },
+          },
+        ),
+      ),
+    );
 
     return res.status(201).json({ success: true, data: createdPages });
   } catch (error: any) {
@@ -502,10 +522,10 @@ export async function startPipeline(
 ): Promise<Response> {
   try {
     const {
-      projectId, templateId, templatePageId, path: pagePath, placeId,
-      websiteUrl, pageContext, practiceSearchString, businessName,
+      projectId, templatePageId, path: pagePath,
+      pageContext, businessName,
       formattedAddress, city, state, phone, category, rating, reviewCount,
-      primaryColor, accentColor, scrapedData, existingPageId,
+      primaryColor, accentColor, existingPageId,
       gradient, dynamicSlotValues,
     } = req.body;
 
@@ -515,25 +535,19 @@ export async function startPipeline(
       });
     }
 
-    // Check project existence + cached data (identity OR legacy step_*)
-    const project = await db("website_builder.projects").where("id", projectId).first();
-    if (!project) {
+    const identityEnvelope =
+      await ProjectIdentityModel.findEnvelopeByProjectId(projectId);
+    if (!identityEnvelope.exists) {
       return res.status(404).json({
         success: false, error: "NOT_FOUND", message: "Project not found",
       });
     }
 
-    const identity = parseIdentityJson(project.project_identity);
-    const hasIdentity = !!identity?.business;
-    const hasCachedScrape = project.step_gbp_scrape != null || hasIdentity;
-
-    // placeId is only required when we actually need to scrape (no cached data + no identity)
-    if (!hasCachedScrape && !placeId) {
-      return res.status(400).json({
+    if (!hasUsableIdentityForPageGeneration(identityEnvelope.identity)) {
+      return res.status(409).json({
         success: false,
-        error: "INVALID_INPUT",
-        message:
-          "placeId is required for projects without cached data. Either run Identity warmup first, or provide a placeId to scrape.",
+        error: "IDENTITY_NOT_READY",
+        message: "Run identity warmup before starting page generation.",
       });
     }
 
@@ -565,29 +579,17 @@ export async function startPipeline(
       gradientDirection: gradient?.direction,
     };
 
-    if (hasCachedScrape) {
-      // Skip scrape, go straight to page generation (identity or legacy step_* data exists)
-      const pageQueue = getWbQueue("page-generate");
-      await pageQueue.add("generate-page", {
+    const pageQueue = getWbQueue("page-generate");
+    await pageQueue.add(
+      "generate-page",
+      {
         pageId, projectId, primaryColor, accentColor, pageContext,
         businessName, formattedAddress, city, state, phone, category, rating, reviewCount,
         ...gradientParams,
         dynamicSlotValues,
-      }, { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } });
-      console.log(`[Admin Websites] Enqueued wb-page-generate for page ${pageId} (${hasIdentity ? "identity" : "legacy scrape"})`);
-    } else {
-      // No cached data — need to scrape first. placeId already required-guarded above.
-      const scrapeQueue = getWbQueue("project-scrape");
-      await scrapeQueue.add("scrape-project", {
-        projectId, placeId, practiceSearchString, websiteUrl, scrapedData, templateId,
-        pages: [{ pageId, templatePageId, path: pagePath || "/" }],
-        primaryColor, accentColor, pageContext, businessName,
-        formattedAddress, city, state, phone, category, rating, reviewCount,
-        ...gradientParams,
-        dynamicSlotValues,
-      } satisfies ProjectScrapeJobData, { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } });
-      console.log(`[Admin Websites] Enqueued wb-project-scrape for project ${projectId} (single page)`);
-    }
+      } satisfies PageGenerateJobData,
+      { removeOnComplete: { count: 50 }, removeOnFail: { count: 25 } },
+    );
 
     return res.json({ success: true, pageId, message: "Pipeline started successfully" });
   } catch (error: any) {
@@ -699,17 +701,8 @@ export async function startIdentityWarmup(
       removeOnFail: { count: 25 },
     });
 
-    // Set immediate status so polling reflects queued state
-    const project = await db("website_builder.projects")
-      .where("id", id)
-      .select("project_identity")
-      .first();
-    const identity = parseIdentityJson(project?.project_identity) || { version: 1 };
-    identity.meta = { ...(identity.meta || {}), warmup_status: "queued" };
-    await db("website_builder.projects").where("id", id).update({
-      project_identity: JSON.stringify(identity),
-      updated_at: db.fn.now(),
-    });
+    // Set immediate status so polling reflects queued state.
+    await ProjectIdentityModel.setWarmupStatus(id, "queued");
 
     console.log(`[Admin Websites] Enqueued wb-identity-warmup for project ${id}`);
 
@@ -731,18 +724,16 @@ export async function getIdentity(
 ): Promise<Response> {
   try {
     const { id } = req.params;
-    const project = await db("website_builder.projects")
-      .where("id", id)
-      .select("project_identity")
-      .first();
+    const { exists, identity } =
+      await ProjectIdentityModel.findEnvelopeByProjectId(id);
 
-    if (!project) {
+    if (!exists) {
       return res.status(404).json({ success: false, error: "NOT_FOUND" });
     }
 
     return res.json({
       success: true,
-      data: parseIdentityJson(project.project_identity),
+      data: identity,
     });
   } catch (error: any) {
     console.error("[Admin Websites] Error fetching identity:", error);
@@ -761,21 +752,17 @@ export async function getIdentityStatus(
 ): Promise<Response> {
   try {
     const { id } = req.params;
-    const project = await db("website_builder.projects")
-      .where("id", id)
-      .select("project_identity")
-      .first();
+    const { exists, identity } =
+      await ProjectIdentityModel.findEnvelopeByProjectId(id);
 
-    if (!project) {
+    if (!exists) {
       return res.status(404).json({ success: false, error: "NOT_FOUND" });
     }
-
-    const identity = parseIdentityJson(project.project_identity);
 
     return res.json({
       success: true,
       data: {
-        warmup_status: identity?.meta?.warmup_status || null,
+        warmup_status: getProjectIdentityWarmupStatus(identity),
         warmed_up_at: identity?.warmed_up_at || null,
       },
     });
@@ -802,19 +789,12 @@ export async function updateIdentity(
       });
     }
 
-    if (!identity.version) identity.version = 1;
-    identity.last_updated_at = new Date().toISOString();
-
-    // Mirror brand colors to legacy columns
-    const primaryColor = identity.brand?.primary_color || null;
-    const accentColor = identity.brand?.accent_color || null;
-
-    await db("website_builder.projects").where("id", id).update({
-      project_identity: JSON.stringify(identity),
-      primary_color: primaryColor,
-      accent_color: accentColor,
-      updated_at: db.fn.now(),
-    });
+    prepareProjectIdentityForSave(identity);
+    await ProjectIdentityModel.updateByProjectId(
+      id,
+      identity,
+      { mirrorBrand: true },
+    );
 
     return res.json({ success: true, data: identity });
   } catch (error: any) {
@@ -857,15 +837,12 @@ export async function resyncIdentityList(
       });
     }
 
-    const project = await db("website_builder.projects")
-      .where("id", id)
-      .select("project_identity")
-      .first();
-    if (!project) {
+    const { exists, identity } =
+      await ProjectIdentityModel.findEnvelopeByProjectId(id);
+    if (!exists) {
       return res.status(404).json({ success: false, error: "NOT_FOUND" });
     }
 
-    const identity = parseIdentityJson(project.project_identity);
     if (!identity) {
       return res.status(409).json({
         success: false,
@@ -954,10 +931,7 @@ export async function resyncIdentityList(
     identity.content_essentials[list] = merged;
     identity.last_updated_at = new Date().toISOString();
 
-    await db("website_builder.projects").where("id", id).update({
-      project_identity: JSON.stringify(identity),
-      updated_at: db.fn.now(),
-    });
+    await ProjectIdentityModel.updateByProjectId(id, identity);
 
     return res.json({
       success: true,
@@ -1258,16 +1232,7 @@ export async function generateSlotValues(
 }
 
 function parseIdentityJson(value: unknown): any {
-  if (!value) return null;
-  if (typeof value === "object") return value;
-  if (typeof value === "string") {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return null;
-    }
-  }
-  return null;
+  return parseProjectIdentity(value);
 }
 
 /** POST /:id/cancel-generation — Cancel all in-progress page generation */
@@ -4403,7 +4368,7 @@ export async function getProjectCosts(
 
 /**
  * POST /:projectId/posts/import — enqueue an import-from-identity job.
- * Body: { postType: "doctor"|"service"|"location", entries: string[], overwrite?: boolean }
+ * Body: { postType, entries: Array<string | { source_url, name }>, overwrite?: boolean }
  */
 export async function startPostImport(
   req: Request,
@@ -4708,10 +4673,12 @@ export async function addProjectLocation(
 
     const updatedSelectedIds = [...existingIds, placeId];
 
-    await db("website_builder.projects").where("id", id).update({
-      project_identity: JSON.stringify(identity),
-      selected_place_ids: updatedSelectedIds,
-      updated_at: db.fn.now(),
+    await db.transaction(async (trx) => {
+      await ProjectIdentityModel.updateByProjectId(id, identity, {}, trx);
+      await trx("website_builder.projects").where("id", id).update({
+        selected_place_ids: updatedSelectedIds,
+        updated_at: db.fn.now(),
+      });
     });
 
     return res.json({
@@ -4813,13 +4780,15 @@ export async function setPrimaryLocation(
     identity.business = rewrittenBusiness;
     identity.last_updated_at = new Date().toISOString();
 
-    await db("website_builder.projects").where("id", id).update({
-      project_identity: JSON.stringify(identity),
-      primary_place_id: placeId,
-      // Keep the legacy convenience pointer in sync (back-compat with consumers
-      // that still read `selected_place_id`).
-      selected_place_id: placeId,
-      updated_at: db.fn.now(),
+    await db.transaction(async (trx) => {
+      await ProjectIdentityModel.updateByProjectId(id, identity, {}, trx);
+      await trx("website_builder.projects").where("id", id).update({
+        primary_place_id: placeId,
+        // Keep the legacy convenience pointer in sync (back-compat with consumers
+        // that still read `selected_place_id`).
+        selected_place_id: placeId,
+        updated_at: db.fn.now(),
+      });
     });
 
     return res.json({
@@ -4895,10 +4864,12 @@ export async function removeProjectLocation(
     identity.locations = updatedLocations;
     identity.last_updated_at = new Date().toISOString();
 
-    await db("website_builder.projects").where("id", id).update({
-      project_identity: JSON.stringify(identity),
-      selected_place_ids: updatedSelectedIds,
-      updated_at: db.fn.now(),
+    await db.transaction(async (trx) => {
+      await ProjectIdentityModel.updateByProjectId(id, identity, {}, trx);
+      await trx("website_builder.projects").where("id", id).update({
+        selected_place_ids: updatedSelectedIds,
+        updated_at: db.fn.now(),
+      });
     });
 
     return res.json({
@@ -5007,10 +4978,7 @@ export async function resyncProjectLocation(
 
     identity.last_updated_at = new Date().toISOString();
 
-    await db("website_builder.projects").where("id", id).update({
-      project_identity: JSON.stringify(identity),
-      updated_at: db.fn.now(),
-    });
+    await ProjectIdentityModel.updateByProjectId(id, identity);
 
     return res.json({
       success: true,
@@ -5136,37 +5104,24 @@ export async function patchIdentitySlice(
       });
     }
 
-    const project = await db("website_builder.projects")
-      .where("id", id)
-      .select("project_identity")
-      .first();
+    const { exists, identity } =
+      await ProjectIdentityModel.findEnvelopeByProjectId(id);
 
-    if (!project) {
+    if (!exists) {
       return res.status(404).json({ success: false, error: "NOT_FOUND" });
     }
 
-    const identity = parseIdentityJson(project.project_identity) || {
-      version: 1,
-    };
+    const nextIdentity = identity || { version: 1 };
 
-    setAtPath(identity, slicePath, parsed.data);
+    setAtPath(nextIdentity, slicePath, parsed.data);
 
-    if (!identity.version) identity.version = 1;
-    identity.last_updated_at = new Date().toISOString();
+    await ProjectIdentityModel.updateByProjectId(
+      id,
+      nextIdentity,
+      { mirrorBrand: slicePath === "brand" },
+    );
 
-    // Mirror brand colors to legacy columns if brand was the slice that changed.
-    const updatePayload: Record<string, unknown> = {
-      project_identity: JSON.stringify(identity),
-      updated_at: db.fn.now(),
-    };
-    if (slicePath === "brand") {
-      updatePayload.primary_color = identity.brand?.primary_color ?? null;
-      updatePayload.accent_color = identity.brand?.accent_color ?? null;
-    }
-
-    await db("website_builder.projects").where("id", id).update(updatePayload);
-
-    return res.json({ success: true, data: identity });
+    return res.json({ success: true, data: nextIdentity });
   } catch (error: any) {
     console.error("[Admin Websites] Error patching identity slice:", error);
     return res.status(500).json({

@@ -25,6 +25,11 @@ import {
   resolveImageUrl,
   type ProjectIdentity,
 } from "../feature-utils/util.identity-context";
+import {
+  hasUsableIdentityForLayoutGeneration,
+  type ProjectIdentityRecord,
+} from "../feature-utils/util.project-identity";
+import { ProjectIdentityModel } from "../../../models/website-builder/ProjectIdentityModel";
 
 const PROJECTS_TABLE = "website_builder.projects";
 const TEMPLATES_TABLE = "website_builder.templates";
@@ -39,19 +44,6 @@ function checkCancel(signal?: AbortSignal): void {
   if (signal?.aborted) {
     throw new Error("Generation cancelled");
   }
-}
-
-function safeJsonParse(value: unknown): any {
-  if (!value) return null;
-  if (typeof value === "object") return value;
-  if (typeof value === "string") {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return null;
-    }
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -80,8 +72,10 @@ export async function generateLayouts(
     const project = await db(PROJECTS_TABLE).where("id", projectId).first();
     if (!project) throw new Error(`Project ${projectId} not found`);
 
-    const identity = safeJsonParse(project.project_identity) as ProjectIdentity | null;
-    if (!identity?.business) {
+    const identity = await ProjectIdentityModel.findByProjectId<ProjectIdentity>(
+      projectId,
+    );
+    if (!identity || !hasUsableIdentityForLayoutGeneration(identity)) {
       throw new Error("IDENTITY_NOT_READY");
     }
 
@@ -103,9 +97,10 @@ export async function generateLayouts(
           identity.brand = identity.brand || {};
           identity.brand.logo_s3_url = hostedUrl;
           slotValues.logo_url = hostedUrl;
-          await db(PROJECTS_TABLE).where("id", projectId).update({
-            project_identity: JSON.stringify(identity),
-          });
+          await ProjectIdentityModel.updateByProjectId(
+            projectId,
+            identity as ProjectIdentityRecord,
+          );
           log("Logo hosted", { hostedUrl });
         } catch (err: any) {
           log("Logo download failed, continuing with provided URL", {
