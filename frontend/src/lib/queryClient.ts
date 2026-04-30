@@ -42,6 +42,8 @@ export const QUERY_KEYS = {
   organization: (id: number) => ["admin", "organization", id] as const,
   organizationLocations: (id: number) =>
     ["admin", "organization", id, "locations"] as const,
+  organizationRecipientSettings: (id: number) =>
+    ["admin", "organization", id, "recipient-settings"] as const,
 
   // Admin — minds
   adminMinds: ["admin", "minds"] as const,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Settings,
@@ -21,10 +21,26 @@ import {
   adminRefreshBusinessData,
   adminSyncOrgBusinessData,
 } from "../../api/admin-organizations";
+import { OrgRecipientSettingsSection } from "./OrgRecipientSettingsSection";
 
 interface OrgSettingsSectionProps {
   org: AdminOrganizationDetail;
   orgId: number;
+}
+
+type ApiErrorLike = {
+  response?: { data?: { error?: string; message?: string } };
+  message?: string;
+};
+
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  const typedError = error as ApiErrorLike;
+  return (
+    typedError.response?.data?.error ||
+    typedError.response?.data?.message ||
+    typedError.message ||
+    fallback
+  );
 }
 
 export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
@@ -57,11 +73,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
     data: Record<string, unknown>;
   } | null>(null);
 
-  useEffect(() => {
-    loadBusinessData();
-  }, [orgId]);
-
-  const loadBusinessData = async () => {
+  const loadBusinessData = useCallback(async () => {
     try {
       setLoadingBusinessData(true);
       const data = await adminGetBusinessData(orgId);
@@ -72,7 +84,11 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
     } finally {
       setLoadingBusinessData(false);
     }
-  };
+  }, [orgId]);
+
+  useEffect(() => {
+    loadBusinessData();
+  }, [loadBusinessData]);
 
   const handleRefreshLocation = async (locationId: number) => {
     setRefreshingLocationId(locationId);
@@ -82,12 +98,8 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
         toast.success("Business data refreshed from Google");
         await loadBusinessData();
       }
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.error ||
-        error?.message ||
-        "Failed to refresh business data";
-      toast.error(message);
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Failed to refresh business data"));
     } finally {
       setRefreshingLocationId(null);
     }
@@ -101,12 +113,8 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
         toast.success("Organization business data synced from primary location");
         await loadBusinessData();
       }
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.error ||
-        error?.message ||
-        "Failed to sync org business data";
-      toast.error(message);
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Failed to sync org business data"));
     } finally {
       setSyncingOrgData(false);
     }
@@ -143,6 +151,8 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
 
   return (
     <div className="space-y-6">
+      <OrgRecipientSettingsSection orgId={orgId} />
+
       {/* Business Data Management */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
