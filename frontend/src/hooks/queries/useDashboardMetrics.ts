@@ -15,7 +15,7 @@ export function useDashboardMetrics(
   return useQuery<DashboardMetrics>({
     queryKey: ["dashboardMetrics", orgId, locationId],
     queryFn: () => fetchDashboardMetrics(orgId!, locationId),
-    enabled: !!orgId,
+    enabled: !!orgId && locationId != null,
     staleTime: 5 * 60 * 1000,
   });
 }

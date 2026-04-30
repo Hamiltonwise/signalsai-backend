@@ -232,7 +232,7 @@ export default function Dashboard() {
   return (
     <div className="w-full max-w-[1600px] mx-auto min-h-screen flex flex-col bg-[#F7F5F3] font-body text-alloro-navy">
       {/* Show loading state while checking onboarding */}
-      {!ready || checkingOnboarding ? (
+      {!ready || checkingOnboarding || (!selectedLocation && !isWizardActive) ? (
         <div className="flex-1 flex items-center justify-center bg-[#F7F5F3]">
           <div className="text-center">
             <div className="relative flex items-center justify-center h-16 w-16 mx-auto mb-2">
@@ -429,6 +429,7 @@ export default function Dashboard() {
                           domain={selectedDomain?.domain || ""}
                           organizationId={userProfile?.organizationId ?? null}
                           locationId={locationId}
+                          locationName={selectedLocation?.name ?? null}
                           hasProperties={hasProperties}
                         />
                       ) : (

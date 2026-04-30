@@ -864,7 +864,16 @@ export async function uploadWithMapping(req: Request, res: Response) {
     );
     const mappingId = upserted.id;
 
-    const locationId = await resolveLocationId(orgId);
+    const passedLocationId =
+      typeof body.locationId === "number"
+        ? body.locationId
+        : typeof body.locationId === "string" && body.locationId
+          ? parseInt(body.locationId, 10)
+          : null;
+    const locationId =
+      passedLocationId && !isNaN(passedLocationId)
+        ? passedLocationId
+        : await resolveLocationId(orgId);
 
     const job = await PmsJobModel.create({
       time_elapsed: 0,

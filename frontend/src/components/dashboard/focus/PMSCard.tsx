@@ -60,7 +60,7 @@ function usePmsKeyData(orgId: number | null, locationId: number | null) {
   return useQuery<PmsKeyData | null>({
     queryKey: ["pmsKeyData", orgId, locationId],
     queryFn: () => fetchPmsKeyDataInner(orgId, locationId),
-    enabled: !!orgId,
+    enabled: !!orgId && locationId != null,
     staleTime: 5 * 60 * 1000,
   });
 }
