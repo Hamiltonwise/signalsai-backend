@@ -2,6 +2,24 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.48] - April 2026
+
+### Fix: Import from Identity Checkbox Bug
+
+Fixed a bug where selecting one doctor/service checkbox in the Import from Identity modal would visually check all entries — but only count as 1 selected — when multiple entries shared the same source URL (e.g. all doctors listed on a single /our-team page). Each entry now gets a unique composite key (`url#name-slug`) throughout the full pipeline so checkboxes work independently, each creates a separate draft post, and shared URLs are scraped only once.
+
+**Key Changes:**
+- Frontend modal uses composite key (`source_url#slugified-name`) per entry instead of bare URL
+- API transport sends `{ source_url, name }` objects for doctor/service entries
+- Backend normalizes entries, builds composite dedup keys, and caches scrape results per URL
+- Retry flow resolves entries back to `{ source_url, name }` objects for correct identity lookup
+
+**Commits:**
+- `frontend/src/components/Admin/ImportFromIdentityModal.tsx` — composite keys, entry resolution, external link fix
+- `frontend/src/api/websites.ts` — entries type widened
+- `src/controllers/admin-websites/feature-services/service.post-importer.ts` — entry normalizer, scrape cache, name-based identity lookup
+- `src/workers/processors/postImporter.processor.ts` — job data type updated
+
 ## [0.0.47] - April 2026
 
 ### Project Identity Model + Identity-First Website Generation
