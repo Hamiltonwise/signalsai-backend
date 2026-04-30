@@ -19,8 +19,12 @@ import * as menuManager from "../admin-websites/feature-services/service.menu-ma
 import { resolveShortcodes } from "./user-website-services/shortcodeResolver.service";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
-import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { db } from "../../database/connection";
+import {
+  getConfiguredRecipients,
+  listOrgUserRecipientOptions,
+  updateRecipientSetting,
+} from "../../services/recipientSettingsService";
 
 // =====================================================================
 // Error handler
@@ -279,14 +283,19 @@ export async function getRecipients(
     const project = await ProjectModel.findByOrganizationId(orgId);
     if (!project) return res.status(404).json({ error: "No website found" });
 
-    let orgUsers: { name: string; email: string; role: string }[] = [];
-    const users = await OrganizationUserModel.listByOrgWithUsers(orgId);
-    orgUsers = users.map((u) => ({ name: u.name, email: u.email, role: u.role }));
+    const [recipients, orgUsers] = await Promise.all([
+      getConfiguredRecipients({
+        organizationId: orgId,
+        channel: "website_form",
+        legacyProjectRecipients: project.recipients,
+      }),
+      listOrgUserRecipientOptions(orgId),
+    ]);
 
     return res.json({
       success: true,
       data: {
-        recipients: (project as any).recipients || [],
+        recipients,
         orgUsers,
       },
     });
@@ -307,23 +316,17 @@ export async function updateRecipients(
     const project = await ProjectModel.findByOrganizationId(orgId);
     if (!project) return res.status(404).json({ error: "No website found" });
 
-    const { recipients } = req.body;
-    if (!Array.isArray(recipients)) {
-      return res.status(400).json({ error: "recipients must be an array of email strings" });
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const invalid = recipients.filter((e: string) => !emailRegex.test(e));
-    if (invalid.length > 0) {
-      return res.status(400).json({ error: `Invalid email(s): ${invalid.join(", ")}` });
-    }
-
-    await db("website_builder.projects")
-      .where("id", project.id)
-      .update({ recipients: JSON.stringify(recipients), updated_at: db.fn.now() });
+    const recipients = await updateRecipientSetting(
+      orgId,
+      "website_form",
+      req.body.recipients
+    );
 
     return res.json({ success: true, data: { recipients } });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.statusCode === 400) {
+      return res.status(400).json({ error: error.message });
+    }
     return handleError(res, error, "Update recipients");
   }
 }

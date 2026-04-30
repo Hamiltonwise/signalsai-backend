@@ -47,10 +47,15 @@ import type { IdentityWarmupJobData } from "../../workers/processors/identityWar
 import type { LayoutGenerateJobData } from "../../workers/processors/websiteLayouts.processor";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { ProjectIdentityModel } from "../../models/website-builder/ProjectIdentityModel";
-import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { generatePresignedUrl } from "../../utils/core/s3";
 import { buildEmailBody } from "../websiteContact/websiteContact-services/emailBodyBuilder";
 import { sendEmailWebhook, WebhookError } from "../websiteContact/websiteContact-services/emailWebhookService";
+import {
+  getConfiguredRecipients,
+  listOrgUserRecipientOptions,
+  updateRecipientSetting,
+  validateRecipientList,
+} from "../../services/recipientSettingsService";
 import {
   getProjectIdentityWarmupStatus,
   hasUsableIdentityForPageGeneration,
@@ -2611,17 +2616,23 @@ export async function getRecipients(
       return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Project not found" });
     }
 
-    // Fetch org users so the UI can offer them as options
     let orgUsers: { name: string; email: string; role: string }[] = [];
+    let recipients = Array.isArray(project.recipients) ? project.recipients : [];
     if (project.organization_id) {
-      const users = await OrganizationUserModel.listByOrgWithUsers(project.organization_id);
-      orgUsers = users.map((u) => ({ name: u.name, email: u.email, role: u.role }));
+      [recipients, orgUsers] = await Promise.all([
+        getConfiguredRecipients({
+          organizationId: project.organization_id,
+          channel: "website_form",
+          legacyProjectRecipients: project.recipients,
+        }),
+        listOrgUserRecipientOptions(project.organization_id),
+      ]);
     }
 
     return res.json({
       success: true,
       data: {
-        recipients: project.recipients || [],
+        recipients,
         orgUsers,
       },
     });
@@ -2640,23 +2651,38 @@ export async function updateRecipients(
     const { id } = req.params;
     const { recipients } = req.body;
 
-    if (!Array.isArray(recipients)) {
-      return res.status(400).json({ success: false, error: "VALIDATION_ERROR", message: "recipients must be an array of email strings" });
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const invalid = recipients.filter((e: string) => !emailRegex.test(e));
-    if (invalid.length > 0) {
-      return res.status(400).json({ success: false, error: "VALIDATION_ERROR", message: `Invalid email(s): ${invalid.join(", ")}` });
-    }
-
-    await db("website_builder.projects")
+    const project = await db("website_builder.projects")
       .where("id", id)
-      .update({ recipients: JSON.stringify(recipients), updated_at: db.fn.now() });
+      .select("id", "organization_id")
+      .first();
 
-    return res.json({ success: true, data: { recipients } });
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Project not found" });
+    }
+
+    let normalized: string[];
+    if (project.organization_id) {
+      normalized = await updateRecipientSetting(
+        project.organization_id,
+        "website_form",
+        recipients
+      );
+    } else {
+      normalized = validateRecipientList(recipients);
+      await db("website_builder.projects")
+        .where("id", id)
+        .update({ recipients: JSON.stringify(normalized), updated_at: db.fn.now() });
+    }
+
+    return res.json({ success: true, data: { recipients: normalized } });
   } catch (error: any) {
+    if (error?.statusCode === 400) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: error.message,
+      });
+    }
     console.error("[Admin Websites] Error updating recipients:", error);
     return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message || "Failed to update recipients" });
   }
