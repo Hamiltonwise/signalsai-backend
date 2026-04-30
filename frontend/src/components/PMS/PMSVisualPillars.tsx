@@ -5,6 +5,8 @@ import React, {
   useRef,
   useState,
 } from "react";
+import Lottie from "lottie-react";
+import cogitatingSpinner from "../../assets/cogitating-spinner.json";
 import { motion } from "framer-motion";
 import { showSparkleToast } from "../../lib/toast";
 import {
@@ -40,10 +42,64 @@ import { apiGet } from "../../api";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
 import { PmsDashboardSurface } from "./dashboard/PmsDashboardSurface";
 
+const COGITATING_PHRASES = [
+  "Reading the leaves", "Turning over new leaves", "Tending the garden",
+  "Pruning the branches", "Cultivating insights", "Planting seeds",
+  "Watching things grow", "Raking through data", "Leafing through results",
+  "Letting ideas bloom", "Branching out", "Nurturing the roots",
+  "Gathering the harvest", "Sprouting new insights", "Tracing the veins",
+  "Following the canopy", "Photosynthesizing", "Unfurling the fronds",
+  "Sowing the metrics", "Tilling the numbers", "Training the vines",
+  "Mapping the growth rings", "Distilling the nectar", "Shaking the branches",
+];
+
+function CogitatingText() {
+  const [targetPhrase, setTargetPhrase] = useState(() =>
+    COGITATING_PHRASES[Math.floor(Math.random() * COGITATING_PHRASES.length)]
+  );
+  const [displayed, setDisplayed] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    if (isTyping) {
+      if (displayed.length < targetPhrase.length) {
+        const t = setTimeout(
+          () => setDisplayed(targetPhrase.slice(0, displayed.length + 1)),
+          35
+        );
+        return () => clearTimeout(t);
+      }
+      const hold = setTimeout(() => setIsTyping(false), 1800);
+      return () => clearTimeout(hold);
+    }
+    setTargetPhrase((prev) => {
+      let next: string;
+      do {
+        next = COGITATING_PHRASES[Math.floor(Math.random() * COGITATING_PHRASES.length)];
+      } while (next === prev);
+      return next;
+    });
+    setDisplayed("");
+    setIsTyping(true);
+  }, [displayed, isTyping, targetPhrase]);
+
+  return (
+    <p className="font-semibold text-sm font-display">
+      <span className="cogitating-gradient">{displayed}</span>
+      <span className="inline-flex w-[1.5em] justify-start ml-[1px]">
+        <span className="cogitating-dot" style={{ animationDelay: "0s" }}>.</span>
+        <span className="cogitating-dot" style={{ animationDelay: "0.15s" }}>.</span>
+        <span className="cogitating-dot" style={{ animationDelay: "0.3s" }}>.</span>
+      </span>
+    </p>
+  );
+}
+
 interface PMSVisualPillarsProps {
   domain?: string;
   organizationId?: number | null;
   locationId?: number | null;
+  locationName?: string | null;
   hasProperties?: boolean;
 }
 
@@ -82,6 +138,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
   domain,
   organizationId,
   locationId,
+  locationName,
   hasProperties = true,
 }) => {
   const navigate = useNavigate();
@@ -108,6 +165,9 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
   const [showManualEntry, setShowManualEntry] = useState(false);
   // Start with loading false if wizard is active (we'll show demo data immediately)
   const [isLoading, setIsLoading] = useState(!isWizardActive);
+  const [keyDataLoaded, setKeyDataLoaded] = useState(false);
+  const [automationChecked, setAutomationChecked] = useState(false);
+  const initialLoadComplete = isWizardActive || (keyDataLoaded && automationChecked);
   const [error, setError] = useState<string | null>(null);
   const [bannerError, setBannerError] = useState<string | null>(null);
   const [keyData, setKeyData] = useState<PmsKeyDataResponse["data"] | null>(
@@ -201,6 +261,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
         if (isMountedRef.current && !silent) {
           setIsLoading(false);
         }
+        setKeyDataLoaded(true);
         signalContentReady();
       }
     },
@@ -281,7 +342,10 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     const handler = (event: Event) => {
       const detail = (event as CustomEvent).detail;
       if (!detail || !detail.clientId || detail.clientId === domain) {
-        setLocalProcessing(true);
+        const eventLocationId = detail?.locationId ?? null;
+        if (!eventLocationId || eventLocationId === locationId) {
+          setLocalProcessing(true);
+        }
         loadKeyData({ silent: true });
       }
     };
@@ -290,7 +354,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     return () => {
       window.removeEventListener("pms:job-uploaded", handler as EventListener);
     };
-  }, [domain, loadKeyData]);
+  }, [domain, locationId, loadKeyData]);
 
   const latestJobStatus = keyData?.stats?.latestJobStatus ?? null;
   const latestJobIsApproved = keyData?.stats?.latestJobIsApproved ?? null;
@@ -399,7 +463,10 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     if (isWizardActive) return;
 
     const checkForActiveAutomation = async () => {
-      if (!organizationId) return;
+      if (!organizationId || !locationId) {
+        setAutomationChecked(true);
+        return;
+      }
 
       console.log("🔍 Initial check for active automation on mount");
 
@@ -438,6 +505,8 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
         }
       } catch (err) {
         console.error("❌ Error checking for active automation:", err);
+      } finally {
+        setAutomationChecked(true);
       }
     };
 
@@ -451,8 +520,8 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
       return;
     }
 
-    if (!organizationId) {
-      console.log("🔍 loadAutomationStatus: no organizationId");
+    if (!organizationId || !locationId) {
+      console.log("🔍 loadAutomationStatus: no organizationId or locationId");
       setAutomationStatus(null);
       return;
     }
@@ -598,7 +667,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
   // Uses sequential polling: wait for response, then wait 10 seconds before next request
   // Skip during wizard mode
   useEffect(() => {
-    if (!domain || isWizardActive || !organizationId) return;
+    if (!domain || isWizardActive || !organizationId || !locationId) return;
 
     let isCancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -1036,6 +1105,23 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     }
   }, [scrollToIngestionHub]);
 
+  if (!initialLoadComplete) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#F7F5F3]">
+        <div className="text-center">
+          <div className="relative flex items-center justify-center h-16 w-16 mx-auto mb-2">
+            <div
+              className="absolute inset-0 animate-spin rounded-full border-[3px] border-alloro-orange/15 border-t-alloro-orange"
+              style={{ animationDuration: "1.2s" }}
+            />
+            <Lottie animationData={cogitatingSpinner} loop className="relative z-10 w-9 h-9" />
+          </div>
+          <CogitatingText />
+        </div>
+      </div>
+    );
+  }
+
   // Show setup required screen if not all services are connected
   if (!connectionStatus.isLoading && !allServicesConnected && !isWizardActive) {
     const disconnectedServices = [];
@@ -1210,7 +1296,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
 
       </main>
 
-      {!error && (keyData || isWizardActive || isLoading || showDashboardProcessingStatus) && (
+      {!error && (keyData || isWizardActive || showDashboardProcessingStatus) && (
         <PmsDashboardSurface
           monthlyData={monthlyData}
           topSources={topSources}
@@ -1226,7 +1312,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
           hasProperties={hasProperties}
           isIngestionHighlighted={isIngestionHighlighted}
           onJumpToIngestion={scrollToIngestionHub}
-          onOpenManualEntry={() => setShowManualEntry(true)}
+          onOpenManualEntry={() => { if (locationId) setShowManualEntry(true); }}
           onOpenSettings={() => navigate('/settings/integrations')}
         />
       )}
@@ -1276,6 +1362,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
         onClose={() => setShowManualEntry(false)}
         clientId={domain || ""}
         locationId={locationId}
+        locationName={locationName}
         onSuccess={handleUploadWizardSuccess}
       />
     </div>

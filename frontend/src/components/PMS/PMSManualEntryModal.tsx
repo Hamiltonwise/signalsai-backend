@@ -54,6 +54,7 @@ interface PMSManualEntryModalProps {
   onClose: () => void;
   clientId: string; // domain
   locationId?: number | null;
+  locationName?: string | null;
   onSuccess?: () => void;
 }
 
@@ -209,6 +210,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
   onClose,
   clientId,
   locationId,
+  locationName,
   onSuccess,
 }) => {
   // Initialize with previous month and empty sources
@@ -868,7 +870,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
 
           if (typeof window !== "undefined") {
             const event = new CustomEvent("pms:job-uploaded", {
-              detail: { clientId, entryType: "mapping" },
+              detail: { clientId, entryType: "mapping", locationId },
             });
             window.dispatchEvent(event);
           }
@@ -940,7 +942,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
         // Dispatch event for other components
         if (typeof window !== "undefined") {
           const event = new CustomEvent("pms:job-uploaded", {
-            detail: { clientId, entryType: "manual" },
+            detail: { clientId, entryType: "manual", locationId },
           });
           window.dispatchEvent(event);
         }
@@ -1008,7 +1010,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-white">
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                Enter PMS Data
+                Enter PMS Data{locationName ? ` for ${locationName}` : ""}
               </h2>
               <p className="text-xs text-gray-500 mt-1">
                 Add your referral and production data for {clientId}
