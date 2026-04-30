@@ -38,6 +38,7 @@ import {
   useWizardDemoData,
 } from "../../contexts/OnboardingWizardContext";
 import { useLocationContext } from "../../contexts/locationContext";
+import PMSCard from "../dashboard/focus/PMSCard";
 import { apiGet } from "../../api";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
 import { PmsDashboardSurface } from "./dashboard/PmsDashboardSurface";
@@ -1236,6 +1237,9 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
   return (
     <div className="pm-light min-h-screen bg-[var(--color-pm-bg-primary)] font-body text-alloro-navy">
       <main className="mx-auto w-full max-w-[1320px] space-y-4 px-4 pb-6 sm:px-6 lg:px-8">
+        {/* Current period summary card */}
+        {!isLoading && !error && keyData && <div className="max-w-sm"><PMSCard /></div>}
+
         {/* Client Approval Banner */}
         {showClientApprovalBanner && (
           <motion.div
