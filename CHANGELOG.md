@@ -2,6 +2,26 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.53] - May 2026
+
+### Agent Pipeline Reliability Fixes + Zombie Job Cleanup
+
+Three reliability fixes that eliminated all agent retry failures and unblocked Falls Church (310 referral sources). Validated in production: Gainesville ($1.16), Sterling ($1.29), and Falls Church ($1.65) — all passed RE + Summary on attempt 1, zero retries. Previous Sterling runs failed 3/3 Summary attempts; previous Falls Church RE truncated entirely.
+
+**Key Changes:**
+- `getLatestReferralEngineOutput` pending check now scoped by `location_id` — stops false "pending" for unrelated locations in the same org
+- Poll interval in `PMSVisualPillars` increased from 1s to 5s — eliminates polling storm during agent runs
+- Referral Engine `maxTokens` bumped from 32768 to 65536 — Falls Church (310 sources) no longer truncates
+- Added `production_this_month`, `doctor_referrals_this_month`, `total_referrals_this_month` to `PmsMetrics` — Summary agent can now ground monthly values without hitting aggregate mismatch validator
+- New startup zombie cleanup: scans for `pms_jobs` stuck in "processing" > 30 minutes on server boot and resets them to "failed"
+
+**Commits:**
+- `src/controllers/agents/AgentsController.ts` — location-scoped pending query
+- `frontend/src/components/PMS/PMSVisualPillars.tsx` — poll interval 1s → 5s
+- `src/controllers/agents/feature-services/service.agent-orchestrator.ts` — RE maxTokens 65536
+- `src/utils/dashboard-metrics/types.ts` + `service.dashboard-metrics.ts` — `_this_month` PMS fields
+- `src/utils/startup/zombieJobCleanup.ts` + `src/index.ts` — startup zombie detection
+
 ## [0.0.52] - May 2026
 
 ### Unified Recipient Settings
