@@ -35,6 +35,11 @@ import {
 import { sendEmail } from "../../emails/emailService";
 import { getStripe, isStripeConfigured } from "../../config/stripe";
 import { v4 as uuid } from "uuid";
+import {
+  assertRecipientChannel,
+  getOrganizationRecipientSettings,
+  updateRecipientSetting,
+} from "../../services/recipientSettingsService";
 
 const BCRYPT_SALT_ROUNDS = 12;
 
@@ -135,6 +140,76 @@ export async function getById(
     });
   } catch (error) {
     return handleError(res, error, "Fetch organization details");
+  }
+}
+
+/**
+ * GET /api/admin/organizations/:id/recipient-settings
+ * Fetch editable recipient channels and fallback previews.
+ */
+export async function getRecipientSettings(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    const data = await getOrganizationRecipientSettings(orgId);
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return handleError(res, error, "Fetch recipient settings");
+  }
+}
+
+/**
+ * PUT /api/admin/organizations/:id/recipient-settings/:channel
+ * Update explicit recipients for one recipient channel.
+ */
+export async function updateRecipientSettings(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const channel = assertRecipientChannel(req.params.channel);
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    await updateRecipientSetting(orgId, channel, req.body.recipients);
+    const data = await getOrganizationRecipientSettings(orgId);
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    if (error?.statusCode === 400) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: error.message,
+      });
+    }
+
+    return handleError(res, error, "Update recipient settings");
   }
 }
 

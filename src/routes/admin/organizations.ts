@@ -49,6 +49,24 @@ organizationsRoutes.get(
   controller.getBusinessData
 );
 
+// GET /api/admin/organizations/:id/recipient-settings — Recipient settings
+// MUST be before /:id to avoid matching as the :id param
+organizationsRoutes.get(
+  "/:id/recipient-settings",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.getRecipientSettings
+);
+
+// PUT /api/admin/organizations/:id/recipient-settings/:channel — Update recipient channel
+// MUST be before /:id to avoid matching as the :id param
+organizationsRoutes.put(
+  "/:id/recipient-settings/:channel",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.updateRecipientSettings
+);
+
 // GET /api/admin/organizations/:id — Organization details
 organizationsRoutes.get(
   "/:id",

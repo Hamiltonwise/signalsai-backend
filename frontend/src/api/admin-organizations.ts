@@ -6,7 +6,7 @@
  * for auth tokens, making them pilot-mode-aware.
  */
 
-import { apiGet, apiPatch, apiDelete, apiPost } from "./index";
+import { apiGet, apiPatch, apiDelete, apiPost, apiPut } from "./index";
 
 /**
  * Typed interfaces for admin org responses
@@ -37,7 +37,7 @@ export interface AdminUser {
 export interface AdminConnection {
   accountId: string;
   email: string;
-  properties: { gbp?: any[] };
+  properties: { gbp?: unknown[] };
 }
 
 export interface AdminWebsite {
@@ -111,6 +111,38 @@ export interface PilotSessionResponse {
   user: { id: number; email: string };
 }
 
+export type RecipientChannel = "website_form" | "agent_notifications";
+export type RecipientSource =
+  | "configured"
+  | "legacy_project"
+  | "org_admins"
+  | "google_connection"
+  | "env_fallback"
+  | "none";
+
+export interface RecipientOrgUserOption {
+  name: string;
+  email: string;
+  role: string;
+}
+
+export interface RecipientChannelState {
+  channel: RecipientChannel;
+  recipients: string[];
+  effectiveRecipients: string[];
+  effectiveSource: RecipientSource;
+}
+
+export interface AdminRecipientSettingsData {
+  channels: Record<RecipientChannel, RecipientChannelState>;
+  orgUsers: RecipientOrgUserOption[];
+}
+
+export interface AdminRecipientSettingsResponse {
+  success: boolean;
+  data: AdminRecipientSettingsData;
+}
+
 /**
  * List all organizations with summary metadata
  */
@@ -125,6 +157,29 @@ export async function adminGetOrganization(
   orgId: number
 ): Promise<AdminOrganizationDetailResponse> {
   return apiGet({ path: `/admin/organizations/${orgId}` });
+}
+
+/**
+ * Get recipient settings for both organization-level recipient channels.
+ */
+export async function adminGetRecipientSettings(
+  orgId: number
+): Promise<AdminRecipientSettingsResponse> {
+  return apiGet({ path: `/admin/organizations/${orgId}/recipient-settings` });
+}
+
+/**
+ * Update explicit recipients for one organization recipient channel.
+ */
+export async function adminUpdateRecipientSettings(
+  orgId: number,
+  channel: RecipientChannel,
+  recipients: string[]
+): Promise<AdminRecipientSettingsResponse> {
+  return apiPut({
+    path: `/admin/organizations/${orgId}/recipient-settings/${channel}`,
+    passedData: { recipients },
+  });
 }
 
 /**
