@@ -17,6 +17,7 @@ interface PMSUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   clientId: string;
+  locationId?: number | null;
   onSuccess?: () => void;
 }
 
@@ -26,6 +27,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
   isOpen,
   onClose,
   clientId,
+  locationId,
   onSuccess,
 }) => {
   const [entryMode, setEntryMode] = useState<EntryMode>("upload");
@@ -101,6 +103,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
         domain: clientId,
         file,
         pmsType,
+        locationId,
       });
 
       console.log("PMSUploadModal: Upload response:", result);
@@ -178,6 +181,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
         isOpen={isOpen}
         onClose={handleClose}
         clientId={clientId}
+        locationId={locationId}
         onSuccess={handleManualEntrySuccess}
       />
     );

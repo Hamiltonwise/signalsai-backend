@@ -42,9 +42,17 @@ export async function resolveLocationId(
     return primaryLocation.id;
   }
 
-  // No locations found for this org
+  // No primary — use the first location for this org
+  const allLocations = await LocationModel.findByOrganizationId(organizationId);
+  if (allLocations.length > 0) {
+    console.warn(
+      `[locationResolver] No primary location for org ${organizationId}, using first location ${allLocations[0].id}`
+    );
+    return allLocations[0].id;
+  }
+
   console.warn(
-    `[locationResolver] No location found for organization ${organizationId}`
+    `[locationResolver] No locations found for organization ${organizationId}`
   );
   return null;
 }

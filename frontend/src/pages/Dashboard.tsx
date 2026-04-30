@@ -499,6 +499,7 @@ export default function Dashboard() {
               isOpen={showPMSUpload}
               onClose={() => setShowPMSUpload(false)}
               clientId={clientId}
+              locationId={locationId}
               onSuccess={() => {
                 console.log("PMS upload successful!");
               }}
