@@ -66,6 +66,7 @@ import {
   isAllowedCustomDomain,
   startCustomDomainCacheRefresh,
 } from "./middleware/corsCustomDomains";
+import { cleanupZombieJobs } from "./utils/startup/zombieJobCleanup";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -219,6 +220,9 @@ const startServer = async () => {
   try {
     // Test database connection on startup
     await testConnection();
+
+    // Reset any jobs left in "processing" from a prior crash/restart
+    await cleanupZombieJobs();
 
     // Start custom domain CORS cache (refreshes every 5 min)
     startCustomDomainCacheRefresh();
