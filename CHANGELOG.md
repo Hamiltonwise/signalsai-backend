@@ -2,6 +2,29 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.51] - April 2026
+
+### Month-Scoped Review Verbiage + Domain Summary Strips
+
+The Summary agent was telling practices "You have 26 unanswered reviews" — but that was only reviews from the current month window, not a total backlog. Practices with deliberately-skipped older reviews were seeing misleading counts. The agent now qualifies every review count with the month name, names specific reviewers, and states sentiment. Additionally, a new `domain_summaries` output section provides at-a-glance strips for each data domain (reviews, GBP, ranking, referrals) rendered as expandable rows inside the Hero dashboard card.
+
+**Key Changes:**
+- `ReviewsMetrics` enriched with `unanswered_reviewer_names` (up to 5) and `avg_rating_this_month` for agent grounding
+- Summary prompt enforces month-scoped review language ("26 March reviews without a reply", never generic "unanswered reviews")
+- Summary prompt instructs agent to name up to 3 reviewers with "and N more", plus sentiment read (all 5-star / mixed / needs attention)
+- New `DomainSummarySchema` added to `SummaryV2OutputSchema` (optional, backward-compatible)
+- Hero task metadata carries `domain_summaries` for the highest-priority action
+- Frontend `DomainStrips` component renders expandable domain rows inside the Hero card; hides gracefully when data is absent
+
+**Commits:**
+- `src/utils/dashboard-metrics/types.ts` — added `unanswered_reviewer_names`, `avg_rating_this_month` to `ReviewsMetrics`
+- `src/utils/dashboard-metrics/service.dashboard-metrics.ts` — pass reviewer names through `extractReviewSummary`, collect names + compute avg in `buildReviewsMetrics`
+- `src/agents/monthlyAgents/Summary.md` — REVIEW VERBIAGE RULES + DOMAIN SUMMARIES sections
+- `src/controllers/agents/types/agent-output-schemas.ts` — `DomainSummarySchema` + optional `domain_summaries` on output
+- `src/controllers/agents/feature-services/service.task-creator.ts` — attach `domain_summaries` to hero task metadata
+- `frontend/src/hooks/queries/useTopAction.ts` — parse `DomainSummary` from metadata
+- `frontend/src/components/dashboard/focus/Hero.tsx` — `DomainStripRow` + `DomainStrips` components
+
 ## [0.0.50] - April 2026
 
 ### Fix: Location-Scoped PMS Uploads, Processing Cards, and Dashboard Data

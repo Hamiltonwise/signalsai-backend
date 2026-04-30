@@ -308,7 +308,16 @@ export async function createTasksFromSummaryV2Output(
       `  [MONTHLY] Creating ${topActions.length} SUMMARY USER task(s) from top_actions`,
     );
 
-    for (const action of topActions) {
+    const sorted = [...topActions].sort(
+      (a, b) => b.priority_score - a.priority_score,
+    );
+
+    for (let i = 0; i < sorted.length; i++) {
+      const action = sorted[i];
+      const isHero = i === 0;
+      const metadataObj = isHero && summaryOutput.domain_summaries
+        ? { ...action, domain_summaries: summaryOutput.domain_summaries }
+        : action;
       const taskData = {
         organization_id: organizationId ?? null,
         location_id: locationId ?? null,
@@ -320,7 +329,7 @@ export async function createTasksFromSummaryV2Output(
         is_approved: true,
         created_by_admin: true,
         due_date: action.due_at ? new Date(action.due_at) : null,
-        metadata: JSON.stringify(action),
+        metadata: JSON.stringify(metadataObj),
         created_at: new Date(),
         updated_at: new Date(),
       };

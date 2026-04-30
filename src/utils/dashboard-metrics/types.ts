@@ -25,6 +25,8 @@ import { z } from "zod";
 export interface ReviewsMetrics {
   oldest_unanswered_hours: number | null;
   unanswered_count: number;
+  unanswered_reviewer_names: string[];
+  avg_rating_this_month: number | null;
   current_rating: number | null;
   rating_change_30d: number | null;
   reviews_this_month: number;
@@ -33,6 +35,8 @@ export interface ReviewsMetrics {
 export const ReviewsMetricsSchema = z.object({
   oldest_unanswered_hours: z.number().nullable(),
   unanswered_count: z.number(),
+  unanswered_reviewer_names: z.array(z.string()).max(5),
+  avg_rating_this_month: z.number().nullable(),
   current_rating: z.number().nullable(),
   rating_change_30d: z.number().nullable(),
   reviews_this_month: z.number(),
