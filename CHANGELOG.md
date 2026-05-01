@@ -2,6 +2,21 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.57] - May 2026
+
+### PMS Statistics — Upload Nudge Replaces Duplicate Card
+
+The `/pmsStatistics` page was rendering a standalone `<PMSCard />` that duplicated the production and referral data already shown in the PMS Vitals section below. Replaced it with the "Ready for the next focus?" upload nudge (matching the main dashboard's design) that only appears when PMS data is stale, with a CTA that scrolls to the ingestion hub.
+
+**Key Changes:**
+- Removed duplicate `<PMSCard />` rendering and import
+- Added `derivePmsFocusPeriod` memo using existing `keyData.months` — no new API call
+- Upload nudge card shown conditionally when `focusPeriod.isStale`, styled identically to the dashboard's `PmsUploadNudge`
+- CTA button scrolls to ingestion hub instead of linking back to `/pmsStatistics`
+
+**Commits:**
+- `frontend/src/components/PMS/PMSVisualPillars.tsx` — swapped PMSCard for inline upload nudge with stale-data condition
+
 ## [0.0.56] - May 2026
 
 ### Onboarding Wizard — Temporarily Disabled

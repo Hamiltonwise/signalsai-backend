@@ -38,10 +38,10 @@ import {
   useWizardDemoData,
 } from "../../contexts/OnboardingWizardContext";
 import { useLocationContext } from "../../contexts/locationContext";
-import PMSCard from "../dashboard/focus/PMSCard";
 import { apiGet } from "../../api";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
 import { PmsDashboardSurface } from "./dashboard/PmsDashboardSurface";
+import { derivePmsFocusPeriod } from "../../utils/pmsFocusPeriod";
 
 const COGITATING_PHRASES = [
   "Reading the leaves", "Turning over new leaves", "Tending the garden",
@@ -879,6 +879,11 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
   // Calculate total production from sources
   const topSources = keyData?.sources ?? [];
 
+  const focusPeriod = useMemo(
+    () => derivePmsFocusPeriod(keyData?.months, new Date()),
+    [keyData?.months],
+  );
+
   const totalProduction = useMemo(() => {
     const realProduction = topSources.reduce((sum, s) => sum + (s.production || 0), 0);
     // Use wizard demo data if wizard is active and no real production data
@@ -1237,8 +1242,29 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
   return (
     <div className="pm-light min-h-screen bg-[var(--color-pm-bg-primary)] font-body text-alloro-navy">
       <main className="mx-auto w-full max-w-[1320px] space-y-4 px-4 pb-6 sm:px-6 lg:px-8">
-        {/* Current period summary card */}
-        {!isLoading && !error && keyData && <div className="max-w-sm"><PMSCard /></div>}
+        {/* Upload nudge — shown when PMS data is stale */}
+        {!isLoading && !error && keyData && focusPeriod.isStale && (
+          <section className="flex flex-col gap-4 rounded-[14px] border border-[#E8E4DD] bg-[#FDFDFD] px-6 py-5 shadow-[0_14px_35px_rgba(17,21,28,0.06)] md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-alloro-orange">
+                Ready for the next focus?
+              </div>
+              <h3 className="font-display text-[22px] font-medium tracking-tight text-[#1A1A1A]">
+                {focusPeriod.nudgeTitle}
+              </h3>
+              <p className="mt-1 max-w-[640px] text-[13px] leading-relaxed text-[#6B7280]">
+                {focusPeriod.nudgeBody}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={scrollToIngestionHub}
+              className="inline-flex items-center justify-center rounded-full bg-alloro-orange px-5 py-3 text-[12px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_8px_20px_rgba(214,104,83,0.28)] transition-all hover:-translate-y-px hover:bg-[#B86650]"
+            >
+              Upload PMS data
+            </button>
+          </section>
+        )}
 
         {/* Client Approval Banner */}
         {showClientApprovalBanner && (
