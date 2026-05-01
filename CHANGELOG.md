@@ -2,6 +2,20 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.56] - May 2026
+
+### Onboarding Wizard — Temporarily Disabled
+
+The guided onboarding wizard tour is disabled while dashboard and settings components are being rebuilt. The wizard context provider still mounts (no breaking changes to consumers), but both activation paths — initial status check and `recheckWizardStatus` — are stubbed as no-ops. Original logic is preserved inline with `TODO: RESTORE` markers for re-enablement once the new components are finalized.
+
+**Key Changes:**
+- Auto-start `useEffect` replaced with no-op that immediately clears loading state
+- `recheckWizardStatus` callback replaced with no-op stub
+- Original code preserved as commented-out blocks for easy restoration
+
+**Commits:**
+- `frontend/src/contexts/OnboardingWizardContext.tsx` — no-op stubs for wizard activation, original logic commented with restoration markers
+
 ## [0.0.55] - May 2026
 
 ### Custom Domain Modal — Verify View Fix
