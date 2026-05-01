@@ -2,6 +2,18 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.55] - May 2026
+
+### Custom Domain Modal — Verify View Fix
+
+After connecting a custom domain, the modal showed a success toast but stayed on the input form instead of transitioning to the DNS verification view. The `onDomainChange()` callback was not awaited, so the parent's state hadn't updated before the modal re-rendered.
+
+**Key Changes:**
+- `await onDomainChange()` in `handleConnect` so the parent refetches the project before the loading state clears
+
+**Commits:**
+- `frontend/src/components/Admin/ConnectDomainModal.tsx` — await onDomainChange so currentDomain prop is set before re-render
+
 ## [0.0.54] - May 2026
 
 ### PMSCard Current Period Fix + PMS Statistics Page
