@@ -196,7 +196,7 @@ export async function runDiscoveryForMind(mindId: string): Promise<{
         responseType: "text",
       });
 
-      const contentType = response.headers["content-type"] || "";
+      const contentType = String(response.headers["content-type"] || "");
       const body = response.data as string;
 
       let discovered: Array<{ url: string; title?: string; publishedAt?: Date }>;

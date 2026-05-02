@@ -53,22 +53,17 @@ export const claudeAdapter: PlatformAdapter = {
       // The Anthropic SDK 0.20.9 in this repo predates the typed
       // web_search_20260209 tool; we send the tool definition via a
       // typed-as-any payload so the SDK validation does not reject it.
-      // The Anthropic SDK 0.20.9 in this repo predates the typed
-      // web_search_20260209 tool. Cast to `any` so the type-check passes;
-      // the SDK forwards unknown tool definitions to the API verbatim.
-      const requestBody = {
+      // SDK 0.92.0+ exports the typed WebSearchTool20260209 interface.
+      const webSearchTool: Anthropic.WebSearchTool20260209 = {
+        type: TOOL_VERSION,
+        name: "web_search",
+      };
+      const message = await client.messages.create({
         model: MODEL,
         max_tokens: 1024,
-        messages: [{ role: "user" as const, content: input.query }],
-        tools: [
-          {
-            type: TOOL_VERSION,
-            name: "web_search",
-          },
-        ],
-      };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const message = await client.messages.create(requestBody as any);
+        messages: [{ role: "user", content: input.query }],
+        tools: [webSearchTool],
+      });
       const text = extractTextFromMessage(message);
       const citationUrls = extractCitationUrlsFromMessage(message);
       return composeCitationResult({
