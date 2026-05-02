@@ -1,242 +1,120 @@
 # CLAUDE.md -- Alloro
 
-## Mission
+## Project Overview
 
-Give every business owner the life they set out to build.
+Mission: give every business owner the life they set out to build. Alloro is a universal business intelligence platform; beachhead is licensed specialists (endodontics first). Architecture is universal; vocabulary configs handle vertical-specific UI labels. North Stars: NS1 Undeniable Value, NS2 Inevitable Unicorn, NS3 Calistoga Standard.
 
-## Source of Truth
+Source of Truth: `docs/PRODUCT-OPERATIONS.md` (Product Constitution). If code contradicts that doc, the code is wrong.
 
-Read `docs/PRODUCT-OPERATIONS.md` (the Product Constitution) before any build.
-It contains: what the product does, why each decision was made, tests for every Known,
-and current test results. If code contradicts that document, the code is wrong.
+## Architecture
 
-## Repo
+**Decision AR-009 (May 2, 2026, locked):** Discovery is downstream of authenticity. Every Alloro surface speaks to the patient's question, not the doctor's keyword. The product is the practice deserving the answer, not the practice ranking for the term.
 
-Path: ~/code/alloro
-Branch: sandbox (never touch main directly)
-Never create a new branch. If sandbox is the wrong branch for a task, stop and ask Corey before proceeding.
-Frontend: frontend/ (React 18+, TypeScript, Vite, Tailwind CSS, shadcn/ui)
-Backend: src/ (Node.js, Express, Knex, PostgreSQL)
+**Continuous Answer Engine Loop** (architecture spec: https://www.notion.so/p/354fdaf120c481df8e62c2c34e2cfe71). Eight components run on signals, not weekly cadence: Signal Watcher, Trigger Router, Research Agent (regeneration modes), Copy Agent (regeneration modes), Reviewer Claude gate, AEO Monitor (continuous), Live Activity Feed, Live Activity rendering layer. Monday email weekly ritual stays per AR-001.
+
+**AR-003 multi-model orchestration:** Opus 4.7 for strategic reasoning and architectural decisions. Sonnet 4.6 for bulk content generation and standard agent workflows. Haiku 4.5 for validators, classification, and high-volume polling. Every Claude API call routes through the model-selection layer; do not hardcode model strings in agent files.
+
+**AR-008 calculation transparency:** Every user-facing deterministic calculation ships with a runtime LLM translator that renders plain-English methodology against the user's actual data. Calculation code is the source of truth; the LLM is the translator.
+
+**Repo:** ~/code/alloro. Branch: sandbox (never push to main). Frontend: `frontend/` (React 18+, TypeScript, Vite, Tailwind, shadcn/ui). Backend: `src/` (Node.js, Express, Knex, PostgreSQL, BullMQ, Redis). Agents: `.claude/agents/`. Never create a new branch; if sandbox is the wrong branch for a task, stop and ask Corey.
 
 ## Team
 
-- Corey (Founder/Visionary): approves Red blast radius, product decisions
-- Jo (COO/Integrator): maternity leave
-- Dave (CTO, Philippines): infrastructure, EC2, merges to main. Receives finished specs only.
+- Corey (Founder/Visionary): generates direction, owns external relationships, approves Red blast radius
+- Jo (COO/Integrator): active. Oversees Dream Team agents at the department level (CRO, CMO, CS, Product, Engineering, Voice of Client, Operations). Sections 4-5 of Three-Lane v2 deferred until Continuous Answer Engine validated across two paying clients.
+- Dave (CTO, Philippines): architectural review, owns the merge. Receives finished specs only.
 
-## Operating Protocol
+## Build Patterns
 
-Read `memory/context/operating-protocol.md` before any cross-team handoff.
-Core principle: Corey speaks descriptive (outcomes, feelings). Dave needs prescriptive (files, line numbers, tests). AI translates between them. Corey never writes engineering specs. Dave never interprets product intent.
-Team profiles with working styles: `memory/people/`
+**Engineer Handoff Format (LOCKED -- April 11, 2026):** every spec for Dave uses the V2 card format: Card N, Blast Radius, Complexity, Dependencies, What Changes (file:change), Touches (DB/Auth/Billing/API), Verification Tests (runnable), Done Gate. Full spec in `.claude/rules/build-safety.md`.
 
-## Engineer Handoff Format (LOCKED -- Dave confirmed this works, April 11 2026)
+**Session types:** THINKING (explore, lock decisions, no production code), BUILD (start with locked decisions, ship Dave-ready cards), BUG TRIAGE (find root cause, fix, commit). AI infers type from Corey's opening. False clarity test: if AI cannot write a Work Order in 60 seconds, it is THINKING.
 
-Every document, spec, or handoff intended for Dave or any engineer MUST use this format.
-No exceptions. This is the format Dave's agents consume. Deviating from it causes confusion.
+**One feature = one commit = one verifiable step.** Single discrete commits with proof files at `/tmp/`. CC ships TSC clean, build clean, tests green, then Dave reviews and merges. Last successful pace: foundation reconciliation commit `5ef1e472` shipped in 4 minutes.
 
-Rules:
-- Prescriptive, not descriptive. "Build this" not "here's the outcome we like."
-- Frame changes as discrete features, not abstract goals. Each feature is a card.
-- Cards sequenced simplest-first, complexity noted on every card.
-- Every card has runnable verification tests (browser checks, SQL queries, Network tab).
-- Done gates between every card: "All tests pass? Yes = next card. No = fix first."
-- Always state whether the change touches: database, auth, billing, new API endpoint.
+**Pre-commit hard gates** (block on failure): `data-flow-audit.sh`, `content-quality-lint.sh`, TypeScript check (`tsc -b --force`). Advisory gates: `constitution-check.sh`, `vertical-sweep.sh`. Manual gate: `npm run build` in `frontend/`.
 
-Card format:
-```
-Card [N]: [Feature Name]
-Blast Radius: Green / Yellow / Red
-Complexity: Low / Medium / High
-Dependencies: [prior cards or "none"]
+## Deployment Pathway (LOCKED)
 
-What Changes:
-- [file]: [specific change]
+Sandbox EC2 auto-deploys on every push to the sandbox branch. The pipeline is working; if a sandbox feature is broken, it is a code problem, fix it directly. Never say "blocked by EC2" or "blocked by Dave" for sandbox work.
 
-Touches:
-- Database: yes/no
-- Auth: yes/no
-- Billing: yes/no
-- New API endpoint: yes/no
+Production pathway: sandbox QA passes, Dave reviews the diff, Dave merges to main. Corey never pushes to main. CC never pushes to main. The merge is Dave's. Always.
 
-Verification Tests:
-1. [Specific, runnable check]
-2. [Specific, runnable check]
+## Notion Workspace
 
-Done Gate:
-All verification tests pass? Yes = next card. No = fix before proceeding.
-```
+Notion integration: NOTION_TOKEN resolves to bot `Alloro Backend` (id `354fdaf1-20c4-819b-a8de-00278db11304`, workspace `Alloro`). Verify with `curl -s -H "Authorization: Bearer $NOTION_TOKEN" -H "Notion-Version: 2022-06-28" https://api.notion.com/v1/users/me` before any Phase 1+ task.
 
-If a doc going to engineering doesn't look like this, rewrite it before sending.
+Four operational databases (read-write from CC):
 
-## Deployment Reality (LOCKED -- stop getting this wrong)
+| Database | ID | Purpose |
+|----------|-----|---------|
+| Sandbox Card Inbox | `ddac061f-88fe-4f5e-9863-d5be2449cf81` | Per-CC-session cards (Build B, commit `e2ed72bf`) |
+| State Transition Log | `5785db54-467a-4505-9b3b-53673c940cdb` | Card state-machine audit trail (Build C) |
+| Dave Sprint Inbox | `c7262a4c-2272-4e23-a79f-8929d7e8d793` | Promoted cards awaiting Dave merge |
+| Reviewer Gate Audit Log | `354fdaf1-20c4-8196-9373-d78eedc29172` | Reviewer Claude verdicts (Build A) |
 
-Sandbox EC2 auto-deploys on every push to the sandbox branch. CI/CD pipeline is working.
-There is NO Dave dependency for sandbox. If code is pushed, it is deployed.
-If something is not working on sandbox, it is a code problem -- fix it directly.
-Never say "blocked by EC2" or "blocked by Dave" for sandbox work. That is false.
+CC Operating Space (read at session start): https://www.notion.so/p/32dfdaf120c4819fa720f60b68ce0c0e
+Decision Log: https://www.notion.so/p/327fdaf120c4816093cdd4c75d2cc6a6
+Three-Lane Coordination v2: https://www.notion.so/p/354fdaf120c481069946cd7a856c4b0b
 
-## Session Discipline (LOCKED -- April 13 diagnosis)
+CC modifies only Corey-owned pages. Jo's and Dave's pages are read-only for cross-context.
 
-Read `memory/context/session-contract.md` at session start.
+## State Machine (Build C, commit `c6999279`)
 
-Every session is THINKING, BUILD, or BUG TRIAGE.
-- THINKING: Corey explores problems. Output = locked decisions. Code goes to scratch/ branch only.
-- BUILD: Starts with locked decisions. Build, verify, produce Dave-ready card.
-- BUG TRIAGE: Something is broken. Skip the contract. Fix it, confirm root cause, commit.
+Cards transition through ten states. Defined in `src/services/blackboard/stateTransitions.ts`.
 
-AI infers the type from Corey's opening -- he doesn't have to declare it.
-False clarity test: if AI can't write a Work Order in 60 seconds, it's THINKING.
+States: `New` -> `Reviewer Gated` -> (`Reviewer Blocked` | `Jo Reviewed`) -> `Dave Queued` -> `Dave In Progress` -> `Dave Shipped` -> `Verified` -> `Archived`. `Rejected` is terminal from any pre-Dave state.
 
-The explore-build blur is the #1 time waster. Corey spent 1000+ hours because
-sessions jumped from "describe intent" to "build code" without locking decisions.
-Dave then received multiple experimental versions and couldn't tell which was decided.
+State Transition Log actor enum: `Corey`, `Jo`, `Dave`, `CC`, `ReviewerClaude`, `BridgeTranslator`, `CronVerifier`, `GitHook`. Every transition is logged with actor attribution and reason.
 
-Before ideation: brief constraints (Dave's patterns, Knowns, vocabulary, blast radius).
-Before code: answer the 5 decision lock questions in the session contract.
-Before commit: run all 4 sweep scripts.
-Before handoff: run the pre-handoff quality gate.
+## Reviewer Gate
 
-## Information Architecture
+Implementation: `src/services/agents/reviewerClaude.ts`. Two functions:
+- `runReviewerClaude(card)`: deterministic 8-check pass over the Build B card structure. Used in session-mode upserts.
+- `runReviewerClaudeOnArtifact(artifact)`: LLM-driven review (commit `3fba7324`). Six checks per AR-002: HIPAA, Brand Voice, Irreplaceable Thing, Em-Dash, Factual Citation, Vertical Regulation.
 
-Read `.claude/rules/information-architecture.md` for the full system.
-Core principle: Notion is the interface layer (cross-team status). Repo is the build layer.
-Each category has ONE authoritative source. Never duplicate across Notion and repo.
-Dave's tasks live in his Notion Sprint page only (not duplicated in CURRENT-SPRINT.md).
-After every handoff or milestone, sync the relevant Notion page (see sync triggers in the rules file).
+Verdict enum: `Not Yet Run` | `PASS` | `PASS_WITH_CONCERNS` | `BLOCK`. Auto-promotion of PASS verdicts is gated by blast radius (Red always pauses for Corey). PASS_WITH_CONCERNS routes to Jo. BLOCK routes to Corey for revision.
 
-## Session Start
+No regeneration ships to a doctor-facing surface without passing the gate.
 
-1. Infer session type from Corey's opening (THINKING, BUILD, or BUG TRIAGE) and reflect it back
-2. Read `CURRENT-SPRINT.md` -- this is the GPS.
-3. `git branch --show-current && git status --short`
-4. **Capture sandbox HEAD as SESSION_ANCHOR_COMMIT.** Run `export SESSION_ANCHOR_COMMIT=$(git rev-parse HEAD)` and remember the SHA. The Bridge Translator session-mode run at the end of the session reads this to find what got committed during the session.
-5. Read `docs/PRODUCT-OPERATIONS.md` -- check which Knowns are PASS/FAIL/UNTESTED
-6. Check Build Queue cockpit in Notion for active WO and decisions pending Corey
-7. If BUILD: read `memory/context/session-contract.md` for quality gates
-8. Execute the next waypoint, or fix failing tests if any exist
+## Session Cycle
 
-## Session End / `/handoff` command
+Session start:
+1. Infer session type from Corey's opening (THINKING / BUILD / BUG TRIAGE).
+2. `git branch --show-current && git status --short`.
+3. `export SESSION_ANCHOR_COMMIT=$(git rev-parse HEAD)`. Bridge Translator session-mode reads this at session end.
+4. Read `CURRENT-SPRINT.md` (GPS) + `docs/PRODUCT-OPERATIONS.md` (Constitution).
+5. If BUILD: read `memory/context/session-contract.md` (decision-lock questions).
 
-Before closing a BUILD session that produced commits, run the Bridge Translator in session mode. This converts the session's commits into one card per functional area, lands them in the **Sandbox Card Inbox** Notion database, runs Reviewer Claude (Build A) per card, and posts a summary to `#alloro-dev` tagging Jo for the next morning.
-
+Session end (BUILD sessions that produced commits):
 ```bash
-SESSION_ANCHOR_COMMIT=<sha-from-session-start> \
-  npx tsx scripts/run-bridge-translator.ts --session
+SESSION_ANCHOR_COMMIT=<sha-from-start> npx tsx scripts/run-bridge-translator.ts --session
 ```
+Zero commits = zero cards. Same Card ID = update in place. Cards land in Sandbox Card Inbox; Reviewer Claude runs per card; State Transition Log captures every event.
 
-Behavior:
-- Zero commits since the anchor = no cards (no noise for Jo).
-- Each card auto-runs Reviewer Claude. PASS verdicts auto-promote (status remains `New` for Jo's filter, but the verdict is set). Red blast radius always pauses for Corey regardless.
-- Same Card ID = update in place. Re-running mid-session is safe.
-- Orphan commits (no functional area) land as `Functional Area: other` with the orphan reason in the card body. Nothing dropped silently.
-- Slack message to `#alloro-dev` with: `CC session complete. <N> cards written to Sandbox Card Inbox. <link>.`
+## Voice Constraints
 
-The weekly Friday cron (shadow/active modes) continues independently as a backstop. Session mode does not replace it.
+Implementation and full banned-phrase list: `src/services/narrator/voiceConstraints.ts`. Categories blocked: em-dashes (and en-dashes); promotional puffery (the marketing-superlative cluster); empty-verb hype (the SaaS-launch-deck cluster); Alloro-as-hero framings ("we saved you"); shame framings ("you're behind"). Read the source file before producing any narrator or customer-facing copy; the regex set is the spec.
 
-Sandbox Card Inbox: https://www.notion.so/p/ddac061f88fe4f5e9863d5be2449cf81
+Never show AI-generated recommendations to customers without human review. Show data (reviews, ratings, completeness, citations); hide advice. HIPAA check, factual accuracy check, recommendation-vs-fact check, and "would a doctor see through this" check before any AI text reaches a customer.
 
-## Before Every Build
-
-Write a Customer Reality Check in the conversation:
-- What the customer sees now
-- What they should see after
-- What could go wrong
-- What you're confident about, what you're not
-
-## Before Every Commit
-
-The pre-commit hook (.git/hooks/pre-commit) runs automatically on `git commit`:
-
-Hard gates (block on failure -- these pass clean, any failure is a new regression):
-1. data-flow-audit.sh -- logic bugs, wrong data consumed
-2. content-quality-lint.sh -- placeholders, zero defaults, dollar figures
-3. TypeScript type check (`tsc -b --force`)
-
-Advisory gates (warn, don't block -- known pre-existing issues, promote to hard once clean):
-4. constitution-check.sh -- 3 known pre-existing failures
-5. vertical-sweep.sh -- 108 known dental terms awaiting useVocab() migration
-
-If a hard gate fails, the commit is blocked. Fix the error, then commit again.
-
-Manual checks the hook can't do:
-4. `npm run build` in frontend/ (zero errors)
-5. Check the map: describe what each affected page shows. If you can't describe it with certainty, don't commit.
-
-## Quality Scripts (run before every handoff to Dave)
-
-Four automated quality gates. All must pass before Dave sees any work.
-
-| Script | What it catches | Run time |
-|--------|----------------|----------|
-| `scripts/constitution-check.sh` | Known violations (K2-K15), position claims, fabricated data | <5s |
-| `scripts/vertical-sweep.sh --customer-only` | Dental-specific language in customer-facing code | <5s |
-| `scripts/data-flow-audit.sh` | Logic bugs: location context, competitor selection, queryKey scoping | <5s |
-| `scripts/content-quality-lint.sh` | Content quality: placeholders, empty states, dollar figures, design system | <5s |
-
-If any script fails, fix the issue before committing. These scripts exist because
-every bug they catch was a real bug found on April 12-13 that would have reached
-a customer or caused Dave to pause.
-
-## Before Presenting Work to Corey (Pre-Presentation Gate)
-
-Run this filter before showing any work product. If any item is NO, fix it or flag it explicitly.
-
-1. Did I verify this beyond grep/code? (If no: state "Yellow -- code-verified only, not browser-verified")
-2. Can I describe what the customer sees on every affected page? (If no: don't present as done)
-3. Did I run the relevant Known tests from the Constitution? (If no: run them now)
-4. Would Corey's first reaction be a correction or a decision? (If correction: I'm not done yet)
-5. Update CURRENT-SPRINT.md with results before presenting.
-
-The goal: Corey validates feel and vision. Claude catches everything else first.
-
-## Product Hierarchy (LOCKED -- Corey has corrected this multiple times)
-
-The app/dashboard is the product. The Monday email is a notification layer.
-The email is a support piece: a weekly reminder that Alloro is working.
-The email highlights the most surprising change and links to the dashboard.
-The three instruments are the product. The email is a pointer, not the whole story.
-Build features app-first. Email is additive.
-Never say "the email is the product." That is stale and wrong.
-
-## AI Content Safety (LOCKED -- April 13, Dave + Corey agreed)
-
-Never show AI-generated recommendations to customers without human review.
-Show DATA (reviews, ratings, competitor names, GBP completeness). Hide ADVICE.
-
-Why: On April 13, the AI recommended "add a patient testimonial video showing
-your consultation process from intake to quote." That's a HIPAA violation.
-Dave said: "we don't trust AI so much... it doesn't know what's going to be right."
-
-Before any AI-generated text reaches a customer, check:
-1. Could this be a HIPAA violation?
-2. Could this be factually wrong? (wrong competitor, wrong review count)
-3. Is this a recommendation or a fact? (show facts, hide recommendations)
-4. Would a doctor who knows their market see through this?
+UI/typography: minimum font `text-xs` (12px); maximum weight `font-semibold`. Do not use `#212D40` for text; use `#1A1D23`.
 
 ## Standing Rules
 
 - Never push to main directly
 - Never commit credentials
-- No em-dashes in any output
-- No text-[10px] or text-[11px]. Min font: text-xs (12px)
-- No font-black or font-extrabold. Max weight: font-semibold
-- No #212D40 for text. Use #1A1D23
-- No fabricated content
-- No AI-generated recommendations in customer-facing output without human review
+- No fabricated content; every claim traces to verified data (PR-005)
 - One feature = one commit = one verifiable step
+- Universal language in core docs and code; vertical-specific only in vocabulary configs (L-001)
+- Dave receives finished specs only, never rough ideas
+- Every external-facing string passes Reviewer Claude before publish (AR-002)
 
-## Global Model Default
+## Open Loops
 
-model: claude-sonnet-4-6
-
-## Key Pages
-
-- Build Queue (cockpit): https://www.notion.so/32dfdaf120c48141a798f219d02ac76d
-- Agent Status Dashboard: https://www.notion.so/328fdaf120c481e8be98dd225f0bad70
-- Dave Sprint: https://www.notion.so/32bfdaf120c481aea0e5cfcdfc173292
-- Dave Context Brief: https://www.notion.so/328fdaf120c4815cbbc8e2c6b10bfc05
-- Jo Context Brief: https://www.notion.so/328fdaf120c48148bb2dfada3a71bf21
+- Active n8n call sites: 9 backend paths still POST to `ALLORO_N8N_WEBHOOK_URL`. Findings: `/tmp/n8n-sweep-2026-05-02.md`. Pending Corey decision (missed retirement vs deliberate stub).
+- Notion connector "N8N Integration" rename to "Alloro Claude Code" pending Corey UI step.
+- main branch CLAUDE.md is pre-foundation. Updates land naturally with the next sandbox->main merge by Dave.
 
 ## Rules (loaded automatically)
 
