@@ -61,7 +61,7 @@ export default function ConnectDomainModal({
       const result = await onConnect(domain.trim());
       setServerIp(result.server_ip);
       toast.success("Domain connected. Now update your DNS.");
-      onDomainChange();
+      await onDomainChange();
     } catch (err: any) {
       toast.error(err.message || "Failed to connect domain");
     } finally {

@@ -2,6 +2,47 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.57] - May 2026
+
+### PMS Statistics — Upload Nudge Replaces Duplicate Card
+
+The `/pmsStatistics` page was rendering a standalone `<PMSCard />` that duplicated the production and referral data already shown in the PMS Vitals section below. Replaced it with the "Ready for the next focus?" upload nudge (matching the main dashboard's design) that only appears when PMS data is stale, with a CTA that scrolls to the ingestion hub.
+
+**Key Changes:**
+- Removed duplicate `<PMSCard />` rendering and import
+- Added `derivePmsFocusPeriod` memo using existing `keyData.months` — no new API call
+- Upload nudge card shown conditionally when `focusPeriod.isStale`, styled identically to the dashboard's `PmsUploadNudge`
+- CTA button scrolls to ingestion hub instead of linking back to `/pmsStatistics`
+
+**Commits:**
+- `frontend/src/components/PMS/PMSVisualPillars.tsx` — swapped PMSCard for inline upload nudge with stale-data condition
+
+## [0.0.56] - May 2026
+
+### Onboarding Wizard — Temporarily Disabled
+
+The guided onboarding wizard tour is disabled while dashboard and settings components are being rebuilt. The wizard context provider still mounts (no breaking changes to consumers), but both activation paths — initial status check and `recheckWizardStatus` — are stubbed as no-ops. Original logic is preserved inline with `TODO: RESTORE` markers for re-enablement once the new components are finalized.
+
+**Key Changes:**
+- Auto-start `useEffect` replaced with no-op that immediately clears loading state
+- `recheckWizardStatus` callback replaced with no-op stub
+- Original code preserved as commented-out blocks for easy restoration
+
+**Commits:**
+- `frontend/src/contexts/OnboardingWizardContext.tsx` — no-op stubs for wizard activation, original logic commented with restoration markers
+
+## [0.0.55] - May 2026
+
+### Custom Domain Modal — Verify View Fix
+
+After connecting a custom domain, the modal showed a success toast but stayed on the input form instead of transitioning to the DNS verification view. The `onDomainChange()` callback was not awaited, so the parent's state hadn't updated before the modal re-rendered.
+
+**Key Changes:**
+- `await onDomainChange()` in `handleConnect` so the parent refetches the project before the loading state clears
+
+**Commits:**
+- `frontend/src/components/Admin/ConnectDomainModal.tsx` — await onDomainChange so currentDomain prop is set before re-render
+
 ## [0.0.54] - May 2026
 
 ### PMSCard Current Period Fix + PMS Statistics Page
