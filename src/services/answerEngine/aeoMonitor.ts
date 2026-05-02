@@ -177,6 +177,43 @@ const defaultCitationFetcher: CitationFetcher = async ({ query, practice }) => {
   return await fetchViaHtmlScrape(query, practice, start);
 };
 
+/**
+ * Phase 3 export: lets the platform adapter wrap the Phase 1 detection
+ * path uniformly. Adds a `rawResponseOverride` shortcut for testing
+ * (smoke-test path bypasses real SerpAPI calls).
+ */
+export async function fetchCitationViaPhase1(input: {
+  query: string;
+  practice: AeoMonitorPractice;
+  rawResponseOverride?: { text: string; citationUrls?: string[] };
+}): Promise<CitationResult> {
+  if (input.rawResponseOverride) {
+    const start = Date.now();
+    const text = input.rawResponseOverride.text;
+    const haystack = text.toLowerCase();
+    const nameLc = input.practice.name.toLowerCase();
+    const cited = nameLc.length >= 6 && haystack.includes(nameLc);
+    let competitor: string | null = null;
+    if (!cited) {
+      for (const c of input.practice.competitorNames) {
+        if (c.length >= 6 && haystack.includes(c.toLowerCase())) {
+          competitor = c;
+          break;
+        }
+      }
+    }
+    const urls = input.rawResponseOverride.citationUrls ?? [];
+    return {
+      cited,
+      citation_url: urls[0],
+      competitor_cited: competitor ?? undefined,
+      raw_response: { source: "override", text, urls },
+      latency_ms: Date.now() - start,
+    };
+  }
+  return await defaultCitationFetcher({ query: input.query, practice: input.practice });
+}
+
 async function fetchViaSerpApi(
   query: string,
   practice: AeoMonitorPractice,
@@ -533,7 +570,7 @@ export async function runAeoMonitor(
   return out;
 }
 
-function composeAeoRecommendedAction(
+export function composeAeoRecommendedAction(
   signalType: "aeo_citation_lost" | "aeo_citation_new" | "aeo_citation_competitor",
   query: string,
 ): string {

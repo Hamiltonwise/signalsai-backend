@@ -1,0 +1,111 @@
+/**
+ * Anthropic Claude adapter (Phase 3).
+ *
+ * Uses claude-opus-4-7 with the web_search_20260209 tool (dynamic
+ * filtering tool version current as of May 2026). Returns the
+ * synthesized answer plus the citations the tool surfaced.
+ *
+ * Estimated cost: ~$0.06 per query at Opus 4.7 pricing with tool calls.
+ */
+
+import Anthropic from "@anthropic-ai/sdk";
+import {
+  composeCitationResult,
+  type CitationCheckInput,
+  type PlatformAdapter,
+} from "./types";
+
+const MODEL = "claude-opus-4-7";
+const TOOL_VERSION = "web_search_20260209";
+
+export const claudeAdapter: PlatformAdapter = {
+  platform: "claude",
+  label: "Claude",
+  estimatedCostUsd: 0.06,
+  isAvailable(): boolean {
+    return !!process.env.ANTHROPIC_API_KEY;
+  },
+  async checkCitation(input: CitationCheckInput) {
+    const start = Date.now();
+    if (input.rawResponseOverride) {
+      return composeCitationResult({
+        text: input.rawResponseOverride.text,
+        citationUrls: input.rawResponseOverride.citationUrls,
+        practice: input.practice,
+        startedAt: start,
+        rawResponse: { source: "override" },
+      });
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return {
+        cited: false,
+        raw_response: { source: "claude", error: "ANTHROPIC_API_KEY not set" },
+        latency_ms: Date.now() - start,
+      };
+    }
+    try {
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      // The Anthropic SDK 0.20.9 in this repo predates the typed
+      // web_search_20260209 tool; we send the tool definition via a
+      // typed-as-any payload so the SDK validation does not reject it.
+      // The Anthropic SDK 0.20.9 in this repo predates the typed
+      // web_search_20260209 tool. Cast to `any` so the type-check passes;
+      // the SDK forwards unknown tool definitions to the API verbatim.
+      const requestBody = {
+        model: MODEL,
+        max_tokens: 1024,
+        messages: [{ role: "user" as const, content: input.query }],
+        tools: [
+          {
+            type: TOOL_VERSION,
+            name: "web_search",
+          },
+        ],
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const message = await client.messages.create(requestBody as any);
+      const text = extractTextFromMessage(message);
+      const citationUrls = extractCitationUrlsFromMessage(message);
+      return composeCitationResult({
+        text,
+        citationUrls,
+        practice: input.practice,
+        startedAt: start,
+        rawResponse: { source: "claude", model: MODEL, raw: message },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        cited: false,
+        raw_response: { source: "claude", error: message },
+        latency_ms: Date.now() - start,
+      };
+    }
+  },
+};
+
+function extractTextFromMessage(msg: Anthropic.Message): string {
+  const blocks = msg.content || [];
+  const out: string[] = [];
+  for (const b of blocks) {
+    if (b.type === "text") out.push(b.text);
+  }
+  return out.join("\n");
+}
+
+function extractCitationUrlsFromMessage(msg: Anthropic.Message): string[] {
+  const candidates: string[] = [];
+  const visit = (val: unknown): void => {
+    if (!val) return;
+    if (typeof val === "string") {
+      if (/^https?:\/\//.test(val)) candidates.push(val);
+      return;
+    }
+    if (Array.isArray(val)) val.forEach(visit);
+    else if (typeof val === "object") {
+      for (const v of Object.values(val as Record<string, unknown>)) visit(v);
+    }
+  };
+  visit(msg.content);
+  return Array.from(new Set(candidates)).slice(0, 10);
+}
