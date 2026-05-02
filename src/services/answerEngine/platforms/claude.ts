@@ -22,6 +22,11 @@ export const claudeAdapter: PlatformAdapter = {
   platform: "claude",
   label: "Claude",
   estimatedCostUsd: 0.06,
+  // AR-003 says "Opus only for cross-practice strategic patterns."
+  // Cost-discipline activation 2026-05-02 sets a 10% random sample as
+  // the default so the Claude adapter still surfaces a representative
+  // citation distribution without polling every (practice, query) cell.
+  samplingRate: 0.1,
   isAvailable(): boolean {
     return !!process.env.ANTHROPIC_API_KEY;
   },

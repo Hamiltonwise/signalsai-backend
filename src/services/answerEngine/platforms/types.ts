@@ -41,6 +41,17 @@ export interface PlatformAdapter {
    * sources: provider docs as of May 2026.
    */
   estimatedCostUsd: number;
+  /**
+   * Probability the adapter actually runs on a given (practice, query)
+   * call when invoked by the multi-platform monitor. AR-003 + AR-006
+   * cost discipline: Opus-tier adapters may run on a sampled subset.
+   * 1.0 = always run. 0.1 = 10% of calls. Defaults to 1.0 if omitted.
+   *
+   * The orchestrator rolls a uniform random number per call; if outside
+   * the rate, NEITHER the API call NOR the aeo_citations write occurs
+   * (the cell shows as not_polled in the doctor-facing grid).
+   */
+  samplingRate?: number;
   checkCitation(input: CitationCheckInput): Promise<CitationResult>;
 }
 

@@ -1,16 +1,15 @@
 /**
- * ChatGPT adapter (Phase 3).
+ * ChatGPT adapter (Phase 3, cost-discipline activated).
  *
- * Calls OpenAI's Chat Completions API with `gpt-5.5` (current flagship,
- * May 2026) and a web_search tool to retrieve a synthesized answer to
- * the AEO test query. Falls back to `gpt-5-search-api` when the
- * `OPENAI_USE_LIGHTWEIGHT` env var is set (cost discipline path).
+ * **Default model (cost-disciplined path):** `gpt-5-search-api`. Per
+ * the AR-006 cost discipline activation (May 2 2026), the lightweight
+ * search-api model is the default at ~$0.004 per query. When the
+ * `OPENAI_USE_FLAGSHIP=true` env var is set, the adapter switches to
+ * `gpt-5.5` flagship at ~$0.03 per query for cases that need the
+ * deeper reasoning depth.
  *
  * Returns CitationResult with cited / competitor_cited derived from the
  * synthesized text.
- *
- * Estimated cost: ~$0.03 per query at gpt-5.5 reasoning depth, drops to
- * ~$0.004 with the search-api fallback. Tunable via env.
  */
 
 import {
@@ -25,7 +24,8 @@ const SEARCH_API_MODEL = "gpt-5-search-api";
 export const chatGPTAdapter: PlatformAdapter = {
   platform: "chatgpt",
   label: "ChatGPT",
-  estimatedCostUsd: 0.03,
+  // Cost-disciplined default (AR-006 activation 2026-05-02).
+  estimatedCostUsd: 0.004,
   isAvailable(): boolean {
     return !!process.env.OPENAI_API_KEY;
   },
@@ -37,7 +37,7 @@ export const chatGPTAdapter: PlatformAdapter = {
         citationUrls: input.rawResponseOverride.citationUrls,
         practice: input.practice,
         startedAt: start,
-        rawResponse: { source: "override" },
+        rawResponse: { source: "override", model_routed: resolveModel() },
       });
     }
     if (!process.env.OPENAI_API_KEY) {
@@ -47,10 +47,7 @@ export const chatGPTAdapter: PlatformAdapter = {
         latency_ms: Date.now() - start,
       };
     }
-    const model =
-      process.env.OPENAI_USE_LIGHTWEIGHT === "true"
-        ? SEARCH_API_MODEL
-        : FLAGSHIP_MODEL;
+    const model = resolveModel();
     try {
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -93,6 +90,17 @@ export const chatGPTAdapter: PlatformAdapter = {
     }
   },
 };
+
+/**
+ * Resolve which OpenAI model to call. Default is the lightweight
+ * search-api (cost-disciplined). Setting OPENAI_USE_FLAGSHIP=true
+ * routes to gpt-5.5.
+ */
+export function resolveModel(): string {
+  return process.env.OPENAI_USE_FLAGSHIP === "true"
+    ? FLAGSHIP_MODEL
+    : SEARCH_API_MODEL;
+}
 
 function extractAssistantText(response: Record<string, unknown>): string {
   const choices = response.choices as

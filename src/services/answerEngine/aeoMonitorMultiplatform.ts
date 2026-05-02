@@ -15,6 +15,7 @@
  * flag flips on per practice.
  */
 
+import { db } from "../../database/connection";
 import {
   classifyCitationDelta,
   composeAeoRecommendedAction,
@@ -26,7 +27,10 @@ import {
 } from "./aeoMonitor";
 import { emitSignalEvent } from "./signalWatcher";
 import { PLATFORM_ADAPTERS } from "./platforms/registry";
+import { isEnabled } from "../featureFlags";
 import type { CitationResult, AeoPlatform } from "./types";
+
+export type PollingMode = "full" | "movement_only";
 
 export interface MultiplatformRunInput {
   practiceIdsOverride?: number[];
@@ -46,11 +50,36 @@ export interface MultiplatformRunInput {
   >;
   /** Skip writing aeo_citations rows + signal_events (dry run). */
   dryRun?: boolean;
+  /**
+   * Cost-discipline knob. "full" polls every (practice, query, platform)
+   * cell on each run -- intended for the daily cron. "movement_only"
+   * filters queries per (practice, platform) to only those that have
+   * had a citation delta in the last MOVEMENT_LOOKBACK_DAYS days --
+   * intended for the hourly cron. Defaults to "full" so behavior is
+   * unchanged unless caller opts in.
+   */
+  pollingMode?: PollingMode;
+  /**
+   * Override the per-adapter samplingRate. Use 1.0 in tests to make
+   * Opus sampling deterministic; otherwise rely on the adapter default.
+   */
+  samplingRateOverride?: Partial<Record<AeoPlatform, number>>;
+  /**
+   * Skip the answer_engine_multiplatform per-practice flag check.
+   * Used for smoke tests; the production cron leaves this off so
+   * unflagged practices are skipped silently.
+   */
+  bypassFeatureFlag?: boolean;
 }
+
+const MOVEMENT_LOOKBACK_DAYS = 7;
 
 export interface MultiplatformRunResult {
   practicesChecked: number;
+  practicesSkippedFlag: number;
   totalCalls: number;
+  callsSampledOut: number;
+  queriesSkippedNoMovement: number;
   citationsRecorded: number;
   signalsEmitted: number;
   perPlatform: Array<{
@@ -58,6 +87,7 @@ export interface MultiplatformRunResult {
     label: string;
     callsAttempted: number;
     callsSucceeded: number;
+    callsSampledOut: number;
     skipped: boolean;
     skipReason?: string;
   }>;
@@ -68,10 +98,14 @@ export async function runAeoMonitorAcrossPlatforms(
 ): Promise<MultiplatformRunResult> {
   const practices = await loadAeoActivePractices(input.practiceIdsOverride);
   const adapters = filterAdapters(input.platformsOverride);
+  const pollingMode: PollingMode = input.pollingMode ?? "full";
 
   const out: MultiplatformRunResult = {
     practicesChecked: 0,
+    practicesSkippedFlag: 0,
     totalCalls: 0,
+    callsSampledOut: 0,
+    queriesSkippedNoMovement: 0,
     citationsRecorded: 0,
     signalsEmitted: 0,
     perPlatform: adapters.map((a) => ({
@@ -79,6 +113,7 @@ export async function runAeoMonitorAcrossPlatforms(
       label: a.label,
       callsAttempted: 0,
       callsSucceeded: 0,
+      callsSampledOut: 0,
       skipped: !a.isAvailable() && !hasOverride(input, a.platform),
       skipReason: !a.isAvailable() && !hasOverride(input, a.platform)
         ? "adapter not available (missing API key or manual platform)"
@@ -87,19 +122,54 @@ export async function runAeoMonitorAcrossPlatforms(
   };
 
   for (const practice of practices) {
+    // Per-practice feature flag gate. Skip practices that have not been
+    // flipped on for the multi-platform monitor.
+    if (!input.bypassFeatureFlag) {
+      const flagOn = await isEnabled("answer_engine_multiplatform", practice.id);
+      if (!flagOn) {
+        out.practicesSkippedFlag += 1;
+        continue;
+      }
+    }
+
     out.practicesChecked += 1;
     const queries = await loadActiveQueries(practice.specialty);
     for (const adapter of adapters) {
       const summary = out.perPlatform.find((p) => p.platform === adapter.platform);
       if (!summary || summary.skipped) continue;
-      for (const queryRow of queries) {
+
+      // Movement-gated polling: filter queries to those with citation
+      // movement on this (practice, platform) in the last 7 days. The
+      // first call per cell always runs (no prior row to gate on).
+      const eligibleQueries =
+        pollingMode === "movement_only"
+          ? await filterQueriesByMovement(practice.id, adapter.platform, queries.map((q) => q.query))
+          : queries.map((q) => q.query);
+
+      const skippedThisAdapter =
+        queries.length - eligibleQueries.length;
+      if (skippedThisAdapter > 0) {
+        out.queriesSkippedNoMovement += skippedThisAdapter;
+      }
+
+      // Per-adapter sampling: when sampling rate < 1, roll a die per
+      // call. Override via samplingRateOverride for deterministic tests.
+      const samplingRate = resolveSamplingRate(input, adapter);
+
+      for (const query of eligibleQueries) {
+        // Sampling decision (1.0 always passes).
+        if (samplingRate < 1 && Math.random() >= samplingRate) {
+          summary.callsSampledOut += 1;
+          out.callsSampledOut += 1;
+          continue;
+        }
         summary.callsAttempted += 1;
         out.totalCalls += 1;
-        const override = input.rawResponseOverrides?.[adapter.platform]?.[queryRow.query];
+        const override = input.rawResponseOverrides?.[adapter.platform]?.[query];
         let result: CitationResult;
         try {
           result = await adapter.checkCitation({
-            query: queryRow.query,
+            query,
             practice,
             rawResponseOverride: override,
           });
@@ -107,14 +177,14 @@ export async function runAeoMonitorAcrossPlatforms(
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
           console.error(
-            `[AeoMultiplatform] ${adapter.label} failed for practice ${practice.id} q="${queryRow.query}": ${message}`,
+            `[AeoMultiplatform] ${adapter.label} failed for practice ${practice.id} q="${query}": ${message}`,
           );
           continue;
         }
         if (input.dryRun) continue;
         await processCitation({
           practice,
-          query: queryRow.query,
+          query,
           platform: adapter.platform,
           result,
           counters: out,
@@ -124,6 +194,67 @@ export async function runAeoMonitorAcrossPlatforms(
   }
 
   return out;
+}
+
+function resolveSamplingRate(
+  input: MultiplatformRunInput,
+  adapter: { platform: AeoPlatform; samplingRate?: number },
+): number {
+  if (input.samplingRateOverride && input.samplingRateOverride[adapter.platform] !== undefined) {
+    return input.samplingRateOverride[adapter.platform]!;
+  }
+  return adapter.samplingRate ?? 1;
+}
+
+/**
+ * Movement-gated polling helper. Returns the subset of `queries` that
+ * have had at least one citation status change for this
+ * (practice, platform) in the last MOVEMENT_LOOKBACK_DAYS days.
+ *
+ * The first poll for a (practice, platform, query) cell has no prior
+ * row, so it is always considered "moved" and runs.
+ */
+export async function filterQueriesByMovement(
+  practiceId: number,
+  platform: AeoPlatform,
+  queries: string[],
+): Promise<string[]> {
+  if (queries.length === 0) return [];
+  const since = new Date(Date.now() - MOVEMENT_LOOKBACK_DAYS * 24 * 3600 * 1000);
+
+  // Two-pass: which queries have ANY row, and of those, which have ≥2
+  // distinct citation states in the lookback window. Queries with no
+  // rows fall through (first-run -> always poll).
+  const rows = await db("aeo_citations")
+    .where("practice_id", practiceId)
+    .andWhere("platform", platform)
+    .andWhere("checked_at", ">=", since)
+    .whereIn("query", queries)
+    .select("query", "cited", "competitor_cited", "checked_at")
+    .orderBy("checked_at", "desc");
+
+  const byQuery = new Map<string, Array<{ cited: boolean; competitor_cited: string | null }>>();
+  for (const r of rows as Array<{
+    query: string;
+    cited: boolean;
+    competitor_cited: string | null;
+  }>) {
+    const arr = byQuery.get(r.query) || [];
+    arr.push({ cited: r.cited, competitor_cited: r.competitor_cited });
+    byQuery.set(r.query, arr);
+  }
+
+  return queries.filter((q) => {
+    const history = byQuery.get(q);
+    if (!history || history.length === 0) return true; // first run = poll
+    const hasMovement = history.some(
+      (h, i) =>
+        i > 0 &&
+        (h.cited !== history[i - 1].cited ||
+          h.competitor_cited !== history[i - 1].competitor_cited),
+    );
+    return hasMovement;
+  });
 }
 
 async function processCitation(input: {
