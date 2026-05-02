@@ -141,6 +141,7 @@ import seoRoutes from "./routes/seo";
 import foundationRoutes from "./routes/foundation";
 import intelligenceRoutes from "./routes/intelligence";
 import liveActivityRoutes from "./routes/liveActivity";
+import answerEngineRoutes from "./routes/answerEngine";
 import marketRoutes from "./routes/market";
 import publicScoreCardRoutes from "./routes/publicScoreCard";
 import sitemapRoutes from "./routes/sitemap";
@@ -400,6 +401,7 @@ app.use("/api/seo", seoRoutes); // WO-7: Programmatic SEO pages + hub/spoke + st
 app.use("/api/foundation", foundationRoutes); // WO-11: Foundation application submissions
 app.use("/api/intelligence", intelligenceRoutes); // WO-8: Practice owner intelligence dashboard
 app.use("/api/live-activity", liveActivityRoutes); // Continuous Answer Engine Phase 1 feed
+app.use("/api/answer-engine", answerEngineRoutes); // Continuous Answer Engine Phase 4 doctor-facing UI
 app.use("/api/market", marketRoutes); // Programmatic city pages market data
 app.use("/api/clarity-card", publicScoreCardRoutes); // Public score card for viral sharing
 app.use("/api/content", contentRoutes); // Public content API for dynamic articles

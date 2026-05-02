@@ -31,6 +31,7 @@ import WarmEmptyState, { WARM_STATES } from "@/components/dashboard/WarmEmptySta
 
 // Import existing components from parts shelf
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
+import AnswerEngineModule from "@/components/answerEngine/AnswerEngineModule";
 
 // Error boundary to prevent page crash from taking out the entire layout
 class PresenceErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -170,6 +171,13 @@ function PresencePageInner() {
         {/* GBP Connection (if not connected) */}
         {!hasGoogleConnection && (
           <GBPConnectCard gbpConnected={!!hasGoogleConnection} orgId={orgId} />
+        )}
+
+        {/* Answer Engine module (Phase 4 -- gated server-side by feature flag) */}
+        {orgId && (
+          <Section title="Answer Engine" icon={Sparkles} defaultOpen={true}>
+            <AnswerEngineModule practiceId={orgId} />
+          </Section>
         )}
 
         {/* GBP Profile Completeness */}
