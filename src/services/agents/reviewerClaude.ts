@@ -733,11 +733,13 @@ Verify Done Gate criteria match the framing in introductory text. If the package
 ========== END EXTENSION ==========`;
 
 /**
- * Reviewer Gate Audit Log Notion database, created May 2 2026 under Alloro HQ.
- * Override via env if a future migration moves it.
+ * Reviewer Gate Audit Log Notion database. Created May 2 2026 via N8N
+ * integration (so the production NOTION_TOKEN can write to it without
+ * requiring a manual share step). Override via env REVIEWER_AUDIT_LOG_DB_ID
+ * if a future migration moves it.
  */
 export const DEFAULT_REVIEWER_AUDIT_LOG_DATABASE_ID =
-  "8f8f3ff2-ee2b-40f1-b25d-50c071eedf46";
+  "354fdaf1-20c4-8196-9373-d78eedc29172";
 
 const NOTION_API_BASE_A = "https://api.notion.com/v1";
 const NOTION_VERSION_A = "2022-06-28";
@@ -996,10 +998,17 @@ export function parseReviewerResponse(raw: string): ParsedReviewerResponse {
   const notesText = extractSection(text, "Notes");
   const verdictText = extractSection(text, "Verdict");
 
-  const verdict = parseVerdictLine(verdictText);
   const blockers = parseFlagBullets(blockersText);
   const concerns = parseFlagBullets(concernsText);
   const notes = parseFlagBullets(notesText);
+
+  // Sanity clamp: blocker count overrides the stated verdict line. If
+  // Claude's output contradicts itself (says PASS with 3 blockers listed),
+  // trust the blockers.
+  let verdict = parseVerdictLine(verdictText);
+  if (blockers.length > 0) verdict = "BLOCK";
+  else if (concerns.length > 0 && verdict === "PASS")
+    verdict = "PASS_WITH_CONCERNS";
 
   return { verdict, blockers, concerns, notes, summary };
 }
@@ -1021,24 +1030,25 @@ function parseFlagBullets(sectionText: string): ParsedFlag[] {
   const flags: ParsedFlag[] = [];
   const lines = sectionText.split("\n");
 
+  // Detect any of: "- ", "* ", "1. ", "**1.**", "**1.", "1) "
+  const ITEM_START = /^\s*(?:[-*]\s+|\*\*\s*\d+\.\s*\*?\*?\s*|\d+[.)]\s+)(.*)$/;
+
   let current: ParsedFlag | null = null;
   for (const rawLine of lines) {
     const line = rawLine.trimEnd();
-    // Top-level bullet: starts with "- " or "* "
-    const bulletMatch = /^\s*[-*]\s+(.*)$/.exec(line);
-    if (bulletMatch) {
-      // Push previous if it had real content
+    if (!line) continue;
+    const itemMatch = ITEM_START.exec(line);
+    if (itemMatch) {
       if (current && current.finding.trim()) {
         flags.push(current);
       }
-      const content = bulletMatch[1];
+      const content = itemMatch[1].trim();
       const checkMatch = /Check\s*(\d)\b/i.exec(content);
       current = {
         check: checkMatch ? checkMatch[1] : undefined,
         finding: content,
       };
     } else if (current && line.trim().length > 0) {
-      // Continuation line — append to current finding
       current.finding += " " + line.trim();
     }
   }
@@ -1046,8 +1056,7 @@ function parseFlagBullets(sectionText: string): ParsedFlag[] {
     flags.push(current);
   }
 
-  // Filter out boilerplate placeholders ("None", "N/A", "No flags") that
-  // can appear in empty sections.
+  // Filter out boilerplate placeholders.
   return flags.filter((f) => {
     const lc = f.finding.trim().toLowerCase();
     return !/^(none|n\/a|no\s+(flags|blockers|concerns|notes))/i.test(lc);
