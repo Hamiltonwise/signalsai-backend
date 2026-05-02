@@ -60,6 +60,14 @@ export type DraftGenerator = (input: {
   retryFeedback?: string;
 }) => Promise<GeneratedDraft | null>;
 
+export interface ReadabilityResult {
+  readable: boolean;
+  issues: string[];
+  source: "haiku" | "skipped_no_api_key" | "skipped_error" | "stub";
+}
+
+export type ReadabilityChecker = (text: string) => Promise<ReadabilityResult>;
+
 // ── runAaeNurture entry point ───────────────────────────────────────
 
 export interface RunAaeNurtureParams {
@@ -70,6 +78,8 @@ export interface RunAaeNurtureParams {
   fixtureAttendees: AaeAttendee[];
   /** Inject a deterministic generator in tests. Default: Sonnet → Opus → template. */
   draftGenerator?: DraftGenerator;
+  /** Inject a deterministic readability checker in tests. Default: Haiku, fail-open if no API key. */
+  readabilityChecker?: ReadabilityChecker;
   /** /tmp by default. */
   outputDir?: string;
   /** Custom file basename (no extension). Default: aae-nurture-dry-run-<date>. */
@@ -95,6 +105,7 @@ export async function runAaeNurture(
   }
 
   const generator = params.draftGenerator ?? defaultDraftGenerator;
+  const readability = params.readabilityChecker ?? defaultReadabilityChecker;
   const outputDir = params.outputDir ?? "/tmp";
   const inSegment = params.fixtureAttendees.filter(
     (a) => a.segment === params.segmentFilter,
@@ -104,7 +115,12 @@ export async function runAaeNurture(
   const skipped: SkippedAttendee[] = [];
 
   for (const attendee of inSegment) {
-    const result = await processAttendee(attendee, params.touchNumber, generator);
+    const result = await processAttendee(
+      attendee,
+      params.touchNumber,
+      generator,
+      readability,
+    );
     if (result.kind === "draft") {
       drafts.push(result.draft);
     } else {
@@ -153,6 +169,7 @@ async function processAttendee(
   attendee: AaeAttendee,
   touchNumber: 1 | 2 | 3 | 4,
   generator: DraftGenerator,
+  readability: ReadabilityChecker,
 ): Promise<ProcessResult> {
   // Pre-flight: bare minimum personalization signal must exist.
   if (!hasMinimumPersonalization(attendee)) {
@@ -225,17 +242,14 @@ async function processAttendee(
     };
   }
 
-  // Initial confidence; cross-personalization will refine after all drafts collected.
-  const uniqueCount = generated.personalizationElements.length;
-  const confidence: ConfidenceLevel = uniqueCount >= 2 ? "green" : "yellow";
+  // Gate C: Readability (Haiku). Failure caps confidence at Yellow but
+  // does not skip the draft. Issues feed into confidenceReasons.
+  const readabilityResult = await readability(generated.body);
+
+  // Initial confidence is recomputed after the cross-personalization pass.
+  // Seed with placeholder values; resolveConfidence will replace them.
+  const confidence: ConfidenceLevel = "yellow";
   const reasons: string[] = [];
-  if (confidence === "yellow") {
-    reasons.push(
-      uniqueCount === 0
-        ? "no specific personalization elements after generation"
-        : "thin personalization (1 element) before cross-check",
-    );
-  }
 
   const draft: NurtureDraft = {
     attendeeId: attendee.attendeeId,
@@ -258,8 +272,13 @@ async function processAttendee(
         violations: voice.violations,
         warnings: voice.warnings,
       },
+      readability: {
+        passed: readabilityResult.readable,
+        issues: readabilityResult.issues,
+        source: readabilityResult.source,
+      },
       crossPersonalization: {
-        uniqueElementCount: uniqueCount,
+        uniqueElementCount: generated.personalizationElements.length,
         sharedElements: [],
       },
     },
@@ -310,24 +329,48 @@ function applyCrossPersonalization(drafts: NurtureDraft[]): void {
     d.gates.crossPersonalization.uniqueElementCount = uniqueCount;
     d.gates.crossPersonalization.sharedElements = sharedElements;
 
-    // Spec rubric: 🟢 = passes 3 gates AND 2+ unique-to-this-attendee elements.
-    // 🟡 = passes gates but personalization thin (1 element) OR shared with others.
-    if (uniqueCount >= 2) {
-      d.confidence = "green";
-      d.confidenceReasons = [];
-    } else {
-      d.confidence = "yellow";
-      const reasons: string[] = [];
-      if (uniqueCount === 1) reasons.push("only 1 personalization element unique to this attendee");
-      if (uniqueCount === 0) reasons.push("no personalization element unique to this attendee");
-      if (sharedElements.length > 0) {
-        reasons.push(
-          `shared element(s) with other drafts: ${sharedElements.slice(0, 3).join("; ")}`,
-        );
-      }
-      d.confidenceReasons = reasons;
+    const { confidence, reasons } = resolveConfidence(d);
+    d.confidence = confidence;
+    d.confidenceReasons = reasons;
+  }
+}
+
+/**
+ * Resolve final confidence from gate results. Readability failure caps
+ * confidence at Yellow regardless of personalization uniqueness.
+ */
+function resolveConfidence(d: NurtureDraft): {
+  confidence: ConfidenceLevel;
+  reasons: string[];
+} {
+  const reasons: string[] = [];
+  const readabilityCapped = !d.gates.readability.passed;
+  if (readabilityCapped) {
+    const issueText =
+      d.gates.readability.issues.length > 0
+        ? d.gates.readability.issues.join("; ")
+        : "unspecified readability issues";
+    reasons.push(`readability gate flagged: ${issueText}`);
+  }
+
+  const uniqueCount = d.gates.crossPersonalization.uniqueElementCount;
+  const sharedElements = d.gates.crossPersonalization.sharedElements;
+
+  if (uniqueCount >= 2 && !readabilityCapped) {
+    return { confidence: "green", reasons: [] };
+  }
+
+  if (uniqueCount < 2) {
+    if (uniqueCount === 1) reasons.push("only 1 personalization element unique to this attendee");
+    if (uniqueCount === 0) reasons.push("no personalization element unique to this attendee");
+    if (sharedElements.length > 0) {
+      reasons.push(
+        `shared element(s) with other drafts: ${sharedElements.slice(0, 3).join("; ")}`,
+      );
     }
   }
+
+  return { confidence: "yellow", reasons };
 }
 
 function normalizeElement(s: string): string {
@@ -342,6 +385,7 @@ function normalizeElement(s: string): string {
 
 const SONNET_MODEL = "claude-sonnet-4-6";
 const OPUS_MODEL = "claude-opus-4-7";
+const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 
 const defaultDraftGenerator: DraftGenerator = async ({
   attendee,
@@ -402,6 +446,72 @@ const defaultDraftGenerator: DraftGenerator = async ({
 
   return templateDraft(attendee, touchNumber, retryFeedback);
 };
+
+// ── Default readability checker (Haiku, fail-open if no API key) ─────
+
+const defaultReadabilityChecker: ReadabilityChecker = async (text) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.warn(
+      "[AaeNurture] ANTHROPIC_API_KEY not set. Readability gate fail-open (treating as readable).",
+    );
+    return { readable: true, issues: [], source: "skipped_no_api_key" };
+  }
+  const client = new Anthropic({ apiKey });
+  const prompt =
+    `Read this email draft. Does it contain any grammar errors, awkward phrasing, ` +
+    `or constructions that would make a fluent English reader question whether a ` +
+    `human wrote it? Return JSON: { "readable": boolean, "issues": string[] }. ` +
+    `Return ONLY the JSON object, no surrounding text.\n\nDraft:\n${text}`;
+
+  try {
+    const message = await client.messages.create({
+      model: HAIKU_MODEL,
+      max_tokens: 512,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const block = message.content[0];
+    if (!block || block.type !== "text") {
+      console.warn("[AaeNurture] Readability gate: non-text response. Fail-open.");
+      return { readable: true, issues: [], source: "skipped_error" };
+    }
+    const parsed = parseReadabilityJson(block.text);
+    if (!parsed) {
+      console.warn(
+        "[AaeNurture] Readability gate: failed to parse Haiku JSON. Fail-open.",
+      );
+      return {
+        readable: true,
+        issues: ["readability gate: failed to parse model JSON"],
+        source: "skipped_error",
+      };
+    }
+    return { ...parsed, source: "haiku" };
+  } catch (err: any) {
+    console.warn(
+      `[AaeNurture] Readability gate failed (${err?.message ?? err}). Fail-open.`,
+    );
+    return { readable: true, issues: [], source: "skipped_error" };
+  }
+};
+
+function parseReadabilityJson(
+  text: string,
+): { readable: boolean; issues: string[] } | null {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  try {
+    const json = JSON.parse(text.slice(start, end + 1));
+    if (typeof json.readable !== "boolean") return null;
+    const issues = Array.isArray(json.issues)
+      ? json.issues.filter((x: unknown): x is string => typeof x === "string")
+      : [];
+    return { readable: json.readable, issues };
+  } catch {
+    return null;
+  }
+}
 
 function buildPrompt(
   attendee: AaeAttendee,
@@ -634,6 +744,11 @@ async function writeMarkdownReport(r: ReportInputs): Promise<string> {
       `- Voice: ${d.gates.voice.passed ? "PASS" : "FAIL"} ` +
         `(violations: ${d.gates.voice.violations.join("; ") || "none"}; ` +
         `warnings: ${d.gates.voice.warnings.join("; ") || "none"})`,
+    );
+    lines.push(
+      `- Readability (Haiku): ${d.gates.readability.passed ? "PASS" : "FAIL"} ` +
+        `[source: ${d.gates.readability.source}] ` +
+        `(issues: ${d.gates.readability.issues.join("; ") || "none"})`,
     );
     lines.push(
       `- Cross-personalization: ${d.gates.crossPersonalization.uniqueElementCount} unique element(s); ` +

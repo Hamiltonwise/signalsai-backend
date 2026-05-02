@@ -17,9 +17,21 @@ import * as os from "os";
 import * as path from "path";
 import { describe, test, expect, beforeAll } from "vitest";
 
-import { runAaeNurture, type DraftGenerator } from "../../src/services/agents/aaeNurture";
+import {
+  runAaeNurture,
+  type DraftGenerator,
+  type ReadabilityChecker,
+} from "../../src/services/agents/aaeNurture";
 import type { AaeAttendee } from "../../src/services/agents/aaeNurture.schema";
 import { SAMPLE_AAE_ATTENDEES } from "./fixtures/aae-attendees-sample";
+
+// Default deterministic readability checker: always passes. Tests that
+// exercise readability inject a different stub.
+const passingReadability: ReadabilityChecker = async () => ({
+  readable: true,
+  issues: [],
+  source: "stub",
+});
 
 // ── Deterministic generator (no network) ────────────────────────────
 
@@ -113,6 +125,7 @@ describe("runAaeNurture (dry-run)", () => {
       touchNumber: 1,
       fixtureAttendees: SAMPLE_AAE_ATTENDEES,
       draftGenerator: stubGenerator,
+      readabilityChecker: passingReadability,
       outputDir: tempOutputDir,
       outputBaseName: "no-silent-drops",
     });
@@ -128,6 +141,7 @@ describe("runAaeNurture (dry-run)", () => {
       touchNumber: 1,
       fixtureAttendees: SAMPLE_AAE_ATTENDEES,
       draftGenerator: stubGenerator,
+      readabilityChecker: passingReadability,
       outputDir: tempOutputDir,
       outputBaseName: "min-7-drafts",
     });
@@ -147,6 +161,7 @@ describe("runAaeNurture (dry-run)", () => {
       touchNumber: 1,
       fixtureAttendees: SAMPLE_AAE_ATTENDEES,
       draftGenerator: stubGenerator,
+      readabilityChecker: passingReadability,
       outputDir: tempOutputDir,
       outputBaseName: "voice-pass",
     });
@@ -164,6 +179,7 @@ describe("runAaeNurture (dry-run)", () => {
       touchNumber: 1,
       fixtureAttendees: SAMPLE_AAE_ATTENDEES,
       draftGenerator: stubGenerator,
+      readabilityChecker: passingReadability,
       outputDir: tempOutputDir,
       outputBaseName: "auth-pass",
     });
@@ -195,6 +211,7 @@ describe("runAaeNurture (dry-run)", () => {
       touchNumber: 1,
       fixtureAttendees: [tinyAttendee],
       draftGenerator: emDashGenerator,
+      readabilityChecker: passingReadability,
       outputDir: tempOutputDir,
       outputBaseName: "em-dash-fail",
     });
@@ -245,6 +262,7 @@ describe("runAaeNurture (dry-run)", () => {
       touchNumber: 1,
       fixtureAttendees: [attendee],
       draftGenerator: flakyGenerator,
+      readabilityChecker: passingReadability,
       outputDir: tempOutputDir,
       outputBaseName: "retry-fires",
     });
@@ -289,6 +307,7 @@ describe("runAaeNurture (dry-run)", () => {
       touchNumber: 1,
       fixtureAttendees: [a, b],
       draftGenerator: dupGenerator,
+      readabilityChecker: passingReadability,
       outputDir: tempOutputDir,
       outputBaseName: "cross-personalization",
     });
@@ -307,6 +326,7 @@ describe("runAaeNurture (dry-run)", () => {
       touchNumber: 1,
       fixtureAttendees: SAMPLE_AAE_ATTENDEES,
       draftGenerator: stubGenerator,
+      readabilityChecker: passingReadability,
       outputDir: tempOutputDir,
       outputBaseName: "mixed-confidence",
     });
@@ -325,6 +345,7 @@ describe("runAaeNurture (dry-run)", () => {
       touchNumber: 1,
       fixtureAttendees: SAMPLE_AAE_ATTENDEES,
       draftGenerator: stubGenerator,
+      readabilityChecker: passingReadability,
       outputDir: tempOutputDir,
       outputBaseName: "report-written",
     });
@@ -332,5 +353,109 @@ describe("runAaeNurture (dry-run)", () => {
     const contents = fs.readFileSync(result.outputPath, "utf8");
     expect(contents).toMatch(/AAE Nurture Dry-Run/);
     expect(contents).toMatch(/Drafted: \d+/);
+  });
+
+  test("readability gate runs after auth+voice and only on accepted drafts", async () => {
+    // Track every text the readability checker is asked to evaluate, plus
+    // the order: auth runs first, then voice, then readability. We assert
+    // by checking that voice-rejected and auth-rejected drafts never reach
+    // the readability checker.
+    const readabilityCalls: string[] = [];
+    const tracker: ReadabilityChecker = async (text) => {
+      readabilityCalls.push(text);
+      return { readable: true, issues: [], source: "stub" };
+    };
+    const result = await runAaeNurture({
+      mode: "dry-run",
+      segmentFilter: "professional_us",
+      touchNumber: 1,
+      fixtureAttendees: SAMPLE_AAE_ATTENDEES,
+      draftGenerator: stubGenerator,
+      readabilityChecker: tracker,
+      outputDir: tempOutputDir,
+      outputBaseName: "readability-runs",
+    });
+    // One call per draft that survived auth + voice. None for skipped.
+    expect(readabilityCalls.length).toBe(result.drafts.length);
+    // Every produced draft has a readability gate result.
+    for (const d of result.drafts) {
+      expect(d.gates.readability.passed).toBe(true);
+      expect(d.gates.readability.source).toBe("stub");
+    }
+  });
+
+  test("readable=false caps confidence at Yellow even with 2+ unique elements", async () => {
+    const failingReadability: ReadabilityChecker = async () => ({
+      readable: false,
+      issues: ["awkward phrasing in sentence 2", "subject-verb agreement issue"],
+      source: "stub",
+    });
+    // Use a single rich-note attendee (would normally land Green).
+    const richAttendee: AaeAttendee = {
+      attendeeId: "readability-cap-test",
+      name: "Dr. Cap",
+      practiceName: "Cap Endo",
+      city: "Asheville",
+      state: "NC",
+      segment: "professional_us",
+      vertical: "endodontics",
+      boothNotes: "asked about referral channel diversification",
+      practiceFacts: ["only endodontist in Asheville with same-day emergency slots"],
+    };
+    const result = await runAaeNurture({
+      mode: "dry-run",
+      segmentFilter: "professional_us",
+      touchNumber: 1,
+      fixtureAttendees: [richAttendee],
+      draftGenerator: stubGenerator,
+      readabilityChecker: failingReadability,
+      outputDir: tempOutputDir,
+      outputBaseName: "readability-caps-green",
+    });
+    expect(result.drafts.length).toBe(1);
+    const d = result.drafts[0];
+    expect(d.gates.crossPersonalization.uniqueElementCount).toBeGreaterThanOrEqual(
+      2,
+    );
+    expect(d.gates.readability.passed).toBe(false);
+    expect(d.confidence).toBe("yellow");
+  });
+
+  test("readable=false issues surface in confidenceReasons", async () => {
+    const failingReadability: ReadabilityChecker = async () => ({
+      readable: false,
+      issues: [
+        "verb tense inconsistency in second sentence",
+        "missing article before 'practice'",
+      ],
+      source: "stub",
+    });
+    const a: AaeAttendee = {
+      attendeeId: "readability-issues-test",
+      name: "Dr. Issue",
+      practiceName: "Issue Endo",
+      city: "Madison",
+      state: "WI",
+      segment: "professional_us",
+      vertical: "endodontics",
+      boothNotes: "asked about Garrison case",
+      practiceFacts: ["uses Open Dental"],
+    };
+    const result = await runAaeNurture({
+      mode: "dry-run",
+      segmentFilter: "professional_us",
+      touchNumber: 1,
+      fixtureAttendees: [a],
+      draftGenerator: stubGenerator,
+      readabilityChecker: failingReadability,
+      outputDir: tempOutputDir,
+      outputBaseName: "readability-issues-surface",
+    });
+    expect(result.drafts.length).toBe(1);
+    const d = result.drafts[0];
+    const joinedReasons = d.confidenceReasons.join(" | ");
+    expect(joinedReasons).toMatch(/readability gate flagged/);
+    expect(joinedReasons).toMatch(/verb tense inconsistency/);
+    expect(joinedReasons).toMatch(/missing article/);
   });
 });

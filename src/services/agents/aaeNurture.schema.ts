@@ -45,6 +45,11 @@ export interface NurtureDraft {
   gates: {
     humanAuthenticity: { passed: boolean; score: number; flags: string[]; retried: boolean };
     voice: { passed: boolean; violations: string[]; warnings: string[] };
+    readability: {
+      passed: boolean;
+      issues: string[];
+      source: "haiku" | "skipped_no_api_key" | "skipped_error" | "stub";
+    };
     crossPersonalization: { uniqueElementCount: number; sharedElements: string[] };
   };
   generatedBy: "sonnet" | "opus_fallback" | "template_fallback";
