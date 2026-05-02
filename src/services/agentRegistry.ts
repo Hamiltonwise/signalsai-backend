@@ -48,6 +48,8 @@ import { generateDailyBrief as generateDaveBrief } from "./personalAgents/daveAg
 import { runAgentAudit } from "./agents/agentAuditor";
 import { runCollectiveIntelligence } from "./collectiveIntelligence";
 import { trackAllCustomerOutcomes } from "./customerOutcomeTracker";
+import { runBridgeTranslator } from "./agents/bridgeTranslator";
+import { runReviewerClaudeOnArtifact } from "./agents/reviewerClaude";
 import { db } from "../database/connection";
 import { processWeek1Win } from "../workers/processors/week1Win.processor";
 
@@ -417,6 +419,58 @@ const registry: Record<string, AgentHandler> = {
     handler: async () => {
       const result = await trackAllCustomerOutcomes();
       return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  bridge_translator: {
+    displayName: "Bridge Translator",
+    description: "Weekly Migration Manifest delta generator. Reads sandbox commits since the last manifest, groups by functional area, generates Dave-Ready cards with verification tests + pattern audit. Runs Friday 19:00 PT (Saturday 02:00 UTC). Defaults to shadow mode -- Cole reviews output before authorizing active mode.",
+    handler: async () => {
+      const envMode = process.env.BRIDGE_TRANSLATOR_MODE;
+      const mode =
+        envMode === "active" ? "active"
+          : envMode === "session" ? "session"
+            : "shadow";
+      const result = await runBridgeTranslator({ mode });
+      return {
+        summary: {
+          mode,
+          card_count: result.delta.cards.length,
+          orphan_count: result.delta.orphans.length,
+          anchor: result.delta.anchorCommit,
+          head: result.delta.headCommit,
+          manifest_path: result.manifestPath,
+          self_check: result.delta.selfCheck,
+          session_outcomes: result.sessionOutcomes.length,
+        } as Record<string, unknown>,
+      };
+    },
+  },
+  reviewer_claude_gate: {
+    displayName: "Reviewer Claude Gate (Build A)",
+    description: "Adversarial review of a Dave-bound artifact via fresh Claude Opus 4.7 session with the verbatim 8-check Reviewer Claude prompt + Check 2 extension. Writes verdict to Reviewer Gate Audit Log Notion DB, auto-promotes PASS to Sandbox Card Inbox, posts to Slack on every verdict. Manual invocation only -- handler runs against env REVIEWER_GATE_ARTIFACT_PATH (or skips with warning).",
+    handler: async () => {
+      const artifactPath = process.env.REVIEWER_GATE_ARTIFACT_PATH;
+      if (!artifactPath) {
+        console.warn(
+          "[reviewer_claude_gate] REVIEWER_GATE_ARTIFACT_PATH not set; nothing to review.",
+        );
+        return { summary: { skipped: true, reason: "no artifact path" } };
+      }
+      const result = await runReviewerClaudeOnArtifact({
+        artifactPath,
+        artifactSource: process.env.REVIEWER_GATE_ARTIFACT_SOURCE,
+        linkedArtifactUrl: process.env.REVIEWER_GATE_LINKED_URL,
+      });
+      return {
+        summary: {
+          verdict: result.verdict,
+          blockers: result.blockers.length,
+          concerns: result.concerns.length,
+          notes: result.notes.length,
+          auto_promoted: result.autoPromoted,
+          audit_log_page_id: result.auditLogPageId,
+        } as Record<string, unknown>,
+      };
     },
   },
 };

@@ -12,7 +12,7 @@ and current test results. If code contradicts that document, the code is wrong.
 
 ## Repo
 
-Path: ~/Desktop/alloro
+Path: ~/code/alloro
 Branch: sandbox (never touch main directly)
 Never create a new branch. If sandbox is the wrong branch for a task, stop and ask Corey before proceeding.
 Frontend: frontend/ (React 18+, TypeScript, Vite, Tailwind CSS, shadcn/ui)
@@ -110,10 +110,31 @@ After every handoff or milestone, sync the relevant Notion page (see sync trigge
 1. Infer session type from Corey's opening (THINKING, BUILD, or BUG TRIAGE) and reflect it back
 2. Read `CURRENT-SPRINT.md` -- this is the GPS.
 3. `git branch --show-current && git status --short`
-4. Read `docs/PRODUCT-OPERATIONS.md` -- check which Knowns are PASS/FAIL/UNTESTED
-5. Check Build Queue cockpit in Notion for active WO and decisions pending Corey
-6. If BUILD: read `memory/context/session-contract.md` for quality gates
-7. Execute the next waypoint, or fix failing tests if any exist
+4. **Capture sandbox HEAD as SESSION_ANCHOR_COMMIT.** Run `export SESSION_ANCHOR_COMMIT=$(git rev-parse HEAD)` and remember the SHA. The Bridge Translator session-mode run at the end of the session reads this to find what got committed during the session.
+5. Read `docs/PRODUCT-OPERATIONS.md` -- check which Knowns are PASS/FAIL/UNTESTED
+6. Check Build Queue cockpit in Notion for active WO and decisions pending Corey
+7. If BUILD: read `memory/context/session-contract.md` for quality gates
+8. Execute the next waypoint, or fix failing tests if any exist
+
+## Session End / `/handoff` command
+
+Before closing a BUILD session that produced commits, run the Bridge Translator in session mode. This converts the session's commits into one card per functional area, lands them in the **Sandbox Card Inbox** Notion database, runs Reviewer Claude (Build A) per card, and posts a summary to `#alloro-dev` tagging Jo for the next morning.
+
+```bash
+SESSION_ANCHOR_COMMIT=<sha-from-session-start> \
+  npx tsx scripts/run-bridge-translator.ts --session
+```
+
+Behavior:
+- Zero commits since the anchor = no cards (no noise for Jo).
+- Each card auto-runs Reviewer Claude. PASS verdicts auto-promote (status remains `New` for Jo's filter, but the verdict is set). Red blast radius always pauses for Corey regardless.
+- Same Card ID = update in place. Re-running mid-session is safe.
+- Orphan commits (no functional area) land as `Functional Area: other` with the orphan reason in the card body. Nothing dropped silently.
+- Slack message to `#alloro-dev` with: `CC session complete. <N> cards written to Sandbox Card Inbox. <link>.`
+
+The weekly Friday cron (shadow/active modes) continues independently as a backstop. Session mode does not replace it.
+
+Sandbox Card Inbox: https://www.notion.so/p/ddac061f88fe4f5e9863d5be2449cf81
 
 ## Before Every Build
 

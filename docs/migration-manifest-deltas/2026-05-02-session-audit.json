@@ -1,0 +1,61 @@
+{
+  "generated_at": "2026-05-02T05:55:49.328Z",
+  "anchor_commit": "2629d9ed",
+  "head_commit": "9b5c383c8f1c1f2c079e601709e6d31f3fc0e21a",
+  "total_commits": 2,
+  "cards": [
+    {
+      "card_number": 1,
+      "card_id": "sandbox-2026-05-02-referrals_pms",
+      "title": "Referrals & PMS Pipeline",
+      "functional_area": "referrals_pms",
+      "reviewer_verdict": "PASS_WITH_CONCERNS",
+      "reviewer_counts": {
+        "blocker": 0,
+        "concern": 1,
+        "note": 0
+      },
+      "reviewer_flags": [
+        {
+          "check": "5",
+          "severity": "concern",
+          "finding": "Card covers 1 already-committed Yellow commit(s). Dave reviews the diff before merge.",
+          "recommendation": "Confirm the Yellow surface (DB migration / new API / new service) was on Dave's awareness list before commit."
+        }
+      ],
+      "inbox_status": "created",
+      "inbox_page_url": "",
+      "auto_promoted": false
+    },
+    {
+      "card_number": 2,
+      "card_id": "sandbox-2026-05-02-migrations",
+      "title": "Database Migrations",
+      "functional_area": "migrations",
+      "reviewer_verdict": "PASS_WITH_CONCERNS",
+      "reviewer_counts": {
+        "blocker": 0,
+        "concern": 1,
+        "note": 1
+      },
+      "reviewer_flags": [
+        {
+          "check": "5",
+          "severity": "concern",
+          "finding": "Card covers 1 already-committed Yellow commit(s). Dave reviews the diff before merge.",
+          "recommendation": "Confirm the Yellow surface (DB migration / new API / new service) was on Dave's awareness list before commit."
+        },
+        {
+          "check": "8",
+          "severity": "note",
+          "finding": "Card title \"Database Migrations\" is short (2 word(s)). Dave's TL;DR scan benefits from a phrase, not a noun.",
+          "recommendation": "Expand the title to 4-10 words covering what gets built and why."
+        }
+      ],
+      "inbox_status": "created",
+      "inbox_page_url": "",
+      "auto_promoted": false
+    }
+  ],
+  "orphans": []
+}
