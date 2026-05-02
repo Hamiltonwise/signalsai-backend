@@ -27,6 +27,9 @@ import { processWatcherJob, WATCHER_QUEUE_NAME } from "./watcherWorker";
 import { processWeeklyDigest } from "./processors/weeklyDigest.processor";
 import { runCROForAllOrgs } from "../services/croEngine";
 import { runDFYForAllOrgs } from "../services/dfyEngine";
+import { runSignalWatcher } from "../services/answerEngine/signalWatcher";
+import { runTriggerRouter } from "../services/answerEngine/triggerRouter";
+import { runAeoMonitor } from "../services/answerEngine/aeoMonitor";
 import { getMindsQueue } from "./queues";
 import { getSharedRedis, closeSharedRedis } from "../services/redis";
 
@@ -178,6 +181,48 @@ const weeklyDigestWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// 16. Answer Engine: Signal Watcher (GSC) — daily.
+// AR-009 Phase 1. Polls GSC per active practice and emits signal_events
+// rows on rank/impression/new-query deltas. Trigger Router consumes them.
+const answerEngineSignalWatcherWorker = new Worker(
+  "minds-answer-engine-signal-watcher-gsc",
+  async () => {
+    const result = await runSignalWatcher();
+    console.log(
+      `[AnswerEngine.SignalWatcher.GSC] practices=${result.practicesChecked}, skipped=${result.practicesSkipped}, signals=${result.signalsEmitted}`,
+    );
+  },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
+// 17. Answer Engine: Trigger Router — every 5 minutes.
+// Consumes signal_events processed=false, routes per signal_type, writes
+// to State Transition Log + live_activity_entries, marks processed=true.
+const answerEngineTriggerRouterWorker = new Worker(
+  "minds-answer-engine-trigger-router",
+  async () => {
+    const result = await runTriggerRouter();
+    console.log(
+      `[AnswerEngine.TriggerRouter] considered=${result.eventsConsidered}, routed=${result.eventsRouted}, idempotent_skip=${result.eventsSkippedIdempotent}, failed=${result.eventsFailed}`,
+    );
+  },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
+// 18. Answer Engine: AEO Monitor (Google AI Overviews) — daily.
+// Runs the 25 test queries per active practice via Google AI Overviews,
+// records aeo_citations rows, emits signal_events on citation deltas.
+const answerEngineAeoMonitorWorker = new Worker(
+  "minds-answer-engine-aeo-monitor-google",
+  async () => {
+    const result = await runAeoMonitor();
+    console.log(
+      `[AnswerEngine.AeoMonitor.Google] practices=${result.practicesChecked}, queries=${result.queriesChecked}, citations=${result.citationsRecorded}, signals=${result.signalsEmitted}`,
+    );
+  },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // ─── EVENT HANDLERS ───────────────────────────────────────────────
 
 const activeWorkers = [
@@ -196,6 +241,9 @@ const activeWorkers = [
   revealChoreographyWorker,
   watcherWorker,
   weeklyDigestWorker,
+  answerEngineSignalWatcherWorker,
+  answerEngineTriggerRouterWorker,
+  answerEngineAeoMonitorWorker,
 ];
 
 for (const worker of activeWorkers) {
@@ -346,6 +394,57 @@ async function setupWatcherDailySchedule(): Promise<void> {
   }
 }
 
+async function setupAnswerEngineSignalWatcherSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("answer-engine-signal-watcher-gsc");
+    await queue.add(
+      "answerEngine:signalWatcher:gsc",
+      {},
+      {
+        repeat: { pattern: "0 8 * * *", tz: "UTC" }, // Daily 8 AM UTC = 1 AM Pacific
+        jobId: "answerEngine-signalWatcher-gsc",
+      },
+    );
+    console.log("[MINDS-WORKER] Answer Engine Signal Watcher (GSC) scheduled (8 AM UTC daily)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule answer engine signal watcher:", err);
+  }
+}
+
+async function setupAnswerEngineTriggerRouterSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("answer-engine-trigger-router");
+    await queue.add(
+      "answerEngine:triggerRouter",
+      {},
+      {
+        repeat: { pattern: "*/5 * * * *", tz: "UTC" }, // Every 5 minutes
+        jobId: "answerEngine-triggerRouter",
+      },
+    );
+    console.log("[MINDS-WORKER] Answer Engine Trigger Router scheduled (every 5 min)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule answer engine trigger router:", err);
+  }
+}
+
+async function setupAnswerEngineAeoMonitorSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("answer-engine-aeo-monitor-google");
+    await queue.add(
+      "answerEngine:aeoMonitor:google",
+      {},
+      {
+        repeat: { pattern: "0 9 * * *", tz: "UTC" }, // Daily 9 AM UTC = 2 AM Pacific
+        jobId: "answerEngine-aeoMonitor-google",
+      },
+    );
+    console.log("[MINDS-WORKER] Answer Engine AEO Monitor (Google) scheduled (9 AM UTC daily)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule answer engine AEO monitor:", err);
+  }
+}
+
 async function setupWeeklyDigestSchedule(): Promise<void> {
   try {
     const queue = getMindsQueue("weekly-digest");
@@ -370,6 +469,9 @@ setupMondayEmailSchedule();
 setupWatcherHourlySchedule();
 setupWatcherDailySchedule();
 setupWeeklyDigestSchedule();
+setupAnswerEngineSignalWatcherSchedule();
+setupAnswerEngineTriggerRouterSchedule();
+setupAnswerEngineAeoMonitorSchedule();
 
 console.log("[MINDS-WORKER] Essential 9 + Watcher + Digest workers running. Waiting for jobs...");
 

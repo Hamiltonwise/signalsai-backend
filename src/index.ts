@@ -140,6 +140,7 @@ import clarityMetricsRoutes from "./routes/admin/clarityMetrics";
 import seoRoutes from "./routes/seo";
 import foundationRoutes from "./routes/foundation";
 import intelligenceRoutes from "./routes/intelligence";
+import liveActivityRoutes from "./routes/liveActivity";
 import marketRoutes from "./routes/market";
 import publicScoreCardRoutes from "./routes/publicScoreCard";
 import sitemapRoutes from "./routes/sitemap";
@@ -398,6 +399,7 @@ app.use("/api/admin/metrics", adminMetricsRoutes); // Single-source business met
 app.use("/api/seo", seoRoutes); // WO-7: Programmatic SEO pages + hub/spoke + stats
 app.use("/api/foundation", foundationRoutes); // WO-11: Foundation application submissions
 app.use("/api/intelligence", intelligenceRoutes); // WO-8: Practice owner intelligence dashboard
+app.use("/api/live-activity", liveActivityRoutes); // Continuous Answer Engine Phase 1 feed
 app.use("/api/market", marketRoutes); // Programmatic city pages market data
 app.use("/api/clarity-card", publicScoreCardRoutes); // Public score card for viral sharing
 app.use("/api/content", contentRoutes); // Public content API for dynamic articles
