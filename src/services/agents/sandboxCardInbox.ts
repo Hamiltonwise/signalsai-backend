@@ -219,7 +219,14 @@ function composeProperties(input: UpsertCardInput): Record<string, unknown> {
     },
     "Card ID": richText(cardId),
     "Functional Area": { select: { name: functionalArea } },
+    // Status (legacy, Build B) and State (canonical, Build C state machine)
+    // are written together on initial upsert. Status mirrors the legacy
+    // subset; State is the source of truth for the 10-state machine. Both
+    // start at "New"; downstream transitions (transitionCard) advance State,
+    // and the Build B Jo morning routine still reads Status for backward
+    // compatibility until that page is migrated.
     Status: { select: { name: "New" } },
+    State: { select: { name: "New" } },
     Confidence: {
       select: { name: confidenceOption[card.blastRadius] || "🟡 Yellow" },
     },
@@ -288,10 +295,14 @@ async function updateExistingPage(
   cardId: string,
 ): Promise<UpsertCardResult> {
   const url = `${NOTION_API_BASE}/pages/${pageId}`;
-  // Strip Status from the update set — only set Status on creation. Once Jo
-  // moves a card to "Jo Reviewed", a re-run shouldn't reset it back to "New".
+  // Strip Status AND State from the update set — only set them on creation.
+  // Once a transition has advanced the card past "New" (Jo Reviewed, Dave
+  // Queued, Reviewer Blocked, etc.), a re-run of the inbox writer must not
+  // reset the workflow position. Build C's state machine owns State;
+  // Build B's legacy Jo routine reads Status. Both are write-once-on-create.
   const safeProps = { ...properties };
   delete (safeProps as Record<string, unknown>).Status;
+  delete (safeProps as Record<string, unknown>).State;
 
   try {
     const response = await axios.patch(

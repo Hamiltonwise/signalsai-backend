@@ -45,10 +45,14 @@ export const DEFAULT_STATE_TRANSITION_LOG_DATABASE_ID =
 export const DEFAULT_STATE_TRANSITION_LOG_DATA_SOURCE_ID =
   "7a69649f-89d3-4dc1-be4c-c3c6e8f63978";
 
+// Reviewer Gate Audit Log: canonical Build A database. The previous Build C
+// duplicate (72684b12-...) is retired; all live verdicts (including the
+// April 27 calibration entry and the May 2 backfill reconciliation) live
+// in 354fdaf1-... per the audit verification on May 2 2026.
 export const DEFAULT_REVIEWER_GATE_AUDIT_LOG_DATABASE_ID =
-  "72684b12-b77a-4b17-92bc-f1ca1ac80b50";
+  "354fdaf1-20c4-8196-9373-d78eedc29172";
 export const DEFAULT_REVIEWER_GATE_AUDIT_LOG_DATA_SOURCE_ID =
-  "e9a45e15-91a9-4958-8b19-b92dc3aaf6a9";
+  "1d9d5466-3d90-423d-b5f4-205b1ef4208c";
 
 export const DEFAULT_DAVE_SPRINT_INBOX_DATABASE_ID =
   "c7262a4c-2272-4e23-a79f-8929d7e8d793";
