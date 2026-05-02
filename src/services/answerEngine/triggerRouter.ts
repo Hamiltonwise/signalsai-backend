@@ -25,6 +25,8 @@
 import { createHash } from "crypto";
 import { db } from "../../database/connection";
 import { writeLiveActivityEntry } from "./liveActivity";
+import { runRegeneration, modeForSignalType } from "./regenerationModes";
+import { isEnabled } from "../featureFlags";
 import type { Severity, SignalType, TriggerRouterRunResult } from "./types";
 
 // ── Routing matrix (architecture spec AR-009, Component 2) ─────────
@@ -279,6 +281,14 @@ export interface RunTriggerRouterInput {
   skipNotionWrite?: boolean;
   /** Skip the live_activity_entries write (test mode). */
   skipLiveActivityWrite?: boolean;
+  /**
+   * Phase 2: when true, invoke the regeneration pipeline (Research +
+   * Copy + Reviewer Claude) for each routed event. Default false in
+   * Phase 1 callers; the cron worker reads the
+   * `answer_engine_regeneration` feature flag to decide. Setting this
+   * explicitly bypasses the flag for tests.
+   */
+  invokeRegeneration?: boolean;
 }
 
 export async function runTriggerRouter(
@@ -356,6 +366,37 @@ export async function runTriggerRouter(
           severity: e.severity,
           decision,
         });
+      }
+
+      // Phase 2: run regeneration pipeline if enabled. The flag check is
+      // per-practice so we can roll out gradually. The explicit
+      // `invokeRegeneration` flag bypasses the flag check for tests.
+      const shouldRegenerate =
+        input.invokeRegeneration === true ||
+        (input.invokeRegeneration !== false &&
+          modeForSignalType(e.signal_type) !== null &&
+          (await isEnabled("answer_engine_regeneration", e.practice_id)));
+
+      if (shouldRegenerate) {
+        try {
+          const regen = await runRegeneration({
+            signalEventId: e.id,
+            practiceId: e.practice_id,
+            signalType: e.signal_type,
+            signalData: parsed,
+          });
+          console.log(
+            `[TriggerRouter] regeneration ${regen.mode} for practice ${e.practice_id}: ${regen.verdict} (${regen.liveActivityEntryIds.length} entries)`,
+          );
+        } catch (regenErr: unknown) {
+          const message =
+            regenErr instanceof Error ? regenErr.message : String(regenErr);
+          console.error(
+            `[TriggerRouter] regeneration failed for signal_event ${e.id}: ${message}`,
+          );
+          // Failure does not abort the routing; the signal_received entry
+          // still landed and the signal is marked processed below.
+        }
       }
 
       await db("signal_events")
