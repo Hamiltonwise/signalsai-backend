@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import type { OAuth2Client } from "google-auth-library";
 import { db } from "../database/connection";
 
 // OAuth2 configuration interface
@@ -6,6 +7,54 @@ interface OAuth2Config {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
+}
+
+/**
+ * Register a `tokens` event handler on an OAuth2Client so that any
+ * access-token refresh -- whether triggered explicitly via
+ * `refreshAccessToken()` or transparently by the googleapis library
+ * during an API call -- is persisted back to `google_connections`.
+ *
+ * Without this handler, the library refreshes on demand at call time
+ * but the new access_token + expiry_date never lands in the database;
+ * the row stays frozen at the last manual reconnection. The Phase 1
+ * verification on May 2 caught Garrison in this exact state (token
+ * expired since April 12, but polling still worked because the library
+ * refreshed under the hood). This handler fixes the write-back gap.
+ *
+ * The handler is best-effort: a DB write failure logs and does not
+ * abort the API call in flight. The next refresh will retry.
+ */
+export function attachTokenWriteBack(
+  oauth2Client: OAuth2Client,
+  connectionId: number,
+): void {
+  oauth2Client.on("tokens", (tokens) => {
+    if (!tokens.access_token) return;
+    const expiry = tokens.expiry_date
+      ? new Date(tokens.expiry_date)
+      : new Date(Date.now() + 3600000);
+    const update: Record<string, unknown> = {
+      access_token: tokens.access_token,
+      expiry_date: expiry,
+      updated_at: new Date(),
+    };
+    // googleapis re-emits the refresh_token on first token issuance only.
+    // Subsequent refreshes don't include it. Only update when present so
+    // we don't blank a known-good refresh_token.
+    if (tokens.refresh_token) {
+      update.refresh_token = tokens.refresh_token;
+    }
+    db("google_connections")
+      .where({ id: connectionId })
+      .update(update)
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(
+          `[OAuth Helper] tokens write-back failed for connection ${connectionId}: ${message}`,
+        );
+      });
+  });
 }
 
 // Get OAuth2 configuration from environment variables
@@ -66,6 +115,8 @@ export const createOAuth2ClientForConnection = async (connectionId: number) => {
     refresh_token: connection.refresh_token,
     access_token: connection.access_token || undefined,
   });
+
+  attachTokenWriteBack(oauth2Client, connectionId);
 
   return oauth2Client;
 };
@@ -160,6 +211,9 @@ export const getValidOAuth2ClientByConnection = async (connectionId: number) => 
         : undefined,
     });
   }
+
+  // Persist any future library-internal refreshes back to the DB.
+  attachTokenWriteBack(oauth2Client, connectionId);
 
   return oauth2Client;
 };
