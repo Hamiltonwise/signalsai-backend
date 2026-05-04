@@ -2,6 +2,29 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.58] - May 2026
+
+### Reviews Tab Loading, List, Stats, and Fetch Modal
+
+Fixed the admin Reviews tab so review stats, distribution, and rows now come from one project review scope, failed review loads show real errors, and Google Maps fetching happens through an explicit animated modal instead of an inline selector.
+
+**Key Changes:**
+- Unified initial Reviews loading into one skeleton state and removed the competing loading indicators
+- Added project-scoped review stats/list handling so totals, rows, hidden filtering, and distribution agree
+- Replaced the collapsed distribution display with count-based 5-to-1 star rows and percentages
+- Split the large Reviews tab into focused review components and React Query hooks
+- Moved Google Maps location selection into an accessible Framer Motion modal with destructive-action copy
+- Changed Apify replacement behavior to delete only Maps/Apify rows for a place inside the successful replacement transaction
+- Preserved OAuth review rows and fixed OAuth upsert conflict handling against the new partial unique index
+
+**Commits:**
+- `frontend/src/components/Admin/ReviewsTab.tsx` — unified state orchestration, modal entry point, job banner, filters, and review list wiring
+- `frontend/src/components/Admin/reviews/*` — extracted loading, stats, filters, rows, empty states, modal, error, and job banner components
+- `frontend/src/hooks/queries/useAdminReviewQueries.ts` — React Query hooks and invalidation for review stats/list/job actions
+- `frontend/src/api/reviewBlocks.ts` and `frontend/src/lib/queryClient.ts` — typed review stats/list/fetch APIs and query keys
+- `src/models/website-builder/ProjectReviewModel.ts` and `src/models/website-builder/ReviewModel.ts` — centralized review scope, stats, list, and source-safe replacement semantics
+- `src/controllers/admin-websites/AdminWebsitesController.ts` and `src/workers/processors/reviewApifyFetch.processor.ts` — controller wiring and Apify fetch replacement flow
+
 ## [0.0.57] - May 2026
 
 ### PMS Statistics — Upload Nudge Replaces Duplicate Card
