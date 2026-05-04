@@ -386,26 +386,56 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       }
     }
 
-    // ── 12. Resolve recipients: project.recipients → org admins → fallback ──
+    // ── 12. Resolve recipients: per-location config → project.recipients → org admins → fallback ──
+    // Card H (May 4 2026): if the form is associated with a location_id,
+    // route to the location's per-type config first. Falls back to the
+    // existing project.recipients chain when no per-location config or
+    // no location_id is present.
     let recipients: string[] = [];
+    let practiceFallback: string[] = [];
     try {
       const projectRecipients = (project as any)?.recipients;
       if (Array.isArray(projectRecipients) && projectRecipients.length > 0) {
-        recipients = projectRecipients.filter(Boolean);
+        practiceFallback = projectRecipients.filter(Boolean);
       }
 
-      if (recipients.length === 0 && project?.organization_id) {
+      if (practiceFallback.length === 0 && project?.organization_id) {
         const orgUsers = await OrganizationUserModel.listByOrgWithUsers(project.organization_id);
         const adminEmails = orgUsers
           .filter((u) => u.role === "admin")
           .map((u) => u.email)
           .filter(Boolean);
         if (adminEmails.length > 0) {
-          recipients = adminEmails;
+          practiceFallback = adminEmails;
         }
       }
+      if (practiceFallback.length === 0) {
+        practiceFallback = [FALLBACK_RECIPIENT];
+      }
+
+      // Resolve per-location config first when a location is bound to
+      // this form submission. The submission's location_id (Card H scope
+      // addition) is set when the form's project has been associated
+      // with a location; pre-association forms fall through with
+      // location_id null, which the helper handles by emitting the
+      // 'notification_fallback_to_global' behavioral_event.
+      const submissionLocationId =
+        typeof (req as any).body?.location_id === "number"
+          ? (req as any).body.location_id
+          : (project as any)?.location_id ?? null;
+      const { resolveNotificationRecipients } = await import(
+        "../../services/notifications/locationRouter"
+      );
+      const routed = await resolveNotificationRecipients({
+        locationId: submissionLocationId,
+        notificationType: "form_submission",
+        fallbackRecipients: practiceFallback,
+        practiceId: project?.organization_id ?? null,
+      });
+      recipients = routed.recipients;
     } catch (lookupErr) {
       console.error("[Form Submission] Recipient lookup failed:", lookupErr);
+      recipients = practiceFallback.length > 0 ? practiceFallback : [FALLBACK_RECIPIENT];
     }
 
     if (recipients.length === 0) {

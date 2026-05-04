@@ -38,6 +38,7 @@ const IntegrationsRoute = React.lazy(() => import("./pages/settings/Integrations
 const UsersRoute = React.lazy(() => import("./pages/settings/UsersRoute").then(m => ({ default: m.UsersRoute })));
 const BillingRoute = React.lazy(() => import("./pages/settings/BillingRoute").then(m => ({ default: m.BillingRoute })));
 const AccountRoute = React.lazy(() => import("./pages/settings/AccountRoute").then(m => ({ default: m.AccountRoute })));
+const LocationNotificationsRoute = React.lazy(() => import("./pages/settings/LocationNotificationsRoute"));
 const DFYWebsite = React.lazy(() => import("./pages/DFYWebsite").then(m => ({ default: m.DFYWebsite })));
 const Notifications = React.lazy(() => import("./pages/Notifications").then(m => ({ default: m.Notifications })));
 const Help = React.lazy(() => import("./pages/Help"));
@@ -437,6 +438,10 @@ function App() {
                   <Route path="users" element={<UsersRoute />} />
                   <Route path="billing" element={<BillingRoute />} />
                   <Route path="account" element={<AccountRoute />} />
+                  <Route
+                    path="locations/:locationId/notifications"
+                    element={<LocationNotificationsRoute />}
+                  />
                 </Route>
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/help" element={<Help />} />

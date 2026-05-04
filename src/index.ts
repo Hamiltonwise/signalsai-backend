@@ -310,6 +310,8 @@ app.use("/api/admin", adminFlagIssueRoutes); // Bug flag button in admin header
 app.use("/api/admin/batch-checkup", adminBatchCheckupRoutes);
 app.use("/api/admin", adminFirefliesRoutes); // Fireflies webhook + dream team tasks
 app.use("/api/admin/reviews", adminReviewRoutes); // Review notifications + AI responses
+import locationNotificationConfigRoutes from "./routes/admin/locationNotificationConfig"; // Card H
+app.use("/api/admin/locations", locationNotificationConfigRoutes); // Card H — per-location notification routing config
 app.use("/api/admin", adminPasswordResetRoutes); // Admin password reset (no email dependency)
 app.use("/api", milestoneRoutes); // Milestone notifications (admin + client routes)
 app.use("/api/admin/claude-observations", claudeObservationsRoutes); // Claude push intelligence for team dashboards
