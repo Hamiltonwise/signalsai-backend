@@ -82,6 +82,10 @@ export default function LiveActivityTimeline({ practiceId }: Props) {
 
 function EntryRow({ entry }: { entry: LiveActivityEntry }) {
   const tone = toneForEntry(entry.entry_type);
+  // Card 7: render the per-query receipt block whenever patient_question
+  // is non-NULL. Anchor entries (Card 6) and legacy pre-Card-7 rows have
+  // patient_question NULL and fall through to narrative-only.
+  const hasReceipt = !!entry.patient_question;
   return (
     <li className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4">
       <div className="flex items-start gap-3">
@@ -91,6 +95,34 @@ function EntryRow({ entry }: { entry: LiveActivityEntry }) {
         />
         <div className="space-y-1 flex-1">
           <p className="text-sm text-[#1A1D23]">{entry.doctor_facing_text}</p>
+          {hasReceipt ? (
+            <div className="mt-2 space-y-1 text-xs text-[#1A1D23]/60">
+              <div>
+                <span className="font-semibold uppercase tracking-wider text-gray-400">
+                  Patient question:
+                </span>{" "}
+                <span className="text-[#1A1D23]/80">{entry.patient_question}</span>
+              </div>
+              {entry.visibility_snapshot ? (
+                <div>
+                  <span className="font-semibold uppercase tracking-wider text-gray-400">
+                    Visibility at signal time:
+                  </span>{" "}
+                  <span className="text-[#1A1D23]/80">
+                    {entry.visibility_snapshot.display}
+                  </span>
+                </div>
+              ) : null}
+              {entry.action_taken ? (
+                <div>
+                  <span className="font-semibold uppercase tracking-wider text-gray-400">
+                    What Alloro did:
+                  </span>{" "}
+                  <span className="text-[#1A1D23]/80">{entry.action_taken}</span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="flex items-center gap-3 text-xs text-gray-400">
             <span className="font-semibold uppercase tracking-wider">
               {tone.label}

@@ -9,6 +9,19 @@ import { apiGet } from "./index";
  * which the UI renders as a calm "not yet active" message.
  */
 
+export interface VisibilitySnapshot {
+  query: string;
+  google_rank: number | null;
+  per_platform: Array<{
+    platform: string;
+    cited: boolean;
+    competitor_cited: string | null;
+  }>;
+  /** Deterministic one-line rendering with mid-dot (·) separator. */
+  display: string;
+  snapshot_at: string;
+}
+
 export interface LiveActivityEntry {
   id: string;
   practice_id: number;
@@ -25,6 +38,12 @@ export interface LiveActivityEntry {
   linked_signal_event_id: string | null;
   linked_state_transition_id: string | null;
   visible_to_doctor: boolean;
+  /** Card 6 — anchor entries pin to the bottom of the timeline. */
+  is_anchor_entry?: boolean;
+  /** Card 7 — per-query demonstration receipts (NULL on legacy + anchor rows). */
+  patient_question?: string | null;
+  visibility_snapshot?: VisibilitySnapshot | null;
+  action_taken?: string | null;
   created_at: string;
 }
 

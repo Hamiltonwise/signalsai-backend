@@ -27,6 +27,7 @@ import { db } from "../../database/connection";
 import { writeLiveActivityEntry } from "./liveActivity";
 import { runRegeneration, modeForSignalType } from "./regenerationModes";
 import { isEnabled } from "../featureFlags";
+import { composePerQueryReceipt } from "./perQueryReceipts";
 import type { Severity, SignalType, TriggerRouterRunResult } from "./types";
 
 // ── Routing matrix (architecture spec AR-009, Component 2) ─────────
@@ -206,6 +207,36 @@ async function writeSignalReceivedEntry(input: {
   decision: RouteDecision;
 }): Promise<string | null> {
   try {
+    // Card 7 — read action_log + signal timestamp from the originating
+    // signal_event row, then compose the per-query receipt fields.
+    let actionLog: Record<string, unknown> | Array<Record<string, unknown>> | null =
+      null;
+    let signalTimestamp: Date | undefined;
+    try {
+      const sig = await db("signal_events")
+        .where({ id: input.signalEventId })
+        .first("action_log", "created_at");
+      if (sig) {
+        actionLog =
+          typeof sig.action_log === "string"
+            ? JSON.parse(sig.action_log)
+            : (sig.action_log ?? null);
+        if (sig.created_at)
+          signalTimestamp = new Date(sig.created_at as string);
+      }
+    } catch {
+      /* tolerate older rows without action_log */
+    }
+
+    const receipt = await composePerQueryReceipt({
+      practiceId: input.practiceId,
+      signalType: input.signalType,
+      signalData: input.signalData,
+      signalTimestamp,
+      actionLog,
+      routedTo: input.decision.routedTo,
+    });
+
     const id = await writeLiveActivityEntry({
       practice_id: input.practiceId,
       entry_type: "signal_received",
@@ -218,6 +249,9 @@ async function writeSignalReceivedEntry(input: {
       doctor_facing_text: composeDoctorFacingText(input),
       linked_signal_event_id: input.signalEventId,
       linked_state_transition_id: null,
+      patient_question: receipt.patientQuestion,
+      visibility_snapshot: receipt.visibilitySnapshot,
+      action_taken: receipt.actionTaken,
     });
     return id;
   } catch (err: unknown) {

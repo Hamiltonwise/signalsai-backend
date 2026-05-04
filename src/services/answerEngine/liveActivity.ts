@@ -27,12 +27,48 @@ export interface WriteLiveActivityInput {
   linked_signal_event_id: string | null;
   linked_state_transition_id: string | null;
   visible_to_doctor?: boolean;
+  /** Card 7 (May 4 2026) — optional per-query demonstration receipt fields. */
+  patient_question?: string | null;
+  /** Structured snapshot persisted as JSONB. Any object shape is accepted; the renderer pulls the `display` string for the timeline. */
+  visibility_snapshot?: Record<string, unknown> | { [key: string]: unknown } | null | unknown;
+  action_taken?: string | null;
 }
 
 export async function writeLiveActivityEntry(
   input: WriteLiveActivityInput,
 ): Promise<string> {
   const validated = enforceVoiceOrFallback(input.doctor_facing_text);
+
+  // Card 7: gate action_taken through Voice Constraints. On fail, log
+  // a behavioral_event and persist NULL rather than write banned-phrase
+  // text into the receipts surface. Other receipt fields (patient
+  // question, visibility snapshot) are not voice-gated because they
+  // contain literal data, not narrative.
+  let actionTaken: string | null = input.action_taken ?? null;
+  if (actionTaken !== null && actionTaken.length > 0) {
+    const v = checkVoice(actionTaken);
+    if (!v.passed) {
+      try {
+        await db("behavioral_events").insert({
+          id: db.raw("gen_random_uuid()"),
+          event_type: "action_taken_voice_constraints_fail",
+          org_id: input.practice_id,
+          properties: db.raw("?::jsonb", [
+            JSON.stringify({
+              practice_id: input.practice_id,
+              entry_type: input.entry_type,
+              action_taken: actionTaken,
+              violations: v.violations,
+            }),
+          ]),
+          created_at: db.fn.now(),
+        });
+      } catch {
+        /* best effort */
+      }
+      actionTaken = null;
+    }
+  }
 
   const [row] = await db("live_activity_entries")
     .insert({
@@ -43,6 +79,12 @@ export async function writeLiveActivityEntry(
       linked_signal_event_id: input.linked_signal_event_id,
       linked_state_transition_id: input.linked_state_transition_id,
       visible_to_doctor: input.visible_to_doctor !== false,
+      patient_question: input.patient_question ?? null,
+      visibility_snapshot:
+        input.visibility_snapshot !== null && input.visibility_snapshot !== undefined
+          ? JSON.stringify(input.visibility_snapshot)
+          : null,
+      action_taken: actionTaken,
     })
     .returning(["id"]);
   return (row as { id: string }).id;
@@ -88,6 +130,10 @@ export interface LiveActivityEntryRow {
   visible_to_doctor: boolean;
   /** Card 6 — anchor entries pin to the bottom of the timeline. */
   is_anchor_entry: boolean;
+  /** Card 7 — per-query demonstration receipt fields (NULL on legacy + anchor rows). */
+  patient_question: string | null;
+  visibility_snapshot: Record<string, unknown> | null;
+  action_taken: string | null;
   created_at: string;
 }
 
@@ -114,6 +160,9 @@ export async function listLiveActivityEntries(
     "linked_state_transition_id",
     "visible_to_doctor",
     "is_anchor_entry",
+    "patient_question",
+    "visibility_snapshot",
+    "action_taken",
     "created_at",
   ];
 
@@ -145,15 +194,17 @@ export async function listLiveActivityEntries(
 
   const combined = anchorRow ? [...signalRows, anchorRow] : signalRows;
 
-  return combined.map(
-    (r: LiveActivityEntryRow & { entry_data: unknown }) => ({
-      ...r,
-      entry_data:
-        typeof r.entry_data === "string"
-          ? JSON.parse(r.entry_data as unknown as string)
-          : (r.entry_data as Record<string, unknown> | null),
-    }),
-  );
+  return combined.map((r: any) => ({
+    ...r,
+    entry_data:
+      typeof r.entry_data === "string"
+        ? JSON.parse(r.entry_data)
+        : (r.entry_data as Record<string, unknown> | null),
+    visibility_snapshot:
+      typeof r.visibility_snapshot === "string"
+        ? JSON.parse(r.visibility_snapshot)
+        : (r.visibility_snapshot as Record<string, unknown> | null),
+  })) as LiveActivityEntryRow[];
 }
 
 // ── Haiku-rendered doctor-facing text (forward-compat hook) ─────────
