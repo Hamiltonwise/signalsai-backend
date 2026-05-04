@@ -111,10 +111,19 @@ export async function loadAeoActivePractices(
 
 function normalizeSpecialty(vertical: string | null): string {
   if (!vertical) return "general";
-  const v = vertical.toLowerCase();
+  const v = vertical.toLowerCase().trim();
+  // Card 4 (May 4 2026): pass through canonical vocabulary_configs.vertical
+  // keys so the AEO query filter (now WHERE vertical = ?) matches directly.
+  // Cold-Outbound noun aliases ('endodontist', 'orthodontist') normalize to
+  // the canonical noun-of-practice keys ('endodontics', 'orthodontics').
   if (v.includes("endo")) return "endodontics";
   if (v.includes("ortho")) return "orthodontics";
-  return "general";
+  // All other vocabulary_configs verticals pass through unchanged so future
+  // verticals (chiropractic, optometry, physical_therapy, etc.) flow into
+  // loadActiveQueries with their canonical key. If no seed exists for that
+  // vertical, loadActiveQueries fires the 'aeo_polling_blocked_no_seed'
+  // behavioral_event and returns [] (hard gate per Card 4).
+  return v;
 }
 
 function safeParse(s: string): Record<string, unknown> | null {
@@ -147,17 +156,50 @@ export interface AeoTestQuery {
   id: number;
   query: string;
   specialty: string;
-  vertical: string | null;
+  vertical: string;
   active: boolean;
 }
 
-export async function loadActiveQueries(specialty: string): Promise<AeoTestQuery[]> {
-  return await db("aeo_test_queries")
+/**
+ * Card 4 (May 4 2026): polling now filters on `vertical`, the canonical
+ * vocabulary_configs key (e.g., 'endodontics' | 'orthodontics'). The
+ * `specialty` column is preserved for backward-compat but no longer drives
+ * the WHERE clause.
+ *
+ * Hard gate: when no rows exist for the requested vertical, this writes a
+ * behavioral_event 'aeo_polling_blocked_no_seed' and returns []. Callers
+ * MUST treat empty as "do not poll" (skip the practice for this cycle)
+ * rather than fall back to a different vertical's queries.
+ */
+export async function loadActiveQueries(vertical: string): Promise<AeoTestQuery[]> {
+  const rows = await db("aeo_test_queries")
     .select("id", "query", "specialty", "vertical", "active")
     .where("active", true)
-    .andWhere(function () {
-      this.where("specialty", specialty).orWhere("specialty", "general");
-    });
+    .andWhere("vertical", vertical);
+
+  if (rows.length === 0) {
+    // Hard gate per Card 4 spec. Log the block as a behavioral event so
+    // operators can see "vertical X has no seed; polling blocked" before
+    // a missing-seed onboarding turns into silently empty dashboards.
+    await db("behavioral_events")
+      .insert({
+        id: db.raw("gen_random_uuid()"),
+        event_type: "aeo_polling_blocked_no_seed",
+        properties: db.raw("?::jsonb", [
+          JSON.stringify({
+            vertical,
+            reason:
+              "no rows in aeo_test_queries for this vertical; polling intentionally returned empty",
+          }),
+        ]),
+        created_at: db.fn.now(),
+      })
+      .catch(() => {
+        // best-effort log; never block the polling cycle on event-write
+      });
+  }
+
+  return rows;
 }
 
 // ── Citation detection ─────────────────────────────────────────────
