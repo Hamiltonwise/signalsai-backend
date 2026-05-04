@@ -39,6 +39,12 @@ import {
   loadSchemaTemplates,
   type BakeTemplates,
 } from "./discoverabilityBake.templates";
+import {
+  buildPageMetaTags,
+  factsFromBakePractice,
+  type MetaTagBakeResult,
+  type MetaTagSourceFacts,
+} from "./metaTagBake";
 
 export const BAKE_VERSION_ID = "discoverability-bake-v1";
 
@@ -49,6 +55,17 @@ export interface BakeInput {
   practice: BakePracticeMetadata;
   practitioner?: BakePractitionerMetadata;
   reviews?: BakeReview[];
+  /**
+   * Optional meta-tag bake inputs. When provided, the bake stage produces
+   * title / metaDescription / canonical / openGraph artifacts on each page.
+   * When absent, bakePages skips the metaTag block (artifact.pages[].metaTags
+   * stays undefined). The orchestrator pre-resolves these from organizations
+   * + vocabulary_configs and passes them in.
+   */
+  metaTagFacts?: Pick<
+    MetaTagSourceFacts,
+    "vertical" | "baseUrl" | "description" | "ogImage"
+  >;
 }
 
 export interface BakePracticeMetadata {
@@ -58,6 +75,12 @@ export interface BakePracticeMetadata {
   phone?: string;
   email?: string;
   websiteUrl?: string;
+  /**
+   * Practice description sourced from organizations.business_data.description.
+   * Used as the verbatim meta description per PR-005 fact-lock when
+   * present.
+   */
+  description?: string;
   address?: {
     streetAddress?: string;
     city?: string;
@@ -97,6 +120,12 @@ export interface BakedSchemaArtifact {
     reviews?: Record<string, unknown>;
     internalLinks: Array<{ anchor: string; target: string; patientIntent: string }>;
     primaryCta: { text: string; href: string; rationale: string };
+    /**
+     * Card 2 (artifact-side) addition. Populated when BakeInput.metaTagFacts
+     * is provided. Card 2b (Hamiltonwise/website-renderer) reads this off
+     * sections[i].schema.metaTags to stamp the rendered head tags.
+     */
+    metaTags?: MetaTagBakeResult;
   }>;
   entitySummary: {
     localBusiness: Record<string, unknown>;
@@ -156,6 +185,30 @@ export async function runDiscoverabilityBakeStage(
     },
   }).catch(() => {});
 
+  // Card 2 (artifact-side): per-page meta tag generation event. Fires
+  // once per page that produced a meta tag artifact, so downstream
+  // observability can detect length-band warnings or validation drift.
+  if (input.metaTagFacts) {
+    for (const page of artifact.pages) {
+      if (!page.metaTags) continue;
+      await BehavioralEventModel.create({
+        event_type: "meta_tag_artifact_generated",
+        org_id: input.orgId,
+        properties: {
+          page_path: page.path,
+          page_type: page.sectionName,
+          title_len: page.metaTags.title.length,
+          description_len: page.metaTags.metaDescription.length,
+          length_warnings: page.metaTags.lengthWarnings,
+          validation_passed: page.metaTags.validation.passed,
+          brand_voice_violations: page.metaTags.validation.brandVoice.violations,
+          em_dash_violations: page.metaTags.validation.emDash.violations,
+          factual_citation_violations: page.metaTags.validation.factualCitation.violations,
+        },
+      }).catch(() => {});
+    }
+  }
+
   return {
     passed: true,
     artifact,
@@ -209,6 +262,18 @@ function bakePages(
     );
     const primaryCta = buildPrimaryCtas(sectionName, input.practice, templates);
 
+    let metaTags: MetaTagBakeResult | undefined;
+    if (input.metaTagFacts) {
+      const facts = factsFromBakePractice({
+        practice: input.practice,
+        vertical: input.metaTagFacts.vertical,
+        baseUrl: input.metaTagFacts.baseUrl,
+        description: input.metaTagFacts.description ?? input.practice.description,
+        ogImage: input.metaTagFacts.ogImage,
+      });
+      metaTags = buildPageMetaTags({ facts, pagePath: path });
+    }
+
     return {
       path,
       sectionName,
@@ -217,6 +282,7 @@ function bakePages(
       reviews: reviews ?? undefined,
       internalLinks,
       primaryCta,
+      metaTags,
     };
   });
 
@@ -243,6 +309,9 @@ function stampSectionsWithSchema(copy: any, artifact: BakedSchemaArtifact): void
         jsonLd: page.jsonLd,
         internalLinks: page.internalLinks,
         primaryCta: page.primaryCta,
+        // Card 2 (artifact-side): metaTags hand-off slot for Card 2b's
+        // renderer in Hamiltonwise/website-renderer to read.
+        metaTags: page.metaTags,
       },
     };
   }

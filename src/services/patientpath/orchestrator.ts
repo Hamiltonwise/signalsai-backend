@@ -108,7 +108,13 @@ export async function runBuildOrchestrator(
   try {
     const org = await db("organizations")
       .where({ id: event.orgId })
-      .first("id", "name", "patientpath_build_enabled");
+      .first(
+        "id",
+        "name",
+        "patientpath_build_enabled",
+        "patientpath_preview_url",
+        "business_data",
+      );
 
     if (!org) {
       throw new Error(`Org ${event.orgId} not found`);
@@ -236,6 +242,7 @@ export async function runBuildOrchestrator(
     // every site wins SEO + AEO + CRO from the first build. Shadow mode
     // (flag off) attaches the artifact without stamping sections.
     const practiceMetadata = extractPracticeMetadata(org, research.brief, copy.copy);
+    const metaTagFacts = await resolveMetaTagFacts(event.orgId, org);
     const bake = await runDiscoverabilityBakeStage({
       orgId: event.orgId,
       copyId: copy.copyId,
@@ -243,6 +250,7 @@ export async function runBuildOrchestrator(
       practice: practiceMetadata.practice,
       practitioner: practiceMetadata.practitioner,
       reviews: practiceMetadata.reviews,
+      metaTagFacts,
     });
     stages.bake = {
       durationMs: bake.durationMs,
@@ -368,6 +376,15 @@ function extractPracticeMetadata(
       phone: profile.phone,
       email: profile.email,
       websiteUrl: profile.websiteUrl,
+      // Card 2 (artifact-side): description sourced from the research brief
+      // when present (brief-side enrichment), else falls back to the org's
+      // business_data.description in resolveMetaTagFacts.
+      description:
+        typeof profile.description === "string"
+          ? profile.description
+          : typeof brief?.practiceDescription === "string"
+            ? brief.practiceDescription
+            : undefined,
       address: profile.address
         ? {
             streetAddress: profile.address.streetAddress ?? profile.address.address,
@@ -412,6 +429,65 @@ function extractPracticeMetadata(
         reviewDate: r.reviewDate,
       })),
   };
+}
+
+/**
+ * Card 2 (artifact-side): resolve the per-org facts the meta-tag bake needs.
+ *
+ * Reads vocabulary_configs.vertical for the practitioner-noun lookup, and
+ * organizations.business_data.description for the verbatim meta description
+ * source per PR-005 fact-lock. Base URL prefers patientpath_preview_url
+ * (the *.sites.getalloro.com host the renderer serves), falls back to
+ * business_data.website if the preview URL is not yet provisioned.
+ *
+ * Returns undefined when neither baseUrl nor vertical can be resolved, in
+ * which case the bake stage skips meta-tag generation rather than emit
+ * placeholder data.
+ */
+async function resolveMetaTagFacts(
+  orgId: number,
+  org: { patientpath_preview_url?: string | null; business_data?: any },
+): Promise<
+  | {
+      vertical: string;
+      baseUrl: string;
+      description?: string;
+      ogImage?: string;
+    }
+  | undefined
+> {
+  try {
+    const vocabRow = await db("vocabulary_configs")
+      .where({ org_id: orgId })
+      .first("vertical");
+    const vertical: string = vocabRow?.vertical || "";
+
+    const bd = (org.business_data && typeof org.business_data === "object"
+      ? org.business_data
+      : {}) as Record<string, unknown>;
+
+    const baseUrl =
+      (typeof org.patientpath_preview_url === "string" && org.patientpath_preview_url) ||
+      (typeof bd.website === "string" && (bd.website as string)) ||
+      "";
+
+    if (!vertical || !baseUrl) {
+      return undefined;
+    }
+
+    const description =
+      typeof bd.description === "string" ? (bd.description as string) : undefined;
+    const ogImage =
+      typeof bd.logo_url === "string"
+        ? (bd.logo_url as string)
+        : typeof bd.photo_url === "string"
+          ? (bd.photo_url as string)
+          : undefined;
+
+    return { vertical, baseUrl, description, ogImage };
+  } catch {
+    return undefined;
+  }
 }
 
 async function escalateQaFailure(
