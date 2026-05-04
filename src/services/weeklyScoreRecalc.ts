@@ -127,6 +127,32 @@ export async function recalculateScore(orgId: number): Promise<RecalcResult | nu
         competitors = result.competitors.filter(
           (c) => c.placeId !== placeId && c.name?.toLowerCase() !== org.name?.toLowerCase()
         );
+
+        // Card D wire-up (May 4 2026): vocab-aware filter + state
+        // preservation against organizations.tracked_competitors. Closes
+        // Saif's April 16 "Manassas Endodontics disappeared" complaint.
+        try {
+          const { applySpecialtyAwareRefresh } = await import(
+            "./competitors/applySpecialtyAwareRefresh"
+          );
+          const candidates = competitors.map((c: any) => ({
+            placeId: c.placeId,
+            name: c.name,
+            category: c.category,
+            primaryType: c.primaryType,
+          }));
+          await applySpecialtyAwareRefresh({
+            orgId,
+            discoveryRaw: candidates,
+            preFiltered: candidates,
+          });
+        } catch (refreshErr) {
+          console.warn(
+            `[WeeklyRecalc] Card D specialty-aware refresh failed (non-fatal) for org ${orgId}: ${
+              refreshErr instanceof Error ? refreshErr.message : String(refreshErr)
+            }`,
+          );
+        }
       }
     } catch (compErr) {
       console.error(`[WeeklyRecalc] Competitor discovery failed for org ${orgId}:`, compErr instanceof Error ? compErr.message : compErr);
