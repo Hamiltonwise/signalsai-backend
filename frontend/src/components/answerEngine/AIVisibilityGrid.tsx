@@ -26,6 +26,10 @@ const PLATFORM_LABELS: Record<AeoPlatform, string> = {
   siri: "Siri",
 };
 
+// Card 5 (May 4 2026) — approved gray-cell tooltip per AR-010.
+export const GRAY_CELL_TOOLTIP =
+  "Alloro is improving your site to compound this signal. When there's something specific worth your attention, you'll see it here.";
+
 export default function AIVisibilityGrid({ practiceId }: Props) {
   const [selected, setSelected] = useState<{
     query: string;
@@ -68,9 +72,10 @@ export default function AIVisibilityGrid({ practiceId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-500">
-          25 patient questions, 6 AI platforms. Green means you are cited.
-          Amber means a competitor is cited. Gray means not yet appearing or
-          not yet polled.
+          Alloro is watching {queries.length} patient questions across 6 AI
+          platforms for your practice. Each is a moment a patient could find
+          you. Green: AI Overviews cite you. Amber: a competitor is cited.
+          Gray: Alloro is on it.
         </p>
       </div>
 
@@ -107,12 +112,16 @@ export default function AIVisibilityGrid({ practiceId }: Props) {
                     );
                   }
                   const dotClass = dotForStatus(cell.status);
+                  const isGray =
+                    cell.status === "not_appearing" ||
+                    cell.status === "not_polled";
                   return (
                     <td key={p} className="py-2 px-1 text-center">
                       <button
                         onClick={() => setSelected({ query: q, platform: p, cell })}
                         className="inline-flex items-center justify-center"
                         aria-label={`${PLATFORM_LABELS[p]} for ${q}: ${cell.status}`}
+                        title={isGray ? GRAY_CELL_TOOLTIP : undefined}
                       >
                         <span className={`inline-block w-3 h-3 rounded-full ${dotClass}`} />
                       </button>
@@ -125,25 +134,20 @@ export default function AIVisibilityGrid({ practiceId }: Props) {
         </table>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <SummaryCell
           label="Cited"
           count={summary.citedCount}
           tone="emerald"
         />
         <SummaryCell
-          label="Competitor"
+          label="Competitor up"
           count={summary.competitorCount}
           tone="amber"
         />
         <SummaryCell
-          label="Not appearing"
-          count={summary.notAppearingCount}
-          tone="gray"
-        />
-        <SummaryCell
-          label="Not yet polled"
-          count={summary.notPolledCount}
+          label="Alloro on it"
+          count={summary.notAppearingCount + summary.notPolledCount}
           tone="gray"
         />
       </div>
