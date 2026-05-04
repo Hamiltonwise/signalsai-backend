@@ -33,7 +33,13 @@ import { FormSubmissionModel, type FileValue, type FormSection, type FormContent
 import { NewsletterSignupModel } from "../../models/website-builder/NewsletterSignupModel";
 import { uploadToS3 } from "../../utils/core/s3";
 
-const FALLBACK_RECIPIENT = "laggy80@gmail.com";
+// Card I (May 4 2026): replaced hardcoded test email with env var.
+// Default routes to Alloro support so leakage is auditable in our own
+// inbox if upstream recipient resolution fails. Sandbox traffic is
+// further routed to test-notifications@getalloro.com via the
+// environmentGuard wrapper.
+const FALLBACK_RECIPIENT =
+  process.env.NOTIFICATION_FALLBACK_RECIPIENT || "support@getalloro.com";
 
 const MAX_FIELDS = 100; // Raised from 20 to support onboarding forms with many repeater fields
 const MAX_KEY_LENGTH = 100;
@@ -532,14 +538,27 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
 
       const fromEmail = process.env.CONTACT_FORM_FROM || "info@getalloro.com";
 
+      // Card I (May 4 2026): pass through environmentGuard so non-prod
+      // dispatches reroute to test-notifications@getalloro.com instead
+      // of hitting real customer / orphan inboxes.
+      const { guardRecipients, applyFooterToHtml } = await import(
+        "../../services/notifications/environmentGuard"
+      );
+      const guard = await guardRecipients(recipients, {
+        practiceId: project?.organization_id ?? null,
+        notificationType: "form_submission",
+        channel: "mailgun",
+      });
+      const finalBody = applyFooterToHtml(emailBody, guard.footerToAppend);
+
       await sendEmailWebhook({
         cc: [],
         bcc: [],
-        body: emailBody,
+        body: finalBody,
         from: fromEmail,
         subject: `New Entry From ${sanitizedFormName}`,
         fromName: "Alloro Sites",
-        recipients,
+        recipients: guard.recipients,
       });
     }
 

@@ -15,7 +15,9 @@ import { FormSubmissionModel } from "../../models/website-builder/FormSubmission
 import { sendEmailWebhook } from "./websiteContact-services/emailWebhookService";
 import { getSiteUrl } from "./websiteContact-services/newsletterConfirmationService";
 
-const FALLBACK_RECIPIENT = "laggy80@gmail.com";
+// Card I (May 4 2026): replaced hardcoded test email with env var.
+const FALLBACK_RECIPIENT =
+  process.env.NOTIFICATION_FALLBACK_RECIPIENT || "support@getalloro.com";
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export async function handleNewsletterConfirm(req: Request, res: Response): Promise<void> {

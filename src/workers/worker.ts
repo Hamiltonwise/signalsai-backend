@@ -30,6 +30,7 @@ import { runDFYForAllOrgs } from "../services/dfyEngine";
 import { runSignalWatcher } from "../services/answerEngine/signalWatcher";
 import { runTriggerRouter } from "../services/answerEngine/triggerRouter";
 import { runAeoMonitor } from "../services/answerEngine/aeoMonitor";
+import { runProductionHygieneScan } from "../jobs/productionHygieneScan";
 import { getMindsQueue } from "./queues";
 import { getSharedRedis, closeSharedRedis } from "../services/redis";
 
@@ -223,6 +224,22 @@ const answerEngineAeoMonitorWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// 19. Production Hygiene Scan (Card I) — Monday 03:00 UTC.
+// Scans notification config surfaces for personal-domain test patterns
+// (gmail/hotmail/yahoo) that should not be in production. Posts to
+// #alloro-dev when matches are found. Logs every run to
+// behavioral_events so the absence of an alert is also auditable.
+const productionHygieneScanWorker = new Worker(
+  "minds-production-hygiene-scan",
+  async () => {
+    const result = await runProductionHygieneScan();
+    console.log(
+      `[ProductionHygieneScan] matches=${result.matchCount}, scannedAt=${result.scannedAt}`,
+    );
+  },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // ─── EVENT HANDLERS ───────────────────────────────────────────────
 
 const activeWorkers = [
@@ -244,6 +261,7 @@ const activeWorkers = [
   answerEngineSignalWatcherWorker,
   answerEngineTriggerRouterWorker,
   answerEngineAeoMonitorWorker,
+  productionHygieneScanWorker,
 ];
 
 for (const worker of activeWorkers) {
@@ -458,6 +476,26 @@ async function setupWeeklyDigestSchedule(): Promise<void> {
   }
 }
 
+// Card I — Production Hygiene Scan (Monday 03:00 UTC = Sunday 8 PM Pacific).
+// Scans notification config surfaces for personal-domain test patterns and
+// posts to #alloro-dev when matches are found.
+async function setupProductionHygieneScanSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("production-hygiene-scan");
+    await queue.add(
+      "production-hygiene-scan",
+      {},
+      {
+        repeat: { pattern: "0 3 * * 1", tz: "UTC" },
+        jobId: "production-hygiene-scan",
+      },
+    );
+    console.log("[MINDS-WORKER] Production hygiene scan scheduled (Monday 3 AM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule production hygiene scan:", err);
+  }
+}
+
 // Start schedules
 setupReviewSyncSchedule();
 setupDailyAnalyticsSchedule();
@@ -472,6 +510,7 @@ setupWeeklyDigestSchedule();
 setupAnswerEngineSignalWatcherSchedule();
 setupAnswerEngineTriggerRouterSchedule();
 setupAnswerEngineAeoMonitorSchedule();
+setupProductionHygieneScanSchedule();
 
 console.log("[MINDS-WORKER] Essential 9 + Watcher + Digest workers running. Waiting for jobs...");
 
