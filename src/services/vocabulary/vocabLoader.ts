@@ -188,6 +188,50 @@ export async function getCapabilities(
   return { ...vocab.capabilities };
 }
 
+/**
+ * Card D (May 4 2026): read approved_adjacent_specialties for an org's
+ * vertical. Returns a normalized list of GBP-category-shaped strings
+ * that count as same-specialty competitors. Empty array when missing.
+ *
+ * The list is the per-vertical, customizable counterpart to the
+ * hardcoded filterBySpecialty mapping in
+ * src/controllers/practice-ranking/feature-services/service.places-competitor-discovery.ts.
+ * Card D adds this layer; the existing layer continues to gate the
+ * Places API search.
+ */
+export async function getApprovedAdjacentSpecialties(
+  orgId: number | null | undefined,
+): Promise<string[]> {
+  if (orgId == null || !Number.isFinite(orgId)) return [];
+  try {
+    const row = await db("vocabulary_configs")
+      .where({ org_id: orgId })
+      .first("approved_adjacent_specialties");
+    if (!row) return [];
+    const raw = row.approved_adjacent_specialties;
+    if (Array.isArray(raw)) {
+      return raw
+        .filter((x): x is string => typeof x === "string")
+        .map((s) => s.toLowerCase());
+    }
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .filter((x): x is string => typeof x === "string")
+            .map((s) => s.toLowerCase());
+        }
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 /** Test-only: clear the Redis entry for a specific orgId. */
 export async function _invalidateVocabCache(orgId: number): Promise<void> {
   try {
