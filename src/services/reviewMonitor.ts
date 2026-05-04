@@ -15,6 +15,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db } from "../database/connection";
 import { createOAuth2ClientForConnection } from "../auth/oauth2Helper";
 import { buildAuthHeaders } from "../controllers/gbp/gbp-services/gbp-api.service";
+import { getLocationScope } from "./locationScope/locationScope";
 
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API;
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
@@ -303,7 +304,19 @@ export async function pollPracticeReviews(
   placeId: string,
   practiceName: string,
   specialty: string,
+  locationScope?: number[],
 ): Promise<PollResult> {
+  // Card G-foundation: when scope is provided, ensure the polled location
+  // is in scope. Skips polling (returns zero) when out of scope so the
+  // pollAllPractices loop can pass scope down without needing to filter
+  // upstream.
+  if (locationScope !== undefined) {
+    await getLocationScope(orgId, locationScope);
+    if (locationId !== null && !locationScope.includes(locationId)) {
+      return { orgId, practiceName, newReviews: 0, totalReviews: 0 };
+    }
+  }
+
   // Try MyBusiness API first (gives postable review IDs for reply)
   // Fall back to Places API (view-only, no posting)
   const myBiz = await fetchMyBusinessReviews(orgId);
@@ -399,12 +412,33 @@ export async function pollPracticeReviews(
 
 // ─── Poll all connected practices ───────────────────────────────────
 
-export async function pollAllPractices(): Promise<PollResult[]> {
+/**
+ * Card G-foundation: optional `scope` narrows the cron to a single org's
+ * locations. Used by manual triggers (e.g. admin dashboard "poll just
+ * this practice"). Default behavior (no scope) polls every connected
+ * practice as before.
+ */
+export interface PollAllScope {
+  orgId: number;
+  locationIds?: number[];
+}
+
+export async function pollAllPractices(
+  scope?: PollAllScope,
+): Promise<PollResult[]> {
+  // Validate the scoped location set up front.
+  if (scope) {
+    await getLocationScope(scope.orgId, scope.locationIds);
+  }
+
   // Find all orgs with review_requests that have place_ids (known connected practices)
   // Also check locations with business_data containing place_id
   const practicesWithPlaceIds = await db("review_requests")
     .select("organization_id", "place_id")
     .whereNotNull("place_id")
+    .modify((qb) => {
+      if (scope) qb.andWhere({ organization_id: scope.orgId });
+    })
     .groupBy("organization_id", "place_id");
 
   // Also get from batch_checkup_results for any analyzed practices
@@ -439,6 +473,7 @@ export async function pollAllPractices(): Promise<PollResult[]> {
         placeId,
         info.name,
         info.specialty,
+        scope?.locationIds,
       );
       results.push(result);
     } catch (err: any) {

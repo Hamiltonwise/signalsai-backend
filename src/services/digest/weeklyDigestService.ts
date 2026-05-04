@@ -19,6 +19,7 @@
 import { db } from "../../database/connection";
 import { BehavioralEventModel } from "../../models/BehavioralEventModel";
 import { isEnabled } from "../featureFlags";
+import { getLocationScope } from "../locationScope/locationScope";
 import { processNarratorEvent } from "../narrator/narratorService";
 import {
   runFreeformConcernGate,
@@ -79,8 +80,14 @@ export interface DigestComposeResult {
 // ── Digest composition ───────────────────────────────────────────────
 
 export async function composeWeeklyDigest(
-  orgId: number
+  orgId: number,
+  locationScope?: number[],
 ): Promise<DigestComposeResult> {
+  // Card G-foundation: validate scope. The digest currently composes one
+  // org-level digest from rolled-up signals; per-location digests are a
+  // future card. Scope is enforced for forward-compat misuse detection.
+  if (locationScope !== undefined) await getLocationScope(orgId, locationScope);
+
   const config = await loadDigestStructureConfig();
   const vocab = await getVocab(orgId);
   const org = await db("organizations").where({ id: orgId }).first();

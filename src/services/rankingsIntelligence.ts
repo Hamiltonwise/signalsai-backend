@@ -11,6 +11,7 @@ import { cleanCompetitorName } from "../utils/textCleaning";
 import { textSearch, getPlaceDetails } from "../controllers/places/feature-services/GooglePlacesApiService";
 import { checkFirstWinAttribution } from "./firstWinAttribution";
 import { computeAllVelocities } from "./reviewVelocity";
+import { getLocationScope } from "./locationScope/locationScope";
 
 let anthropic: Anthropic | null = null;
 function getAnthropic(): Anthropic {
@@ -30,13 +31,40 @@ function getWeekStart(): string {
 
 /**
  * Generate snapshot for a single org.
+ *
+ * Card G-foundation: locationScope (optional) selects which of the org's
+ * locations the snapshot covers. Today's snapshot row carries
+ * location_id, so when scope is provided this picks that specific
+ * location instead of is_primary=true. The current foundation accepts
+ * exactly 0 or 1 entries; multi-location iteration (one snapshot per
+ * scoped location) is wired in a follow-up card when the surface that
+ * consumes snapshots can render multi-location output.
  */
-export async function generateSnapshotForOrg(orgId: number, force = false): Promise<boolean> {
+export async function generateSnapshotForOrg(
+  orgId: number,
+  force = false,
+  locationScope?: number[],
+): Promise<boolean> {
   const weekStart = getWeekStart();
+
+  // Validate scope. Throws InvalidLocationScopeError if any id is foreign.
+  if (locationScope !== undefined) {
+    await getLocationScope(orgId, locationScope);
+    if (locationScope.length > 1) {
+      throw new Error(
+        `[RankingsIntel] generateSnapshotForOrg accepts a single-location scope today (got ${locationScope.length}). Iterate per location at the call site.`,
+      );
+    }
+  }
+  const scopedLocationId =
+    locationScope && locationScope.length === 1 ? locationScope[0] : null;
 
   // Already generated? Skip unless force refresh requested.
   const existing = await db("weekly_ranking_snapshots")
     .where({ org_id: orgId, week_start: weekStart })
+    .modify((qb) => {
+      if (scopedLocationId !== null) qb.andWhere({ location_id: scopedLocationId });
+    })
     .first();
   if (existing && !force) return false;
   // If force and existing, we'll delete and recreate with fresh data
@@ -47,10 +75,14 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
   const org = await db("organizations").where({ id: orgId }).first();
   if (!org) return false;
 
-  // Get org's primary location for specialty + address
-  const location = await db("locations")
-    .where({ organization_id: orgId, is_primary: true })
-    .first();
+  // Get the targeted location: scoped id when provided, otherwise primary.
+  const location = scopedLocationId !== null
+    ? await db("locations")
+        .where({ organization_id: orgId, id: scopedLocationId })
+        .first()
+    : await db("locations")
+        .where({ organization_id: orgId, is_primary: true })
+        .first();
 
   // Parse checkup_data for market info (most reliable source of specialty + city)
   let checkupMarket: { specialty?: string; city?: string; state?: string } | null = null;
@@ -197,9 +229,12 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
 
   if (currentPosition === null) return false;
 
-  // 2. Compare to last week
+  // 2. Compare to last week (filter on the same scoped location when provided)
   const prevSnapshot = await db("weekly_ranking_snapshots")
     .where({ org_id: orgId })
+    .modify((qb) => {
+      if (scopedLocationId !== null) qb.andWhere({ location_id: scopedLocationId });
+    })
     .where("week_start", "<", weekStart)
     .orderBy("week_start", "desc")
     .first();
@@ -265,9 +300,11 @@ Market: ${address || specialty}`,
     ? `The leading practice in your market has ${topCompetitorReviews} reviews.`
     : null;
 
-  // Store
+  // Store. Card G-foundation writes location_id when a scope was supplied;
+  // unsupplied keeps the historical org-level row (location_id null).
   await db("weekly_ranking_snapshots").insert({
     org_id: orgId,
+    location_id: scopedLocationId,
     week_start: weekStart,
     position: currentPosition,
     keyword: specialty,

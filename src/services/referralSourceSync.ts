@@ -10,6 +10,7 @@
  */
 
 import { db } from "../database/connection";
+import { getLocationScope } from "./locationScope/locationScope";
 
 /**
  * Find a column value by trying multiple header name variations.
@@ -51,11 +52,17 @@ function findColumn(row: Record<string, string>, candidates: string[]): string {
 export async function syncReferralSourcesFromPmsJob(
   orgId: number,
   rawData: Record<string, string>[],
+  locationScope?: number[],
 ): Promise<{ synced: number; skipped: number; zeroSourcesDetected?: boolean; headersSeen?: string[] }> {
   const hasTable = await db.schema.hasTable("referral_sources");
   if (!hasTable) return { synced: 0, skipped: 0 };
 
   if (!Array.isArray(rawData) || rawData.length === 0) return { synced: 0, skipped: 0 };
+
+  // Card G-foundation: validate scope (referral_sources lacks location_id
+  // today; the caller's pms_jobs row carries location and is the
+  // authoritative scope. Validation here is misuse detection only.)
+  if (locationScope !== undefined) await getLocationScope(orgId, locationScope);
 
   // Aggregate referral sources
   const sources = new Map<string, {

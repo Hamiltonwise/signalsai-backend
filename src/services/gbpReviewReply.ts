@@ -13,6 +13,7 @@ import axios from "axios";
 import { getValidOAuth2ClientByOrg } from "../auth/oauth2Helper";
 import { buildAuthHeaders } from "../controllers/gbp/gbp-services/gbp-api.service";
 import { db } from "../database/connection";
+import { getLocationScope } from "./locationScope/locationScope";
 
 /**
  * Post a review reply to Google Business Profile.
@@ -79,6 +80,7 @@ export async function approveAndPostReview(
   orgId: number,
   notificationId: number,
   replyText: string,
+  locationScope?: number[],
 ): Promise<{ success: boolean; posted: boolean; error?: string }> {
   // Get the review notification
   const review = await db("review_notifications")
@@ -87,6 +89,24 @@ export async function approveAndPostReview(
 
   if (!review) {
     return { success: false, posted: false, error: "Review not found" };
+  }
+
+  // Card G-foundation: validate the scope and the review's location.
+  // review_notifications has location_id; an out-of-scope review is
+  // refused before we touch GBP.
+  if (locationScope !== undefined) {
+    await getLocationScope(orgId, locationScope);
+    if (
+      review.location_id !== null &&
+      review.location_id !== undefined &&
+      !locationScope.includes(review.location_id)
+    ) {
+      return {
+        success: false,
+        posted: false,
+        error: "Review is outside the requested location scope.",
+      };
+    }
   }
 
   const reviewName = review.review_google_id;

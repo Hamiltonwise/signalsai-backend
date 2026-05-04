@@ -9,6 +9,7 @@
  */
 
 import { db } from "../database/connection";
+import { getLocationScope } from "./locationScope/locationScope";
 
 // ─── Helpers ───
 
@@ -74,8 +75,15 @@ export interface TopReferrer {
 export async function getReferralTrends(
   orgId: number,
   months: number = 6,
+  locationScope?: number[],
 ): Promise<ReferralTrend[]> {
   if (!(await hasReferralSourcesTable())) return [];
+
+  // Card G-foundation: validate scope. referral_sources has no
+  // location_id today, so the scope is enforced as a misuse-detection
+  // contract. A follow-up card adds referral_sources.location_id and
+  // wires the WHERE clause here.
+  if (locationScope !== undefined) await getLocationScope(orgId, locationScope);
 
   const sources = await db("referral_sources")
     .where({ organization_id: orgId })
@@ -139,8 +147,13 @@ export async function getReferralTrends(
 /**
  * Find sources with 3+ referrals in any prior 3-month window AND 0 in last 60 days.
  */
-export async function getDriftAlerts(orgId: number): Promise<DriftAlert[]> {
+export async function getDriftAlerts(
+  orgId: number,
+  locationScope?: number[],
+): Promise<DriftAlert[]> {
   if (!(await hasReferralSourcesTable())) return [];
+
+  if (locationScope !== undefined) await getLocationScope(orgId, locationScope);
 
   const sources = await db("referral_sources")
     .where({ organization_id: orgId })
@@ -197,8 +210,11 @@ export async function getDriftAlerts(orgId: number): Promise<DriftAlert[]> {
 export async function getTopReferrers(
   orgId: number,
   limit: number = 10,
+  locationScope?: number[],
 ): Promise<TopReferrer[]> {
   if (!(await hasReferralSourcesTable())) return [];
+
+  if (locationScope !== undefined) await getLocationScope(orgId, locationScope);
 
   const sources = await db("referral_sources")
     .where({ organization_id: orgId })
@@ -268,8 +284,11 @@ export interface CompensationAlert {
 
 export async function detectCompensationPatterns(
   orgId: number,
+  locationScope?: number[],
 ): Promise<CompensationAlert[]> {
   if (!(await hasReferralSourcesTable())) return [];
+
+  if (locationScope !== undefined) await getLocationScope(orgId, locationScope);
 
   const sources = await db("referral_sources")
     .where({ organization_id: orgId })
@@ -392,15 +411,20 @@ export async function detectCompensationPatterns(
 /**
  * Returns one plain English action sentence for the GP Referral Intelligence screen.
  */
-export async function getThisWeeksMove(orgId: number): Promise<string> {
+export async function getThisWeeksMove(
+  orgId: number,
+  locationScope?: number[],
+): Promise<string> {
   if (!(await hasReferralSourcesTable())) {
     return "Upload 90 days of scheduling data to see which GPs are your strongest referrers.";
   }
 
+  if (locationScope !== undefined) await getLocationScope(orgId, locationScope);
+
   const avgCaseValue = await getAvgCaseValue(orgId);
 
   // Priority 1: drift alert exists
-  const driftAlerts = await getDriftAlerts(orgId);
+  const driftAlerts = await getDriftAlerts(orgId, locationScope);
   const undismissedDrift = driftAlerts.filter((a) => !a.surprise_catch_dismissed);
 
   if (undismissedDrift.length > 0) {

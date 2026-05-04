@@ -18,6 +18,7 @@
 
 import { db } from "../../database/connection";
 import { getApprovedAdjacentSpecialties } from "../vocabulary/vocabLoader";
+import { getLocationScope } from "../locationScope/locationScope";
 import {
   filterByApprovedSpecialty,
   mergeWithTrackedCompetitors,
@@ -31,6 +32,16 @@ export interface ApplyRefreshInput {
   discoveryRaw: DiscoveryCandidate[];
   /** Optional: caller may pre-filter via legacy filterBySpecialty; otherwise we pass the raw set through both filters. */
   preFiltered?: DiscoveryCandidate[];
+  /**
+   * Card G-foundation: optional location scope. Validated against the org's
+   * locations. tracked_competitors is currently a column on the
+   * organizations row (org-level), so the scope is validated for misuse
+   * detection but does not change which competitors are stored. A
+   * follow-up card moves tracked_competitors to a per-location surface;
+   * once that lands, this parameter selects which location's tracked set
+   * the refresh updates.
+   */
+  locationScope?: number[];
 }
 
 export interface ApplyRefreshResult {
@@ -46,7 +57,13 @@ export interface ApplyRefreshResult {
 export async function applySpecialtyAwareRefresh(
   input: ApplyRefreshInput,
 ): Promise<ApplyRefreshResult> {
-  const { orgId, discoveryRaw, preFiltered } = input;
+  const { orgId, discoveryRaw, preFiltered, locationScope } = input;
+
+  // Card G-foundation: validate locationScope early. Throws
+  // InvalidLocationScopeError if any id doesn't belong to the org.
+  if (locationScope !== undefined) {
+    await getLocationScope(orgId, locationScope);
+  }
 
   const approvedList = await getApprovedAdjacentSpecialties(orgId);
 
