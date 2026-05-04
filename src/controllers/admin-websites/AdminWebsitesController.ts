@@ -47,6 +47,8 @@ import type { IdentityWarmupJobData } from "../../workers/processors/identityWar
 import type { LayoutGenerateJobData } from "../../workers/processors/websiteLayouts.processor";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { ProjectIdentityModel } from "../../models/website-builder/ProjectIdentityModel";
+import { ProjectReviewModel } from "../../models/website-builder/ProjectReviewModel";
+import { ReviewModel } from "../../models/website-builder/ReviewModel";
 import { generatePresignedUrl } from "../../utils/core/s3";
 import { buildEmailBody } from "../websiteContact/websiteContact-services/emailBodyBuilder";
 import { sendEmailWebhook, WebhookError } from "../websiteContact/websiteContact-services/emailWebhookService";
@@ -3903,56 +3905,149 @@ export async function triggerReviewSync(req: Request, res: Response): Promise<Re
 export async function getReviewStats(req: Request, res: Response): Promise<Response> {
   try {
     const { id } = req.params;
+    const scope = await ProjectReviewModel.getProjectScope(id);
 
-    const project = await db("website_builder.projects")
-      .where("id", id)
-      .select("organization_id")
-      .first();
-
-    if (!project) {
+    if (!scope) {
       return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Project not found" });
     }
 
-    if (!project.organization_id) {
-      return res.json({ success: true, data: { total: 0, average: 0, distribution: {} } });
-    }
+    const stats = await ProjectReviewModel.getStats(scope);
 
-    const locationIds = await db("locations")
-      .where("organization_id", project.organization_id)
-      .pluck("id");
-
-    if (locationIds.length === 0) {
-      return res.json({ success: true, data: { total: 0, average: 0, distribution: {} } });
-    }
-
-    const [countResult, avgResult, distRows] = await Promise.all([
-      db("website_builder.reviews")
-        .whereIn("location_id", locationIds)
-        .count("* as count")
-        .first(),
-      db("website_builder.reviews")
-        .whereIn("location_id", locationIds)
-        .avg("stars as avg")
-        .first(),
-      db("website_builder.reviews")
-        .whereIn("location_id", locationIds)
-        .select("stars")
-        .count("* as count")
-        .groupBy("stars")
-        .orderBy("stars"),
-    ]);
-
-    const total = parseInt(countResult?.count as string, 10) || 0;
-    const average = parseFloat(avgResult?.avg as string) || 0;
-    const distribution: Record<number, number> = {};
-    for (const row of distRows) {
-      distribution[Number(row.stars)] = parseInt(row.count as string, 10);
-    }
-
-    return res.json({ success: true, data: { total, average, distribution } });
+    return res.json({
+      success: true,
+      data: {
+        ...stats,
+        hasGbpConnection: scope.hasGbpConnection,
+        hasPlaceIds: scope.hasPlaceIds,
+      },
+    });
   } catch (error: any) {
     console.error("[Admin Websites] Error fetching review stats:", error);
     return res.status(500).json({ success: false, error: "STATS_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/reviews/fetch — Trigger Apify review fetch. Body may include { placeIds } to override project defaults. */
+export async function triggerApifyReviewFetch(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const bodyPlaceIds: string[] | undefined = req.body?.placeIds;
+    const scope = await ProjectReviewModel.getProjectScope(id);
+
+    if (!scope) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Project not found" });
+    }
+
+    const placeIds = Array.isArray(bodyPlaceIds) && bodyPlaceIds.length > 0
+      ? bodyPlaceIds.filter((pid: string) => scope.placeIds.includes(pid))
+      : scope.placeIds;
+
+    if (placeIds.length === 0) {
+      return res.status(400).json({ success: false, error: "NO_PLACE_IDS", message: "No valid GBP locations selected" });
+    }
+
+    const { getMindsQueue } = await import("../../workers/queues");
+    const queue = getMindsQueue("review-sync");
+    const job = await queue.add("apify-review-fetch", { projectId: id, placeIds });
+
+    console.log(`[Admin Websites] Triggered Apify review fetch for project ${id}, ${placeIds.length} place(s), job ${job.id}`);
+    return res.json({ success: true, data: { jobId: job.id, placeCount: placeIds.length } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error triggering Apify review fetch:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/reviews — List reviews for a project with search/filter */
+export async function listReviews(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { search, stars, showHidden } = req.query;
+    const scope = await ProjectReviewModel.getProjectScope(id);
+
+    if (!scope) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Project not found" });
+    }
+
+    const reviews = await ProjectReviewModel.list(scope, {
+      search: search as string | undefined,
+      stars: stars ? parseInt(stars as string, 10) : undefined,
+      showHidden: showHidden === "true",
+    });
+
+    return res.json({ success: true, data: reviews });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing reviews:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /:id/reviews/:reviewId — Toggle review hidden status */
+export async function toggleReviewHidden(req: Request, res: Response): Promise<Response> {
+  try {
+    const { reviewId } = req.params;
+    const { hidden } = req.body;
+
+    if (typeof hidden !== "boolean") {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "hidden must be a boolean" });
+    }
+
+    const updated = await ReviewModel.toggleHidden(reviewId, hidden);
+
+    if (updated === 0) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Review not found" });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error toggling review:", error);
+    return res.status(500).json({ success: false, error: "TOGGLE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /:id/reviews/:reviewId — Delete a review */
+export async function deleteReview(req: Request, res: Response): Promise<Response> {
+  try {
+    const { reviewId } = req.params;
+
+    const deleted = await ReviewModel.deleteReview(reviewId);
+
+    if (deleted === 0) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Review not found" });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting review:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/reviews/jobs/:jobId/status — Poll review sync/fetch job status */
+export async function getReviewJobStatus(req: Request, res: Response): Promise<Response> {
+  try {
+    const { jobId } = req.params;
+
+    const { getMindsQueue } = await import("../../workers/queues");
+    const queue = getMindsQueue("review-sync");
+    const job = await queue.getJob(jobId);
+
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+
+    if (!job) {
+      return res.json({ success: true, data: { jobId, state: "unknown" } });
+    }
+
+    const state = await job.getState();
+    const failedReason = (job as any).failedReason || null;
+
+    return res.json({
+      success: true,
+      data: { jobId: job.id, state, failedReason },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching review job status:", error);
+    return res.status(500).json({ success: false, error: "STATUS_ERROR", message: error?.message });
   }
 }
 

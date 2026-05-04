@@ -105,6 +105,16 @@ export const QUERY_KEYS = {
   // Admin — website detail
   adminWebsiteDetail: (uuid: string) =>
     ["admin", "website-detail", uuid] as const,
+  adminWebsiteReviewStats: (uuid: string) =>
+    ["admin", "website-detail", uuid, "review-stats"] as const,
+  adminWebsiteReviewStatsAll: (uuid: string) =>
+    ["admin", "website-detail", uuid, "review-stats"] as const,
+  adminWebsiteReviews: (uuid: string, params?: Record<string, unknown>) =>
+    ["admin", "website-detail", uuid, "reviews", params] as const,
+  adminWebsiteReviewsAll: (uuid: string) =>
+    ["admin", "website-detail", uuid, "reviews"] as const,
+  adminWebsiteReviewJob: (uuid: string, jobId: string) =>
+    ["admin", "website-detail", uuid, "review-job", jobId] as const,
 
   // Client — notifications
   notifications: (orgId: number | null, locationId: number | null) =>
