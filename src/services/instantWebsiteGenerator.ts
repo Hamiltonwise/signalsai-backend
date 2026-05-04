@@ -539,6 +539,13 @@ export async function generateInstantWebsite(input: CheckupWebsiteInput): Promis
 
   const previewUrl = `https://${hostname}.sites.getalloro.com`;
 
+  // Capture prior status so the Card 6 anchor handler only fires on a
+  // real pending → preview_ready transition (not on idempotent re-runs).
+  const priorOrg = await db("organizations")
+    .where({ id: orgId })
+    .first("patientpath_status");
+  const priorStatus = priorOrg?.patientpath_status ?? null;
+
   // Update org with website status + photo quality for dashboard photo brief
   const photoAssessment = assessPhotoQuality(checkupData || {});
   await db("organizations").where({ id: orgId }).update({
@@ -547,6 +554,25 @@ export async function generateInstantWebsite(input: CheckupWebsiteInput): Promis
     // Store photo assessment so the dashboard can show the photo brief
     ...(photoAssessment.brief ? { photo_brief: JSON.stringify(photoAssessment) } : {}),
   });
+
+  // Card 6: fire the Live Activity anchor entry on first flip into
+  // preview_ready. Handler is idempotent (partial-index check on
+  // is_anchor_entry); re-runs that did not change status skip the call
+  // anyway but a re-flip during sandbox testing would also re-call here
+  // and the handler would correctly skip with 'already_exists'.
+  if (priorStatus !== "preview_ready") {
+    try {
+      const { fireAnchorEntryForPractice } = await import(
+        "./liveActivity/anchorEntry"
+      );
+      await fireAnchorEntryForPractice(orgId);
+    } catch (err) {
+      const m = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `[InstantWebsite] anchor entry handler error for org ${orgId}: ${m}`,
+      );
+    }
+  }
 
   // Write notification
   await db("notifications").insert({

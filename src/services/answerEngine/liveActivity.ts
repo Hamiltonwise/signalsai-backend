@@ -86,6 +86,8 @@ export interface LiveActivityEntryRow {
   linked_signal_event_id: string | null;
   linked_state_transition_id: string | null;
   visible_to_doctor: boolean;
+  /** Card 6 — anchor entries pin to the bottom of the timeline. */
+  is_anchor_entry: boolean;
   created_at: string;
 }
 
@@ -102,32 +104,56 @@ export async function listLiveActivityEntries(
   const limit = Math.min(input.limit ?? 50, 200);
   const visibleOnly = input.visibleOnly !== false;
 
-  const q = db("live_activity_entries")
-    .select(
-      "id",
-      "practice_id",
-      "entry_type",
-      "entry_data",
-      "doctor_facing_text",
-      "linked_signal_event_id",
-      "linked_state_transition_id",
-      "visible_to_doctor",
-      "created_at",
-    )
+  const SELECT_COLS = [
+    "id",
+    "practice_id",
+    "entry_type",
+    "entry_data",
+    "doctor_facing_text",
+    "linked_signal_event_id",
+    "linked_state_transition_id",
+    "visible_to_doctor",
+    "is_anchor_entry",
+    "created_at",
+  ];
+
+  // Card 6: the anchor entry must ALWAYS be visible at the bottom of the
+  // timeline once a practice has flipped to preview_ready, even when the
+  // limit is full of more recent signal rows. Two queries: the (single)
+  // anchor row via the partial index, and (limit - 1) newest non-anchor
+  // rows. Concatenate with anchor at the end. Keeps total rows ≤ limit.
+  const anchorQ = db("live_activity_entries")
+    .select(SELECT_COLS)
     .where("practice_id", input.practice_id)
+    .andWhere("is_anchor_entry", true)
+    .limit(1);
+  if (visibleOnly) anchorQ.andWhere("visible_to_doctor", true);
+
+  const anchorRows = await anchorQ;
+  const anchorRow = anchorRows[0] ?? null;
+  const signalLimit = anchorRow ? Math.max(0, limit - 1) : limit;
+
+  const signalQ = db("live_activity_entries")
+    .select(SELECT_COLS)
+    .where("practice_id", input.practice_id)
+    .andWhere("is_anchor_entry", false)
     .orderBy("created_at", "desc")
-    .limit(limit);
+    .limit(signalLimit);
+  if (visibleOnly) signalQ.andWhere("visible_to_doctor", true);
 
-  if (visibleOnly) q.andWhere("visible_to_doctor", true);
+  const signalRows = await signalQ;
 
-  const rows = await q;
-  return rows.map((r: LiveActivityEntryRow & { entry_data: unknown }) => ({
-    ...r,
-    entry_data:
-      typeof r.entry_data === "string"
-        ? JSON.parse(r.entry_data as unknown as string)
-        : (r.entry_data as Record<string, unknown> | null),
-  }));
+  const combined = anchorRow ? [...signalRows, anchorRow] : signalRows;
+
+  return combined.map(
+    (r: LiveActivityEntryRow & { entry_data: unknown }) => ({
+      ...r,
+      entry_data:
+        typeof r.entry_data === "string"
+          ? JSON.parse(r.entry_data as unknown as string)
+          : (r.entry_data as Record<string, unknown> | null),
+    }),
+  );
 }
 
 // ── Haiku-rendered doctor-facing text (forward-compat hook) ─────────
