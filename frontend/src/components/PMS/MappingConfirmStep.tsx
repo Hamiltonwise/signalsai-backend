@@ -12,21 +12,39 @@ interface MappingConfirmStepProps {
   preview: MappingPreviewData;
   onConfirmed: (result: { plainEnglishSummary?: string | null; recordsProcessed: number }) => void;
   onCancel: () => void;
+  /** Card E (May 4 re-scope): used in the modal title + helper. Falls back to "your practice" when absent. */
+  practiceDisplayName?: string;
+  /** Card E (May 4 re-scope): when present, renders the re-confirmation helper instead of first-time helper. */
+  previousColumnCount?: number;
 }
 
+// Card E (May 4 2026, re-scoped) — labels + descriptions sourced from the
+// approved string set in src/services/referrals/columnMappingStrings.ts.
 const ROLES: { key: ReferralMappingTarget; label: string; description: string; required: boolean }[] = [
-  { key: "source", label: "Referral source", description: "Who sent the patient (a person, practice, or campaign)", required: true },
-  { key: "date", label: "Date", description: "When the visit or referral happened", required: false },
-  { key: "amount", label: "Amount", description: "Production, revenue, or fee per row", required: false },
-  { key: "count", label: "Referral count", description: "Number of referrals if the row aggregates", required: false },
-  { key: "patient", label: "Patient", description: "Patient or client name/ID (used for deduplication)", required: false },
-  { key: "procedure", label: "Procedure", description: "Procedure or service code", required: false },
-  { key: "provider", label: "Provider", description: "Treating doctor or provider", required: false },
+  { key: "source", label: "Referral source", description: "Who sent the patient (a person, practice, or campaign).", required: true },
+  { key: "date", label: "Date", description: "When the visit or referral happened.", required: false },
+  { key: "amount", label: "Amount", description: "Production, revenue, or fee per row.", required: false },
+  { key: "count", label: "Referral count", description: "Number of referrals if the row aggregates.", required: false },
+  { key: "patient", label: "Patient", description: "Patient or client name or ID, used for deduplication.", required: false },
+  { key: "procedure", label: "Procedure", description: "Procedure or service code.", required: false },
+  { key: "provider", label: "Provider", description: "Treating doctor or provider.", required: false },
 ];
 
 const NONE_VALUE = "__none__";
 
-export const MappingConfirmStep: React.FC<MappingConfirmStepProps> = ({ preview, onConfirmed, onCancel }) => {
+export const MappingConfirmStep: React.FC<MappingConfirmStepProps> = ({
+  preview,
+  onConfirmed,
+  onCancel,
+  practiceDisplayName,
+  previousColumnCount,
+}) => {
+  const practiceLabel = practiceDisplayName?.trim() || "your practice";
+  const headerCount = preview.headers.length;
+  const helperText =
+    typeof previousColumnCount === "number" && previousColumnCount !== headerCount
+      ? `Your last upload for ${practiceLabel} had ${previousColumnCount} columns. This upload has ${headerCount} columns. Confirm the new column mapping below before Alloro ingests this data.`
+      : `Alloro detected ${headerCount} columns in your upload. Suggested mapping shown below. Adjust any field that doesn't match, then confirm. This mapping is saved for future uploads from ${practiceLabel}.`;
   const [mapping, setMapping] = useState<ReferralColumnMapping>(preview.suggestion.mapping);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,13 +108,9 @@ export const MappingConfirmStep: React.FC<MappingConfirmStepProps> = ({ preview,
 
       <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 sm:p-6 space-y-3">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1A1D23]">
-          Confirm column mapping
+          Confirm referral column mapping for {practiceLabel}
         </h3>
-        <p className="text-sm text-[#1A1D23]/70">
-          {preview.reason === "structure_changed"
-            ? "Your file has different columns than last time. Confirm what each column means before we ingest."
-            : "We took a first look at your file and matched up the columns. Confirm or adjust below before we ingest."}
-        </p>
+        <p className="text-sm text-[#1A1D23]/70">{helperText}</p>
         {preview.suggestion.warnings.length > 0 && (
           <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 mb-1">Heads up</p>
