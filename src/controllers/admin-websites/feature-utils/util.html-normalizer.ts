@@ -211,6 +211,7 @@ const SHORTCODE_TOKEN_BY_TYPE: Record<string, string> = {
   reviews: "[review_block]",
   posts: "[post_block type=\"posts\"]",
   locations: "[post_block type=\"locations\"]",
+  staff: "[post_block type=\"staff\"]",
 };
 
 const DIRECT_SHORTCODE_RE =

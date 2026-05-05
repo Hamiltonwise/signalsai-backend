@@ -2047,7 +2047,7 @@ export default function WebsiteDetail() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <ReviewsTab projectId={id!} organizationId={website.organization?.id} />
+          <ReviewsTab projectId={id!} organizationId={website.organization?.id} identity={website.project_identity} />
         </motion.div>
       )}
 

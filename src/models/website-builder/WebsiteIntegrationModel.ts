@@ -3,15 +3,20 @@ import { db } from "../../database/connection";
 import { encrypt, decrypt } from "../../utils/encryption";
 
 export type IntegrationStatus = "active" | "revoked" | "broken";
+export type IntegrationType = "crm_push" | "script_injection" | "data_harvest" | "hybrid";
+export type IntegrationPlatform = "hubspot" | "rybbit" | "clarity" | "gsc";
+export type IntegrationConnectedBy = "user" | "admin" | "system";
 
 export interface IWebsiteIntegration {
   id: string;
   project_id: string;
-  platform: string;
+  platform: IntegrationPlatform;
+  type: IntegrationType;
   label: string | null;
-  encrypted_credentials: string;
+  encrypted_credentials: string | null;
   metadata: Record<string, unknown>;
   status: IntegrationStatus;
+  connected_by: IntegrationConnectedBy | null;
   last_validated_at: Date | null;
   last_error: string | null;
   created_at: Date;
@@ -24,9 +29,11 @@ const SAFE_COLUMNS = [
   "id",
   "project_id",
   "platform",
+  "type",
   "label",
   "metadata",
   "status",
+  "connected_by",
   "last_validated_at",
   "last_error",
   "created_at",
@@ -71,23 +78,27 @@ export class WebsiteIntegrationModel extends BaseModel {
   static async create(
     data: {
       project_id: string;
-      platform: string;
-      credentials: string;
+      platform: IntegrationPlatform;
+      type?: IntegrationType;
+      credentials?: string | null;
       label?: string | null;
       metadata?: Record<string, unknown>;
       status?: IntegrationStatus;
+      connected_by?: IntegrationConnectedBy | null;
     },
     trx?: QueryContext,
   ): Promise<IWebsiteIntegrationSafe> {
     const { credentials, ...rest } = data;
-    const encrypted_credentials = encrypt(credentials);
+    const encrypted_credentials = credentials ? encrypt(credentials) : null;
 
     const [result] = await this.table(trx)
       .insert({
         ...rest,
         encrypted_credentials,
+        type: rest.type ?? "crm_push",
         metadata: rest.metadata ?? {},
         status: rest.status ?? "active",
+        connected_by: rest.connected_by ?? null,
         created_at: new Date(),
         updated_at: new Date(),
       })
@@ -103,9 +114,10 @@ export class WebsiteIntegrationModel extends BaseModel {
     id: string,
     data: {
       label?: string | null;
-      credentials?: string;
+      credentials?: string | null;
       metadata?: Record<string, unknown>;
       status?: IntegrationStatus;
+      connected_by?: IntegrationConnectedBy | null;
       last_validated_at?: Date | null;
       last_error?: string | null;
     },
@@ -114,7 +126,7 @@ export class WebsiteIntegrationModel extends BaseModel {
     const { credentials, ...rest } = data;
     const update: Record<string, unknown> = { ...rest, updated_at: new Date() };
     if (credentials !== undefined) {
-      update.encrypted_credentials = encrypt(credentials);
+      update.encrypted_credentials = credentials ? encrypt(credentials) : null;
     }
 
     const [result] = await this.table(trx)
@@ -152,6 +164,17 @@ export class WebsiteIntegrationModel extends BaseModel {
     return this.table(trx)
       .where({ id })
       .update({ last_validated_at, last_error, updated_at: new Date() });
+  }
+
+  static async findActiveByTypes(
+    types: IntegrationType[],
+    trx?: QueryContext,
+  ): Promise<IWebsiteIntegrationSafe[]> {
+    return this.table(trx)
+      .select(SAFE_COLUMNS)
+      .where({ status: "active" })
+      .whereIn("type", types)
+      .orderBy("created_at", "asc");
   }
 
   /**

@@ -17,6 +17,9 @@ import HubSpotConnectionPanel from "./integrations/HubSpotConnectionPanel";
 import DetectedFormsPanel from "./integrations/DetectedFormsPanel";
 import FieldMappingDropdown from "./integrations/FieldMappingDropdown";
 import RecentActivityPanel from "./integrations/RecentActivityPanel";
+import RybbitTab from "./integrations/RybbitTab";
+import ClarityTab from "./integrations/ClarityTab";
+import GscTab from "./integrations/GscTab";
 
 interface Props {
   projectId: string;
@@ -204,8 +207,55 @@ export default function IntegrationsTab({ projectId }: Props) {
       );
     }
 
+    if (selectedPlatform === "rybbit") {
+      return (
+        <RybbitTab
+          projectId={projectId}
+          integration={selectedIntegration}
+          onRefresh={loadIntegrations}
+        />
+      );
+    }
+
+    if (selectedPlatform === "clarity") {
+      return (
+        <ClarityTab
+          projectId={projectId}
+          integration={selectedIntegration}
+          onRefresh={loadIntegrations}
+        />
+      );
+    }
+
+    if (selectedPlatform === "gsc") {
+      const googleIntegration = integrations.find(
+        (i) => i.platform === "gsc",
+      );
+      const hasGoogleConnection =
+        !!googleIntegration?.metadata?.hasGoogleConnection ||
+        integrations.some(
+          (i) =>
+            i.metadata?.googleConnected === true ||
+            i.metadata?.googleEmail,
+        );
+      const hasGscScope = !!googleIntegration?.metadata?.hasGscScope;
+      const googleEmail = googleIntegration?.metadata?.googleEmail
+        ? String(googleIntegration.metadata.googleEmail)
+        : null;
+
+      return (
+        <GscTab
+          projectId={projectId}
+          integration={selectedIntegration}
+          onRefresh={loadIntegrations}
+          googleEmail={googleEmail}
+          hasGoogleConnection={hasGoogleConnection}
+          hasGscScope={hasGscScope}
+        />
+      );
+    }
+
     if (selectedPlatform !== "hubspot") {
-      // v1 only ships HubSpot — but guard for safety.
       return (
         <div className="p-12 text-center text-gray-400 text-sm">
           This provider is not yet available.

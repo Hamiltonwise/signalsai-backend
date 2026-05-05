@@ -13,6 +13,7 @@ import {
 import { processWorksDigest } from "./processors/worksDigest.processor";
 import { processSeoBulkGenerate } from "./processors/seoBulkGenerate.processor";
 import { processReviewSync } from "./processors/reviewSync.processor";
+import { processApifyReviewFetch } from "./processors/reviewApifyFetch.processor";
 import { processSchedulerTick } from "./processors/scheduler.processor";
 import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
@@ -26,7 +27,8 @@ import { processLayoutGenerate } from "./processors/websiteLayouts.processor";
 import { processPostImport } from "./processors/postImporter.processor";
 import { processCrmPush } from "./processors/crmPush.processor";
 import { processCrmMappingValidation } from "./processors/crmMappingValidation.processor";
-import { getMindsQueue, getCrmQueue } from "./queues";
+import { processDataHarvest } from "./processors/dataHarvest.processor";
+import { getMindsQueue, getCrmQueue, getHarvestQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
 const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
@@ -177,11 +179,15 @@ async function setupSkillTriggerSchedule(): Promise<void> {
   }
 }
 
-// Review Sync worker
+// Review Sync worker (handles both OAuth sync and Apify fetch)
 const reviewSyncWorker = new Worker(
   "minds-review-sync",
   async (job) => {
-    await processReviewSync(job);
+    if (job.name === "apify-review-fetch") {
+      await processApifyReviewFetch(job);
+    } else {
+      await processReviewSync(job);
+    }
   },
   {
     connection,
@@ -358,8 +364,24 @@ const crmMappingValidationWorker = new Worker(
   }
 );
 
+// Data Harvest worker — daily pull of analytics data from Rybbit, Clarity, GSC.
+const dataHarvestWorker = new Worker(
+  "harvest-daily",
+  async (job) => {
+    await processDataHarvest(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000, // 10 min — iterates all active harvest integrations
+    prefix: '{harvest}',
+    removeOnComplete: { count: 30 },
+    removeOnFail: { count: 30 },
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbIdentityWarmupWorker, wbLayoutsWorker, wbProjectScrapeWorker, wbPageGenerateWorker, wbPostImportWorker, auditLeadgenWorker, crmHubspotPushWorker, crmMappingValidationWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, wbIdentityWarmupWorker, wbLayoutsWorker, wbProjectScrapeWorker, wbPageGenerateWorker, wbPostImportWorker, auditLeadgenWorker, crmHubspotPushWorker, crmMappingValidationWorker, dataHarvestWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -487,11 +509,33 @@ async function setupCrmMappingValidationSchedule(): Promise<void> {
   }
 }
 
+// Set up daily data harvest schedule (5:00 AM UTC)
+async function setupDataHarvestSchedule(): Promise<void> {
+  try {
+    const queue = getHarvestQueue("daily");
+    await queue.add(
+      "daily-data-harvest",
+      {},
+      {
+        repeat: {
+          pattern: "0 5 * * *", // 5:00 AM UTC daily
+          tz: "UTC",
+        },
+        jobId: "daily-data-harvest",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily data harvest scheduled (5:00 AM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up data harvest schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
 setupReviewSyncSchedule();
 setupSchedulerTick();
 setupCrmMappingValidationSchedule();
+setupDataHarvestSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
