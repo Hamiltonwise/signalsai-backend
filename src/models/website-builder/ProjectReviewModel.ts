@@ -1,11 +1,12 @@
 import { Knex } from "knex";
 import { QueryContext } from "../BaseModel";
 import { db } from "../../database/connection";
-import { IReview, ReviewModel } from "./ReviewModel";
+import { IReview, ProjectReviewListFilters, ReviewModel } from "./ReviewModel";
 
 type ProjectReviewRow = {
   organization_id: number | null;
   selected_place_id: string | null;
+  primary_place_id: string | null;
   selected_place_ids: string[] | string | null;
 };
 
@@ -30,14 +31,20 @@ export class ProjectReviewModel {
   ): Promise<ProjectReviewScope | null> {
     const project = await (trx || db)("website_builder.projects")
       .where("id", projectId)
-      .select("organization_id", "selected_place_id", "selected_place_ids")
+      .select(
+        "organization_id",
+        "selected_place_id",
+        "selected_place_ids",
+        "primary_place_id"
+      )
       .first<ProjectReviewRow>();
 
     if (!project) return null;
 
     const placeIds = normalizePlaceIds(
       project.selected_place_ids,
-      project.selected_place_id
+      project.selected_place_id,
+      project.primary_place_id
     );
     const locationIds = await this.getLocationIds(project.organization_id, trx);
     const hasGbpConnection = await this.hasGbpConnection(
@@ -99,7 +106,11 @@ export class ProjectReviewModel {
     opts: {
       search?: string;
       stars?: number;
+      minRating?: number;
       showHidden?: boolean;
+      limit?: number;
+      offset?: number;
+      order?: ProjectReviewListFilters["order"];
     },
     trx?: QueryContext
   ): Promise<IReview[]> {
@@ -109,7 +120,11 @@ export class ProjectReviewModel {
         placeIds: scope.placeIds,
         search: opts.search,
         stars: opts.stars,
+        minRating: opts.minRating,
         showHidden: opts.showHidden,
+        limit: opts.limit,
+        offset: opts.offset,
+        order: opts.order,
       },
       trx
     );
@@ -123,17 +138,15 @@ export class ProjectReviewModel {
     const scope = await this.getProjectScope(projectId, trx);
     if (!scope?.organizationId || placeIds.length === 0) return new Map();
 
-    const rows = await (trx || db)("google_properties as gp")
-      .join("google_connections as gc", "gp.google_connection_id", "gc.id")
-      .where("gc.organization_id", scope.organizationId)
-      .where("gp.type", "gbp")
-      .whereIn("gp.external_id", placeIds)
-      .select("gp.location_id", "gp.external_id");
+    const rows = await (trx || db)("locations")
+      .where("organization_id", scope.organizationId)
+      .whereIn("client_place_id", placeIds)
+      .select("id as location_id", "client_place_id");
 
     const locationByPlaceId = new Map<string, number>();
-    for (const row of rows as Array<{ external_id: string; location_id: number }>) {
-      if (row.external_id && row.location_id) {
-        locationByPlaceId.set(row.external_id, row.location_id);
+    for (const row of rows as Array<{ client_place_id: string; location_id: number }>) {
+      if (row.client_place_id && row.location_id) {
+        locationByPlaceId.set(row.client_place_id, row.location_id);
       }
     }
 
@@ -192,7 +205,8 @@ function hasReviewScope(scope: ProjectReviewScope): boolean {
 
 function normalizePlaceIds(
   selectedPlaceIds: string[] | string | null,
-  legacyPlaceId: string | null
+  legacyPlaceId: string | null,
+  primaryPlaceId: string | null
 ): string[] {
   const ids = Array.isArray(selectedPlaceIds)
     ? selectedPlaceIds
@@ -202,6 +216,7 @@ function normalizePlaceIds(
 
   const normalized = ids
     .concat(legacyPlaceId ? [legacyPlaceId] : [])
+    .concat(primaryPlaceId ? [primaryPlaceId] : [])
     .map((id) => id.trim())
     .filter((id) => id.length > 0);
 

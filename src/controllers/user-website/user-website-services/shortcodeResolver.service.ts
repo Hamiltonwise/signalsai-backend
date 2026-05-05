@@ -22,6 +22,7 @@
  * Supported `<type>` vocabulary (mirrors what this resolver understands):
  *   - doctors       → {{ post_block items='<id>' ... }} (post type `doctors`)
  *   - services      → {{ post_block items='<id>' ... }} (post type `services`)
+ *   - staff         → {{ post_block items='<id>' ... }} (post type `staff`)
  *   - reviews       → {{ review_block items='<id>' ... }}
  *   - posts         → {{ post_block items='<id>' ... }} (generic/other post types)
  *   - menus         → {{ menu items='<id>' ... }}
@@ -41,6 +42,7 @@
  */
 
 import { db } from "../../../database/connection";
+import { ProjectReviewModel } from "../../../models/website-builder/ProjectReviewModel";
 
 // =====================================================================
 // HTML Escaping
@@ -553,24 +555,8 @@ async function resolveReviewBlocks(
 
   if (shortcodes.length === 0) return html;
 
-  // Resolve project → org → locations
-  const project = await db("website_builder.projects")
-    .where("id", projectId)
-    .select("organization_id")
-    .first();
-
-  if (!project?.organization_id) {
-    for (const sc of shortcodes) {
-      html = html.replace(sc.raw, wrapResolved(sc.raw, ""));
-    }
-    return html;
-  }
-
-  const locations = await db("locations")
-    .where("organization_id", project.organization_id)
-    .select("id", "name", "domain", "is_primary");
-
-  if (locations.length === 0) {
+  const scope = await ProjectReviewModel.getProjectScope(projectId);
+  if (!scope || (scope.locationIds.length === 0 && scope.placeIds.length === 0)) {
     for (const sc of shortcodes) {
       html = html.replace(sc.raw, wrapResolved(sc.raw, ""));
     }
@@ -598,37 +584,18 @@ async function resolveReviewBlocks(
       continue;
     }
 
-    // Resolve location(s)
     const minRating = parseInt(sc.min_rating || "1", 10);
     const limit = parseInt(sc.limit || "10", 10);
     const offset = parseInt(sc.offset || "0", 10);
-    const order = sc.order || "desc";
+    const order = sc.order === "asc" ? "asc" : "desc";
 
-    let locationIds: number[];
-
-    if (sc.location === "all") {
-      locationIds = locations.map((l: any) => l.id);
-    } else if (!sc.location || sc.location === "primary") {
-      const loc = locations.find((l: any) => l.is_primary) || locations[0];
-      locationIds = [loc.id];
-    } else {
-      const loc = locations.find(
-        (l: any) => l.name === sc.location || l.domain === sc.location
-      );
-      if (!loc) {
-        html = html.replace(sc.raw, wrapResolved(sc.raw, ""));
-        continue;
-      }
-      locationIds = [loc.id];
-    }
-
-    // Fetch reviews from local DB
-    const reviews = await db("website_builder.reviews")
-      .whereIn("location_id", locationIds)
-      .where("stars", ">=", minRating)
-      .orderBy("review_created_at", order)
-      .limit(limit)
-      .offset(offset);
+    const reviews = await ProjectReviewModel.list(scope, {
+      minRating,
+      limit,
+      offset,
+      order,
+      showHidden: false,
+    });
 
     const blockHtml = Array.isArray(block.sections)
       ? block.sections.map((s: any) => s.content || "").join("\n")

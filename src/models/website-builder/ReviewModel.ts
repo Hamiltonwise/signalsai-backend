@@ -31,6 +31,18 @@ export interface ReviewFilters {
   order?: "asc" | "desc";
 }
 
+export interface ProjectReviewListFilters {
+  locationIds: number[];
+  placeIds: string[];
+  search?: string;
+  stars?: number;
+  minRating?: number;
+  showHidden?: boolean;
+  limit?: number;
+  offset?: number;
+  order?: "asc" | "desc";
+}
+
 export type ApifyReviewInput = {
   place_id: string;
   location_id: number | null;
@@ -173,13 +185,7 @@ export class ReviewModel extends BaseModel {
   }
 
   static async listForProject(
-    opts: {
-      locationIds: number[];
-      placeIds: string[];
-      search?: string;
-      stars?: number;
-      showHidden?: boolean;
-    },
+    opts: ProjectReviewListFilters,
     trx?: QueryContext
   ): Promise<IReview[]> {
     const hasLocations = opts.locationIds.length > 0;
@@ -195,6 +201,10 @@ export class ReviewModel extends BaseModel {
       query = query.where("stars", opts.stars);
     }
 
+    if (opts.minRating) {
+      query = query.where("stars", ">=", opts.minRating);
+    }
+
     if (opts.search) {
       const term = `%${opts.search}%`;
       query = query.where(function () {
@@ -206,7 +216,10 @@ export class ReviewModel extends BaseModel {
       query = query.where("hidden", false);
     }
 
-    return query.orderBy("review_created_at", "desc").limit(500);
+    return query
+      .orderBy("review_created_at", opts.order || "desc")
+      .limit(opts.limit || 500)
+      .offset(opts.offset || 0);
   }
 
   static async toggleHidden(id: string, hidden: boolean, trx?: QueryContext): Promise<number> {
