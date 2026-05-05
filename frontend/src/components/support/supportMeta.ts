@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  Archive,
   CheckCircle2,
   Clock3,
   Code2,
@@ -9,10 +10,7 @@ import {
   PauseCircle,
   XCircle,
 } from "lucide-react";
-import type {
-  SupportTicketStatus,
-  SupportTicketType,
-} from "../../api/support";
+import type { SupportTicketStatus, SupportTicketType } from "../../api/support";
 
 export const ticketTypeMeta = {
   bug_report: {
@@ -30,7 +28,10 @@ export const ticketTypeMeta = {
     eyebrow: "Change copy, media, or layout",
     icon: Globe2,
   },
-} satisfies Record<SupportTicketType, { label: string; eyebrow: string; icon: typeof Code2 }>;
+} satisfies Record<
+  SupportTicketType,
+  { label: string; eyebrow: string; icon: typeof Code2 }
+>;
 
 export const statusMeta = {
   new: {
@@ -63,4 +64,12 @@ export const statusMeta = {
     icon: XCircle,
     className: "border-slate-200 bg-slate-100 text-slate-600",
   },
-} satisfies Record<SupportTicketStatus, { label: string; icon: typeof Code2; className: string }>;
+  archived: {
+    label: "Archived",
+    icon: Archive,
+    className: "border-zinc-200 bg-zinc-100 text-zinc-700",
+  },
+} satisfies Record<
+  SupportTicketStatus,
+  { label: string; icon: typeof Code2; className: string }
+>;

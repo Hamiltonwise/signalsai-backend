@@ -1,7 +1,7 @@
 import { Building2 } from "lucide-react";
 import type { SupportTicket } from "../../../api/support";
-import { SupportStatusBadge } from "../../support/SupportStatusBadge";
 import { ticketTypeMeta } from "../../support/supportMeta";
+import { SupportSignalBadge } from "./SupportSignalBadge";
 
 export type AdminSupportGroup = {
   organizationName: string;
@@ -23,11 +23,14 @@ export function AdminSupportQueue({
 }: AdminSupportQueueProps) {
   if (isLoading) {
     return (
-      <section className="rounded-2xl border border-[#EDE5C0] bg-[#FCFAED] p-4 shadow-premium">
+      <section className="h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.05)]">
         <div className="h-6 w-40 animate-pulse rounded bg-slate-200" />
-        <div className="mt-5 space-y-3">
+        <div className="mt-4 space-y-2.5">
           {[1, 2, 3, 4].map((item) => (
-            <div key={item} className="h-28 animate-pulse rounded-xl bg-white/70" />
+            <div
+              key={item}
+              className="h-20 animate-pulse rounded-xl bg-slate-100"
+            />
           ))}
         </div>
       </section>
@@ -35,32 +38,32 @@ export function AdminSupportQueue({
   }
 
   return (
-    <section className="rounded-2xl border border-[#EDE5C0] bg-[#FCFAED] p-4 shadow-premium">
-      <div className="mb-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-alloro-orange">
-          Client queue
-        </p>
-        <h2 className="font-display text-2xl font-medium text-alloro-navy">
-          Support tickets
+    <section className="h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.05)] xl:sticky xl:top-6">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="font-display text-[21px] font-normal leading-tight text-alloro-navy">
+          Tickets
         </h2>
+        <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-500">
+          {groups.reduce((count, group) => count + group.tickets.length, 0)}
+        </span>
       </div>
 
       {groups.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#EDE5C0] bg-white/70 p-8 text-center">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center">
           <Building2 className="mx-auto h-8 w-8 text-alloro-orange" />
-          <p className="mt-3 text-sm font-bold text-slate-500">
+          <p className="mt-3 text-[13px] font-semibold text-slate-500">
             No matching tickets.
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="max-h-[calc(100vh-240px)] space-y-4 overflow-y-auto pr-1">
           {groups.map((group) => (
             <div key={group.organizationName}>
               <div className="mb-2 flex items-center justify-between gap-3 px-1">
-                <p className="truncate text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                <p className="truncate text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
                   {group.organizationName}
                 </p>
-                <span className="text-xs font-bold text-slate-400">
+                <span className="text-xs font-semibold text-slate-400">
                   {group.tickets.length}
                 </span>
               </div>
@@ -73,22 +76,42 @@ export function AdminSupportQueue({
                       key={ticket.id}
                       type="button"
                       onClick={() => onSelectTicket(ticket.id)}
-                      className={`w-full rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-alloro-orange/20 ${
+                      className={`w-full rounded-xl border p-3 text-left transition hover:border-alloro-orange/60 focus:outline-none focus:ring-4 focus:ring-alloro-orange/15 ${
                         isSelected
-                          ? "border-alloro-orange bg-white"
-                          : "border-[#EDE5C0] bg-white/70"
+                          ? "border-alloro-orange bg-alloro-orange/5"
+                          : "border-slate-200 bg-white"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
                             {ticket.publicId} - {type.label}
                           </p>
-                          <h3 className="mt-1 line-clamp-2 font-display text-lg font-medium leading-tight text-alloro-navy">
+                          <h3 className="mt-1 line-clamp-2 text-[14px] font-semibold leading-snug text-alloro-navy">
                             {ticket.title}
                           </h3>
                         </div>
-                        <SupportStatusBadge status={ticket.status} />
+                        <SupportSignalBadge
+                          kind="status"
+                          value={ticket.status}
+                          compact
+                        />
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        <SupportSignalBadge
+                          kind="severity"
+                          value={ticket.severity}
+                          compact
+                        />
+                        <SupportSignalBadge
+                          kind="priority"
+                          value={ticket.priority}
+                          compact
+                        />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3 text-[11px] font-medium text-slate-400">
+                        <span>Opened {formatDate(ticket.createdAt)}</span>
+                        <span>Updated {formatDate(ticket.updatedAt)}</span>
                       </div>
                     </button>
                   );
@@ -100,4 +123,11 @@ export function AdminSupportQueue({
       )}
     </section>
   );
+}
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value));
 }

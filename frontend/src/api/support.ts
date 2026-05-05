@@ -11,7 +11,8 @@ export type SupportTicketStatus =
   | "in_progress"
   | "waiting_on_client"
   | "resolved"
-  | "wont_fix";
+  | "wont_fix"
+  | "archived";
 
 export type SupportTicketSeverity = "low" | "medium" | "high" | "urgent";
 export type SupportTicketPriority = "low" | "normal" | "high" | "urgent";
@@ -113,6 +114,12 @@ export type AdminSupportTicketUpdatePayload = {
   resolutionNotes?: string | null;
 };
 
+export type AdminSupportAssignee = {
+  id: number;
+  email: string;
+  displayName: string;
+};
+
 type ApiEnvelope<T> = {
   success: boolean;
   data: T | null;
@@ -120,74 +127,88 @@ type ApiEnvelope<T> = {
 };
 
 export async function fetchSupportTickets(
-  filters: SupportTicketFilters = {}
+  filters: SupportTicketFilters = {},
 ): Promise<SupportTicketListResponse> {
   return unwrap(await apiGet({ path: `/support/tickets${toQuery(filters)}` }));
 }
 
 export async function fetchSupportTicket(
-  ticketId: string
+  ticketId: string,
 ): Promise<SupportTicketDetailResponse> {
   return unwrap(await apiGet({ path: `/support/tickets/${ticketId}` }));
 }
 
 export async function createSupportTicket(
-  payload: CreateSupportTicketPayload
+  payload: CreateSupportTicketPayload,
 ): Promise<SupportTicketDetailResponse> {
   return unwrap(
-    await apiPost({ path: "/support/tickets", passedData: payload })
+    await apiPost({ path: "/support/tickets", passedData: payload }),
   );
 }
 
 export async function createSupportTicketMessage(
   ticketId: string,
-  body: string
+  body: string,
 ): Promise<SupportTicketDetailResponse> {
   return unwrap(
     await apiPost({
       path: `/support/tickets/${ticketId}/messages`,
       passedData: { body },
-    })
+    }),
   );
 }
 
 export async function fetchAdminSupportTickets(
-  filters: AdminSupportTicketFilters = {}
+  filters: AdminSupportTicketFilters = {},
 ): Promise<SupportTicketListResponse> {
   return unwrap(
-    await apiGet({ path: `/admin/support/tickets${toQuery(filters)}` })
+    await apiGet({ path: `/admin/support/tickets${toQuery(filters)}` }),
   );
 }
 
 export async function fetchAdminSupportTicket(
-  ticketId: string
+  ticketId: string,
 ): Promise<SupportTicketDetailResponse> {
   return unwrap(await apiGet({ path: `/admin/support/tickets/${ticketId}` }));
 }
 
 export async function updateAdminSupportTicket(
   ticketId: string,
-  payload: AdminSupportTicketUpdatePayload
+  payload: AdminSupportTicketUpdatePayload,
 ): Promise<SupportTicketDetailResponse> {
   return unwrap(
     await apiPatch({
       path: `/admin/support/tickets/${ticketId}`,
       passedData: payload,
-    })
+    }),
   );
 }
 
 export async function createAdminSupportMessage(
   ticketId: string,
   body: string,
-  visibility: SupportMessageVisibility
+  visibility: SupportMessageVisibility,
 ): Promise<SupportTicketDetailResponse> {
   return unwrap(
     await apiPost({
       path: `/admin/support/tickets/${ticketId}/messages`,
       passedData: { body, visibility },
-    })
+    }),
   );
+}
+
+export async function fetchAdminSupportAssignees(): Promise<
+  AdminSupportAssignee[]
+> {
+  const users = unwrap<
+    Array<{ id: number; email: string; display_name: string }>
+  >(await apiGet({ path: "/pm/users" }));
+
+  return users.map((user) => ({
+    id: user.id,
+    email: user.email,
+    displayName: user.display_name,
+  }));
 }
 
 function toQuery(filters: Record<string, unknown>): string {

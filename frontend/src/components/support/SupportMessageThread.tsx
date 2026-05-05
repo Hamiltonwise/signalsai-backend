@@ -12,21 +12,21 @@ export function SupportMessageThread({ messages }: SupportMessageThreadProps) {
         return (
           <article
             key={message.id}
-            className={`rounded-xl border p-4 ${
+            className={`rounded-xl border p-3.5 ${
               isClient
-                ? "border-[#EDE5C0] bg-white"
+                ? "border-slate-200 bg-white"
                 : "border-alloro-orange/20 bg-alloro-orange/5"
             }`}
           >
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
                 {isClient ? "You" : message.authorName || "Alloro Support"}
               </p>
-              <time className="text-xs font-semibold text-slate-400">
+              <time className="text-xs font-medium text-slate-400">
                 {formatDate(message.createdAt)}
               </time>
             </div>
-            <p className="whitespace-pre-wrap text-sm font-medium leading-6 text-alloro-navy">
+            <p className="whitespace-pre-wrap text-[13px] font-medium leading-relaxed text-alloro-navy">
               {message.body}
             </p>
           </article>

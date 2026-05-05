@@ -53,13 +53,14 @@ const STATUSES: SupportTicketStatus[] = [
   "waiting_on_client",
   "resolved",
   "wont_fix",
+  "archived",
 ];
 
 const SEVERITIES: SupportTicketSeverity[] = ["low", "medium", "high", "urgent"];
 const PRIORITIES: SupportTicketPriority[] = ["low", "normal", "high", "urgent"];
 
 export function validateCreateSupportTicketInput(
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): ValidationResult<CreateSupportTicketData> {
   const type = body.type as SupportTicketType;
 
@@ -96,7 +97,7 @@ export function validateCreateSupportTicketInput(
 }
 
 export function validateCreateSupportMessageInput(
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): ValidationResult<CreateSupportMessageData> {
   const bodyText = cleanText(body.body, 4000);
   if (!bodyText) {
@@ -110,7 +111,7 @@ export function validateCreateSupportMessageInput(
 }
 
 export function validateAdminSupportTicketUpdateInput(
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): ValidationResult<AdminSupportTicketUpdateData> {
   const data: AdminSupportTicketUpdateData = {};
 
@@ -135,7 +136,8 @@ export function validateAdminSupportTicketUpdateInput(
     data.priority = body.priority as SupportTicketPriority;
   }
 
-  if (body.category !== undefined) data.category = cleanNullableText(body.category, 80);
+  if (body.category !== undefined)
+    data.category = cleanNullableText(body.category, 80);
   if (body.targetSprint !== undefined) {
     data.targetSprint = cleanNullableText(body.targetSprint, 120);
   }
@@ -158,7 +160,7 @@ export function validateAdminSupportTicketUpdateInput(
     if (!resolutionNotes) {
       return failure(
         "MISSING_RESOLUTION",
-        "Add resolution notes before closing a ticket."
+        "Add resolution notes before closing a ticket.",
       );
     }
   }
@@ -167,7 +169,7 @@ export function validateAdminSupportTicketUpdateInput(
 }
 
 export function validateAdminSupportMessageInput(
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): ValidationResult<AdminSupportMessageData> {
   const messageValidation = validateCreateSupportMessageInput(body);
   if (!messageValidation.valid || !messageValidation.data) {
@@ -188,7 +190,7 @@ export function validateAdminSupportMessageInput(
 
 function validateGuidedAnswers(
   type: SupportTicketType,
-  guidedAnswers: Record<string, unknown>
+  guidedAnswers: Record<string, unknown>,
 ): string | null {
   if (type === "bug_report") {
     if (!cleanText(guidedAnswers.summary, 255)) {
