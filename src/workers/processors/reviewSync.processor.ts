@@ -140,6 +140,8 @@ async function syncLocationReviews(
       if (!starRating || !r.name) continue;
 
       await ReviewModel.upsertByGoogleName({
+        source: "oauth",
+        place_id: null,
         location_id: prop.location_id,
         google_review_name: r.name,
         stars: starRating,
