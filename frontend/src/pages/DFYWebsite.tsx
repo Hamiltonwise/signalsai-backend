@@ -182,7 +182,11 @@ export function DFYWebsite() {
     setResolvedHtmlContent(htmlContent);
 
     // If no shortcodes present, no need to resolve
-    if (!htmlContent.includes("post_block") && !htmlContent.includes("{{ menu")) {
+    if (
+      !htmlContent.includes("post_block") &&
+      !htmlContent.includes("review_block") &&
+      !htmlContent.includes("{{ menu")
+    ) {
       return;
     }
 
