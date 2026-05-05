@@ -19,8 +19,8 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
   .split(",")
   .map((e) => e.trim())
   .filter(Boolean);
-const FROM_EMAIL = "info@getalloro.com";
-const FROM_NAME = "Alloro";
+const DEFAULT_FROM_EMAIL = "info@getalloro.com";
+const DEFAULT_FROM_NAME = "Alloro";
 
 // Log file path
 const LOG_DIR = path.join(__dirname, "..", "logs");
@@ -159,8 +159,8 @@ export async function sendEmail(
     recipients: options.recipients,
     cc: options.cc || [],
     bcc: options.bcc || [],
-    from: FROM_EMAIL,
-    fromName: FROM_NAME,
+    from: options.from || DEFAULT_FROM_EMAIL,
+    fromName: options.fromName || DEFAULT_FROM_NAME,
   };
 
   logEmail("INFO", "Sending email via webhook", {
@@ -279,7 +279,7 @@ export function clearEmailLogs(): boolean {
 export const config = {
   webhookUrl: WEBHOOK_URL,
   adminEmails: ADMIN_EMAILS,
-  fromEmail: FROM_EMAIL,
-  fromName: FROM_NAME,
+  fromEmail: DEFAULT_FROM_EMAIL,
+  fromName: DEFAULT_FROM_NAME,
   logFile: LOG_FILE,
 };

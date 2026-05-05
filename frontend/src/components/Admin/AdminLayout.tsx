@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { motion } from "framer-motion";
 import { AdminSidebar } from "./AdminSidebar";
-import { AdminTopBar, useIsPmRoute } from "./AdminTopBar";
+import { AdminTopBar, useIsPmRoute, useIsSupportRoute } from "./AdminTopBar";
 import { LoadingIndicator } from "./LoadingIndicator";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 
@@ -10,20 +10,22 @@ export interface AdminLayoutProps extends PropsWithChildren {}
 function AdminLayoutInner({ children }: AdminLayoutProps) {
   const { collapsed } = useSidebar();
   const isPm = useIsPmRoute();
+  const isSupport = useIsSupportRoute();
+  const isFullWidth = isPm || isSupport;
 
   return (
     <div className="min-h-screen bg-gray-50 font-body text-gray-900">
       <LoadingIndicator />
       <AdminTopBar />
       <div className="flex">
-        {!isPm && <AdminSidebar />}
+        {!isFullWidth && <AdminSidebar />}
         <motion.main
           initial={false}
-          animate={{ marginLeft: isPm ? 0 : collapsed ? 72 : 288 }}
+          animate={{ marginLeft: isFullWidth ? 0 : collapsed ? 72 : 288 }}
           transition={{ duration: 0.2, ease: "easeInOut" }}
-          className={isPm ? "flex-1" : "flex-1 p-6"}
+          className={isFullWidth ? "flex-1" : "flex-1 p-6"}
         >
-          {isPm ? (
+          {isFullWidth ? (
             children
           ) : (
             <motion.div

@@ -101,6 +101,11 @@ export const QUERY_KEYS = {
     ["admin", "insights-recommendations", agentType, page, month] as const,
   adminInsightsRecommendationsAll: (agentType: string) =>
     ["admin", "insights-recommendations", agentType] as const,
+  adminSupportTickets: (params?: Record<string, unknown>) =>
+    ["admin", "support", "tickets", params] as const,
+  adminSupportTicketsAll: ["admin", "support", "tickets"] as const,
+  adminSupportTicket: (ticketId: string | null) =>
+    ["admin", "support", "ticket", ticketId] as const,
 
   // Admin — website detail
   adminWebsiteDetail: (uuid: string) =>
@@ -119,6 +124,11 @@ export const QUERY_KEYS = {
   // Client — notifications
   notifications: (orgId: number | null, locationId: number | null) =>
     ["notifications", orgId, locationId] as const,
+  supportTickets: (params?: Record<string, unknown>) =>
+    ["support", "tickets", params] as const,
+  supportTicketsAll: ["support", "tickets"] as const,
+  supportTicket: (ticketId: string | null) =>
+    ["support", "ticket", ticketId] as const,
 
   // Client — settings
   settings: {
