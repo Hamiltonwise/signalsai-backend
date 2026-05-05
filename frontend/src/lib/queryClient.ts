@@ -49,8 +49,11 @@ export const QUERY_KEYS = {
   adminMinds: ["admin", "minds"] as const,
 
   // Admin — websites
-  adminWebsites: (params?: { page?: number; limit?: number; status?: string }) =>
-    ["admin", "websites", params] as const,
+  adminWebsites: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }) => ["admin", "websites", params] as const,
   adminWebsitesAll: ["admin", "websites"] as const,
   adminStatuses: ["admin", "website-statuses"] as const,
 
@@ -65,8 +68,7 @@ export const QUERY_KEYS = {
   // Admin — org sub-tab data (tasks, notifications, rankings, PMS, agent outputs)
   adminOrgTasks: (orgId: number, params?: Record<string, unknown>) =>
     ["admin", "org-tasks", orgId, params] as const,
-  adminOrgTasksAll: (orgId: number) =>
-    ["admin", "org-tasks", orgId] as const,
+  adminOrgTasksAll: (orgId: number) => ["admin", "org-tasks", orgId] as const,
   adminOrgNotifications: (orgId: number, params?: Record<string, unknown>) =>
     ["admin", "org-notifications", orgId, params] as const,
   adminOrgNotificationsAll: (orgId: number) =>
@@ -79,8 +81,11 @@ export const QUERY_KEYS = {
     ["admin", "org-pms-jobs", orgId] as const,
   adminOrgPmsKeyData: (orgId: number, locationId?: number | null) =>
     ["admin", "org-pms-key-data", orgId, locationId] as const,
-  adminOrgAgentOutputs: (orgId: number, agentType: string, params?: Record<string, unknown>) =>
-    ["admin", "org-agent-outputs", orgId, agentType, params] as const,
+  adminOrgAgentOutputs: (
+    orgId: number,
+    agentType: string,
+    params?: Record<string, unknown>,
+  ) => ["admin", "org-agent-outputs", orgId, agentType, params] as const,
   adminOrgAgentOutputsAll: (orgId: number) =>
     ["admin", "org-agent-outputs", orgId] as const,
 
@@ -97,8 +102,11 @@ export const QUERY_KEYS = {
   adminInsightsSummary: (page: number, month: string) =>
     ["admin", "insights-summary", page, month] as const,
   adminInsightsSummaryAll: ["admin", "insights-summary"] as const,
-  adminInsightsRecommendations: (agentType: string, page: number, month?: string | null) =>
-    ["admin", "insights-recommendations", agentType, page, month] as const,
+  adminInsightsRecommendations: (
+    agentType: string,
+    page: number,
+    month?: string | null,
+  ) => ["admin", "insights-recommendations", agentType, page, month] as const,
   adminInsightsRecommendationsAll: (agentType: string) =>
     ["admin", "insights-recommendations", agentType] as const,
   adminSupportTickets: (params?: Record<string, unknown>) =>
@@ -106,6 +114,7 @@ export const QUERY_KEYS = {
   adminSupportTicketsAll: ["admin", "support", "tickets"] as const,
   adminSupportTicket: (ticketId: string | null) =>
     ["admin", "support", "ticket", ticketId] as const,
+  adminSupportAssignees: ["admin", "support", "assignees"] as const,
 
   // Admin — website detail
   adminWebsiteDetail: (uuid: string) =>

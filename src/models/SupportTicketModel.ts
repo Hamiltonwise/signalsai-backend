@@ -13,7 +13,8 @@ export type SupportTicketStatus =
   | "in_progress"
   | "waiting_on_client"
   | "resolved"
-  | "wont_fix";
+  | "wont_fix"
+  | "archived";
 
 export type SupportTicketSeverity = "low" | "medium" | "high" | "urgent";
 export type SupportTicketPriority = "low" | "normal" | "high" | "urgent";
@@ -73,21 +74,21 @@ export class SupportTicketModel extends BaseModel {
 
   static async nextPublicSequence(trx?: QueryContext): Promise<number> {
     const result = await (trx || db).raw(
-      "SELECT nextval('support_ticket_public_id_seq') AS value"
+      "SELECT nextval('support_ticket_public_id_seq') AS value",
     );
     return Number(result.rows?.[0]?.value || 0);
   }
 
   static async create(
     data: Partial<SupportTicket>,
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<SupportTicket> {
     return super.create(data as Record<string, unknown>, trx);
   }
 
   static async findById(
     id: string,
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<SupportTicket | undefined> {
     return super.findById(id, trx);
   }
@@ -95,7 +96,7 @@ export class SupportTicketModel extends BaseModel {
   static async updateTicket(
     id: string,
     data: Partial<SupportTicket>,
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<SupportTicket | undefined> {
     const serialized = this.serializeJsonFields({
       ...data,
@@ -113,10 +114,11 @@ export class SupportTicketModel extends BaseModel {
   static async findClientTicket(
     idOrPublicId: string,
     organizationId: number,
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<SupportTicket | undefined> {
     const row = await this.table(trx)
       .where("organization_id", organizationId)
+      .whereNot("status", "archived")
       .andWhere((qb) => {
         qb.where("id", idOrPublicId).orWhere("public_id", idOrPublicId);
       })
@@ -127,13 +129,13 @@ export class SupportTicketModel extends BaseModel {
 
   static async findAdminTicket(
     idOrPublicId: string,
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<SupportTicketListItem | undefined> {
     const row = await this.adminBaseQuery(trx)
       .where((qb) => {
         qb.where("support_tickets.id", idOrPublicId).orWhere(
           "support_tickets.public_id",
-          idOrPublicId
+          idOrPublicId,
         );
       })
       .first();
@@ -144,7 +146,7 @@ export class SupportTicketModel extends BaseModel {
   static async listClientTickets(
     organizationId: number,
     filters: ClientTicketFilters = {},
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<PaginatedResult<SupportTicketListItem>> {
     const { limit = 25, offset = 0 } = filters;
 
@@ -155,22 +157,22 @@ export class SupportTicketModel extends BaseModel {
         qb.select(
           "support_tickets.*",
           db.raw(
-            "MAX(support_ticket_messages.created_at) FILTER (WHERE support_ticket_messages.visibility = 'client_visible') AS latest_message_at"
+            "MAX(support_ticket_messages.created_at) FILTER (WHERE support_ticket_messages.visibility = 'client_visible') AS latest_message_at",
           ),
           db.raw(
-            "COUNT(support_ticket_messages.id) FILTER (WHERE support_ticket_messages.visibility = 'client_visible')::int AS client_visible_message_count"
-          )
+            "COUNT(support_ticket_messages.id) FILTER (WHERE support_ticket_messages.visibility = 'client_visible')::int AS client_visible_message_count",
+          ),
         )
           .leftJoin(
             "support_ticket_messages",
             "support_ticket_messages.ticket_id",
-            "support_tickets.id"
+            "support_tickets.id",
           )
           .groupBy("support_tickets.id");
       }
 
-      qb
-        .where("support_tickets.organization_id", organizationId)
+      qb.where("support_tickets.organization_id", organizationId)
+        .whereNot("support_tickets.status", "archived")
         .from("support_tickets");
 
       this.applyCommonFilters(qb, filters);
@@ -196,15 +198,27 @@ export class SupportTicketModel extends BaseModel {
 
   static async listAdminTickets(
     filters: AdminTicketFilters = {},
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<PaginatedResult<SupportTicketListItem>> {
     const { limit = 50, offset = 0 } = filters;
 
     const buildQuery = (query: Knex.QueryBuilder, includeAggregates = true) => {
       const qb = query
-        .leftJoin("organizations", "organizations.id", "support_tickets.organization_id")
-        .leftJoin("users as creators", "creators.id", "support_tickets.created_by_user_id")
-        .leftJoin("users as assignees", "assignees.id", "support_tickets.assigned_to_user_id");
+        .leftJoin(
+          "organizations",
+          "organizations.id",
+          "support_tickets.organization_id",
+        )
+        .leftJoin(
+          "users as creators",
+          "creators.id",
+          "support_tickets.created_by_user_id",
+        )
+        .leftJoin(
+          "users as assignees",
+          "assignees.id",
+          "support_tickets.assigned_to_user_id",
+        );
 
       if (includeAggregates) {
         qb.select(
@@ -212,29 +226,29 @@ export class SupportTicketModel extends BaseModel {
           "organizations.name as organization_name",
           "creators.email as created_by_email",
           db.raw(
-            "COALESCE(creators.name, NULLIF(CONCAT_WS(' ', creators.first_name, creators.last_name), ''), creators.email) AS created_by_name"
+            "COALESCE(creators.name, NULLIF(CONCAT_WS(' ', creators.first_name, creators.last_name), ''), creators.email) AS created_by_name",
           ),
           "assignees.email as assigned_to_email",
           db.raw(
-            "COALESCE(assignees.name, NULLIF(CONCAT_WS(' ', assignees.first_name, assignees.last_name), ''), assignees.email) AS assigned_to_name"
+            "COALESCE(assignees.name, NULLIF(CONCAT_WS(' ', assignees.first_name, assignees.last_name), ''), assignees.email) AS assigned_to_name",
           ),
           db.raw(
-            "MAX(support_ticket_messages.created_at) FILTER (WHERE support_ticket_messages.visibility = 'client_visible') AS latest_message_at"
+            "MAX(support_ticket_messages.created_at) FILTER (WHERE support_ticket_messages.visibility = 'client_visible') AS latest_message_at",
           ),
           db.raw(
-            "COUNT(support_ticket_messages.id) FILTER (WHERE support_ticket_messages.visibility = 'client_visible')::int AS client_visible_message_count"
-          )
+            "COUNT(support_ticket_messages.id) FILTER (WHERE support_ticket_messages.visibility = 'client_visible')::int AS client_visible_message_count",
+          ),
         )
           .leftJoin(
             "support_ticket_messages",
             "support_ticket_messages.ticket_id",
-            "support_tickets.id"
+            "support_tickets.id",
           )
           .groupBy(
             "support_tickets.id",
             "organizations.name",
             "creators.id",
-            "assignees.id"
+            "assignees.id",
           );
       }
 
@@ -247,7 +261,10 @@ export class SupportTicketModel extends BaseModel {
       if (filters.assignedToUserId === "unassigned") {
         qb.whereNull("support_tickets.assigned_to_user_id");
       } else if (filters.assignedToUserId) {
-        qb.where("support_tickets.assigned_to_user_id", filters.assignedToUserId);
+        qb.where(
+          "support_tickets.assigned_to_user_id",
+          filters.assignedToUserId,
+        );
       }
 
       if (filters.q) {
@@ -271,7 +288,7 @@ export class SupportTicketModel extends BaseModel {
 
     const rows = await buildQuery(this.table(trx), true)
       .orderByRaw(
-        "CASE support_tickets.status WHEN 'new' THEN 1 WHEN 'triaged' THEN 2 WHEN 'waiting_on_client' THEN 4 WHEN 'in_progress' THEN 3 ELSE 5 END"
+        "CASE support_tickets.status WHEN 'new' THEN 1 WHEN 'triaged' THEN 2 WHEN 'in_progress' THEN 3 WHEN 'waiting_on_client' THEN 4 WHEN 'resolved' THEN 5 WHEN 'wont_fix' THEN 6 WHEN 'archived' THEN 7 ELSE 8 END",
       )
       .orderBy("support_tickets.created_at", "desc")
       .limit(limit)
@@ -290,26 +307,44 @@ export class SupportTicketModel extends BaseModel {
         "organizations.name as organization_name",
         "creators.email as created_by_email",
         db.raw(
-          "COALESCE(creators.name, NULLIF(CONCAT_WS(' ', creators.first_name, creators.last_name), ''), creators.email) AS created_by_name"
+          "COALESCE(creators.name, NULLIF(CONCAT_WS(' ', creators.first_name, creators.last_name), ''), creators.email) AS created_by_name",
         ),
         "assignees.email as assigned_to_email",
         db.raw(
-          "COALESCE(assignees.name, NULLIF(CONCAT_WS(' ', assignees.first_name, assignees.last_name), ''), assignees.email) AS assigned_to_name"
-        )
+          "COALESCE(assignees.name, NULLIF(CONCAT_WS(' ', assignees.first_name, assignees.last_name), ''), assignees.email) AS assigned_to_name",
+        ),
       )
-      .leftJoin("organizations", "organizations.id", "support_tickets.organization_id")
-      .leftJoin("users as creators", "creators.id", "support_tickets.created_by_user_id")
-      .leftJoin("users as assignees", "assignees.id", "support_tickets.assigned_to_user_id");
+      .leftJoin(
+        "organizations",
+        "organizations.id",
+        "support_tickets.organization_id",
+      )
+      .leftJoin(
+        "users as creators",
+        "creators.id",
+        "support_tickets.created_by_user_id",
+      )
+      .leftJoin(
+        "users as assignees",
+        "assignees.id",
+        "support_tickets.assigned_to_user_id",
+      );
   }
 
   private static applyCommonFilters(
     qb: Knex.QueryBuilder,
-    filters: ClientTicketFilters
+    filters: ClientTicketFilters,
   ): void {
     if (filters.status === "open") {
-      qb.whereNotIn("support_tickets.status", ["resolved", "wont_fix"]);
+      qb.whereNotIn("support_tickets.status", [
+        "resolved",
+        "wont_fix",
+        "archived",
+      ]);
     } else if (filters.status) {
       qb.where("support_tickets.status", filters.status);
+    } else {
+      qb.whereNot("support_tickets.status", "archived");
     }
 
     if (filters.type) {

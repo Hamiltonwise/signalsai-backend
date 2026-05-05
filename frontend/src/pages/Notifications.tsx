@@ -22,7 +22,10 @@ import {
   deleteAllNotifications,
   type Notification,
 } from "../api/notifications";
-import { useNotifications, useInvalidateNotifications } from "../hooks/queries/useNotificationQueries";
+import {
+  useNotifications,
+  useInvalidateNotifications,
+} from "../hooks/queries/useNotificationQueries";
 import { formatDistanceToNow } from "date-fns";
 import { ConfirmModal } from "../components/settings/ConfirmModal";
 
@@ -37,7 +40,10 @@ export const Notifications: React.FC = () => {
   const organizationId = userProfile?.organizationId ?? null;
   const locationId = selectedLocation?.id ?? null;
 
-  const { data: notificationsData, isLoading: loading } = useNotifications(organizationId, locationId);
+  const { data: notificationsData, isLoading: loading } = useNotifications(
+    organizationId,
+    locationId,
+  );
   const { invalidateAll: refetchNotifications } = useInvalidateNotifications();
 
   const notifications = notificationsData?.notifications ?? [];
@@ -58,8 +64,13 @@ export const Notifications: React.FC = () => {
   }, [organizationId, locationId]);
 
   // Get navigation path based on notification type
-  const getNotificationPath = (type: string) => {
-    switch (type) {
+  const getNotificationPath = (notification: Notification) => {
+    const actionPath = notification.metadata?.actionPath;
+    if (typeof actionPath === "string" && actionPath.startsWith("/")) {
+      return actionPath;
+    }
+
+    switch (notification.type) {
       case "pms":
         return "/pmsStatistics";
       case "task":
@@ -117,7 +128,7 @@ export const Notifications: React.FC = () => {
         await markNotificationRead(notification.id, organizationId);
         refetchNotifications();
       }
-      navigate(getNotificationPath(notification.type));
+      navigate(getNotificationPath(notification));
     } catch (error) {
       console.error("Error handling notification click:", error);
     }
@@ -126,7 +137,7 @@ export const Notifications: React.FC = () => {
   // Handle mark as read
   const handleMarkAsRead = async (
     notificationId: number,
-    e: React.MouseEvent
+    e: React.MouseEvent,
   ) => {
     e.stopPropagation();
     if (!organizationId) return;
@@ -224,7 +235,6 @@ export const Notifications: React.FC = () => {
       </header>
 
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-12 lg:space-y-20 text-left">
-
         {loading ? (
           <div className="bg-white rounded-[2.5rem] border border-black/5 shadow-premium overflow-hidden">
             <div className="divide-y divide-black/5">
@@ -273,8 +283,8 @@ export const Notifications: React.FC = () => {
                         type === "success"
                           ? "bg-green-50 text-green-600 border-green-100"
                           : type === "warning"
-                          ? "bg-amber-50 text-amber-600 border-amber-100"
-                          : "bg-red-50 text-red-600 border-red-100"
+                            ? "bg-amber-50 text-amber-600 border-amber-100"
+                            : "bg-red-50 text-red-600 border-red-100"
                       }`}
                     >
                       {type === "success" ? (
@@ -307,8 +317,8 @@ export const Notifications: React.FC = () => {
                             impact.includes("Critical")
                               ? "bg-red-50 text-red-600 border-red-100"
                               : impact.includes("High")
-                              ? "bg-amber-50 text-amber-600 border-amber-100"
-                              : "bg-white text-alloro-navy border-black/5"
+                                ? "bg-amber-50 text-amber-600 border-amber-100"
+                                : "bg-white text-alloro-navy border-black/5"
                           }`}
                         >
                           {impact}

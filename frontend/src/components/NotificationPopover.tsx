@@ -94,8 +94,13 @@ export function NotificationPopover({
   }, [isOpen]);
 
   // Get navigation path based on notification type
-  const getNotificationPath = (type: string) => {
-    switch (type) {
+  const getNotificationPath = (notification: Notification) => {
+    const actionPath = notification.metadata?.actionPath;
+    if (typeof actionPath === "string" && actionPath.startsWith("/")) {
+      return actionPath;
+    }
+
+    switch (notification.type) {
       case "pms":
         return "/pmsStatistics";
       case "task":
@@ -119,7 +124,9 @@ export function NotificationPopover({
         await markNotificationRead(notification.id, organizationId);
         // Update local state
         setNotifications((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
+          prev.map((n) =>
+            n.id === notification.id ? { ...n, read: true } : n,
+          ),
         );
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
@@ -128,7 +135,7 @@ export function NotificationPopover({
       setIsOpen(false);
 
       // Navigate to appropriate page
-      navigate(getNotificationPath(notification.type));
+      navigate(getNotificationPath(notification));
     } catch (error) {
       console.error("Error handling notification click:", error);
     }
@@ -136,7 +143,7 @@ export function NotificationPopover({
 
   const handleMarkAsRead = async (
     notificationId: number,
-    e: React.MouseEvent
+    e: React.MouseEvent,
   ) => {
     e.stopPropagation(); // Prevent notification click
     if (!organizationId) return;
@@ -145,7 +152,7 @@ export function NotificationPopover({
       await markNotificationRead(notificationId, organizationId);
       // Update local state
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
@@ -341,7 +348,7 @@ export function NotificationPopover({
                           <Clock size={12} className="opacity-40" />
                           {formatDistanceToNow(
                             new Date(notification.created_at),
-                            { addSuffix: true }
+                            { addSuffix: true },
                           )}
                         </span>
                       </div>
@@ -386,7 +393,7 @@ export function NotificationPopover({
       {/* Popover rendered via Portal */}
       {createPortal(
         <AnimatePresence>{popoverContent}</AnimatePresence>,
-        document.body
+        document.body,
       )}
     </>
   );

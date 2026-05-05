@@ -25,6 +25,7 @@ import {
   displayUserName,
   resolveAssigneeId,
 } from "./SupportTicketHelpers";
+import { notifyClientOfAdminReply } from "./SupportTicketClientNotificationService";
 import {
   maybeSendResolvedTicketEmail,
   sendCreateTicketEmails,
@@ -34,7 +35,7 @@ export class SupportServiceError extends Error {
   constructor(
     public code: string,
     message: string,
-    public statusCode = 400
+    public statusCode = 400,
   ) {
     super(message);
   }
@@ -54,15 +55,17 @@ type CreateTicketContext = {
 
 export class SupportTicketService {
   static async createClientTicket(
-    context: CreateTicketContext
+    context: CreateTicketContext,
   ): Promise<TicketWithMessages> {
     const user = await UserModel.findById(context.userId);
-    const organization = await OrganizationModel.findById(context.organizationId);
+    const organization = await OrganizationModel.findById(
+      context.organizationId,
+    );
     if (!user || !organization) {
       throw new SupportServiceError(
         "SUPPORT_CONTEXT_NOT_FOUND",
         "We could not verify your account for this request.",
-        404
+        404,
       );
     }
 
@@ -83,7 +86,7 @@ export class SupportTicketService {
             context.input.requestedCompletionDate || null,
           guided_answers: context.input.guidedAnswers,
         },
-        trx
+        trx,
       );
 
       await SupportTicketMessageModel.create(
@@ -94,7 +97,7 @@ export class SupportTicketService {
           visibility: "client_visible",
           body: buildInitialMessage(context.input),
         },
-        trx
+        trx,
       );
 
       await SupportTicketEventModel.create(
@@ -104,7 +107,7 @@ export class SupportTicketService {
           event_type: "ticket_created",
           metadata: { type: created.type, assigneeId },
         },
-        trx
+        trx,
       );
 
       return created;
@@ -114,7 +117,7 @@ export class SupportTicketService {
       ticket,
       user.email,
       displayUserName(user),
-      organization.name
+      organization.name,
     );
 
     return this.getClientTicket(ticket.id, context.organizationId);
@@ -122,24 +125,24 @@ export class SupportTicketService {
 
   static async listClientTickets(
     organizationId: number,
-    filters: ClientTicketFilters
+    filters: ClientTicketFilters,
   ) {
     return SupportTicketModel.listClientTickets(organizationId, filters);
   }
 
   static async getClientTicket(
     idOrPublicId: string,
-    organizationId: number
+    organizationId: number,
   ): Promise<TicketWithMessages> {
     const ticket = await SupportTicketModel.findClientTicket(
       idOrPublicId,
-      organizationId
+      organizationId,
     );
     if (!ticket) {
       throw new SupportServiceError(
         "TICKET_NOT_FOUND",
         "Support ticket not found.",
-        404
+        404,
       );
     }
 
@@ -151,14 +154,18 @@ export class SupportTicketService {
     idOrPublicId: string,
     organizationId: number,
     userId: number,
-    body: string
+    body: string,
   ): Promise<TicketWithMessages> {
     const existing = await SupportTicketModel.findClientTicket(
       idOrPublicId,
-      organizationId
+      organizationId,
     );
     if (!existing) {
-      throw new SupportServiceError("TICKET_NOT_FOUND", "Support ticket not found.", 404);
+      throw new SupportServiceError(
+        "TICKET_NOT_FOUND",
+        "Support ticket not found.",
+        404,
+      );
     }
 
     await db.transaction(async (trx) => {
@@ -170,11 +177,15 @@ export class SupportTicketService {
           visibility: "client_visible",
           body,
         },
-        trx
+        trx,
       );
 
       if (existing.status === "waiting_on_client") {
-        await SupportTicketModel.updateTicket(existing.id, { status: "in_progress" }, trx);
+        await SupportTicketModel.updateTicket(
+          existing.id,
+          { status: "in_progress" },
+          trx,
+        );
       }
 
       await SupportTicketEventModel.create(
@@ -184,7 +195,7 @@ export class SupportTicketService {
           event_type: "client_message_added",
           metadata: {},
         },
-        trx
+        trx,
       );
     });
 
@@ -195,10 +206,16 @@ export class SupportTicketService {
     return SupportTicketModel.listAdminTickets(filters);
   }
 
-  static async getAdminTicket(idOrPublicId: string): Promise<TicketWithMessages> {
+  static async getAdminTicket(
+    idOrPublicId: string,
+  ): Promise<TicketWithMessages> {
     const ticket = await SupportTicketModel.findAdminTicket(idOrPublicId);
     if (!ticket) {
-      throw new SupportServiceError("TICKET_NOT_FOUND", "Support ticket not found.", 404);
+      throw new SupportServiceError(
+        "TICKET_NOT_FOUND",
+        "Support ticket not found.",
+        404,
+      );
     }
 
     const messages = await SupportTicketMessageModel.listForTicket(ticket.id, {
@@ -210,11 +227,15 @@ export class SupportTicketService {
   static async updateAdminTicket(
     idOrPublicId: string,
     actorUserId: number,
-    input: AdminSupportTicketUpdateData
+    input: AdminSupportTicketUpdateData,
   ): Promise<TicketWithMessages> {
     const existing = await SupportTicketModel.findAdminTicket(idOrPublicId);
     if (!existing) {
-      throw new SupportServiceError("TICKET_NOT_FOUND", "Support ticket not found.", 404);
+      throw new SupportServiceError(
+        "TICKET_NOT_FOUND",
+        "Support ticket not found.",
+        404,
+      );
     }
 
     const updateData = buildAdminUpdateData(input);
@@ -222,7 +243,7 @@ export class SupportTicketService {
       const ticket = await SupportTicketModel.updateTicket(
         existing.id,
         updateData,
-        trx
+        trx,
       );
 
       await SupportTicketEventModel.create(
@@ -232,7 +253,7 @@ export class SupportTicketService {
           event_type: "admin_ticket_updated",
           metadata: { changes: updateData },
         },
-        trx
+        trx,
       );
 
       return ticket || existing;
@@ -246,11 +267,15 @@ export class SupportTicketService {
     idOrPublicId: string,
     actorUserId: number,
     body: string,
-    visibility: SupportMessageVisibility
+    visibility: SupportMessageVisibility,
   ): Promise<TicketWithMessages> {
     const existing = await SupportTicketModel.findAdminTicket(idOrPublicId);
     if (!existing) {
-      throw new SupportServiceError("TICKET_NOT_FOUND", "Support ticket not found.", 404);
+      throw new SupportServiceError(
+        "TICKET_NOT_FOUND",
+        "Support ticket not found.",
+        404,
+      );
     }
 
     await db.transaction(async (trx) => {
@@ -262,7 +287,7 @@ export class SupportTicketService {
           visibility,
           body,
         },
-        trx
+        trx,
       );
 
       await SupportTicketEventModel.create(
@@ -272,9 +297,13 @@ export class SupportTicketService {
           event_type: "admin_message_added",
           metadata: { visibility },
         },
-        trx
+        trx,
       );
     });
+
+    if (visibility === "client_visible" && existing.status !== "archived") {
+      void notifyClientOfAdminReply(existing, body);
+    }
 
     return this.getAdminTicket(existing.id);
   }

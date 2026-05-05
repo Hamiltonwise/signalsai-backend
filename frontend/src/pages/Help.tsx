@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { LifeBuoy, ShieldCheck } from "lucide-react";
+import { LifeBuoy, Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import type { CreateSupportTicketPayload } from "../api/support";
-import { SupportTicketComposer } from "../components/support/SupportTicketComposer";
+import { SupportTicketComposerModal } from "../components/support/SupportTicketComposerModal";
 import { SupportTicketDetail } from "../components/support/SupportTicketDetail";
 import { SupportTicketList } from "../components/support/SupportTicketList";
 import { useLocationContext } from "../contexts/locationContext";
@@ -19,8 +19,9 @@ export default function Help() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [composerError, setComposerError] = useState<string | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(
-    searchParams.get("ticket")
+    searchParams.get("ticket"),
   );
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const { selectedLocation } = useLocationContext();
   const ticketsQuery = useSupportTickets({ limit: 50 });
   const detailQuery = useSupportTicket(selectedTicketId);
@@ -29,7 +30,7 @@ export default function Help() {
 
   const tickets = useMemo(
     () => ticketsQuery.data?.tickets || [],
-    [ticketsQuery.data?.tickets]
+    [ticketsQuery.data?.tickets],
   );
 
   useEffect(() => {
@@ -50,12 +51,24 @@ export default function Help() {
     setSearchParams({ ticket: ticketId });
   };
 
+  const handleOpenComposer = () => {
+    setComposerError(null);
+    setIsComposerOpen(true);
+  };
+
+  const handleCloseComposer = () => {
+    if (!createTicket.isPending) {
+      setIsComposerOpen(false);
+    }
+  };
+
   const handleSubmitTicket = (payload: CreateSupportTicketPayload) => {
     setComposerError(null);
     createTicket.mutate(payload, {
       onSuccess: (data) => {
         toast.success("Support ticket created");
         handleSelectTicket(data.ticket.id);
+        setIsComposerOpen(false);
       },
       onError: (error) => {
         setComposerError(error.message);
@@ -71,44 +84,49 @@ export default function Help() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F3E8] px-4 py-6 text-alloro-navy sm:px-6 lg:px-10 lg:py-10">
-      <motion.header
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className="mx-auto mb-6 flex max-w-[1400px] flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
-      >
-        <div>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-xl border border-[#EDE5C0] bg-[#FCFAED] px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-alloro-orange">
-            <LifeBuoy className="h-4 w-4" />
-            Support
+    <div className="pm-light min-h-screen bg-[var(--color-pm-bg-primary)] font-body text-alloro-navy">
+      <div className="mx-auto w-full max-w-[1320px] space-y-6 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <motion.header
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div>
+            <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+              <LifeBuoy className="h-3.5 w-3.5 text-alloro-orange" />
+              Support
+            </p>
+            <h1 className="font-display text-[28px] font-normal leading-tight tracking-tight text-alloro-navy">
+              Help desk
+            </h1>
+            <p className="mt-1.5 max-w-[560px] text-[13px] font-normal leading-relaxed text-slate-500">
+              Submit a ticket, follow status, and keep the full support
+              conversation in one place.
+            </p>
           </div>
-          <h1 className="font-display text-[34px] font-medium leading-tight tracking-tight text-alloro-navy sm:text-[42px]">
-            Help desk
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Create support tickets, track status, and keep every Alloro reply in
-            one place.
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-xl border border-[#EDE5C0] bg-[#FCFAED] px-4 py-3 text-xs font-bold text-slate-500">
-          <ShieldCheck className="h-4 w-4 text-emerald-600" />
-          Client-visible support history
-        </div>
-      </motion.header>
+          <button
+            type="button"
+            onClick={handleOpenComposer}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-alloro-orange px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-[0_10px_24px_rgba(214,104,83,0.24)] transition hover:brightness-105 focus:outline-none focus:ring-4 focus:ring-alloro-orange/20"
+          >
+            <Plus className="h-4 w-4" />
+            New ticket
+          </button>
+        </motion.header>
 
-      <motion.main
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.05, ease: "easeOut" }}
-        className="mx-auto grid max-w-[1400px] gap-6 xl:grid-cols-[minmax(0,1fr)_380px]"
-      >
-        <div className="space-y-6">
-          <SupportTicketComposer
-            locationId={selectedLocation?.id ?? null}
-            isSubmitting={createTicket.isPending}
-            errorMessage={composerError}
-            onCreateTicket={handleSubmitTicket}
+        <motion.main
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05, ease: "easeOut" }}
+          className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]"
+        >
+          <SupportTicketList
+            tickets={tickets}
+            selectedTicketId={selectedTicketId}
+            isLoading={ticketsQuery.isLoading}
+            onCreateTicket={handleOpenComposer}
+            onSelectTicket={handleSelectTicket}
           />
           <SupportTicketDetail
             ticket={detailQuery.data?.ticket}
@@ -117,14 +135,17 @@ export default function Help() {
             isReplying={createMessage.isPending}
             onReply={handleReply}
           />
-        </div>
-        <SupportTicketList
-          tickets={tickets}
-          selectedTicketId={selectedTicketId}
-          isLoading={ticketsQuery.isLoading}
-          onSelectTicket={handleSelectTicket}
-        />
-      </motion.main>
+        </motion.main>
+      </div>
+
+      <SupportTicketComposerModal
+        isOpen={isComposerOpen}
+        locationId={selectedLocation?.id ?? null}
+        isSubmitting={createTicket.isPending}
+        errorMessage={composerError}
+        onClose={handleCloseComposer}
+        onCreateTicket={handleSubmitTicket}
+      />
     </div>
   );
 }

@@ -20,6 +20,15 @@ const initialAnswers = {
   website_edit: { pageUrl: "", requestedChange: "", approvalNotes: "" },
 };
 
+type FieldConfig = {
+  name: string;
+  label: string;
+  required: boolean;
+  kind: "input" | "textarea";
+  rows?: number;
+  placeholder: string;
+};
+
 export function SupportTicketComposer({
   locationId,
   isSubmitting,
@@ -55,117 +64,189 @@ export function SupportTicketComposer({
   };
 
   return (
-    <section className="rounded-2xl border border-[#EDE5C0] bg-[#FCFAED] p-5 shadow-premium sm:p-7">
-      <div className="mb-6">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-alloro-orange">
-          Support desk
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+          Ticket type
         </p>
-        <h1 className="font-display text-3xl font-medium leading-tight text-alloro-navy">
-          Open a support ticket
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-          Send structured context to the Alloro team and follow every reply
-          from this page.
-        </p>
+        <SupportTypeSelector value={type} onChange={setType} />
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <SupportTypeSelector value={type} onChange={setType} />
-        {errorMessage && (
-          <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-            <AlertCircle className="h-4 w-4" />
-            {errorMessage}
-          </div>
-        )}
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          {renderFields(type, answers[type], handleAnswerChange)}
-          {type === "website_edit" && (
-            <label className="space-y-2 text-left">
-              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                Requested completion
-              </span>
-              <input
-                type="date"
-                value={requestedCompletionDate}
-                onChange={(event) =>
-                  setRequestedCompletionDate(event.target.value)
-                }
-                className="w-full rounded-xl border border-[#EDE5C0] bg-white px-4 py-3 text-sm font-semibold text-alloro-navy focus:outline-none focus:ring-4 focus:ring-alloro-orange/20"
-              />
-            </label>
-          )}
+      {errorMessage && (
+        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[13px] font-semibold text-red-700">
+          <AlertCircle className="h-4 w-4" />
+          {errorMessage}
         </div>
+      )}
 
-        <label className="block space-y-2 text-left">
-          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-            Additional context
-          </span>
-          <textarea
-            value={additionalContext}
-            onChange={(event) => setAdditionalContext(event.target.value)}
-            rows={4}
-            placeholder="Add screenshots, exact copy, links, business context, or anything the team should know."
-            className="w-full resize-none rounded-xl border border-[#EDE5C0] bg-white px-4 py-3 text-sm font-semibold text-alloro-navy placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-alloro-orange/20"
-          />
-        </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {renderFields(type, answers[type], handleAnswerChange)}
+        {type === "website_edit" && (
+          <label className="space-y-1.5 text-left">
+            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+              Requested completion (optional)
+            </span>
+            <input
+              type="date"
+              value={requestedCompletionDate}
+              onChange={(event) =>
+                setRequestedCompletionDate(event.target.value)
+              }
+              style={{ colorScheme: "light" }}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-medium text-alloro-navy focus:border-alloro-orange focus:outline-none focus:ring-4 focus:ring-alloro-orange/15"
+            />
+          </label>
+        )}
+      </div>
 
+      <label className="block space-y-1.5 text-left">
+        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+          Additional context (optional)
+        </span>
+        <textarea
+          value={additionalContext}
+          onChange={(event) => setAdditionalContext(event.target.value)}
+          rows={4}
+          placeholder="Add screenshots, exact copy, links, business context, or anything the team should know."
+          className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-medium text-alloro-navy placeholder:text-slate-400 focus:border-alloro-orange focus:outline-none focus:ring-4 focus:ring-alloro-orange/15"
+        />
+      </label>
+
+      <div className="flex justify-end border-t border-slate-100 pt-4">
         <button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-alloro-orange px-5 py-3 text-xs font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-alloro-orange/20 transition-all duration-200 hover:scale-[1.02] hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-alloro-teal/30 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-alloro-orange px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-[0_10px_24px_rgba(214,104,83,0.22)] transition hover:brightness-105 focus:outline-none focus:ring-4 focus:ring-alloro-orange/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? "Sending" : "Create ticket"}
           <Send className="h-4 w-4" />
         </button>
-      </form>
-    </section>
+      </div>
+    </form>
   );
 }
 
 function renderFields(
   type: SupportTicketType,
   values: Record<string, string>,
-  onChange: (field: string, value: string) => void
+  onChange: (field: string, value: string) => void,
 ) {
   const fields = getFieldConfig(type);
   return fields.map((field) => (
-    <label key={field.name} className="space-y-2 text-left">
-      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-        {field.label}
+    <label
+      key={field.name}
+      className={`space-y-1.5 text-left ${
+        field.kind === "textarea" ? "sm:col-span-2" : ""
+      }`}
+    >
+      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+        {formatFieldLabel(field)}
       </span>
-      <textarea
-        required={field.required}
-        value={values[field.name] || ""}
-        onChange={(event) => onChange(field.name, event.target.value)}
-        rows={field.rows}
-        placeholder={field.placeholder}
-        className="w-full resize-none rounded-xl border border-[#EDE5C0] bg-white px-4 py-3 text-sm font-semibold text-alloro-navy placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-alloro-orange/20"
-      />
+      {field.kind === "input" ? (
+        <input
+          required={field.required}
+          value={values[field.name] || ""}
+          onChange={(event) => onChange(field.name, event.target.value)}
+          placeholder={field.placeholder}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-medium text-alloro-navy placeholder:text-slate-400 focus:border-alloro-orange focus:outline-none focus:ring-4 focus:ring-alloro-orange/15"
+        />
+      ) : (
+        <textarea
+          required={field.required}
+          value={values[field.name] || ""}
+          onChange={(event) => onChange(field.name, event.target.value)}
+          rows={field.rows}
+          placeholder={field.placeholder}
+          className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-medium text-alloro-navy placeholder:text-slate-400 focus:border-alloro-orange focus:outline-none focus:ring-4 focus:ring-alloro-orange/15"
+        />
+      )}
     </label>
   ));
 }
 
-function getFieldConfig(type: SupportTicketType) {
+function formatFieldLabel(field: FieldConfig): string {
+  return field.required ? field.label : `${field.label} (optional)`;
+}
+
+function getFieldConfig(type: SupportTicketType): FieldConfig[] {
   if (type === "feature_request") {
     return [
-      { name: "idea", label: "Feature idea", required: true, rows: 3, placeholder: "What should Alloro add?" },
-      { name: "problem", label: "Problem solved", required: true, rows: 3, placeholder: "What workflow or pain does this improve?" },
-      { name: "impact", label: "Expected impact", required: false, rows: 3, placeholder: "How often would your team use it?" },
+      {
+        name: "idea",
+        label: "Feature idea",
+        required: true,
+        kind: "input",
+        placeholder: "What should Alloro add?",
+      },
+      {
+        name: "impact",
+        label: "Expected impact",
+        required: false,
+        kind: "input",
+        placeholder: "How often would your team use it?",
+      },
+      {
+        name: "problem",
+        label: "Problem solved",
+        required: true,
+        kind: "textarea",
+        rows: 3,
+        placeholder: "What workflow or pain does this improve?",
+      },
     ];
   }
 
   if (type === "website_edit") {
     return [
-      { name: "pageUrl", label: "Page URL", required: true, rows: 2, placeholder: "https://yourpractice.com/page" },
-      { name: "requestedChange", label: "Requested change", required: true, rows: 4, placeholder: "Describe the exact edit, copy, image, or layout change." },
-      { name: "approvalNotes", label: "Approval notes", required: false, rows: 3, placeholder: "Add legal, clinical, or brand approval details." },
+      {
+        name: "pageUrl",
+        label: "Page URL",
+        required: true,
+        kind: "input",
+        placeholder: "https://yourpractice.com/page",
+      },
+      {
+        name: "requestedChange",
+        label: "Requested change",
+        required: true,
+        kind: "textarea",
+        rows: 4,
+        placeholder: "Describe the exact edit, copy, image, or layout change.",
+      },
+      {
+        name: "approvalNotes",
+        label: "Approval notes",
+        required: false,
+        kind: "textarea",
+        rows: 3,
+        placeholder: "Add legal, clinical, or brand approval details.",
+      },
     ];
   }
 
   return [
-    { name: "summary", label: "What is broken?", required: true, rows: 3, placeholder: "Briefly describe the issue." },
-    { name: "stepsToReproduce", label: "Steps to reproduce", required: true, rows: 4, placeholder: "Tell us where you clicked and what happened." },
-    { name: "expectedBehavior", label: "Expected behavior", required: false, rows: 3, placeholder: "What did you expect to happen?" },
+    {
+      name: "summary",
+      label: "What is broken?",
+      required: true,
+      kind: "input",
+      placeholder: "Briefly describe the issue.",
+    },
+    {
+      name: "stepsToReproduce",
+      label: "Steps to reproduce",
+      required: true,
+      kind: "textarea",
+      rows: 4,
+      placeholder: "Tell us where you clicked and what happened.",
+    },
+    {
+      name: "expectedBehavior",
+      label: "Expected behavior",
+      required: false,
+      kind: "textarea",
+      rows: 3,
+      placeholder: "What did you expect to happen?",
+    },
   ];
 }

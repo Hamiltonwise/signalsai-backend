@@ -1,70 +1,98 @@
 import { Search } from "lucide-react";
+import type { AdminOrganization } from "../../../api/admin-organizations";
 import type {
   SupportTicketStatus,
   SupportTicketType,
 } from "../../../api/support";
+import { SupportAnimatedSelect } from "./SupportAnimatedSelect";
+import { getSignalMeta, statusOptions } from "./supportTriageMeta";
 
 export type AdminSupportFiltersValue = {
   q: string;
   status: SupportTicketStatus | "open" | "";
   type: SupportTicketType | "";
+  organizationId: number | "";
 };
 
 export type AdminSupportFiltersProps = {
   value: AdminSupportFiltersValue;
+  organizations: AdminOrganization[];
   onChange: (value: AdminSupportFiltersValue) => void;
 };
 
 export function AdminSupportFilters({
   value,
+  organizations,
   onChange,
 }: AdminSupportFiltersProps) {
+  const clientOptions = [
+    { value: "" as const, label: "All clients" },
+    ...organizations.map((organization) => ({
+      value: organization.id,
+      label: organization.name,
+      hint: organization.domain || undefined,
+    })),
+  ];
+
+  const typedStatusOptions = statusOptions.map((option) => ({
+    ...option,
+    meta:
+      option.value && option.value !== "open"
+        ? getSignalMeta("status", option.value)
+        : undefined,
+  }));
+
   return (
-    <div className="grid gap-3 rounded-2xl border border-[#EDE5C0] bg-[#FCFAED] p-4 shadow-premium lg:grid-cols-[1fr_180px_180px]">
+    <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.05)] lg:grid-cols-[minmax(0,1fr)_220px_180px_170px]">
       <label className="relative">
-        <span className="sr-only">Search tickets</span>
+        <span className="sr-only">Search</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
           value={value.q}
           onChange={(event) => onChange({ ...value, q: event.target.value })}
-          placeholder="Search client, ticket, title, or email"
-          className="w-full rounded-xl border border-[#EDE5C0] bg-white py-3 pl-10 pr-4 text-sm font-semibold text-alloro-navy placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-alloro-orange/20"
+          placeholder="Client, title, email, or ID"
+          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3.5 text-[13px] font-medium text-alloro-navy placeholder:text-slate-400 focus:border-alloro-orange focus:outline-none focus:ring-4 focus:ring-alloro-orange/15"
         />
       </label>
-      <select
+
+      <SupportAnimatedSelect
+        value={value.organizationId}
+        options={clientOptions}
+        onChange={(organizationId) => onChange({ ...value, organizationId })}
+        placeholder="All clients"
+        ariaLabel="Client filter"
+      />
+
+      <SupportAnimatedSelect
         value={value.status}
-        onChange={(event) =>
+        options={typedStatusOptions}
+        onChange={(status) =>
           onChange({
             ...value,
-            status: event.target.value as AdminSupportFiltersValue["status"],
+            status,
           })
         }
-        className="rounded-xl border border-[#EDE5C0] bg-white px-4 py-3 text-sm font-bold text-alloro-navy focus:outline-none focus:ring-4 focus:ring-alloro-orange/20"
-      >
-        <option value="open">Open tickets</option>
-        <option value="">All statuses</option>
-        <option value="new">New</option>
-        <option value="triaged">Triaged</option>
-        <option value="in_progress">In progress</option>
-        <option value="waiting_on_client">Waiting on client</option>
-        <option value="resolved">Resolved</option>
-        <option value="wont_fix">Closed</option>
-      </select>
-      <select
+        placeholder="Open tickets"
+        ariaLabel="Status filter"
+      />
+
+      <SupportAnimatedSelect
         value={value.type}
-        onChange={(event) =>
+        options={[
+          { value: "", label: "All types" },
+          { value: "bug_report", label: "Bug reports" },
+          { value: "feature_request", label: "Feature requests" },
+          { value: "website_edit", label: "Website edits" },
+        ]}
+        onChange={(type) =>
           onChange({
             ...value,
-            type: event.target.value as AdminSupportFiltersValue["type"],
+            type,
           })
         }
-        className="rounded-xl border border-[#EDE5C0] bg-white px-4 py-3 text-sm font-bold text-alloro-navy focus:outline-none focus:ring-4 focus:ring-alloro-orange/20"
-      >
-        <option value="">All types</option>
-        <option value="bug_report">Bug reports</option>
-        <option value="feature_request">Feature requests</option>
-        <option value="website_edit">Website edits</option>
-      </select>
+        placeholder="All types"
+        ariaLabel="Ticket type filter"
+      />
     </div>
   );
 }

@@ -3,7 +3,10 @@ import {
   SupportTicketType,
 } from "../../../models/SupportTicketModel";
 import { UserModel } from "../../../models/UserModel";
-import { AdminSupportTicketUpdateData, CreateSupportTicketData } from "../support-utils/supportTicketValidation";
+import {
+  AdminSupportTicketUpdateData,
+  CreateSupportTicketData,
+} from "../support-utils/supportTicketValidation";
 
 const PUBLIC_ID_PREFIXES: Record<SupportTicketType, string> = {
   bug_report: "BUG",
@@ -11,13 +14,16 @@ const PUBLIC_ID_PREFIXES: Record<SupportTicketType, string> = {
   website_edit: "WEB",
 };
 
-export function buildPublicId(type: SupportTicketType, sequence: number): string {
+export function buildPublicId(
+  type: SupportTicketType,
+  sequence: number,
+): string {
   return `${PUBLIC_ID_PREFIXES[type]}-${String(sequence).padStart(4, "0")}`;
 }
 
 export function buildTitle(
   type: SupportTicketType,
-  answers: Record<string, unknown>
+  answers: Record<string, unknown>,
 ): string {
   const fallback = {
     bug_report: "Bug report",
@@ -28,8 +34,8 @@ export function buildTitle(
     type === "bug_report"
       ? answers.summary
       : type === "feature_request"
-      ? answers.idea
-      : answers.requestedChange;
+        ? answers.idea
+        : answers.requestedChange;
   return typeof source === "string" && source.trim()
     ? source.trim().slice(0, 180)
     : fallback;
@@ -37,7 +43,9 @@ export function buildTitle(
 
 export function buildInitialMessage(input: CreateSupportTicketData): string {
   const lines = Object.entries(input.guidedAnswers)
-    .filter(([, value]) => value !== null && value !== undefined && value !== "")
+    .filter(
+      ([, value]) => value !== null && value !== undefined && value !== "",
+    )
     .map(([key, value]) => `${labelize(key)}: ${String(value)}`);
 
   if (input.additionalContext) {
@@ -51,9 +59,11 @@ export function buildAdminUpdateData(input: AdminSupportTicketUpdateData) {
   const data: Partial<SupportTicket> = {};
   if (input.status !== undefined) {
     data.status = input.status;
-    data.resolved_at = ["resolved", "wont_fix"].includes(input.status)
-      ? new Date()
-      : null;
+    if (["resolved", "wont_fix"].includes(input.status)) {
+      data.resolved_at = new Date();
+    } else if (input.status !== "archived") {
+      data.resolved_at = null;
+    }
   }
   if (input.severity !== undefined) data.severity = input.severity;
   if (input.priority !== undefined) data.priority = input.priority;
@@ -62,7 +72,8 @@ export function buildAdminUpdateData(input: AdminSupportTicketUpdateData) {
     data.assigned_to_user_id = input.assignedToUserId;
   }
   if (input.targetSprint !== undefined) data.target_sprint = input.targetSprint;
-  if (input.internalNotes !== undefined) data.internal_notes = input.internalNotes;
+  if (input.internalNotes !== undefined)
+    data.internal_notes = input.internalNotes;
   if (input.resolutionNotes !== undefined) {
     data.resolution_notes = input.resolutionNotes;
   }
@@ -70,7 +81,7 @@ export function buildAdminUpdateData(input: AdminSupportTicketUpdateData) {
 }
 
 export async function resolveAssigneeId(
-  type: SupportTicketType
+  type: SupportTicketType,
 ): Promise<number | null> {
   const emailByType: Record<SupportTicketType, string | undefined> = {
     bug_report: process.env.SUPPORT_BUG_ASSIGNEE_EMAIL,

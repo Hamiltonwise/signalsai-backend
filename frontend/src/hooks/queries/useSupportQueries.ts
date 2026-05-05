@@ -4,6 +4,7 @@ import {
   createAdminSupportMessage,
   createSupportTicket,
   createSupportTicketMessage,
+  fetchAdminSupportAssignees,
   fetchAdminSupportTicket,
   fetchAdminSupportTickets,
   fetchSupportTicket,
@@ -61,7 +62,7 @@ export function useCreateSupportTicketMessage(ticketId: string | null) {
 }
 
 export function useAdminSupportTickets(
-  filters: AdminSupportTicketFilters = {}
+  filters: AdminSupportTicketFilters = {},
 ) {
   return useQuery<SupportTicketListResponse>({
     queryKey: QUERY_KEYS.adminSupportTickets(filters),
@@ -80,6 +81,14 @@ export function useAdminSupportTicket(ticketId: string | null) {
   });
 }
 
+export function useAdminSupportAssignees() {
+  return useQuery({
+    queryKey: QUERY_KEYS.adminSupportAssignees,
+    queryFn: fetchAdminSupportAssignees,
+    staleTime: 60_000,
+  });
+}
+
 export function useUpdateAdminSupportTicket(ticketId: string | null) {
   const qc = useQueryClient();
   return useMutation({
@@ -95,7 +104,10 @@ export function useUpdateAdminSupportTicket(ticketId: string | null) {
 export function useCreateAdminSupportMessage(ticketId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { body: string; visibility: SupportMessageVisibility }) =>
+    mutationFn: (payload: {
+      body: string;
+      visibility: SupportMessageVisibility;
+    }) =>
       createAdminSupportMessage(ticketId!, payload.body, payload.visibility),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.adminSupportTicketsAll });
