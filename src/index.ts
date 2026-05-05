@@ -46,6 +46,7 @@ import adminSettingsRoutes from "./routes/admin/settings";
 import adminSchedulesRoutes from "./routes/admin/schedules";
 import adminLeadgenRoutes from "./routes/admin/leadgenSubmissions";
 import adminPmsPipelineRoutes from "./routes/admin/pmsPipeline";
+import adminSupportRoutes from "./routes/admin/support";
 import leadgenTrackingRoutes from "./routes/leadgenTracking";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
@@ -177,6 +178,7 @@ app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin/schedules", adminSchedulesRoutes);
 app.use("/api/admin/leadgen-submissions", adminLeadgenRoutes);
 app.use("/api/admin/pms-jobs", adminPmsPipelineRoutes);
+app.use("/api/admin/support", adminSupportRoutes);
 app.use("/api/leadgen", leadgenTrackingRoutes);
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest

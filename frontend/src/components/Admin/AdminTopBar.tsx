@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Layers,
   FolderKanban,
+  LifeBuoy,
 } from "lucide-react";
 import { queryClient } from "../../lib/queryClient";
 import { toast } from "react-hot-toast";
@@ -15,6 +16,11 @@ import { toast } from "react-hot-toast";
 export function useIsPmRoute() {
   const location = useLocation();
   return location.pathname.startsWith("/admin/pm");
+}
+
+export function useIsSupportRoute() {
+  const location = useLocation();
+  return location.pathname.startsWith("/admin/support");
 }
 
 function getAdminDisplayName(): string {
@@ -37,6 +43,8 @@ export function AdminTopBar() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const isPm = useIsPmRoute();
+  const isSupport = useIsSupportRoute();
+  const isProcess = !isPm && !isSupport;
   const displayName = getAdminDisplayName();
 
   const toggleMenu = () => setIsMenuOpen((value) => !value);
@@ -182,14 +190,14 @@ export function AdminTopBar() {
           <Link
             to="/admin/action-items"
             className={`relative flex items-center gap-2 px-5 py-2.5 text-[13px] transition-colors duration-150 ${
-              !isPm ? "text-[#D66853]" : "text-gray-400 hover:text-gray-200"
+              isProcess ? "text-[#D66853]" : "text-gray-400 hover:text-gray-200"
             }`}
           >
             <Layers className="h-4 w-4" strokeWidth={1.5} />
-            <span className={!isPm ? "font-semibold" : "font-medium"}>
+            <span className={isProcess ? "font-semibold" : "font-medium"}>
               Process
             </span>
-            {!isPm && (
+            {isProcess && (
               <motion.div
                 layoutId="tab-underline"
                 className="absolute bottom-0 left-2 right-2 h-[2px] bg-[#D66853] rounded-full"
@@ -208,6 +216,24 @@ export function AdminTopBar() {
               Projects
             </span>
             {isPm && (
+              <motion.div
+                layoutId="tab-underline"
+                className="absolute bottom-0 left-2 right-2 h-[2px] bg-[#D66853] rounded-full"
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              />
+            )}
+          </Link>
+          <Link
+            to="/admin/support"
+            className={`relative flex items-center gap-2 px-5 py-2.5 text-[13px] transition-colors duration-150 ${
+              isSupport ? "text-[#D66853]" : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            <LifeBuoy className="h-4 w-4" strokeWidth={1.5} />
+            <span className={isSupport ? "font-semibold" : "font-medium"}>
+              Support
+            </span>
+            {isSupport && (
               <motion.div
                 layoutId="tab-underline"
                 className="absolute bottom-0 left-2 right-2 h-[2px] bg-[#D66853] rounded-full"

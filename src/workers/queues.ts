@@ -61,6 +61,17 @@ export function getCrmQueue(name: string): Queue {
   return queues[queueName];
 }
 
+export function getHarvestQueue(name: string): Queue {
+  const queueName = `harvest-${name}`;
+  if (!queues[queueName]) {
+    queues[queueName] = new Queue(queueName, {
+      connection: getRedisConnection(),
+      prefix: '{harvest}',
+    });
+  }
+  return queues[queueName];
+}
+
 export async function closeQueues(): Promise<void> {
   for (const queue of Object.values(queues)) {
     await queue.close();

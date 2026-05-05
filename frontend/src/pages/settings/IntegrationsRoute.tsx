@@ -1,10 +1,15 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Globe,
   Mail,
   Shield,
   Lock,
   Activity,
+  Search,
+  ChevronDown,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useSettingsScopes, usePmsStatus } from "../../hooks/queries/useSettingsQueries";
@@ -35,6 +40,101 @@ const InfoRow = ({ icon, label, value }: InfoRowProps) => (
     </div>
   </div>
 );
+
+function GscSettingsSection({
+  missingScopes,
+  onGrantAccess,
+}: {
+  missingScopes: string[];
+  onGrantAccess: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const hasGscScope = !missingScopes.includes(
+    "https://www.googleapis.com/auth/webmasters.readonly",
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden"
+    >
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+            <Search size={16} className="text-blue-600" />
+          </div>
+          <div className="text-left">
+            <div className="text-sm font-bold text-alloro-navy">
+              Google Search Console
+            </div>
+            <div className="text-xs text-slate-400">
+              {hasGscScope
+                ? "Connected"
+                : "Additional permission needed"}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasGscScope ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">
+              <CheckCircle2 size={10} /> Connected
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
+              <AlertTriangle size={10} /> Action needed
+            </span>
+          )}
+          <ChevronDown
+            size={16}
+            className={`text-slate-300 transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
+        </div>
+      </button>
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-6 pb-5 pt-1 border-t border-slate-100">
+              {hasGscScope ? (
+                <p className="text-sm text-slate-500">
+                  Search Console access is active. Your admin can connect
+                  specific sites from the website integrations panel.
+                </p>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <p className="text-sm text-slate-500">
+                    Grant Search Console access to unlock website performance
+                    insights in your dashboard.
+                  </p>
+                  <a
+                    href="/api/auth/google/reconnect?scopes=gsc"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      setTimeout(onGrantAccess, 3000);
+                    }}
+                    className="shrink-0 px-4 py-2 bg-alloro-orange text-white text-sm font-bold rounded-xl hover:bg-alloro-orange/90 transition-colors"
+                  >
+                    Grant Access
+                  </a>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
 
 export const IntegrationsRoute: React.FC = () => {
   const { userProfile, selectedDomain, hasProperties, hasGoogleConnection, refreshUserProperties } = useAuth();
@@ -215,6 +315,14 @@ export const IntegrationsRoute: React.FC = () => {
               </div>
             </div>
           </motion.div>
+        )}
+
+        {/* Google Search Console Section */}
+        {hasGoogleConnection && (
+          <GscSettingsSection
+            missingScopes={missingScopes}
+            onGrantAccess={handleGrantAccessComplete}
+          />
         )}
 
         {/* PMS Upload Banner — only show when at least one location is configured */}

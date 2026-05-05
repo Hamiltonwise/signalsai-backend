@@ -7,6 +7,7 @@
 
 import { db } from "../../../database/connection";
 import { createProjectSnippet } from "./service.hfcm-manager";
+import { WebsiteIntegrationModel } from "../../../models/website-builder/WebsiteIntegrationModel";
 
 const PROJECTS_TABLE = "website_builder.projects";
 const HFC_TABLE = "website_builder.header_footer_code";
@@ -81,6 +82,20 @@ export async function provisionRybbitSite(
       rybbit_site_id: String(siteId),
       updated_at: db.fn.now(),
     });
+
+    // Create integration row (idempotent)
+    const existingIntegration = await WebsiteIntegrationModel.findByProjectAndPlatform(projectId, "rybbit");
+    if (!existingIntegration) {
+      await WebsiteIntegrationModel.create({
+        project_id: projectId,
+        platform: "rybbit",
+        type: "hybrid",
+        metadata: { siteId: String(siteId) },
+        status: "active",
+        connected_by: "system",
+      });
+      console.log(`[Rybbit] Integration row created for project ${projectId}`);
+    }
 
     // Check if tracking snippet already exists
     const existingSnippet = await db(HFC_TABLE)

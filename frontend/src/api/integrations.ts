@@ -9,20 +9,44 @@
 // =====================================================================
 
 export type IntegrationStatus = "active" | "revoked" | "broken";
+export type IntegrationType = "crm_push" | "script_injection" | "data_harvest" | "hybrid";
+export type IntegrationPlatform = "hubspot" | "rybbit" | "clarity" | "gsc";
 export type MappingStatus = "active" | "broken";
 export type CrmSyncOutcome = "success" | "skipped_flagged" | "failed" | "no_mapping";
+export type HarvestOutcome = "success" | "failed";
 
 export interface Integration {
   id: string;
   project_id: string;
-  platform: string;
+  platform: IntegrationPlatform;
+  type: IntegrationType;
   label: string | null;
-  metadata: { portalId?: string; accountName?: string } & Record<string, unknown>;
+  metadata: Record<string, unknown>;
   status: IntegrationStatus;
+  connected_by: string | null;
   last_validated_at: string | null;
   last_error: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface HarvestLog {
+  id: string;
+  integration_id: string | null;
+  platform: string | null;
+  harvest_date: string;
+  outcome: HarvestOutcome;
+  rows_fetched: number | null;
+  error: string | null;
+  error_details: string | null;
+  retry_count: number;
+  attempted_at: string;
+}
+
+export interface SuccessRate {
+  total: number;
+  successful: number;
+  failed: number;
 }
 
 export interface IntegrationFormMapping {
@@ -256,3 +280,37 @@ export const fetchSyncLogs = (
     `/${projectId}/integrations/${integrationId}/sync-logs${suffix}`,
   );
 };
+
+// =====================================================================
+// HARVEST INTEGRATIONS (Rybbit, Clarity, GSC)
+// =====================================================================
+
+export const validateHarvestIntegration = (projectId: string, integrationId: string) =>
+  request<Envelope<{ valid: boolean; error?: string; message?: string }>>(
+    `/${projectId}/integrations/${integrationId}/validate`,
+    { method: "POST" },
+  );
+
+export const fetchHarvestLogs = (
+  projectId: string,
+  integrationId: string,
+  opts: { limit?: number; offset?: number } = {},
+) => {
+  const params = new URLSearchParams();
+  if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+  if (opts.offset !== undefined) params.set("offset", String(opts.offset));
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return request<Envelope<HarvestLog[]> & { data: { data: HarvestLog[]; total: number; successRate: SuccessRate } }>(
+    `/${projectId}/integrations/${integrationId}/harvest-logs${suffix}`,
+  );
+};
+
+export const rerunHarvest = (
+  projectId: string,
+  integrationId: string,
+  harvestDate: string,
+) =>
+  request<Envelope<{ queued: boolean; harvestDate: string; retryCount: number }>>(
+    `/${projectId}/integrations/${integrationId}/rerun`,
+    { method: "POST", body: JSON.stringify({ harvestDate }) },
+  );

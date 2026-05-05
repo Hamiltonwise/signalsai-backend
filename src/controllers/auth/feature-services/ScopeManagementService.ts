@@ -14,6 +14,7 @@ export const REQUIRED_SCOPES = [
  */
 export const SCOPE_MAP: Record<string, string> = {
   gbp: "https://www.googleapis.com/auth/business.manage",
+  gsc: "https://www.googleapis.com/auth/webmasters.readonly",
 };
 
 /**
@@ -22,6 +23,8 @@ export const SCOPE_MAP: Record<string, string> = {
 const SCOPE_DESCRIPTIONS: Record<string, string> = {
   "https://www.googleapis.com/auth/business.manage":
     "Google Business Profile - Manage business listings and access insights",
+  "https://www.googleapis.com/auth/webmasters.readonly":
+    "Google Search Console - Read search performance data and site information",
 };
 
 /**
@@ -29,6 +32,7 @@ const SCOPE_DESCRIPTIONS: Record<string, string> = {
  */
 const APIS_COVERED = [
   "Google Business Profile (GBP)",
+  "Google Search Console (GSC)",
 ];
 
 /**
@@ -60,7 +64,7 @@ export function resolveScopes(
 ): { scopes: string[]; error?: undefined } | { scopes?: undefined; error: string } {
   if (scopeInput === "all") {
     return {
-      scopes: [SCOPE_MAP.gbp],
+      scopes: Object.values(SCOPE_MAP),
     };
   }
 
@@ -92,6 +96,7 @@ export function formatScopeNames(scopes: string[]): string {
   return scopes
     .map((s) => {
       if (s.includes("business")) return "Google Business Profile";
+      if (s.includes("webmasters")) return "Google Search Console";
       return s;
     })
     .join(", ");

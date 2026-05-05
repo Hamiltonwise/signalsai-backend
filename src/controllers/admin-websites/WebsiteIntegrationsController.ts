@@ -29,8 +29,11 @@ import {
 } from "../../models/website-builder/WebsiteIntegrationModel";
 import { IntegrationFormMappingModel } from "../../models/website-builder/IntegrationFormMappingModel";
 import { CrmSyncLogModel } from "../../models/website-builder/CrmSyncLogModel";
+import { IntegrationHarvestLogModel } from "../../models/website-builder/IntegrationHarvestLogModel";
 import { getAdapter } from "../../services/integrations";
+import { getHarvestAdapter } from "../../services/integrations/harvest-registry";
 import { inferFieldMapping } from "../../services/integrations/fieldInference";
+import { getHarvestQueue } from "../../workers/queues";
 import * as formDetection from "./feature-services/service.form-detection";
 
 const LOG_PREFIX = "[Website Integrations]";
@@ -182,7 +185,7 @@ export async function createIntegration(req: Request, res: Response): Promise<Re
 
     const integration = await WebsiteIntegrationModel.create({
       project_id: projectId,
-      platform,
+      platform: platform as import("../../models/website-builder/WebsiteIntegrationModel").IntegrationPlatform,
       credentials,
       label: label ?? null,
       metadata: {
@@ -523,5 +526,91 @@ export async function deleteMapping(req: Request, res: Response): Promise<Respon
   } catch (error) {
     console.error(`${LOG_PREFIX} deleteMapping failed:`, error);
     return fail(res, 500, "DELETE_ERROR", "Failed to delete mapping");
+  }
+}
+
+export async function validateHarvestIntegration(req: Request, res: Response): Promise<Response> {
+  try {
+    const integration = await loadIntegrationForProject(req, res);
+    if (!integration) return res;
+
+    let adapter;
+    try {
+      adapter = getHarvestAdapter(integration.platform);
+    } catch {
+      return fail(res, 400, "UNSUPPORTED_PLATFORM", `No harvest adapter for platform '${integration.platform}'`);
+    }
+
+    const result = await adapter.validateConnection(integration);
+
+    await WebsiteIntegrationModel.updateLastValidated(
+      integration.id,
+      new Date(),
+      result.ok ? null : result.errorMessage ?? null,
+    );
+
+    if (!result.ok) {
+      return ok(res, { valid: false, error: result.error, message: result.errorMessage });
+    }
+    return ok(res, { valid: true });
+  } catch (error) {
+    console.error(`${LOG_PREFIX} validateHarvestIntegration failed:`, error);
+    return fail(res, 500, "VALIDATION_ERROR", "Failed to validate integration");
+  }
+}
+
+export async function getHarvestLogs(req: Request, res: Response): Promise<Response> {
+  try {
+    const integration = await loadIntegrationForProject(req, res);
+    if (!integration) return res;
+
+    const limit = Math.min(Number(req.query.limit) || 30, 100);
+    const offset = Number(req.query.offset) || 0;
+
+    const result = await IntegrationHarvestLogModel.findByIntegrationId(
+      integration.id,
+      { limit, offset },
+    );
+
+    const successRate = await IntegrationHarvestLogModel.getSuccessRate(integration.id, 30);
+
+    return ok(res, { ...result, successRate });
+  } catch (error) {
+    console.error(`${LOG_PREFIX} getHarvestLogs failed:`, error);
+    return fail(res, 500, "FETCH_ERROR", "Failed to fetch harvest logs");
+  }
+}
+
+export async function rerunHarvest(req: Request, res: Response): Promise<Response> {
+  try {
+    const integration = await loadIntegrationForProject(req, res);
+    if (!integration) return res;
+
+    const { harvestDate } = req.body as { harvestDate?: string };
+    if (!harvestDate || !/^\d{4}-\d{2}-\d{2}$/.test(harvestDate)) {
+      return fail(res, 400, "INVALID_INPUT", "harvestDate is required (YYYY-MM-DD)");
+    }
+
+    const retryCount = await IntegrationHarvestLogModel.getLatestRetryCount(integration.id, harvestDate);
+    if (retryCount >= 3) {
+      return fail(res, 409, "MAX_RETRIES", "Maximum retry count (3) reached for this date");
+    }
+
+    const queue = getHarvestQueue("daily");
+    await queue.add(
+      "manual-rerun",
+      { integrationId: integration.id, harvestDate },
+      {
+        jobId: `rerun-${integration.id}-${harvestDate}-${Date.now()}`,
+        attempts: 1,
+        removeOnComplete: { count: 50 },
+        removeOnFail: { count: 50 },
+      },
+    );
+
+    return ok(res, { queued: true, harvestDate, retryCount: retryCount + 1 });
+  } catch (error) {
+    console.error(`${LOG_PREFIX} rerunHarvest failed:`, error);
+    return fail(res, 500, "RERUN_ERROR", "Failed to enqueue harvest rerun");
   }
 }

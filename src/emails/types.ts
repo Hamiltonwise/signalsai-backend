@@ -19,6 +19,10 @@ export interface SendEmailOptions {
   body: string;
   /** Primary recipients */
   recipients: string[];
+  /** Optional sender email override */
+  from?: string;
+  /** Optional sender display name override */
+  fromName?: string;
   /** CC recipients */
   cc?: string[];
   /** BCC recipients */

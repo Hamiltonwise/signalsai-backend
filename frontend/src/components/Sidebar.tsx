@@ -581,7 +581,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
               <NavItem
                 icon={<HelpCircle size={18} />}
-                label="Help Center"
+                label="Support"
                 active={location.pathname === "/help"}
                 onClick={() => handleNavigate("/help")}
                 isLocked={isWizardActive}
