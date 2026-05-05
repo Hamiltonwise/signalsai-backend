@@ -15,8 +15,6 @@ import {
   type WizardStep,
   type WizardPage,
 } from "../components/onboarding-wizard/wizardConfig";
-import { getPriorityItem } from "../hooks/useLocalStorage";
-import { useAuth } from "../hooks/useAuth";
 
 interface OnboardingWizardContextType {
   /** Whether the wizard is currently active */
@@ -64,7 +62,6 @@ const OnboardingWizardContext = createContext<
 export function OnboardingWizardProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { onboardingCompleted } = useAuth();
 
   const [isWizardActive, setIsWizardActive] = useState(false);
   const [isLoadingWizardStatus, setIsLoadingWizardStatus] = useState(true);

@@ -83,6 +83,7 @@ export default function IntegrationProviderList({
           const status: ProviderStatus = integration?.status ?? "not_connected";
           const badge = STATUS_BADGE[status];
           const isActive = selectedPlatform === provider.platform;
+          const portalId = getPortalId(integration);
 
           return (
             <motion.button
@@ -123,9 +124,9 @@ export default function IntegrationProviderList({
                 >
                   {badge.label}
                 </span>
-                {integration?.metadata?.portalId && (
+                {portalId && (
                   <span className="text-[10px] text-gray-400 truncate">
-                    Portal {integration.metadata.portalId}
+                    Portal {portalId}
                   </span>
                 )}
               </div>
@@ -135,4 +136,12 @@ export default function IntegrationProviderList({
       </div>
     </div>
   );
+}
+
+function getPortalId(integration?: Integration): string | null {
+  const portalId = integration?.metadata?.portalId;
+  if (typeof portalId === "string" || typeof portalId === "number") {
+    return String(portalId);
+  }
+  return null;
 }
