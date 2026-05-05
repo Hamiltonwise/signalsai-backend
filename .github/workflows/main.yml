@@ -50,16 +50,20 @@ jobs:
           mkdir -p public
           cp -r frontend/dist/* public/
 
+      - name: Prune dev dependencies
+        run: npm prune --omit=dev
+
       # 📦 Prepare deployment bundle
       - name: Prepare deploy bundle
         run: |
           mkdir -p bundle
           cp -r dist bundle/
           cp -r public bundle/
+          cp -r node_modules bundle/
           cp -r ecosystem.config.js bundle/
           cp package*.json bundle/
-          cp .env bundle/                    # <-- include env file
-          cp signals-google-key.json bundle/ # <-- include google key file
+          cp .env bundle/
+          cp signals-google-key.json bundle/
 
       # 🧹 Clean EC2 target directory
       - name: Clean remote target dir
@@ -86,7 +90,7 @@ jobs:
           strip_components: 1
 
       # 🔁 Restart Node app with PM2
-      - name: Start/Reload PM2
+      - name: Reload PM2
         uses: appleboy/ssh-action@v1.2.1
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -99,5 +103,21 @@ jobs:
             [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
             nvm use node
             cd ${{ secrets.TARGET_DIR }}
-            npm install --production
             pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
+            pm2 save
+
+      - name: Post-deploy health check
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          port: ${{ secrets.EC2_PORT }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            sleep 5
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health/db)
+            if [ "$STATUS" != "200" ]; then
+              echo "❌ Health check failed (HTTP $STATUS)"
+              exit 1
+            fi
+            echo "✅ Health check passed (HTTP $STATUS)"
