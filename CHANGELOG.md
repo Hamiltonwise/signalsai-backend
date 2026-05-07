@@ -2,6 +2,27 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.59] - May 2026
+
+### Article And Review Shortcode Pagination
+
+Added API-backed pagination support across article grids and compact review lists, then migrated existing active page content so long article and review pages load incrementally instead of relying on fixed limits or client-side reveal scripts.
+
+**Key Changes:**
+- Updated admin shortcode previews so paginated post and review blocks render the correct first page using `per_page`
+- Added post-block docs and AI-command guidance for `paginate='load-more'`, `paginate='numbered'`, `paginate='infinite'`, and `per_page`
+- Migrated active `articles-grid` page shortcodes from fixed `limit='12'` to API-backed Load More pagination
+- Migrated `review-list-compact` page usage to API-backed Load More pagination and removed its local hide/reveal script from the shared review block template
+- Preserved rollback coverage with backup tables in the Knex migration
+- Fixed the live renderer pagination client so the Load More loading state is centered and newly loaded cards receive the same truncation/tooltip behavior as initial cards
+
+**Commits:**
+- `src/controllers/user-website/user-website-services/shortcodeResolver.service.ts` — admin preview parity for paginated post/review shortcodes
+- `src/database/migrations/20260507000000_article_review_shortcode_pagination.ts` — reversible DB content/template migration for article and compact review pagination
+- `frontend/src/pages/admin/AlloroPostsDocs.tsx` and `frontend/src/components/Admin/ReviewBlocksTab.tsx` — shortcode docs and compact review copy helper
+- `src/agents/websiteAgents/aiCommand/*` and `src/controllers/admin-websites/feature-services/service.ai-command.ts` — AI guidance for paginated article and compact review shortcodes
+- `../website-builder-rebuild/src/utils/pagination-client.ts` — live renderer loading alignment and post-append truncation/tooltip enhancement
+
 ## [0.0.58] - May 2026
 
 ### Reviews Tab Loading, List, Stats, and Fetch Modal

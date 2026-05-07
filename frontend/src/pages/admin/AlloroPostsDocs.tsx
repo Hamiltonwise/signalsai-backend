@@ -415,6 +415,27 @@ export default function AlloroPostsDocs() {
                 <td className="py-2 pr-4">10</td>
                 <td className="py-2">Maximum number of posts to render</td>
               </tr>
+              <tr className="border-b border-gray-100">
+                <td className="py-2 pr-4 font-mono text-xs">paginate</td>
+                <td className="py-2 pr-4">No</td>
+                <td className="py-2 pr-4">none</td>
+                <td className="py-2">
+                  Pagination mode:{" "}
+                  <code className="bg-gray-100 px-1 rounded text-xs">load-more</code>,{" "}
+                  <code className="bg-gray-100 px-1 rounded text-xs">numbered</code>, or{" "}
+                  <code className="bg-gray-100 px-1 rounded text-xs">infinite</code>
+                </td>
+              </tr>
+              <tr className="border-b border-gray-100">
+                <td className="py-2 pr-4 font-mono text-xs">per_page</td>
+                <td className="py-2 pr-4">No</td>
+                <td className="py-2 pr-4">9</td>
+                <td className="py-2">
+                  Number of posts to render per page when{" "}
+                  <code className="bg-gray-100 px-1 rounded text-xs">paginate</code>{" "}
+                  is enabled
+                </td>
+              </tr>
               <tr>
                 <td className="py-2 pr-4 font-mono text-xs">offset</td>
                 <td className="py-2 pr-4">No</td>
@@ -533,11 +554,22 @@ export default function AlloroPostsDocs() {
         <div className="space-y-3">
           <div>
             <p className="text-sm font-medium text-gray-700 mb-1">
-              Display all blog posts:
+              Display an article index with Load More:
             </p>
             <div className="bg-gray-900 rounded-lg p-3">
               <code className="text-sm text-green-400 font-mono">
-                {"{{ post_block id='blog-grid' items='blog-posts' }}"}
+                {"{{ post_block id='articles-grid' items='articles' paginate='load-more' per_page='9' limit='0' }}"}
+              </code>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-1">
+              Display a fixed featured list:
+            </p>
+            <div className="bg-gray-900 rounded-lg p-3">
+              <code className="text-sm text-green-400 font-mono">
+                {"{{ post_block id='blog-grid' items='blog-posts' limit='3' }}"}
               </code>
             </div>
           </div>

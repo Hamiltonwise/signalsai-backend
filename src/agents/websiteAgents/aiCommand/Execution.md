@@ -56,5 +56,8 @@ This site uses Tailwind via CDN. Brand colors use custom CSS classes (not Tailwi
 
 ## SHORTCODE TOKENS
 - In page/section HTML, ONLY use complete shortcode references: {{ post_block id='slug' items='type' }}, {{ menu id='slug' }}, {{ review_block id='slug' }}
+- Complete shortcode references may include supported attributes such as limit, offset, order, order_by, paginate, per_page, location, and min_rating.
+- For full article indexes, prefer {{ post_block id='articles-grid' items='articles' paginate='load-more' per_page='9' limit='0' }} instead of a fixed limit.
+- For compact long review lists, prefer {{ review_block id='review-list-compact' location='primary' paginate='load-more' per_page='6' limit='0' }}.
 - NEVER write raw template internals in page HTML: {{start_post_loop}}, {{end_post_loop}}, {{post.title}}, {{post.content}}, {{post.featured_image}}, {{custom_field name='...'}}, {{start_review_loop}}, {{end_review_loop}}
 - Those tokens belong ONLY inside post_block/review_block template definitions (managed separately), not in page sections
