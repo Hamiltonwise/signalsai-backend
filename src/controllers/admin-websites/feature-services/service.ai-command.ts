@@ -2152,6 +2152,7 @@ function buildTemplateContext(templates: ProjectTemplates): string {
 
   if (templates.postBlocks.length > 0) {
     lines.push("### Post Block Templates (use with {{ post_block id='SLUG' items='POST_TYPE' }})");
+    lines.push("For full article indexes, prefer {{ post_block id='articles-grid' items='articles' paginate='load-more' per_page='9' limit='0' }} when that template is available.");
     for (const pb of templates.postBlocks) {
       lines.push(`- ${pb.slug} (${pb.name}) — renders '${pb.postTypeSlug}' posts${pb.description ? ` — "${pb.description}"` : ""}`);
     }
@@ -2170,6 +2171,7 @@ function buildTemplateContext(templates: ProjectTemplates): string {
 
   if (templates.reviewBlocks.length > 0) {
     lines.push("### Review Block Templates (use with {{ review_block id='SLUG' }})");
+    lines.push("For compact long review lists, prefer {{ review_block id='review-list-compact' location='primary' paginate='load-more' per_page='6' limit='0' }} when that template is available.");
     for (const rb of templates.reviewBlocks) {
       lines.push(`- ${rb.slug} (${rb.name})${rb.description ? ` — "${rb.description}"` : ""}`);
     }

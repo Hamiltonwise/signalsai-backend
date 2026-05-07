@@ -169,6 +169,21 @@ interface ReviewBlocksTabProps {
   footer: string;
 }
 
+function buildReviewBlockShortcode(slug: string): string {
+  if (slug === "review-list-compact") {
+    return (
+      "{{ review_block id='review-list-compact' location='primary' " +
+      "paginate='load-more' per_page='6' limit='0' }}"
+    );
+  }
+
+  return `{{ review_block id='${slug}' location='primary' }}`;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Failed to save review block";
+}
+
 export default function ReviewBlocksTab({
   templateId,
   wrapper,
@@ -270,9 +285,9 @@ export default function ReviewBlocksTab({
       }
       closeEditor();
       await loadData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Save failed:", err);
-      alert(err.message || "Failed to save review block");
+      alert(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -424,7 +439,7 @@ export default function ReviewBlocksTab({
                 </div>
                 <button
                   onClick={() => {
-                    const shortcode = `{{ review_block id='${rb.slug}' location='primary' }}`;
+                    const shortcode = buildReviewBlockShortcode(rb.slug);
                     navigator.clipboard.writeText(shortcode);
                     setCopiedSlug(rb.slug);
                     setTimeout(() => setCopiedSlug(null), 2000);
@@ -432,7 +447,7 @@ export default function ReviewBlocksTab({
                   className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-400 font-mono hover:text-gray-600 transition-colors group"
                   title="Click to copy shortcode"
                 >
-                  {"{{ review_block id='"}{rb.slug}{"' location='primary' }}"}
+                  {buildReviewBlockShortcode(rb.slug)}
                   {copiedSlug === rb.slug ? (
                     <Check className="w-3 h-3 text-green-500" />
                   ) : (

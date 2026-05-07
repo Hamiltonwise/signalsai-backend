@@ -109,6 +109,57 @@ function parseAttrs(attrStr: string): Record<string, string> {
   return attrs;
 }
 
+const PAGINATION_MODES = new Set(["load-more", "numbered", "infinite"]);
+const POST_ORDER_COLUMNS = new Set([
+  "created_at",
+  "published_at",
+  "sort_order",
+  "title",
+]);
+
+function isPaginatedMode(value?: string): boolean {
+  return value ? PAGINATION_MODES.has(value) : false;
+}
+
+function parseNonNegativeInt(value: string | undefined, fallback: number): number {
+  if (value === undefined) return fallback;
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (value === undefined) return fallback;
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getPreviewPerPage(
+  perPage: string | undefined,
+  limit: string | undefined,
+  fallback: number
+): number {
+  const explicitPerPage = parsePositiveInt(perPage, 0);
+  if (explicitPerPage > 0) return clamp(explicitPerPage, 1, 50);
+
+  const limitFallback = parsePositiveInt(limit, 0);
+  if (limitFallback > 0) return clamp(limitFallback, 1, 50);
+
+  return fallback;
+}
+
+function getPostOrderColumn(orderBy?: string): string {
+  return orderBy && POST_ORDER_COLUMNS.has(orderBy) ? orderBy : "created_at";
+}
+
+function getSortOrder(order?: string, fallback: "asc" | "desc" = "asc"): "asc" | "desc" {
+  if (order === "asc" || order === "desc") return order;
+  return fallback;
+}
+
 // =====================================================================
 // Post Block Resolution
 // =====================================================================
@@ -209,11 +260,21 @@ async function fetchFilteredPosts(
     );
   }
 
-  const orderBy = sc.order_by || "created_at";
-  const order = sc.order || "asc";
+  const isPaginated = isPaginatedMode(sc.paginate);
+  const orderBy = getPostOrderColumn(sc.order_by);
+  const order = getSortOrder(sc.order, "asc");
+  const limit = isPaginated
+    ? getPreviewPerPage(sc.per_page, sc.limit, 9)
+    : parseNonNegativeInt(sc.limit, 10);
+  const offset = isPaginated ? 0 : parseNonNegativeInt(sc.offset, 0);
+
   query = query.orderBy(`p.${orderBy}`, order);
-  query = query.limit(parseInt(sc.limit || "10", 10));
-  query = query.offset(parseInt(sc.offset || "0", 10));
+  if (limit > 0) {
+    query = query.limit(limit);
+  }
+  if (offset > 0) {
+    query = query.offset(offset);
+  }
 
   const posts = await query;
 
@@ -584,10 +645,13 @@ async function resolveReviewBlocks(
       continue;
     }
 
-    const minRating = parseInt(sc.min_rating || "1", 10);
-    const limit = parseInt(sc.limit || "10", 10);
-    const offset = parseInt(sc.offset || "0", 10);
-    const order = sc.order === "asc" ? "asc" : "desc";
+    const isPaginated = isPaginatedMode(sc.paginate);
+    const minRating = clamp(parsePositiveInt(sc.min_rating, 1), 1, 5);
+    const limit = isPaginated
+      ? getPreviewPerPage(sc.per_page, sc.limit, 6)
+      : parseNonNegativeInt(sc.limit, 10);
+    const offset = isPaginated ? 0 : parseNonNegativeInt(sc.offset, 0);
+    const order = getSortOrder(sc.order, "desc");
 
     const reviews = await ProjectReviewModel.list(scope, {
       minRating,

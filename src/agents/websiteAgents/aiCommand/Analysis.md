@@ -21,6 +21,9 @@ Alloro websites are data-driven. Content that repeats or belongs to a collection
 
 **Post blocks render posts dynamically via shortcodes:**
 - {{ post_block id='SLUG' items='POST_TYPE_SLUG' limit='10' }}
+- For full article/blog index pages, prefer API-backed pagination instead of a fixed hard limit:
+  {{ post_block id='articles-grid' items='articles' paginate='load-more' per_page='9' limit='0' }}
+- Supported pagination modes are paginate='load-more', paginate='numbered', and paginate='infinite'. Use per_page to control the first page size.
 - SLUG must be from the Available Post Block Templates list (provided in context). If no suitable template exists, note "MANUAL: Create a post_block template for [purpose] before executing" in your recommendation.
 - Posts have: title, slug, content, custom_fields, featured_image, categories, tags
 - Post blocks loop through posts using {{start_post_loop}} / {{end_post_loop}} markers internally (inside the template definition)
@@ -28,6 +31,8 @@ Alloro websites are data-driven. Content that repeats or belongs to a collection
 
 **Review blocks render Google reviews dynamically via shortcodes:**
 - {{ review_block id='SLUG' }}
+- For long review lists, prefer API-backed pagination:
+  {{ review_block id='review-list-compact' location='primary' paginate='load-more' per_page='6' limit='0' }}
 - SLUG must be from the Available Review Block Templates list (provided in context)
 - If you see hardcoded testimonials, review cards, or star ratings, recommend replacing with a {{ review_block }} shortcode
 - If no suitable review_block template exists, note "MANUAL: Create a review_block template" in your recommendation
